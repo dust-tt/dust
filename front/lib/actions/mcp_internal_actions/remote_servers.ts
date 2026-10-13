@@ -23,6 +23,680 @@ export type DefaultRemoteMCPServerConfig = {
   featureFlag?: WhitelistableFeature;
 };
 
+const AMPLITUDE_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url"
+> = {
+  icon: "AmplitudeLogo",
+  documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
+  connectionInstructions:
+    "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    search: "never_ask",
+    get_from_url: "never_ask",
+    get_amplitude_context: "never_ask",
+    query_amplitude_data: "never_ask",
+    get_amplitude_charts: "never_ask",
+    render_amplitude_chart: "never_ask",
+    get_amp_user_data: "never_ask",
+    get_experiments: "never_ask",
+    query_experiment: "never_ask",
+    get_flags: "never_ask",
+    get_deployments: "never_ask",
+    get_amp_taxonomy: "never_ask",
+    get_transformations: "never_ask",
+    get_group_types: "never_ask",
+    get_session_replays: "never_ask",
+    list_session_replays: "never_ask",
+    get_session_replay_events: "never_ask",
+    list_guides_surveys: "never_ask",
+    get_guide_or_survey: "never_ask",
+    query_wave_opportunities: "never_ask",
+    query_wave_product_areas: "never_ask",
+    use_amplitude_ai_feedback: "never_ask",
+    get_agent_results: "never_ask",
+    get_amplitude_agent_analytics_info: "never_ask",
+    get_data_ingestion_sources: "never_ask",
+    get_data_source_details: "never_ask",
+    get_data_warehouse_destinations: "never_ask",
+    get_data_warehouse_jobs: "never_ask",
+    list_tool_categories: "never_ask",
+    get_category_tools: "never_ask",
+    describe_tool: "never_ask",
+    use_amplitude_chart_monitors: "low",
+    use_amp_dashboards: "low",
+    use_amp_notebooks: "low",
+    use_amp_comments: "low",
+    use_amplitude_cohorts: "low",
+    create_experiment: "low",
+    update_experiment: "low",
+    create_metric: "low",
+    manage_wave_opportunities: "low",
+    manage_wave_product_areas: "low",
+    manage_wave_verification_artifacts: "low",
+    share_amp_entities: "high",
+    create_flags: "high",
+    update_flag: "high",
+    manage_amp_events: "high",
+    manage_amp_properties: "high",
+    manage_amp_taxonomy: "high",
+  },
+  toolDisplayLabels: {
+    search: {
+      running: "Searching on Amplitude",
+      done: "Search on Amplitude",
+    },
+    get_from_url: {
+      running: "Fetching from Amplitude URL",
+      done: "Fetched from Amplitude URL",
+    },
+    get_amplitude_context: {
+      running: "Fetching context from Amplitude",
+      done: "Fetched context from Amplitude",
+    },
+    query_amplitude_data: {
+      running: "Querying data on Amplitude",
+      done: "Queried data on Amplitude",
+    },
+    get_amplitude_charts: {
+      running: "Fetching charts from Amplitude",
+      done: "Fetched charts from Amplitude",
+    },
+    render_amplitude_chart: {
+      running: "Rendering chart from Amplitude",
+      done: "Rendered chart from Amplitude",
+    },
+    get_amp_user_data: {
+      running: "Fetching user data from Amplitude",
+      done: "Fetched user data from Amplitude",
+    },
+    get_experiments: {
+      running: "Fetching experiments from Amplitude",
+      done: "Fetched experiments from Amplitude",
+    },
+    query_experiment: {
+      running: "Querying experiment on Amplitude",
+      done: "Queried experiment on Amplitude",
+    },
+    get_flags: {
+      running: "Fetching feature flags from Amplitude",
+      done: "Fetched feature flags from Amplitude",
+    },
+    get_deployments: {
+      running: "Fetching deployments from Amplitude",
+      done: "Fetched deployments from Amplitude",
+    },
+    get_amp_taxonomy: {
+      running: "Fetching taxonomy from Amplitude",
+      done: "Fetched taxonomy from Amplitude",
+    },
+    get_transformations: {
+      running: "Fetching transformations from Amplitude",
+      done: "Fetched transformations from Amplitude",
+    },
+    get_group_types: {
+      running: "Fetching group types from Amplitude",
+      done: "Fetched group types from Amplitude",
+    },
+    get_session_replays: {
+      running: "Fetching session replays from Amplitude",
+      done: "Fetched session replays from Amplitude",
+    },
+    list_session_replays: {
+      running: "Listing session replays on Amplitude",
+      done: "Listed session replays on Amplitude",
+    },
+    get_session_replay_events: {
+      running: "Fetching session replay events from Amplitude",
+      done: "Fetched session replay events from Amplitude",
+    },
+    list_guides_surveys: {
+      running: "Listing guides and surveys on Amplitude",
+      done: "Listed guides and surveys on Amplitude",
+    },
+    get_guide_or_survey: {
+      running: "Fetching guide or survey from Amplitude",
+      done: "Fetched guide or survey from Amplitude",
+    },
+    query_wave_opportunities: {
+      running: "Querying opportunities on Amplitude",
+      done: "Queried opportunities on Amplitude",
+    },
+    query_wave_product_areas: {
+      running: "Querying product areas on Amplitude",
+      done: "Queried product areas on Amplitude",
+    },
+    use_amplitude_ai_feedback: {
+      running: "Fetching feedback from Amplitude",
+      done: "Fetched feedback from Amplitude",
+    },
+    get_agent_results: {
+      running: "Fetching agent results from Amplitude",
+      done: "Fetched agent results from Amplitude",
+    },
+    get_amplitude_agent_analytics_info: {
+      running: "Fetching agent analytics from Amplitude",
+      done: "Fetched agent analytics from Amplitude",
+    },
+    get_data_ingestion_sources: {
+      running: "Fetching ingestion sources from Amplitude",
+      done: "Fetched ingestion sources from Amplitude",
+    },
+    get_data_source_details: {
+      running: "Fetching data source details from Amplitude",
+      done: "Fetched data source details from Amplitude",
+    },
+    get_data_warehouse_destinations: {
+      running: "Fetching warehouse destinations from Amplitude",
+      done: "Fetched warehouse destinations from Amplitude",
+    },
+    get_data_warehouse_jobs: {
+      running: "Fetching warehouse jobs from Amplitude",
+      done: "Fetched warehouse jobs from Amplitude",
+    },
+    list_tool_categories: {
+      running: "Listing tool categories on Amplitude",
+      done: "Listed tool categories on Amplitude",
+    },
+    get_category_tools: {
+      running: "Listing category tools on Amplitude",
+      done: "Listed category tools on Amplitude",
+    },
+    describe_tool: {
+      running: "Describing tool on Amplitude",
+      done: "Described tool on Amplitude",
+    },
+    use_amplitude_chart_monitors: {
+      running: "Managing chart monitors on Amplitude",
+      done: "Managed chart monitors on Amplitude",
+    },
+    use_amp_dashboards: {
+      running: "Managing dashboards on Amplitude",
+      done: "Managed dashboards on Amplitude",
+    },
+    use_amp_notebooks: {
+      running: "Managing notebooks on Amplitude",
+      done: "Managed notebooks on Amplitude",
+    },
+    use_amp_comments: {
+      running: "Managing comments on Amplitude",
+      done: "Managed comments on Amplitude",
+    },
+    use_amplitude_cohorts: {
+      running: "Managing cohorts on Amplitude",
+      done: "Managed cohorts on Amplitude",
+    },
+    create_experiment: {
+      running: "Creating experiment on Amplitude",
+      done: "Created experiment on Amplitude",
+    },
+    update_experiment: {
+      running: "Updating experiment on Amplitude",
+      done: "Updated experiment on Amplitude",
+    },
+    create_metric: {
+      running: "Creating metric on Amplitude",
+      done: "Created metric on Amplitude",
+    },
+    manage_wave_opportunities: {
+      running: "Managing opportunities on Amplitude",
+      done: "Managed opportunities on Amplitude",
+    },
+    manage_wave_product_areas: {
+      running: "Managing product areas on Amplitude",
+      done: "Managed product areas on Amplitude",
+    },
+    manage_wave_verification_artifacts: {
+      running: "Managing verification artifacts on Amplitude",
+      done: "Managed verification artifacts on Amplitude",
+    },
+    share_amp_entities: {
+      running: "Updating sharing on Amplitude",
+      done: "Updated sharing on Amplitude",
+    },
+    create_flags: {
+      running: "Creating feature flags on Amplitude",
+      done: "Created feature flags on Amplitude",
+    },
+    update_flag: {
+      running: "Updating feature flag on Amplitude",
+      done: "Updated feature flag on Amplitude",
+    },
+    manage_amp_events: {
+      running: "Managing events on Amplitude",
+      done: "Managed events on Amplitude",
+    },
+    manage_amp_properties: {
+      running: "Managing properties on Amplitude",
+      done: "Managed properties on Amplitude",
+    },
+    manage_amp_taxonomy: {
+      running: "Managing tracking plan on Amplitude",
+      done: "Managed tracking plan on Amplitude",
+    },
+  },
+};
+
+const QOBRA_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url"
+> = {
+  icon: "QobraLogo",
+  documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
+  connectionInstructions:
+    "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    get_identity: "never_ask",
+    get_company_settings: "never_ask",
+    list_sandboxes: "never_ask",
+    list_data_tables: "never_ask",
+    get_data_table: "never_ask",
+    list_data_table_records: "never_ask",
+    list_integrations: "never_ask",
+    list_users: "never_ask",
+    get_user: "never_ask",
+    list_user_attributes: "never_ask",
+    list_roles: "never_ask",
+    get_role: "never_ask",
+    list_groups: "never_ask",
+    get_group: "never_ask",
+    list_group_dimensions: "never_ask",
+    list_quotas: "never_ask",
+    list_quota_values: "never_ask",
+    list_plans: "never_ask",
+    get_plan: "never_ask",
+    list_commission_letters_campaigns: "never_ask",
+    get_commission_letters_campaign: "never_ask",
+    list_reports: "never_ask",
+    get_report: "never_ask",
+    get_report_data: "never_ask",
+    get_report_pivot_data: "never_ask",
+    get_report_chart_data: "never_ask",
+    list_dashboards: "never_ask",
+    get_dashboard: "never_ask",
+    list_requests: "never_ask",
+    get_request: "never_ask",
+    list_sales_coach_discussions: "never_ask",
+    get_sales_coach_discussion: "never_ask",
+    list_statements: "never_ask",
+    get_statement: "never_ask",
+    get_statement_compensation: "never_ask",
+    list_statement_records: "never_ask",
+    list_statement_periods: "never_ask",
+    list_exchange_rates: "never_ask",
+    list_imports: "never_ask",
+    get_import: "never_ask",
+    list_audit_logs: "never_ask",
+    get_audit_log: "never_ask",
+    list_dependencies: "never_ask",
+    list_help_center_articles: "never_ask",
+    get_help_center_article: "never_ask",
+  },
+  toolDisplayLabels: {
+    get_identity: {
+      running: "Fetching your Qobra identity",
+      done: "Fetched your Qobra identity",
+    },
+    get_company_settings: {
+      running: "Fetching company settings from Qobra",
+      done: "Fetched company settings from Qobra",
+    },
+    list_sandboxes: {
+      running: "Listing sandboxes on Qobra",
+      done: "Listed sandboxes on Qobra",
+    },
+    list_data_tables: {
+      running: "Listing data tables on Qobra",
+      done: "Listed data tables on Qobra",
+    },
+    get_data_table: {
+      running: "Fetching data table from Qobra",
+      done: "Fetched data table from Qobra",
+    },
+    list_data_table_records: {
+      running: "Listing data table records on Qobra",
+      done: "Listed data table records on Qobra",
+    },
+    list_integrations: {
+      running: "Listing integrations on Qobra",
+      done: "Listed integrations on Qobra",
+    },
+    list_users: {
+      running: "Listing users on Qobra",
+      done: "Listed users on Qobra",
+    },
+    get_user: {
+      running: "Fetching user from Qobra",
+      done: "Fetched user from Qobra",
+    },
+    list_user_attributes: {
+      running: "Listing user attributes on Qobra",
+      done: "Listed user attributes on Qobra",
+    },
+    list_roles: {
+      running: "Listing roles on Qobra",
+      done: "Listed roles on Qobra",
+    },
+    get_role: {
+      running: "Fetching role from Qobra",
+      done: "Fetched role from Qobra",
+    },
+    list_groups: {
+      running: "Listing groups on Qobra",
+      done: "Listed groups on Qobra",
+    },
+    get_group: {
+      running: "Fetching group from Qobra",
+      done: "Fetched group from Qobra",
+    },
+    list_group_dimensions: {
+      running: "Listing group dimensions on Qobra",
+      done: "Listed group dimensions on Qobra",
+    },
+    list_quotas: {
+      running: "Listing quotas on Qobra",
+      done: "Listed quotas on Qobra",
+    },
+    list_quota_values: {
+      running: "Listing quota values on Qobra",
+      done: "Listed quota values on Qobra",
+    },
+    list_plans: {
+      running: "Listing compensation plans on Qobra",
+      done: "Listed compensation plans on Qobra",
+    },
+    get_plan: {
+      running: "Fetching compensation plan from Qobra",
+      done: "Fetched compensation plan from Qobra",
+    },
+    list_commission_letters_campaigns: {
+      running: "Listing commission letter campaigns on Qobra",
+      done: "Listed commission letter campaigns on Qobra",
+    },
+    get_commission_letters_campaign: {
+      running: "Fetching commission letter campaign from Qobra",
+      done: "Fetched commission letter campaign from Qobra",
+    },
+    list_reports: {
+      running: "Listing reports on Qobra",
+      done: "Listed reports on Qobra",
+    },
+    get_report: {
+      running: "Fetching report from Qobra",
+      done: "Fetched report from Qobra",
+    },
+    get_report_data: {
+      running: "Fetching report data from Qobra",
+      done: "Fetched report data from Qobra",
+    },
+    get_report_pivot_data: {
+      running: "Fetching report pivot data from Qobra",
+      done: "Fetched report pivot data from Qobra",
+    },
+    get_report_chart_data: {
+      running: "Fetching report chart data from Qobra",
+      done: "Fetched report chart data from Qobra",
+    },
+    list_dashboards: {
+      running: "Listing dashboards on Qobra",
+      done: "Listed dashboards on Qobra",
+    },
+    get_dashboard: {
+      running: "Fetching dashboard from Qobra",
+      done: "Fetched dashboard from Qobra",
+    },
+    list_requests: {
+      running: "Listing requests on Qobra",
+      done: "Listed requests on Qobra",
+    },
+    get_request: {
+      running: "Fetching request from Qobra",
+      done: "Fetched request from Qobra",
+    },
+    list_sales_coach_discussions: {
+      running: "Listing Sales Coach discussions on Qobra",
+      done: "Listed Sales Coach discussions on Qobra",
+    },
+    get_sales_coach_discussion: {
+      running: "Fetching Sales Coach discussion from Qobra",
+      done: "Fetched Sales Coach discussion from Qobra",
+    },
+    list_statements: {
+      running: "Listing statements on Qobra",
+      done: "Listed statements on Qobra",
+    },
+    get_statement: {
+      running: "Fetching statement from Qobra",
+      done: "Fetched statement from Qobra",
+    },
+    get_statement_compensation: {
+      running: "Fetching statement compensation from Qobra",
+      done: "Fetched statement compensation from Qobra",
+    },
+    list_statement_records: {
+      running: "Listing statement records on Qobra",
+      done: "Listed statement records on Qobra",
+    },
+    list_statement_periods: {
+      running: "Listing statement periods on Qobra",
+      done: "Listed statement periods on Qobra",
+    },
+    list_exchange_rates: {
+      running: "Listing exchange rates on Qobra",
+      done: "Listed exchange rates on Qobra",
+    },
+    list_imports: {
+      running: "Listing imports on Qobra",
+      done: "Listed imports on Qobra",
+    },
+    get_import: {
+      running: "Fetching import from Qobra",
+      done: "Fetched import from Qobra",
+    },
+    list_audit_logs: {
+      running: "Listing audit logs on Qobra",
+      done: "Listed audit logs on Qobra",
+    },
+    get_audit_log: {
+      running: "Fetching audit log from Qobra",
+      done: "Fetched audit log from Qobra",
+    },
+    list_dependencies: {
+      running: "Listing dependencies on Qobra",
+      done: "Listed dependencies on Qobra",
+    },
+    list_help_center_articles: {
+      running: "Listing Help Center articles on Qobra",
+      done: "Listed Help Center articles on Qobra",
+    },
+    get_help_center_article: {
+      running: "Fetching Help Center article from Qobra",
+      done: "Fetched Help Center article from Qobra",
+    },
+  },
+};
+
+const PANDADOC_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url" | "connectionInstructions"
+> = {
+  icon: "PandaDocLogo",
+  documentationUrl:
+    "https://developers.pandadoc.com/docs/getting-started-with-mcp",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    documents_audit_trail_get: "never_ask",
+    documents_list: "never_ask",
+    documents_search: "never_ask",
+    documents_status_get: "never_ask",
+    documents_details_get: "never_ask",
+    documents_summary_get: "never_ask",
+    documents_content_get: "never_ask",
+    documents_metadata_batch_get: "never_ask",
+    contacts_list: "never_ask",
+    contacts_search: "never_ask",
+    templates_list: "never_ask",
+    templates_details_get: "never_ask",
+    catalog_items_search: "never_ask",
+    catalog_item_get: "never_ask",
+    documents_create: "high",
+    documents_update: "high",
+    documents_status_change: "high",
+    documents_send: "high",
+    documents_fields_assign: "high",
+    documents_archive: "high",
+    documents_reminder_send: "high",
+    recipients_edit: "high",
+    recipients_add_cc: "high",
+    recipients_reassign: "high",
+    recipients_delete: "high",
+    templates_create: "high",
+    templates_update: "high",
+    templates_duplicate: "high",
+    templates_delete: "high",
+    catalog_item_create: "high",
+    catalog_item_update: "high",
+    catalog_item_delete: "high",
+    quotes_update: "high",
+  },
+  toolDisplayLabels: {
+    documents_audit_trail_get: {
+      running: "Loading a document audit trail from PandaDoc",
+      done: "Loaded a document audit trail from PandaDoc",
+    },
+    documents_list: {
+      running: "Listing documents on PandaDoc",
+      done: "Listed documents on PandaDoc",
+    },
+    documents_search: {
+      running: "Searching documents on PandaDoc",
+      done: "Searched documents on PandaDoc",
+    },
+    documents_status_get: {
+      running: "Checking a document status on PandaDoc",
+      done: "Checked a document status on PandaDoc",
+    },
+    documents_details_get: {
+      running: "Loading document details from PandaDoc",
+      done: "Loaded document details from PandaDoc",
+    },
+    documents_summary_get: {
+      running: "Loading a document summary from PandaDoc",
+      done: "Loaded a document summary from PandaDoc",
+    },
+    documents_content_get: {
+      running: "Loading document content from PandaDoc",
+      done: "Loaded document content from PandaDoc",
+    },
+    documents_metadata_batch_get: {
+      running: "Loading document metadata from PandaDoc",
+      done: "Loaded document metadata from PandaDoc",
+    },
+    contacts_list: {
+      running: "Looking up a contact by email on PandaDoc",
+      done: "Looked up a contact by email on PandaDoc",
+    },
+    contacts_search: {
+      running: "Searching contacts on PandaDoc",
+      done: "Searched contacts on PandaDoc",
+    },
+    templates_list: {
+      running: "Listing templates on PandaDoc",
+      done: "Listed templates on PandaDoc",
+    },
+    templates_details_get: {
+      running: "Loading template details from PandaDoc",
+      done: "Loaded template details from PandaDoc",
+    },
+    catalog_items_search: {
+      running: "Searching catalog items on PandaDoc",
+      done: "Searched catalog items on PandaDoc",
+    },
+    catalog_item_get: {
+      running: "Loading a catalog item from PandaDoc",
+      done: "Loaded a catalog item from PandaDoc",
+    },
+    documents_create: {
+      running: "Creating a document on PandaDoc",
+      done: "Created a document on PandaDoc",
+    },
+    documents_update: {
+      running: "Updating a document on PandaDoc",
+      done: "Updated a document on PandaDoc",
+    },
+    documents_status_change: {
+      running: "Changing a document status on PandaDoc",
+      done: "Changed a document status on PandaDoc",
+    },
+    documents_send: {
+      running: "Sending a document on PandaDoc",
+      done: "Sent a document on PandaDoc",
+    },
+    documents_fields_assign: {
+      running: "Assigning document fields on PandaDoc",
+      done: "Assigned document fields on PandaDoc",
+    },
+    documents_archive: {
+      running: "Archiving a document on PandaDoc",
+      done: "Archived a document on PandaDoc",
+    },
+    documents_reminder_send: {
+      running: "Sending a document reminder on PandaDoc",
+      done: "Sent a document reminder on PandaDoc",
+    },
+    recipients_edit: {
+      running: "Editing a recipient on PandaDoc",
+      done: "Edited a recipient on PandaDoc",
+    },
+    recipients_add_cc: {
+      running: "Adding a CC recipient on PandaDoc",
+      done: "Added a CC recipient on PandaDoc",
+    },
+    recipients_reassign: {
+      running: "Reassigning a recipient on PandaDoc",
+      done: "Reassigned a recipient on PandaDoc",
+    },
+    recipients_delete: {
+      running: "Removing a recipient on PandaDoc",
+      done: "Removed a recipient on PandaDoc",
+    },
+    templates_create: {
+      running: "Creating a template on PandaDoc",
+      done: "Created a template on PandaDoc",
+    },
+    templates_update: {
+      running: "Updating a template on PandaDoc",
+      done: "Updated a template on PandaDoc",
+    },
+    templates_duplicate: {
+      running: "Duplicating a template on PandaDoc",
+      done: "Duplicated a template on PandaDoc",
+    },
+    templates_delete: {
+      running: "Deleting a template on PandaDoc",
+      done: "Deleted a template on PandaDoc",
+    },
+    catalog_item_create: {
+      running: "Creating a catalog item on PandaDoc",
+      done: "Created a catalog item on PandaDoc",
+    },
+    catalog_item_update: {
+      running: "Updating a catalog item on PandaDoc",
+      done: "Updated a catalog item on PandaDoc",
+    },
+    catalog_item_delete: {
+      running: "Deleting a catalog item on PandaDoc",
+      done: "Deleted a catalog item on PandaDoc",
+    },
+    quotes_update: {
+      running: "Updating quotes on PandaDoc",
+      done: "Updated quotes on PandaDoc",
+    },
+  },
+};
+
 export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   {
     id: 10000,
@@ -1241,516 +1915,20 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...AMPLITUDE_SHARED_CONFIG,
     id: 10018,
     name: "Amplitude",
     description:
       "Amplitude tools for product analytics — search, query, and create charts, dashboards, notebooks, experiments, and cohorts (Region: US).",
     url: "https://mcp.amplitude.com/mcp",
-    icon: "AmplitudeLogo",
-    documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
-    connectionInstructions:
-      "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      search: "never_ask",
-      get_from_url: "never_ask",
-      get_amplitude_context: "never_ask",
-      query_amplitude_data: "never_ask",
-      get_amplitude_charts: "never_ask",
-      render_amplitude_chart: "never_ask",
-      get_amp_user_data: "never_ask",
-      get_experiments: "never_ask",
-      query_experiment: "never_ask",
-      get_flags: "never_ask",
-      get_deployments: "never_ask",
-      get_amp_taxonomy: "never_ask",
-      get_transformations: "never_ask",
-      get_group_types: "never_ask",
-      get_session_replays: "never_ask",
-      list_session_replays: "never_ask",
-      get_session_replay_events: "never_ask",
-      list_guides_surveys: "never_ask",
-      get_guide_or_survey: "never_ask",
-      query_wave_opportunities: "never_ask",
-      query_wave_product_areas: "never_ask",
-      use_amplitude_ai_feedback: "never_ask",
-      get_agent_results: "never_ask",
-      get_amplitude_agent_analytics_info: "never_ask",
-      get_data_ingestion_sources: "never_ask",
-      get_data_source_details: "never_ask",
-      get_data_warehouse_destinations: "never_ask",
-      get_data_warehouse_jobs: "never_ask",
-      list_tool_categories: "never_ask",
-      get_category_tools: "never_ask",
-      describe_tool: "never_ask",
-      use_amplitude_chart_monitors: "low",
-      use_amp_dashboards: "low",
-      use_amp_notebooks: "low",
-      use_amp_comments: "low",
-      use_amplitude_cohorts: "low",
-      create_experiment: "low",
-      update_experiment: "low",
-      create_metric: "low",
-      manage_wave_opportunities: "low",
-      manage_wave_product_areas: "low",
-      manage_wave_verification_artifacts: "low",
-      share_amp_entities: "high",
-      create_flags: "high",
-      update_flag: "high",
-      manage_amp_events: "high",
-      manage_amp_properties: "high",
-      manage_amp_taxonomy: "high",
-    },
-    toolDisplayLabels: {
-      search: {
-        running: "Searching on Amplitude",
-        done: "Search on Amplitude",
-      },
-      get_from_url: {
-        running: "Fetching from Amplitude URL",
-        done: "Fetched from Amplitude URL",
-      },
-      get_amplitude_context: {
-        running: "Fetching context from Amplitude",
-        done: "Fetched context from Amplitude",
-      },
-      query_amplitude_data: {
-        running: "Querying data on Amplitude",
-        done: "Queried data on Amplitude",
-      },
-      get_amplitude_charts: {
-        running: "Fetching charts from Amplitude",
-        done: "Fetched charts from Amplitude",
-      },
-      render_amplitude_chart: {
-        running: "Rendering chart from Amplitude",
-        done: "Rendered chart from Amplitude",
-      },
-      get_amp_user_data: {
-        running: "Fetching user data from Amplitude",
-        done: "Fetched user data from Amplitude",
-      },
-      get_experiments: {
-        running: "Fetching experiments from Amplitude",
-        done: "Fetched experiments from Amplitude",
-      },
-      query_experiment: {
-        running: "Querying experiment on Amplitude",
-        done: "Queried experiment on Amplitude",
-      },
-      get_flags: {
-        running: "Fetching feature flags from Amplitude",
-        done: "Fetched feature flags from Amplitude",
-      },
-      get_deployments: {
-        running: "Fetching deployments from Amplitude",
-        done: "Fetched deployments from Amplitude",
-      },
-      get_amp_taxonomy: {
-        running: "Fetching taxonomy from Amplitude",
-        done: "Fetched taxonomy from Amplitude",
-      },
-      get_transformations: {
-        running: "Fetching transformations from Amplitude",
-        done: "Fetched transformations from Amplitude",
-      },
-      get_group_types: {
-        running: "Fetching group types from Amplitude",
-        done: "Fetched group types from Amplitude",
-      },
-      get_session_replays: {
-        running: "Fetching session replays from Amplitude",
-        done: "Fetched session replays from Amplitude",
-      },
-      list_session_replays: {
-        running: "Listing session replays on Amplitude",
-        done: "Listed session replays on Amplitude",
-      },
-      get_session_replay_events: {
-        running: "Fetching session replay events from Amplitude",
-        done: "Fetched session replay events from Amplitude",
-      },
-      list_guides_surveys: {
-        running: "Listing guides and surveys on Amplitude",
-        done: "Listed guides and surveys on Amplitude",
-      },
-      get_guide_or_survey: {
-        running: "Fetching guide or survey from Amplitude",
-        done: "Fetched guide or survey from Amplitude",
-      },
-      query_wave_opportunities: {
-        running: "Querying opportunities on Amplitude",
-        done: "Queried opportunities on Amplitude",
-      },
-      query_wave_product_areas: {
-        running: "Querying product areas on Amplitude",
-        done: "Queried product areas on Amplitude",
-      },
-      use_amplitude_ai_feedback: {
-        running: "Fetching feedback from Amplitude",
-        done: "Fetched feedback from Amplitude",
-      },
-      get_agent_results: {
-        running: "Fetching agent results from Amplitude",
-        done: "Fetched agent results from Amplitude",
-      },
-      get_amplitude_agent_analytics_info: {
-        running: "Fetching agent analytics from Amplitude",
-        done: "Fetched agent analytics from Amplitude",
-      },
-      get_data_ingestion_sources: {
-        running: "Fetching ingestion sources from Amplitude",
-        done: "Fetched ingestion sources from Amplitude",
-      },
-      get_data_source_details: {
-        running: "Fetching data source details from Amplitude",
-        done: "Fetched data source details from Amplitude",
-      },
-      get_data_warehouse_destinations: {
-        running: "Fetching warehouse destinations from Amplitude",
-        done: "Fetched warehouse destinations from Amplitude",
-      },
-      get_data_warehouse_jobs: {
-        running: "Fetching warehouse jobs from Amplitude",
-        done: "Fetched warehouse jobs from Amplitude",
-      },
-      list_tool_categories: {
-        running: "Listing tool categories on Amplitude",
-        done: "Listed tool categories on Amplitude",
-      },
-      get_category_tools: {
-        running: "Listing category tools on Amplitude",
-        done: "Listed category tools on Amplitude",
-      },
-      describe_tool: {
-        running: "Describing tool on Amplitude",
-        done: "Described tool on Amplitude",
-      },
-      use_amplitude_chart_monitors: {
-        running: "Managing chart monitors on Amplitude",
-        done: "Managed chart monitors on Amplitude",
-      },
-      use_amp_dashboards: {
-        running: "Managing dashboards on Amplitude",
-        done: "Managed dashboards on Amplitude",
-      },
-      use_amp_notebooks: {
-        running: "Managing notebooks on Amplitude",
-        done: "Managed notebooks on Amplitude",
-      },
-      use_amp_comments: {
-        running: "Managing comments on Amplitude",
-        done: "Managed comments on Amplitude",
-      },
-      use_amplitude_cohorts: {
-        running: "Managing cohorts on Amplitude",
-        done: "Managed cohorts on Amplitude",
-      },
-      create_experiment: {
-        running: "Creating experiment on Amplitude",
-        done: "Created experiment on Amplitude",
-      },
-      update_experiment: {
-        running: "Updating experiment on Amplitude",
-        done: "Updated experiment on Amplitude",
-      },
-      create_metric: {
-        running: "Creating metric on Amplitude",
-        done: "Created metric on Amplitude",
-      },
-      manage_wave_opportunities: {
-        running: "Managing opportunities on Amplitude",
-        done: "Managed opportunities on Amplitude",
-      },
-      manage_wave_product_areas: {
-        running: "Managing product areas on Amplitude",
-        done: "Managed product areas on Amplitude",
-      },
-      manage_wave_verification_artifacts: {
-        running: "Managing verification artifacts on Amplitude",
-        done: "Managed verification artifacts on Amplitude",
-      },
-      share_amp_entities: {
-        running: "Updating sharing on Amplitude",
-        done: "Updated sharing on Amplitude",
-      },
-      create_flags: {
-        running: "Creating feature flags on Amplitude",
-        done: "Created feature flags on Amplitude",
-      },
-      update_flag: {
-        running: "Updating feature flag on Amplitude",
-        done: "Updated feature flag on Amplitude",
-      },
-      manage_amp_events: {
-        running: "Managing events on Amplitude",
-        done: "Managed events on Amplitude",
-      },
-      manage_amp_properties: {
-        running: "Managing properties on Amplitude",
-        done: "Managed properties on Amplitude",
-      },
-      manage_amp_taxonomy: {
-        running: "Managing tracking plan on Amplitude",
-        done: "Managed tracking plan on Amplitude",
-      },
-    },
   },
   {
+    ...AMPLITUDE_SHARED_CONFIG,
     id: 10019,
     name: "Amplitude Europe",
     description:
       "Amplitude tools for product analytics — search, query, and create charts, dashboards, notebooks, experiments, and cohorts (Region: EU).",
     url: "https://mcp.eu.amplitude.com/mcp",
-    icon: "AmplitudeLogo",
-    documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
-    connectionInstructions:
-      "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      search: "never_ask",
-      get_from_url: "never_ask",
-      get_amplitude_context: "never_ask",
-      query_amplitude_data: "never_ask",
-      get_amplitude_charts: "never_ask",
-      render_amplitude_chart: "never_ask",
-      get_amp_user_data: "never_ask",
-      get_experiments: "never_ask",
-      query_experiment: "never_ask",
-      get_flags: "never_ask",
-      get_deployments: "never_ask",
-      get_amp_taxonomy: "never_ask",
-      get_transformations: "never_ask",
-      get_group_types: "never_ask",
-      get_session_replays: "never_ask",
-      list_session_replays: "never_ask",
-      get_session_replay_events: "never_ask",
-      list_guides_surveys: "never_ask",
-      get_guide_or_survey: "never_ask",
-      query_wave_opportunities: "never_ask",
-      query_wave_product_areas: "never_ask",
-      use_amplitude_ai_feedback: "never_ask",
-      get_agent_results: "never_ask",
-      get_amplitude_agent_analytics_info: "never_ask",
-      get_data_ingestion_sources: "never_ask",
-      get_data_source_details: "never_ask",
-      get_data_warehouse_destinations: "never_ask",
-      get_data_warehouse_jobs: "never_ask",
-      list_tool_categories: "never_ask",
-      get_category_tools: "never_ask",
-      describe_tool: "never_ask",
-      use_amplitude_chart_monitors: "low",
-      use_amp_dashboards: "low",
-      use_amp_notebooks: "low",
-      use_amp_comments: "low",
-      use_amplitude_cohorts: "low",
-      create_experiment: "low",
-      update_experiment: "low",
-      create_metric: "low",
-      manage_wave_opportunities: "low",
-      manage_wave_product_areas: "low",
-      manage_wave_verification_artifacts: "low",
-      share_amp_entities: "high",
-      create_flags: "high",
-      update_flag: "high",
-      manage_amp_events: "high",
-      manage_amp_properties: "high",
-      manage_amp_taxonomy: "high",
-    },
-    toolDisplayLabels: {
-      search: {
-        running: "Searching on Amplitude",
-        done: "Search on Amplitude",
-      },
-      get_from_url: {
-        running: "Fetching from Amplitude URL",
-        done: "Fetched from Amplitude URL",
-      },
-      get_amplitude_context: {
-        running: "Fetching context from Amplitude",
-        done: "Fetched context from Amplitude",
-      },
-      query_amplitude_data: {
-        running: "Querying data on Amplitude",
-        done: "Queried data on Amplitude",
-      },
-      get_amplitude_charts: {
-        running: "Fetching charts from Amplitude",
-        done: "Fetched charts from Amplitude",
-      },
-      render_amplitude_chart: {
-        running: "Rendering chart from Amplitude",
-        done: "Rendered chart from Amplitude",
-      },
-      get_amp_user_data: {
-        running: "Fetching user data from Amplitude",
-        done: "Fetched user data from Amplitude",
-      },
-      get_experiments: {
-        running: "Fetching experiments from Amplitude",
-        done: "Fetched experiments from Amplitude",
-      },
-      query_experiment: {
-        running: "Querying experiment on Amplitude",
-        done: "Queried experiment on Amplitude",
-      },
-      get_flags: {
-        running: "Fetching feature flags from Amplitude",
-        done: "Fetched feature flags from Amplitude",
-      },
-      get_deployments: {
-        running: "Fetching deployments from Amplitude",
-        done: "Fetched deployments from Amplitude",
-      },
-      get_amp_taxonomy: {
-        running: "Fetching taxonomy from Amplitude",
-        done: "Fetched taxonomy from Amplitude",
-      },
-      get_transformations: {
-        running: "Fetching transformations from Amplitude",
-        done: "Fetched transformations from Amplitude",
-      },
-      get_group_types: {
-        running: "Fetching group types from Amplitude",
-        done: "Fetched group types from Amplitude",
-      },
-      get_session_replays: {
-        running: "Fetching session replays from Amplitude",
-        done: "Fetched session replays from Amplitude",
-      },
-      list_session_replays: {
-        running: "Listing session replays on Amplitude",
-        done: "Listed session replays on Amplitude",
-      },
-      get_session_replay_events: {
-        running: "Fetching session replay events from Amplitude",
-        done: "Fetched session replay events from Amplitude",
-      },
-      list_guides_surveys: {
-        running: "Listing guides and surveys on Amplitude",
-        done: "Listed guides and surveys on Amplitude",
-      },
-      get_guide_or_survey: {
-        running: "Fetching guide or survey from Amplitude",
-        done: "Fetched guide or survey from Amplitude",
-      },
-      query_wave_opportunities: {
-        running: "Querying opportunities on Amplitude",
-        done: "Queried opportunities on Amplitude",
-      },
-      query_wave_product_areas: {
-        running: "Querying product areas on Amplitude",
-        done: "Queried product areas on Amplitude",
-      },
-      use_amplitude_ai_feedback: {
-        running: "Fetching feedback from Amplitude",
-        done: "Fetched feedback from Amplitude",
-      },
-      get_agent_results: {
-        running: "Fetching agent results from Amplitude",
-        done: "Fetched agent results from Amplitude",
-      },
-      get_amplitude_agent_analytics_info: {
-        running: "Fetching agent analytics from Amplitude",
-        done: "Fetched agent analytics from Amplitude",
-      },
-      get_data_ingestion_sources: {
-        running: "Fetching ingestion sources from Amplitude",
-        done: "Fetched ingestion sources from Amplitude",
-      },
-      get_data_source_details: {
-        running: "Fetching data source details from Amplitude",
-        done: "Fetched data source details from Amplitude",
-      },
-      get_data_warehouse_destinations: {
-        running: "Fetching warehouse destinations from Amplitude",
-        done: "Fetched warehouse destinations from Amplitude",
-      },
-      get_data_warehouse_jobs: {
-        running: "Fetching warehouse jobs from Amplitude",
-        done: "Fetched warehouse jobs from Amplitude",
-      },
-      list_tool_categories: {
-        running: "Listing tool categories on Amplitude",
-        done: "Listed tool categories on Amplitude",
-      },
-      get_category_tools: {
-        running: "Listing category tools on Amplitude",
-        done: "Listed category tools on Amplitude",
-      },
-      describe_tool: {
-        running: "Describing tool on Amplitude",
-        done: "Described tool on Amplitude",
-      },
-      use_amplitude_chart_monitors: {
-        running: "Managing chart monitors on Amplitude",
-        done: "Managed chart monitors on Amplitude",
-      },
-      use_amp_dashboards: {
-        running: "Managing dashboards on Amplitude",
-        done: "Managed dashboards on Amplitude",
-      },
-      use_amp_notebooks: {
-        running: "Managing notebooks on Amplitude",
-        done: "Managed notebooks on Amplitude",
-      },
-      use_amp_comments: {
-        running: "Managing comments on Amplitude",
-        done: "Managed comments on Amplitude",
-      },
-      use_amplitude_cohorts: {
-        running: "Managing cohorts on Amplitude",
-        done: "Managed cohorts on Amplitude",
-      },
-      create_experiment: {
-        running: "Creating experiment on Amplitude",
-        done: "Created experiment on Amplitude",
-      },
-      update_experiment: {
-        running: "Updating experiment on Amplitude",
-        done: "Updated experiment on Amplitude",
-      },
-      create_metric: {
-        running: "Creating metric on Amplitude",
-        done: "Created metric on Amplitude",
-      },
-      manage_wave_opportunities: {
-        running: "Managing opportunities on Amplitude",
-        done: "Managed opportunities on Amplitude",
-      },
-      manage_wave_product_areas: {
-        running: "Managing product areas on Amplitude",
-        done: "Managed product areas on Amplitude",
-      },
-      manage_wave_verification_artifacts: {
-        running: "Managing verification artifacts on Amplitude",
-        done: "Managed verification artifacts on Amplitude",
-      },
-      share_amp_entities: {
-        running: "Updating sharing on Amplitude",
-        done: "Updated sharing on Amplitude",
-      },
-      create_flags: {
-        running: "Creating feature flags on Amplitude",
-        done: "Created feature flags on Amplitude",
-      },
-      update_flag: {
-        running: "Updating feature flag on Amplitude",
-        done: "Updated feature flag on Amplitude",
-      },
-      manage_amp_events: {
-        running: "Managing events on Amplitude",
-        done: "Managed events on Amplitude",
-      },
-      manage_amp_properties: {
-        running: "Managing properties on Amplitude",
-        done: "Managed properties on Amplitude",
-      },
-      manage_amp_taxonomy: {
-        running: "Managing tracking plan on Amplitude",
-        done: "Managed tracking plan on Amplitude",
-      },
-    },
   },
   {
     id: 10020,
@@ -3473,490 +3651,20 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...QOBRA_SHARED_CONFIG,
     id: 10034,
     name: "Qobra",
     description:
       "Qobra tools to read your sales compensation data — commission plans, quotas, statements, payouts, reports, and dashboards, scoped to your Qobra permissions (Region: EU).",
     url: "https://mcp.qobra.co/mcp",
-    icon: "QobraLogo",
-    documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
-    connectionInstructions:
-      "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      get_identity: "never_ask",
-      get_company_settings: "never_ask",
-      list_sandboxes: "never_ask",
-      list_data_tables: "never_ask",
-      get_data_table: "never_ask",
-      list_data_table_records: "never_ask",
-      list_integrations: "never_ask",
-      list_users: "never_ask",
-      get_user: "never_ask",
-      list_user_attributes: "never_ask",
-      list_roles: "never_ask",
-      get_role: "never_ask",
-      list_groups: "never_ask",
-      get_group: "never_ask",
-      list_group_dimensions: "never_ask",
-      list_quotas: "never_ask",
-      list_quota_values: "never_ask",
-      list_plans: "never_ask",
-      get_plan: "never_ask",
-      list_commission_letters_campaigns: "never_ask",
-      get_commission_letters_campaign: "never_ask",
-      list_reports: "never_ask",
-      get_report: "never_ask",
-      get_report_data: "never_ask",
-      get_report_pivot_data: "never_ask",
-      get_report_chart_data: "never_ask",
-      list_dashboards: "never_ask",
-      get_dashboard: "never_ask",
-      list_requests: "never_ask",
-      get_request: "never_ask",
-      list_sales_coach_discussions: "never_ask",
-      get_sales_coach_discussion: "never_ask",
-      list_statements: "never_ask",
-      get_statement: "never_ask",
-      get_statement_compensation: "never_ask",
-      list_statement_records: "never_ask",
-      list_statement_periods: "never_ask",
-      list_exchange_rates: "never_ask",
-      list_imports: "never_ask",
-      get_import: "never_ask",
-      list_audit_logs: "never_ask",
-      get_audit_log: "never_ask",
-      list_dependencies: "never_ask",
-      list_help_center_articles: "never_ask",
-      get_help_center_article: "never_ask",
-    },
-    // Les labels sont résolus par slugify(name), donc "qobra" et "qobra-us"
-    // sont deux espaces de noms distincts : la copie est nécessaire.
-    toolDisplayLabels: {
-      get_identity: {
-        running: "Fetching your Qobra identity",
-        done: "Fetched your Qobra identity",
-      },
-      get_company_settings: {
-        running: "Fetching company settings from Qobra",
-        done: "Fetched company settings from Qobra",
-      },
-      list_sandboxes: {
-        running: "Listing sandboxes on Qobra",
-        done: "Listed sandboxes on Qobra",
-      },
-      list_data_tables: {
-        running: "Listing data tables on Qobra",
-        done: "Listed data tables on Qobra",
-      },
-      get_data_table: {
-        running: "Fetching data table from Qobra",
-        done: "Fetched data table from Qobra",
-      },
-      list_data_table_records: {
-        running: "Listing data table records on Qobra",
-        done: "Listed data table records on Qobra",
-      },
-      list_integrations: {
-        running: "Listing integrations on Qobra",
-        done: "Listed integrations on Qobra",
-      },
-      list_users: {
-        running: "Listing users on Qobra",
-        done: "Listed users on Qobra",
-      },
-      get_user: {
-        running: "Fetching user from Qobra",
-        done: "Fetched user from Qobra",
-      },
-      list_user_attributes: {
-        running: "Listing user attributes on Qobra",
-        done: "Listed user attributes on Qobra",
-      },
-      list_roles: {
-        running: "Listing roles on Qobra",
-        done: "Listed roles on Qobra",
-      },
-      get_role: {
-        running: "Fetching role from Qobra",
-        done: "Fetched role from Qobra",
-      },
-      list_groups: {
-        running: "Listing groups on Qobra",
-        done: "Listed groups on Qobra",
-      },
-      get_group: {
-        running: "Fetching group from Qobra",
-        done: "Fetched group from Qobra",
-      },
-      list_group_dimensions: {
-        running: "Listing group dimensions on Qobra",
-        done: "Listed group dimensions on Qobra",
-      },
-      list_quotas: {
-        running: "Listing quotas on Qobra",
-        done: "Listed quotas on Qobra",
-      },
-      list_quota_values: {
-        running: "Listing quota values on Qobra",
-        done: "Listed quota values on Qobra",
-      },
-      list_plans: {
-        running: "Listing compensation plans on Qobra",
-        done: "Listed compensation plans on Qobra",
-      },
-      get_plan: {
-        running: "Fetching compensation plan from Qobra",
-        done: "Fetched compensation plan from Qobra",
-      },
-      list_commission_letters_campaigns: {
-        running: "Listing commission letter campaigns on Qobra",
-        done: "Listed commission letter campaigns on Qobra",
-      },
-      get_commission_letters_campaign: {
-        running: "Fetching commission letter campaign from Qobra",
-        done: "Fetched commission letter campaign from Qobra",
-      },
-      list_reports: {
-        running: "Listing reports on Qobra",
-        done: "Listed reports on Qobra",
-      },
-      get_report: {
-        running: "Fetching report from Qobra",
-        done: "Fetched report from Qobra",
-      },
-      get_report_data: {
-        running: "Fetching report data from Qobra",
-        done: "Fetched report data from Qobra",
-      },
-      get_report_pivot_data: {
-        running: "Fetching report pivot data from Qobra",
-        done: "Fetched report pivot data from Qobra",
-      },
-      get_report_chart_data: {
-        running: "Fetching report chart data from Qobra",
-        done: "Fetched report chart data from Qobra",
-      },
-      list_dashboards: {
-        running: "Listing dashboards on Qobra",
-        done: "Listed dashboards on Qobra",
-      },
-      get_dashboard: {
-        running: "Fetching dashboard from Qobra",
-        done: "Fetched dashboard from Qobra",
-      },
-      list_requests: {
-        running: "Listing requests on Qobra",
-        done: "Listed requests on Qobra",
-      },
-      get_request: {
-        running: "Fetching request from Qobra",
-        done: "Fetched request from Qobra",
-      },
-      list_sales_coach_discussions: {
-        running: "Listing Sales Coach discussions on Qobra",
-        done: "Listed Sales Coach discussions on Qobra",
-      },
-      get_sales_coach_discussion: {
-        running: "Fetching Sales Coach discussion from Qobra",
-        done: "Fetched Sales Coach discussion from Qobra",
-      },
-      list_statements: {
-        running: "Listing statements on Qobra",
-        done: "Listed statements on Qobra",
-      },
-      get_statement: {
-        running: "Fetching statement from Qobra",
-        done: "Fetched statement from Qobra",
-      },
-      get_statement_compensation: {
-        running: "Fetching statement compensation from Qobra",
-        done: "Fetched statement compensation from Qobra",
-      },
-      list_statement_records: {
-        running: "Listing statement records on Qobra",
-        done: "Listed statement records on Qobra",
-      },
-      list_statement_periods: {
-        running: "Listing statement periods on Qobra",
-        done: "Listed statement periods on Qobra",
-      },
-      list_exchange_rates: {
-        running: "Listing exchange rates on Qobra",
-        done: "Listed exchange rates on Qobra",
-      },
-      list_imports: {
-        running: "Listing imports on Qobra",
-        done: "Listed imports on Qobra",
-      },
-      get_import: {
-        running: "Fetching import from Qobra",
-        done: "Fetched import from Qobra",
-      },
-      list_audit_logs: {
-        running: "Listing audit logs on Qobra",
-        done: "Listed audit logs on Qobra",
-      },
-      get_audit_log: {
-        running: "Fetching audit log from Qobra",
-        done: "Fetched audit log from Qobra",
-      },
-      list_dependencies: {
-        running: "Listing dependencies on Qobra",
-        done: "Listed dependencies on Qobra",
-      },
-      list_help_center_articles: {
-        running: "Listing Help Center articles on Qobra",
-        done: "Listed Help Center articles on Qobra",
-      },
-      get_help_center_article: {
-        running: "Fetching Help Center article from Qobra",
-        done: "Fetched Help Center article from Qobra",
-      },
-    },
   },
   {
+    ...QOBRA_SHARED_CONFIG,
     id: 10035,
     name: "Qobra US",
     description:
       "Qobra tools to read your sales compensation data — commission plans, quotas, statements, payouts, reports, and dashboards, scoped to your Qobra permissions (Region: US).",
     url: "https://mcp-us.qobra.co/mcp",
-    icon: "QobraLogo",
-    documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
-    connectionInstructions:
-      "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      get_identity: "never_ask",
-      get_company_settings: "never_ask",
-      list_sandboxes: "never_ask",
-      list_data_tables: "never_ask",
-      get_data_table: "never_ask",
-      list_data_table_records: "never_ask",
-      list_integrations: "never_ask",
-      list_users: "never_ask",
-      get_user: "never_ask",
-      list_user_attributes: "never_ask",
-      list_roles: "never_ask",
-      get_role: "never_ask",
-      list_groups: "never_ask",
-      get_group: "never_ask",
-      list_group_dimensions: "never_ask",
-      list_quotas: "never_ask",
-      list_quota_values: "never_ask",
-      list_plans: "never_ask",
-      get_plan: "never_ask",
-      list_commission_letters_campaigns: "never_ask",
-      get_commission_letters_campaign: "never_ask",
-      list_reports: "never_ask",
-      get_report: "never_ask",
-      get_report_data: "never_ask",
-      get_report_pivot_data: "never_ask",
-      get_report_chart_data: "never_ask",
-      list_dashboards: "never_ask",
-      get_dashboard: "never_ask",
-      list_requests: "never_ask",
-      get_request: "never_ask",
-      list_sales_coach_discussions: "never_ask",
-      get_sales_coach_discussion: "never_ask",
-      list_statements: "never_ask",
-      get_statement: "never_ask",
-      get_statement_compensation: "never_ask",
-      list_statement_records: "never_ask",
-      list_statement_periods: "never_ask",
-      list_exchange_rates: "never_ask",
-      list_imports: "never_ask",
-      get_import: "never_ask",
-      list_audit_logs: "never_ask",
-      get_audit_log: "never_ask",
-      list_dependencies: "never_ask",
-      list_help_center_articles: "never_ask",
-      get_help_center_article: "never_ask",
-    },
-    // Les labels sont résolus par slugify(name), donc "qobra" et "qobra-us"
-    // sont deux espaces de noms distincts : la copie est nécessaire.
-    toolDisplayLabels: {
-      get_identity: {
-        running: "Fetching your Qobra identity",
-        done: "Fetched your Qobra identity",
-      },
-      get_company_settings: {
-        running: "Fetching company settings from Qobra",
-        done: "Fetched company settings from Qobra",
-      },
-      list_sandboxes: {
-        running: "Listing sandboxes on Qobra",
-        done: "Listed sandboxes on Qobra",
-      },
-      list_data_tables: {
-        running: "Listing data tables on Qobra",
-        done: "Listed data tables on Qobra",
-      },
-      get_data_table: {
-        running: "Fetching data table from Qobra",
-        done: "Fetched data table from Qobra",
-      },
-      list_data_table_records: {
-        running: "Listing data table records on Qobra",
-        done: "Listed data table records on Qobra",
-      },
-      list_integrations: {
-        running: "Listing integrations on Qobra",
-        done: "Listed integrations on Qobra",
-      },
-      list_users: {
-        running: "Listing users on Qobra",
-        done: "Listed users on Qobra",
-      },
-      get_user: {
-        running: "Fetching user from Qobra",
-        done: "Fetched user from Qobra",
-      },
-      list_user_attributes: {
-        running: "Listing user attributes on Qobra",
-        done: "Listed user attributes on Qobra",
-      },
-      list_roles: {
-        running: "Listing roles on Qobra",
-        done: "Listed roles on Qobra",
-      },
-      get_role: {
-        running: "Fetching role from Qobra",
-        done: "Fetched role from Qobra",
-      },
-      list_groups: {
-        running: "Listing groups on Qobra",
-        done: "Listed groups on Qobra",
-      },
-      get_group: {
-        running: "Fetching group from Qobra",
-        done: "Fetched group from Qobra",
-      },
-      list_group_dimensions: {
-        running: "Listing group dimensions on Qobra",
-        done: "Listed group dimensions on Qobra",
-      },
-      list_quotas: {
-        running: "Listing quotas on Qobra",
-        done: "Listed quotas on Qobra",
-      },
-      list_quota_values: {
-        running: "Listing quota values on Qobra",
-        done: "Listed quota values on Qobra",
-      },
-      list_plans: {
-        running: "Listing compensation plans on Qobra",
-        done: "Listed compensation plans on Qobra",
-      },
-      get_plan: {
-        running: "Fetching compensation plan from Qobra",
-        done: "Fetched compensation plan from Qobra",
-      },
-      list_commission_letters_campaigns: {
-        running: "Listing commission letter campaigns on Qobra",
-        done: "Listed commission letter campaigns on Qobra",
-      },
-      get_commission_letters_campaign: {
-        running: "Fetching commission letter campaign from Qobra",
-        done: "Fetched commission letter campaign from Qobra",
-      },
-      list_reports: {
-        running: "Listing reports on Qobra",
-        done: "Listed reports on Qobra",
-      },
-      get_report: {
-        running: "Fetching report from Qobra",
-        done: "Fetched report from Qobra",
-      },
-      get_report_data: {
-        running: "Fetching report data from Qobra",
-        done: "Fetched report data from Qobra",
-      },
-      get_report_pivot_data: {
-        running: "Fetching report pivot data from Qobra",
-        done: "Fetched report pivot data from Qobra",
-      },
-      get_report_chart_data: {
-        running: "Fetching report chart data from Qobra",
-        done: "Fetched report chart data from Qobra",
-      },
-      list_dashboards: {
-        running: "Listing dashboards on Qobra",
-        done: "Listed dashboards on Qobra",
-      },
-      get_dashboard: {
-        running: "Fetching dashboard from Qobra",
-        done: "Fetched dashboard from Qobra",
-      },
-      list_requests: {
-        running: "Listing requests on Qobra",
-        done: "Listed requests on Qobra",
-      },
-      get_request: {
-        running: "Fetching request from Qobra",
-        done: "Fetched request from Qobra",
-      },
-      list_sales_coach_discussions: {
-        running: "Listing Sales Coach discussions on Qobra",
-        done: "Listed Sales Coach discussions on Qobra",
-      },
-      get_sales_coach_discussion: {
-        running: "Fetching Sales Coach discussion from Qobra",
-        done: "Fetched Sales Coach discussion from Qobra",
-      },
-      list_statements: {
-        running: "Listing statements on Qobra",
-        done: "Listed statements on Qobra",
-      },
-      get_statement: {
-        running: "Fetching statement from Qobra",
-        done: "Fetched statement from Qobra",
-      },
-      get_statement_compensation: {
-        running: "Fetching statement compensation from Qobra",
-        done: "Fetched statement compensation from Qobra",
-      },
-      list_statement_records: {
-        running: "Listing statement records on Qobra",
-        done: "Listed statement records on Qobra",
-      },
-      list_statement_periods: {
-        running: "Listing statement periods on Qobra",
-        done: "Listed statement periods on Qobra",
-      },
-      list_exchange_rates: {
-        running: "Listing exchange rates on Qobra",
-        done: "Listed exchange rates on Qobra",
-      },
-      list_imports: {
-        running: "Listing imports on Qobra",
-        done: "Listed imports on Qobra",
-      },
-      get_import: {
-        running: "Fetching import from Qobra",
-        done: "Fetched import from Qobra",
-      },
-      list_audit_logs: {
-        running: "Listing audit logs on Qobra",
-        done: "Listed audit logs on Qobra",
-      },
-      get_audit_log: {
-        running: "Fetching audit log from Qobra",
-        done: "Fetched audit log from Qobra",
-      },
-      list_dependencies: {
-        running: "Listing dependencies on Qobra",
-        done: "Listed dependencies on Qobra",
-      },
-      list_help_center_articles: {
-        running: "Listing Help Center articles on Qobra",
-        done: "Listed Help Center articles on Qobra",
-      },
-      get_help_center_article: {
-        running: "Fetching Help Center article from Qobra",
-        done: "Fetched Help Center article from Qobra",
-      },
-    },
   },
   {
     id: 10037,
@@ -5707,368 +5415,24 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...PANDADOC_SHARED_CONFIG,
     id: 10047,
     name: "PandaDoc",
     description:
       "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: Global).",
     url: "https://mcp.pandadoc.com/v1/mcp",
-    icon: "PandaDocLogo",
-    documentationUrl:
-      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
     connectionInstructions:
       "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.com; authentication fails if the server region does not match your account region.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      documents_audit_trail_get: "never_ask",
-      documents_list: "never_ask",
-      documents_search: "never_ask",
-      documents_status_get: "never_ask",
-      documents_details_get: "never_ask",
-      documents_summary_get: "never_ask",
-      documents_content_get: "never_ask",
-      documents_metadata_batch_get: "never_ask",
-      contacts_list: "never_ask",
-      contacts_search: "never_ask",
-      templates_list: "never_ask",
-      templates_details_get: "never_ask",
-      catalog_items_search: "never_ask",
-      catalog_item_get: "never_ask",
-      documents_create: "high",
-      documents_update: "high",
-      documents_status_change: "high",
-      documents_send: "high",
-      documents_fields_assign: "high",
-      documents_archive: "high",
-      documents_reminder_send: "high",
-      recipients_edit: "high",
-      recipients_add_cc: "high",
-      recipients_reassign: "high",
-      recipients_delete: "high",
-      templates_create: "high",
-      templates_update: "high",
-      templates_duplicate: "high",
-      templates_delete: "high",
-      catalog_item_create: "high",
-      catalog_item_update: "high",
-      catalog_item_delete: "high",
-      quotes_update: "high",
-    },
-    toolDisplayLabels: {
-      documents_audit_trail_get: {
-        running: "Loading a document audit trail from PandaDoc",
-        done: "Loaded a document audit trail from PandaDoc",
-      },
-      documents_list: {
-        running: "Listing documents on PandaDoc",
-        done: "Listed documents on PandaDoc",
-      },
-      documents_search: {
-        running: "Searching documents on PandaDoc",
-        done: "Searched documents on PandaDoc",
-      },
-      documents_status_get: {
-        running: "Checking a document status on PandaDoc",
-        done: "Checked a document status on PandaDoc",
-      },
-      documents_details_get: {
-        running: "Loading document details from PandaDoc",
-        done: "Loaded document details from PandaDoc",
-      },
-      documents_summary_get: {
-        running: "Loading a document summary from PandaDoc",
-        done: "Loaded a document summary from PandaDoc",
-      },
-      documents_content_get: {
-        running: "Loading document content from PandaDoc",
-        done: "Loaded document content from PandaDoc",
-      },
-      documents_metadata_batch_get: {
-        running: "Loading document metadata from PandaDoc",
-        done: "Loaded document metadata from PandaDoc",
-      },
-      contacts_list: {
-        running: "Looking up a contact by email on PandaDoc",
-        done: "Looked up a contact by email on PandaDoc",
-      },
-      contacts_search: {
-        running: "Searching contacts on PandaDoc",
-        done: "Searched contacts on PandaDoc",
-      },
-      templates_list: {
-        running: "Listing templates on PandaDoc",
-        done: "Listed templates on PandaDoc",
-      },
-      templates_details_get: {
-        running: "Loading template details from PandaDoc",
-        done: "Loaded template details from PandaDoc",
-      },
-      catalog_items_search: {
-        running: "Searching catalog items on PandaDoc",
-        done: "Searched catalog items on PandaDoc",
-      },
-      catalog_item_get: {
-        running: "Loading a catalog item from PandaDoc",
-        done: "Loaded a catalog item from PandaDoc",
-      },
-      documents_create: {
-        running: "Creating a document on PandaDoc",
-        done: "Created a document on PandaDoc",
-      },
-      documents_update: {
-        running: "Updating a document on PandaDoc",
-        done: "Updated a document on PandaDoc",
-      },
-      documents_status_change: {
-        running: "Changing a document status on PandaDoc",
-        done: "Changed a document status on PandaDoc",
-      },
-      documents_send: {
-        running: "Sending a document on PandaDoc",
-        done: "Sent a document on PandaDoc",
-      },
-      documents_fields_assign: {
-        running: "Assigning document fields on PandaDoc",
-        done: "Assigned document fields on PandaDoc",
-      },
-      documents_archive: {
-        running: "Archiving a document on PandaDoc",
-        done: "Archived a document on PandaDoc",
-      },
-      documents_reminder_send: {
-        running: "Sending a document reminder on PandaDoc",
-        done: "Sent a document reminder on PandaDoc",
-      },
-      recipients_edit: {
-        running: "Editing a recipient on PandaDoc",
-        done: "Edited a recipient on PandaDoc",
-      },
-      recipients_add_cc: {
-        running: "Adding a CC recipient on PandaDoc",
-        done: "Added a CC recipient on PandaDoc",
-      },
-      recipients_reassign: {
-        running: "Reassigning a recipient on PandaDoc",
-        done: "Reassigned a recipient on PandaDoc",
-      },
-      recipients_delete: {
-        running: "Removing a recipient on PandaDoc",
-        done: "Removed a recipient on PandaDoc",
-      },
-      templates_create: {
-        running: "Creating a template on PandaDoc",
-        done: "Created a template on PandaDoc",
-      },
-      templates_update: {
-        running: "Updating a template on PandaDoc",
-        done: "Updated a template on PandaDoc",
-      },
-      templates_duplicate: {
-        running: "Duplicating a template on PandaDoc",
-        done: "Duplicated a template on PandaDoc",
-      },
-      templates_delete: {
-        running: "Deleting a template on PandaDoc",
-        done: "Deleted a template on PandaDoc",
-      },
-      catalog_item_create: {
-        running: "Creating a catalog item on PandaDoc",
-        done: "Created a catalog item on PandaDoc",
-      },
-      catalog_item_update: {
-        running: "Updating a catalog item on PandaDoc",
-        done: "Updated a catalog item on PandaDoc",
-      },
-      catalog_item_delete: {
-        running: "Deleting a catalog item on PandaDoc",
-        done: "Deleted a catalog item on PandaDoc",
-      },
-      quotes_update: {
-        running: "Updating quotes on PandaDoc",
-        done: "Updated quotes on PandaDoc",
-      },
-    },
   },
   {
+    ...PANDADOC_SHARED_CONFIG,
     id: 10048,
     name: "PandaDoc (Europe)",
     description:
       "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: EU).",
     url: "https://mcp.pandadoc.eu/v1/mcp",
-    icon: "PandaDocLogo",
-    documentationUrl:
-      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
     connectionInstructions:
       "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.eu; authentication fails if the server region does not match your account region.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      documents_audit_trail_get: "never_ask",
-      documents_list: "never_ask",
-      documents_search: "never_ask",
-      documents_status_get: "never_ask",
-      documents_details_get: "never_ask",
-      documents_summary_get: "never_ask",
-      documents_content_get: "never_ask",
-      documents_metadata_batch_get: "never_ask",
-      contacts_list: "never_ask",
-      contacts_search: "never_ask",
-      templates_list: "never_ask",
-      templates_details_get: "never_ask",
-      catalog_items_search: "never_ask",
-      catalog_item_get: "never_ask",
-      documents_create: "high",
-      documents_update: "high",
-      documents_status_change: "high",
-      documents_send: "high",
-      documents_fields_assign: "high",
-      documents_archive: "high",
-      documents_reminder_send: "high",
-      recipients_edit: "high",
-      recipients_add_cc: "high",
-      recipients_reassign: "high",
-      recipients_delete: "high",
-      templates_create: "high",
-      templates_update: "high",
-      templates_duplicate: "high",
-      templates_delete: "high",
-      catalog_item_create: "high",
-      catalog_item_update: "high",
-      catalog_item_delete: "high",
-      quotes_update: "high",
-    },
-    toolDisplayLabels: {
-      documents_audit_trail_get: {
-        running: "Loading a document audit trail from PandaDoc",
-        done: "Loaded a document audit trail from PandaDoc",
-      },
-      documents_list: {
-        running: "Listing documents on PandaDoc",
-        done: "Listed documents on PandaDoc",
-      },
-      documents_search: {
-        running: "Searching documents on PandaDoc",
-        done: "Searched documents on PandaDoc",
-      },
-      documents_status_get: {
-        running: "Checking a document status on PandaDoc",
-        done: "Checked a document status on PandaDoc",
-      },
-      documents_details_get: {
-        running: "Loading document details from PandaDoc",
-        done: "Loaded document details from PandaDoc",
-      },
-      documents_summary_get: {
-        running: "Loading a document summary from PandaDoc",
-        done: "Loaded a document summary from PandaDoc",
-      },
-      documents_content_get: {
-        running: "Loading document content from PandaDoc",
-        done: "Loaded document content from PandaDoc",
-      },
-      documents_metadata_batch_get: {
-        running: "Loading document metadata from PandaDoc",
-        done: "Loaded document metadata from PandaDoc",
-      },
-      contacts_list: {
-        running: "Looking up a contact by email on PandaDoc",
-        done: "Looked up a contact by email on PandaDoc",
-      },
-      contacts_search: {
-        running: "Searching contacts on PandaDoc",
-        done: "Searched contacts on PandaDoc",
-      },
-      templates_list: {
-        running: "Listing templates on PandaDoc",
-        done: "Listed templates on PandaDoc",
-      },
-      templates_details_get: {
-        running: "Loading template details from PandaDoc",
-        done: "Loaded template details from PandaDoc",
-      },
-      catalog_items_search: {
-        running: "Searching catalog items on PandaDoc",
-        done: "Searched catalog items on PandaDoc",
-      },
-      catalog_item_get: {
-        running: "Loading a catalog item from PandaDoc",
-        done: "Loaded a catalog item from PandaDoc",
-      },
-      documents_create: {
-        running: "Creating a document on PandaDoc",
-        done: "Created a document on PandaDoc",
-      },
-      documents_update: {
-        running: "Updating a document on PandaDoc",
-        done: "Updated a document on PandaDoc",
-      },
-      documents_status_change: {
-        running: "Changing a document status on PandaDoc",
-        done: "Changed a document status on PandaDoc",
-      },
-      documents_send: {
-        running: "Sending a document on PandaDoc",
-        done: "Sent a document on PandaDoc",
-      },
-      documents_fields_assign: {
-        running: "Assigning document fields on PandaDoc",
-        done: "Assigned document fields on PandaDoc",
-      },
-      documents_archive: {
-        running: "Archiving a document on PandaDoc",
-        done: "Archived a document on PandaDoc",
-      },
-      documents_reminder_send: {
-        running: "Sending a document reminder on PandaDoc",
-        done: "Sent a document reminder on PandaDoc",
-      },
-      recipients_edit: {
-        running: "Editing a recipient on PandaDoc",
-        done: "Edited a recipient on PandaDoc",
-      },
-      recipients_add_cc: {
-        running: "Adding a CC recipient on PandaDoc",
-        done: "Added a CC recipient on PandaDoc",
-      },
-      recipients_reassign: {
-        running: "Reassigning a recipient on PandaDoc",
-        done: "Reassigned a recipient on PandaDoc",
-      },
-      recipients_delete: {
-        running: "Removing a recipient on PandaDoc",
-        done: "Removed a recipient on PandaDoc",
-      },
-      templates_create: {
-        running: "Creating a template on PandaDoc",
-        done: "Created a template on PandaDoc",
-      },
-      templates_update: {
-        running: "Updating a template on PandaDoc",
-        done: "Updated a template on PandaDoc",
-      },
-      templates_duplicate: {
-        running: "Duplicating a template on PandaDoc",
-        done: "Duplicated a template on PandaDoc",
-      },
-      templates_delete: {
-        running: "Deleting a template on PandaDoc",
-        done: "Deleted a template on PandaDoc",
-      },
-      catalog_item_create: {
-        running: "Creating a catalog item on PandaDoc",
-        done: "Created a catalog item on PandaDoc",
-      },
-      catalog_item_update: {
-        running: "Updating a catalog item on PandaDoc",
-        done: "Updated a catalog item on PandaDoc",
-      },
-      catalog_item_delete: {
-        running: "Deleting a catalog item on PandaDoc",
-        done: "Deleted a catalog item on PandaDoc",
-      },
-      quotes_update: {
-        running: "Updating quotes on PandaDoc",
-        done: "Updated quotes on PandaDoc",
-      },
-    },
   },
   {
     id: 10049,
