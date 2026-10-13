@@ -1,6 +1,6 @@
 import { mintCollabTicket } from "@app/lib/api/collab/tickets";
 import type { PostCollabTicketResponseBody } from "@app/types/api/file_system/types";
-import { collabAccessErrorToApiError } from "@front-api/lib/collab/live_access_errors";
+import { collabAccessErrorToApiError } from "@front-api/lib/collab/collab_access_errors";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

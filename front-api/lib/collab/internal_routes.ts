@@ -18,12 +18,12 @@ import {
   collabSourceReadRequestSchema,
   collabSourceWriteRequestSchema,
 } from "@app/types/collab_internal";
+import { collabAccessErrorToApiError } from "@front-api/lib/collab/collab_access_errors";
 import {
   readLiveSource,
   showLiveAgentActivity,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
-import { collabAccessErrorToApiError } from "@front-api/lib/collab/live_access_errors";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
