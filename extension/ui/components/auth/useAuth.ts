@@ -219,8 +219,8 @@ export const useAuthHook = () => {
   }, [isAuthenticated, tokens?.accessToken]);
 
   // Initialize from storage on mount.
-  // CellContext already restores cell info from localStorage, so we only
-  // need to restore tokens here.
+  // The cell comes from the platform storage, with the tokens: CellContext's own localStorage key
+  // is not used by the extension. Set it before the tokens, so that the first fetches use it.
   useEffect(() => {
     void (async () => {
       const storedTokens = await platform.auth.getStoredTokens();
@@ -228,6 +228,11 @@ export const useAuthHook = () => {
       if (!storedTokens) {
         setIsLoading(false);
         return;
+      }
+
+      const storedCellInfo = await platform.auth.getCellInfoFromStorage();
+      if (storedCellInfo) {
+        setCellInfo(storedCellInfo);
       }
       setTokens(storedTokens);
 
@@ -321,7 +326,8 @@ export const useAuthHook = () => {
       const { tokens: newTokens, cellInfo: newCellInfo } = response.value;
 
       setTokens(newTokens);
-      setCellInfo(newCellInfo, { keepInStorage: true });
+      // The auth service already saved the cell in the platform storage.
+      setCellInfo(newCellInfo);
       setAuthError(null);
       scheduleRefresh(newTokens.expiresAt);
       // isLoading stays true — the user fetch effect will clear it.
