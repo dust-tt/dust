@@ -352,6 +352,18 @@ export function getProviderRequiredOAuthCredentialInputs({
               "Your store's permanent myshopify.com domain (e.g., my-store.myshopify.com).",
             validator: isValidShopifyStoreDomain,
           },
+          client_id: {
+            label: "OAuth client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Shopify app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth client secret",
+            value: undefined,
+            helpMessage: "The client secret from your Shopify app.",
+            validator: isValidClientIdOrSecret,
+          },
         };
       }
       return null;
