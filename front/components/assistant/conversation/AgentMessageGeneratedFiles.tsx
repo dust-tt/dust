@@ -108,7 +108,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             size="sm"
             onClick={disabled ? undefined : handleClick}
             disabled={disabled}
-            className="flex-row items-center gap-3"
+            className="flex-row items-center gap-3 pr-4"
           >
             <Avatar
               size="md"
