@@ -6,6 +6,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 
 import type { ConversationAsset, CreatedAgent, SeedContext } from "./types";
@@ -132,6 +133,13 @@ export async function seedConversations(
         await deleteConversation(ctx, existingConversation);
       }
 
+      const space = conv.spaceId
+        ? await SpaceResource.fetchById(auth, conv.spaceId)
+        : null;
+      if (conv.spaceId && !space) {
+        throw new Error(`Space ${conv.spaceId} not found`);
+      }
+
       // Create conversation with deterministic sId
       const conversation = await ConversationResource.makeNew(
         auth,
@@ -141,8 +149,9 @@ export async function seedConversations(
           visibility: "unlisted",
           depth: 0,
           requestedSpaceIds: [],
+          spaceId: space?.id ?? null,
         },
-        null // no space
+        space
       );
 
       // Add user as participant so they can see the conversation

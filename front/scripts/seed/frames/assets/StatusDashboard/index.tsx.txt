@@ -1,0 +1,115 @@
+import {
+  useFrameFunction,
+  useFrameFunctionMutation,
+  useUserIdentity,
+} from "@dust/react-hooks";
+import { useState } from "react";
+
+type Dashboard = {
+  snapshot: {
+    status: string;
+    serverTime: string;
+    refreshedBy: string;
+    refreshedAt: string;
+  } | null;
+};
+
+type Probe = { ok: boolean; code: string | null };
+
+function describeError(err: unknown): string {
+  if (
+    err instanceof Error &&
+    "code" in err &&
+    err.code === "user_authentication_required"
+  ) {
+    return "Only the Frame author can refresh the dashboard.";
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
+export default function App() {
+  const [message, setMessage] = useState<string | null>(null);
+  const identity = useUserIdentity();
+  const dashboard = useFrameFunction("get-dashboard", {});
+  const refresh = useFrameFunctionMutation("refresh-dashboard");
+  const probe = useFrameFunctionMutation("probe-tools");
+  const resetDemoData = useFrameFunctionMutation("reset-demo-data");
+  const snapshot = (dashboard.data as Dashboard | undefined)?.snapshot ?? null;
+
+  async function run(call: () => Promise<unknown>) {
+    setMessage(null);
+    try {
+      const updated = (await call()) as Dashboard;
+      await dashboard.mutate(updated, { revalidate: false });
+    } catch (err) {
+      setMessage(describeError(err));
+    }
+  }
+
+  async function handleProbe() {
+    setMessage(null);
+    try {
+      const result = (await probe.trigger({})) as Probe;
+      setMessage(
+        result.ok
+          ? "The tool call went through."
+          : `The tool call was refused: ${result.code}.`
+      );
+    } catch (err) {
+      setMessage(describeError(err));
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-8 text-foreground">
+      <h1 className="mb-2 text-3xl font-bold">Status dashboard</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Everyone reads the stored snapshot. Refreshing it calls a Dust tool and
+        is for the Frame author only.
+      </p>
+      {dashboard.isLoading && <p className="text-muted-foreground">Loading...</p>}
+      {dashboard.error && (
+        <p className="text-red-600">{describeError(dashboard.error)}</p>
+      )}
+      {snapshot ? (
+        <div className="mb-6 rounded-md border border-border p-4">
+          <p className="text-xl font-semibold">{snapshot.status}</p>
+          <p className="text-sm text-muted-foreground">
+            Server time: {snapshot.serverTime}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Refreshed by {snapshot.refreshedBy} at {snapshot.refreshedAt}
+          </p>
+        </div>
+      ) : (
+        <p className="mb-6 text-muted-foreground">No snapshot yet.</p>
+      )}
+      {message && <p className="mb-4 text-sm">{message}</p>}
+      <div className="flex gap-4">
+        <button
+          onClick={handleProbe}
+          className="rounded-md border border-border px-4 py-2"
+        >
+          Try a tool call
+        </button>
+        {identity.isFrameAuthor && (
+          <>
+            <button
+              onClick={() => run(() => refresh.trigger({}))}
+              disabled={refresh.isMutating}
+              className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+            >
+              {refresh.isMutating ? "Refreshing..." : "Refresh"}
+            </button>
+            <button
+              onClick={() => run(() => resetDemoData.trigger({}))}
+              className="text-sm text-muted-foreground underline"
+            >
+              Reset sample data
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

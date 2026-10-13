@@ -1,0 +1,16 @@
+import { z } from "zod";
+
+import { DirectorySchema, listDirectory } from "./lib/people.ts";
+
+export const schema = {
+  description: "List the directory. Private people and fields only for the author.",
+  userIdentity: "public",
+  input: z.object({}),
+  output: DirectorySchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    return Response.json(listDirectory());
+  },
+};

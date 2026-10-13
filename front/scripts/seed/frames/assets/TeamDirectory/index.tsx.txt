@@ -1,0 +1,126 @@
+import {
+  useFrameFunction,
+  useFrameFunctionMutation,
+  useUserIdentity,
+} from "@dust/react-hooks";
+import { useState } from "react";
+
+type Person = {
+  id: number;
+  name: string;
+  role: string;
+  team: string;
+  email?: string;
+  notes?: string;
+  isPublic?: boolean;
+};
+
+type Directory = { people: Person[] };
+
+type Caller = {
+  kind: "workspace_user" | "anonymous";
+  fullName: string | null;
+  isFrameAuthor: boolean;
+};
+
+function describeError(err: unknown): string {
+  if (
+    err instanceof Error &&
+    "code" in err &&
+    err.code === "user_authentication_required"
+  ) {
+    return "Only the Frame author can edit the directory.";
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
+export default function App() {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const identity = useUserIdentity();
+  const directory = useFrameFunction("list-people", {});
+  const whoami = useFrameFunction("whoami", {});
+  const upsertPerson = useFrameFunctionMutation("upsert-person");
+  const resetDemoData = useFrameFunctionMutation("reset-demo-data");
+  const people = (directory.data as Directory | undefined)?.people ?? [];
+  const caller = whoami.data as Caller | undefined;
+
+  async function run(call: () => Promise<unknown>) {
+    setError(null);
+    try {
+      const updated = (await call()) as Directory;
+      await directory.mutate(updated, { revalidate: false });
+    } catch (err) {
+      setError(describeError(err));
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-8 text-foreground">
+      <h1 className="mb-2 text-3xl font-bold">Team directory</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        {caller
+          ? caller.kind === "anonymous"
+            ? "You are viewing as an anonymous visitor: public profiles only."
+            : `You are ${caller.fullName}${caller.isFrameAuthor ? ", the Frame author: private people and fields are shown." : ": public profiles only."}`
+          : "Checking who you are..."}
+      </p>
+      {error && <p className="mb-4 text-red-600">{error}</p>}
+      {directory.isLoading && <p className="text-muted-foreground">Loading...</p>}
+      {directory.error && (
+        <p className="text-red-600">{describeError(directory.error)}</p>
+      )}
+      <ul className="mb-6 space-y-2">
+        {people.map((person) => (
+          <li key={person.id} className="rounded-md border border-border p-3">
+            <p className="font-medium">
+              {person.name}
+              {person.isPublic === false && " (private)"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {person.role}, {person.team}
+            </p>
+            {person.email && <p className="text-sm">{person.email}</p>}
+            {person.notes && (
+              <p className="text-sm text-muted-foreground">{person.notes}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+      {identity.isFrameAuthor && (
+        <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="New person"
+            className="flex-1 rounded-md border border-border px-3 py-2"
+          />
+          <button
+            onClick={async () => {
+              await run(() =>
+                upsertPerson.trigger({
+                  name,
+                  role: "New hire",
+                  team: "Unassigned",
+                  email: "",
+                  notes: "",
+                  isPublic: false,
+                })
+              );
+              setName("");
+            }}
+            className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+          >
+            Add privately
+          </button>
+          <button
+            onClick={() => run(() => resetDemoData.trigger({}))}
+            className="text-sm text-muted-foreground underline"
+          >
+            Reset sample data
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

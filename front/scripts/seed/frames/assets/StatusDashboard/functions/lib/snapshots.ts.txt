@@ -1,0 +1,35 @@
+import { db } from "@dust/pod";
+import { desc } from "drizzle-orm";
+import { z } from "zod";
+
+import { snapshots } from "../../databases/snapshots.db.ts";
+
+export const DashboardSchema = z.object({
+  snapshot: z
+    .object({
+      status: z.string(),
+      serverTime: z.string(),
+      refreshedBy: z.string(),
+      refreshedAt: z.string(),
+    })
+    .nullable(),
+});
+
+export function readDashboard() {
+  const [latest] = db("snapshots")
+    .select()
+    .from(snapshots)
+    .orderBy(desc(snapshots.refreshedAt))
+    .limit(1)
+    .all();
+  return {
+    snapshot: latest
+      ? {
+          status: latest.status,
+          serverTime: latest.serverTime,
+          refreshedBy: latest.refreshedBy,
+          refreshedAt: latest.refreshedAt.toISOString(),
+        }
+      : null,
+  };
+}

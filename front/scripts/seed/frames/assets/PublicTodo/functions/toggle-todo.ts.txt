@@ -1,0 +1,21 @@
+import { db } from "@dust/pod";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { todos } from "../databases/todos.db.ts";
+import { listTodos, TodoListSchema } from "./lib/todos.ts";
+
+export const schema = {
+  description: "Mark a todo done or not done.",
+  userIdentity: "public",
+  input: z.object({ id: z.number(), done: z.boolean() }),
+  output: TodoListSchema,
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { id, done } = await request.json();
+    db("todos").update(todos).set({ done }).where(eq(todos.id, id)).run();
+    return Response.json(listTodos());
+  },
+};

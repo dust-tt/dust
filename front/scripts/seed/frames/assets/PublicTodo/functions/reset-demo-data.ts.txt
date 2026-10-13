@@ -1,0 +1,34 @@
+import { db } from "@dust/pod";
+import { z } from "zod";
+
+import { todos } from "../databases/todos.db.ts";
+import { listTodos, TodoListSchema } from "./lib/todos.ts";
+
+const SAMPLE_TODOS = [
+  { title: "Water the plants", done: false },
+  { title: "Book the team offsite", done: true },
+  { title: "Review the quarterly plan", done: false },
+];
+
+export const schema = {
+  description: "Replace every todo with sample rows. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: TodoListSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    db("todos").delete(todos).run();
+    db("todos")
+      .insert(todos)
+      .values(
+        SAMPLE_TODOS.map((todo, index) => ({
+          ...todo,
+          createdAt: new Date(Date.now() - index * 60_000),
+        }))
+      )
+      .run();
+    return Response.json(listTodos());
+  },
+};

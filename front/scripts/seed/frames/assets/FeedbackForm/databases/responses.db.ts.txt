@@ -1,0 +1,8 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const responses = sqliteTable("responses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  rating: integer("rating").notNull(),
+  comment: text("comment").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});

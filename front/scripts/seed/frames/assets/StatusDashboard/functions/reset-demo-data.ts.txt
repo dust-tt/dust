@@ -1,0 +1,28 @@
+import { db } from "@dust/pod";
+import { z } from "zod";
+
+import { snapshots } from "../databases/snapshots.db.ts";
+import { DashboardSchema, readDashboard } from "./lib/snapshots.ts";
+
+export const schema = {
+  description: "Replace every snapshot with a sample one. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: DashboardSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    db("snapshots").delete(snapshots).run();
+    db("snapshots")
+      .insert(snapshots)
+      .values({
+        status: "operational",
+        serverTime: "sample data",
+        refreshedBy: "seed",
+        refreshedAt: new Date(),
+      })
+      .run();
+    return Response.json(readDashboard());
+  },
+};

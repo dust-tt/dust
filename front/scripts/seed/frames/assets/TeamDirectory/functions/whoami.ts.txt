@@ -1,0 +1,24 @@
+import { currentUser } from "@dust/pod";
+import { z } from "zod";
+
+export const schema = {
+  description: "Describe the caller.",
+  userIdentity: "public",
+  input: z.object({}),
+  output: z.object({
+    kind: z.enum(["workspace_user", "anonymous"]),
+    fullName: z.string().nullable(),
+    isFrameAuthor: z.boolean(),
+  }),
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    const user = currentUser();
+    return Response.json({
+      kind: user ? "workspace_user" : "anonymous",
+      fullName: user?.fullName ?? null,
+      isFrameAuthor: user?.isFrameAuthor ?? false,
+    });
+  },
+};

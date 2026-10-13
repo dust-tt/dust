@@ -1,0 +1,47 @@
+import { db } from "@dust/pod";
+import { z } from "zod";
+
+import { people } from "../databases/people.db.ts";
+import { DirectorySchema, listDirectory } from "./lib/people.ts";
+
+const SAMPLE_PEOPLE = [
+  {
+    name: "Ada Lovelace",
+    role: "Engineering lead",
+    team: "Platform",
+    email: "ada@example.com",
+    notes: "Prefers async reviews.",
+    isPublic: true,
+  },
+  {
+    name: "Grace Hopper",
+    role: "Staff engineer",
+    team: "Compilers",
+    email: "grace@example.com",
+    notes: "On leave next month.",
+    isPublic: true,
+  },
+  {
+    name: "Alan Turing",
+    role: "Research advisor",
+    team: "Research",
+    email: "alan@example.com",
+    notes: "Contractor, not listed publicly.",
+    isPublic: false,
+  },
+];
+
+export const schema = {
+  description: "Replace every person with sample rows. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: DirectorySchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    db("people").delete(people).run();
+    db("people").insert(people).values(SAMPLE_PEOPLE).run();
+    return Response.json(listDirectory());
+  },
+};

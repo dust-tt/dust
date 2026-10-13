@@ -1,0 +1,26 @@
+import { db } from "@dust/pod";
+import { desc } from "drizzle-orm";
+import { z } from "zod";
+
+import { todos } from "../../databases/todos.db.ts";
+
+export const TodoListSchema = z.object({
+  todos: z.array(
+    z.object({
+      id: z.number(),
+      title: z.string(),
+      done: z.boolean(),
+    })
+  ),
+});
+
+export function listTodos() {
+  const rows = db("todos")
+    .select()
+    .from(todos)
+    .orderBy(desc(todos.createdAt))
+    .all();
+  return {
+    todos: rows.map(({ id, title, done }) => ({ id, title, done })),
+  };
+}

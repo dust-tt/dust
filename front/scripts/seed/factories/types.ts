@@ -165,6 +165,8 @@ export interface ConversationAsset {
   // When true, an existing conversation with the same sId is deleted and recreated on re-runs so
   // the seeded messages always reflect the asset. Defaults to false (existing is kept).
   overwrite?: boolean;
+  // sId of the space (e.g. a Pod) to create the conversation in. Defaults to no space.
+  spaceId?: string;
   exchanges: Exchange[];
 }
 
@@ -223,10 +225,13 @@ export interface TemplateAsset {
 }
 
 export interface FrameAsset {
-  // Name of the Frame, used as its folder name in the conversation files.
+  // Name of the Frame, used as its folder name in the conversation or Pod files.
   name: string;
   // Local folder holding the Frame source: manifest.json, index.tsx, functions, databases.
   sourceDir: string;
   conversationId: string;
+  // sId of the Pod to publish into. Defaults to the conversation files. The conversation must
+  // live in that Pod.
+  podId?: string;
   shareScope?: FileShareScope;
 }

@@ -1,0 +1,11 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const people = sqliteTable("people", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  role: text("role").notNull(),
+  team: text("team").notNull(),
+  email: text("email").notNull(),
+  notes: text("notes").notNull(),
+  isPublic: integer("is_public", { mode: "boolean" }).notNull(),
+});

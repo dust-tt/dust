@@ -1,0 +1,31 @@
+import { currentUser, db } from "@dust/pod";
+import { asc } from "drizzle-orm";
+import { z } from "zod";
+
+import { people } from "../../databases/people.db.ts";
+
+export const DirectorySchema = z.object({
+  people: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      role: z.string(),
+      team: z.string(),
+      email: z.string().optional(),
+      notes: z.string().optional(),
+      isPublic: z.boolean().optional(),
+    })
+  ),
+});
+
+export function listDirectory() {
+  const rows = db("people").select().from(people).orderBy(asc(people.name)).all();
+  if (currentUser()?.isFrameAuthor) {
+    return { people: rows };
+  }
+  return {
+    people: rows
+      .filter((person) => person.isPublic)
+      .map(({ id, name, role, team }) => ({ id, name, role, team })),
+  };
+}
