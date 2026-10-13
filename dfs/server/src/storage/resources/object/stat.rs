@@ -16,6 +16,9 @@ const DIRECTORY_EXECUTE_MODE: u32 = 0o100;
 const VIRTUAL_READ_MODE: u32 = (GRANT_READ_MODE << OWNER_MODE_SHIFT_BITS) | DIRECTORY_EXECUTE_MODE;
 const OWNER_WRITE_MODE: u32 = GRANT_WRITE_MODE << OWNER_MODE_SHIFT_BITS;
 const VIRTUAL_CREATED_AT_MS: u64 = 0;
+
+// This is the first of a series of computer MIME types when one has not been explicitely
+// specified. Will be moved to a dedicated file once we have more of them.
 const VIRTUAL_DIRECTORY_MIME_TYPE: &str = "inode/directory";
 
 impl ObjectResource {
