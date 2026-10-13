@@ -4,7 +4,11 @@ import {
   SUGGESTION_DIFF_CLASSES,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
-import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
+import {
+  formatModelEffortLabel,
+  getModelDisplayDescription,
+  getModelDisplayName,
+} from "@app/components/model_picker/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { SuggestedChangeAction } from "@app/components/shared/SuggestedChangeRow";
@@ -52,7 +56,7 @@ function SuggestedModelRow({
   const { t } = useLingui();
   const { isDark } = useTheme();
   const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
-  const modelName = model?.displayName ?? modelId;
+  const modelName = model ? getModelDisplayName(t, model) : modelId;
 
   return (
     <SuggestedChangeRow
@@ -70,7 +74,7 @@ function SuggestedModelRow({
           ? formatModelEffortLabel(t, modelName, reasoningEffort)
           : modelName
       }
-      description={model?.description}
+      description={model ? getModelDisplayDescription(t, model) : undefined}
     />
   );
 }

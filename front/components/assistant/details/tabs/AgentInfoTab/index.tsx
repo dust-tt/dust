@@ -12,6 +12,10 @@ import { AssistantSkillsToolsSection } from "@app/components/assistant/details/t
 import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
 import { EditorContent } from "@app/components/editor/EditorContent";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import {
+  getModelDisplayDescription,
+  getModelDisplayName,
+} from "@app/components/model_picker/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { RequestedSpacesSection } from "@app/components/spaces/RequestedSpacesSection";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -159,9 +163,11 @@ export function AgentInfoTab({
               icon={getModelProviderLogo(model.providerId, isDark)}
               size="xs"
             />
-            <div className="whitespace-nowrap mr-2">{model.displayName}</div>
+            <div className="whitespace-nowrap mr-2">
+              {getModelDisplayName(t, model)}
+            </div>
             <div className="text-sm text-muted-foreground">
-              {model.description}
+              {getModelDisplayDescription(t, model)}
             </div>
           </div>
         </div>
