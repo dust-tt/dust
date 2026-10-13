@@ -3,8 +3,8 @@ import {
   DocumentConversationBusyError,
   dispatchCommentMentions,
   postCommentMention,
-} from "@app/lib/api/files/dfm_comment_mentions";
-import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
+} from "@app/lib/api/documents/comment_mentions";
+import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import { Authenticator } from "@app/lib/auth";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

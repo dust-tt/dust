@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { signDfmAgentCommentMessage } from "@app/lib/api/documents/comment_signatures";
+import type { DfmStoredDocumentError } from "@app/lib/api/documents/read_write";
+import { writeDocumentChange } from "@app/lib/api/documents/read_write";
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { signDfmAgentCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
-import type { DfmStoredDocumentError } from "@app/lib/api/files/dfm_stored_documents";
-import { writeDocumentChange } from "@app/lib/api/files/dfm_stored_documents";
 import type { Authenticator } from "@app/lib/auth";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
 import { anchorComment } from "@app/lib/markdown/dfm";

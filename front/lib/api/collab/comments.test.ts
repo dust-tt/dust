@@ -6,15 +6,15 @@ import {
 } from "@app/lib/api/collab/comments";
 import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
+import { dispatchCommentMentions } from "@app/lib/api/documents/comment_mentions";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { serializeDfm } from "@app/lib/markdown/dfm";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock(import("@app/lib/api/files/dfm_comment_mentions"), () => ({
+vi.mock(import("@app/lib/api/documents/comment_mentions"), () => ({
   dispatchCommentMentions: vi.fn(),
 }));
 

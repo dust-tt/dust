@@ -5,8 +5,8 @@ import {
   isCollabSessionWriteError,
   writeThroughCollabSession,
 } from "@app/lib/api/collab/write_through_session";
+import { readStoredText } from "@app/lib/api/documents/comment_signatures";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
 import type { DfmDocument } from "@app/lib/markdown/dfm";
@@ -125,7 +125,7 @@ function parseDocument(
 }
 
 /**
- * @cc [owner:tdraier,label:product] dfm-stored-document-read
+ * @cc [owner:tdraier,label:product] document-file-read
  * Reading MUST refuse a file whose name does not map to `text/markdown` with `not_markdown`, a
  * missing file with `not_found` and a file the codec cannot parse with `invalid_document`, and
  * MUST otherwise return the stored source unchanged with its parsed document, its revision when
@@ -200,7 +200,7 @@ async function applyChange<T, E extends Error>(
 }
 
 /**
- * @cc [owner:tdraier,label:product] dfm-stored-document-live-read
+ * @cc [owner:tdraier,label:product] document-source-read
  * While a live session holds the document, reading MUST return the session's source in place of
  * the file's, since the file lags the session until its next checkpoint, without reading the file:
  * after the name check of `readStoredDocument`, `dustFs` MUST be able to read the file and the file
@@ -237,7 +237,7 @@ export async function readCurrentDocumentSource(
 }
 
 /**
- * @cc [owner:tdraier,label:concurrency] dfm-stored-document-write
+ * @cc [owner:tdraier,label:concurrency] document-change-write
  * Without a live session, the document MUST be read through `readStoredDocument`, and `change` MUST
  * receive it as read.
  * Its result MUST be written conditional on the revision read; a file whose storage returns no

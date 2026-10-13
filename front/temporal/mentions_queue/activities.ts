@@ -1,7 +1,7 @@
 import { handleAgentMessage } from "@app/lib/api/assistant/conversation";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
-import { postCommentMention } from "@app/lib/api/files/dfm_comment_mentions";
-import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
+import { postCommentMention } from "@app/lib/api/documents/comment_mentions";
+import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

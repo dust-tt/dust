@@ -3,12 +3,12 @@ import {
   readCollabSource,
   writeCollabSource,
 } from "@app/lib/api/collab/client";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { DfmStoredDocumentError } from "@app/lib/api/files/dfm_stored_documents";
+import type { DfmStoredDocumentError } from "@app/lib/api/documents/read_write";
 import {
   readCurrentDocumentSource,
   writeDocumentChange,
-} from "@app/lib/api/files/dfm_stored_documents";
+} from "@app/lib/api/documents/read_write";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   readCanonicalFileContent,
   writeCanonicalFileContent,

@@ -1,9 +1,9 @@
-import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { DfmStoredDocumentError } from "@app/lib/api/files/dfm_stored_documents";
+import type { DfmStoredDocumentError } from "@app/lib/api/documents/read_write";
 import {
   readCurrentDocumentSource,
   writeDocumentChange,
-} from "@app/lib/api/files/dfm_stored_documents";
+} from "@app/lib/api/documents/read_write";
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { extractAnchors } from "@app/lib/markdown/dfm";
 import type { LiveAgent } from "@app/types/collab";

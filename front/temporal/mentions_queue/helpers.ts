@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
-import { messageKey } from "@app/lib/api/files/dfm_comment_signatures";
+import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
+import { messageKey } from "@app/lib/api/documents/comment_signatures";
 
 export function makeMentionsWorkflowId({
   agentMessageId,
