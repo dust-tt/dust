@@ -1,5 +1,6 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import {
   deleteStagedSecretsInDestinationRegion,
@@ -13,6 +14,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { InternalMCPServerCredentialFactory } from "@app/tests/utils/InternalMCPServerCredentialFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { randomUUID } from "crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -345,12 +347,17 @@ describe("relocation secrets re-encryption", () => {
     });
 
     setCellSecrets("destination");
+    // Tests share one transaction, so a savepoint is needed to observe the rollback.
     await expect(
-      reencryptSecretsInDestinationRegion({
-        ...RELOCATION,
-        dataPath: dataPath!,
-        workspaceId: workspace.sId,
-      })
+      frontSequelize.transaction(
+        { transaction: getNamespace("test-namespace")?.get("transaction") },
+        () =>
+          reencryptSecretsInDestinationRegion({
+            ...RELOCATION,
+            dataPath: dataPath!,
+            workspaceId: workspace.sId,
+          })
+      )
     ).rejects.toThrow("workspace_sandbox_env_vars");
     expect(workosAudit.emitAuditLogEventDirect).not.toHaveBeenCalled();
 
