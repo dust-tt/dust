@@ -288,7 +288,7 @@ describe("sandbox egress helpers", () => {
       3,
       auth,
       expect.any(Object),
-      { timeoutMs: 1_000 }
+      { timeoutMs: 5_000 }
     );
     const installCall = getRootCommandCall(sandbox.execRoot, 4);
     expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
