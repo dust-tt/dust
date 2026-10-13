@@ -156,6 +156,18 @@ msgid "The usual model for {tierName} is having issues. You're on {replacementMo
 msgstr ""
 
 #: front/components/model_picker/modelPickerUtils.ts
+msgid "Quick, low cost"
+msgstr ""
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "Best for most"
+msgstr ""
+
+#: front/components/model_picker/modelPickerUtils.ts
+msgid "Slower, most capable"
+msgstr ""
+
+#: front/components/model_picker/modelPickerUtils.ts
 msgctxt "model name followed by its reasoning effort"
 msgid "{displayName} {effortLabel}"
 msgstr ""
