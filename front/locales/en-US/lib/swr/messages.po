@@ -1513,6 +1513,10 @@ msgid "Please try again."
 msgstr "Please try again."
 
 #: front/lib/swr/user.ts
+msgid "Error completing onboarding"
+msgstr "Error completing onboarding"
+
+#: front/lib/swr/user.ts
 msgid "Profile updated"
 msgstr "Profile updated"
 

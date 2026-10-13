@@ -56,11 +56,11 @@ describe("POST /api/user/onboarding/complete", () => {
     expect(metadata?.value).toBe("false");
   });
 
-  it("leaves the locale unchanged when null", async () => {
+  it("leaves the locale unchanged when missing", async () => {
     const { user } = await createPrivateApiMockRequest({ method: "POST" });
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "en-GB");
 
-    const response = await completeOnboarding({ locale: null });
+    const response = await completeOnboarding({});
 
     expect(response.status).toBe(200);
     expect(await user.getStoredLocale()).toBe("en-GB");
@@ -70,19 +70,21 @@ describe("POST /api/user/onboarding/complete", () => {
     expect(metadata?.value).toBe("false");
   });
 
-  it("rejects a missing locale without completing the onboarding", async () => {
+  it("completes the onboarding for a bodyless request", async () => {
     const { user } = await createPrivateApiMockRequest({ method: "POST" });
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "en-GB");
     await user.setMetadata(ONBOARDING_PROFILE_PENDING_METADATA_KEY, "true");
 
-    const response = await completeOnboarding({});
+    const response = await honoApp.request(`/api/user/onboarding/complete`, {
+      method: "POST",
+    });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
     expect(await user.getStoredLocale()).toBe("en-GB");
     const metadata = await user.getMetadata(
       ONBOARDING_PROFILE_PENDING_METADATA_KEY
     );
-    expect(metadata?.value).toBe("true");
+    expect(metadata?.value).toBe("false");
   });
 
   it("rejects an unsupported locale without completing the onboarding", async () => {

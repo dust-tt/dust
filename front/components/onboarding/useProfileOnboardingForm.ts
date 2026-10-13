@@ -35,7 +35,8 @@ export function useProfileOnboardingForm({
   const { completeUserOnboarding } = useCompleteUserOnboarding();
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
-  const { userLocale } = useUserLocale({ owner: workspace });
+  // The language the UI is currently in. By default it's their workspace locale 
+  const { userLocale: defaultLocale } = useUserLocale({ owner: workspace });
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
     disabled: true,
@@ -56,7 +57,7 @@ export function useProfileOnboardingForm({
   const [selectedPlatforms, setSelectedPlatforms] = useState<
     Set<FavoritePlatform>
   >(new Set());
-  const [locale, setLocale] = useState<SupportedLocale>(userLocale);
+  const [locale, setLocale] = useState<SupportedLocale>(defaultLocale);
   const [showErrors, setShowErrors] = useState(false);
   const [platformsInitialized, setPlatformsInitialized] = useState(false);
 
@@ -94,8 +95,13 @@ export function useProfileOnboardingForm({
     // (set at the user's first login). With the `localisation` flag, the locale is saved even when
     // left to the default, so that the welcome conversation (created right after) is in the
     // language the user confirmed. Without it, no locale is saved.
-    await completeUserOnboarding({ locale: hasLocalisation ? locale : null });
-    if (hasLocalisation && locale !== userLocale) {
+    const completed = await completeUserOnboarding({
+      locale: hasLocalisation ? locale : undefined,
+    });
+    if (!completed) {
+      return;
+    }
+    if (hasLocalisation && locale !== defaultLocale) {
       // Switches the UI to the saved locale.
       await mutateAuthContext();
     }

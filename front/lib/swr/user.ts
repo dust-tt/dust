@@ -157,16 +157,32 @@ export function useUserApprovals(owner: LightWorkspaceType) {
 }
 
 export function useCompleteUserOnboarding() {
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
+
+  // Returns whether the onboarding was completed. Omitting `locale` leaves the user's locale
+  // unchanged.
   const completeUserOnboarding = async ({
     locale,
   }: {
-    locale: SupportedLocale | null;
+    locale?: SupportedLocale;
   }) => {
-    return clientFetch("/api/user/onboarding/complete", {
+    const res = await clientFetch("/api/user/onboarding/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locale }),
     });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendApiErrorNotification({
+        title: t`Error completing onboarding`,
+        error: errorData,
+      });
+      return false;
+    }
+
+    return true;
   };
 
   return { completeUserOnboarding };

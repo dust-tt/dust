@@ -13,7 +13,7 @@ export type PostUserOnboardingCompleteResponseBody = {
 };
 
 const PostUserOnboardingCompleteBodySchema = z.object({
-  locale: z.enum(SUPPORTED_LOCALES).nullable(),
+  locale: z.enum(SUPPORTED_LOCALES).optional(),
 });
 
 // Mounted at /api/user/onboarding. sessionAuth is applied by the parent
@@ -25,10 +25,11 @@ const app = sessionApp();
 // profile onboarding form (welcome page or in-app onboarding dialog).
 /**
  * @cc [owner:ykmsd,label:product;api] complete-saves-onboarding-locale
- * The body's `locale` is required but nullable. A non-null `locale` MUST be saved as the user's
- * global locale (the `locale` user metadata) before responding, and a `null` one MUST leave the
- * user's locale unchanged. A missing `locale`, or one that is not one of `SUPPORTED_LOCALES`, MUST
- * be rejected with a 400 without completing the onboarding.
+ * The body's `locale` is optional. A provided `locale` MUST be saved as the user's global locale
+ * (the `locale` user metadata) before responding, and a missing one MUST leave the user's locale
+ * unchanged. A request without a body MUST complete the onboarding (clients predating the locale
+ * step send one). A `locale` that is not one of `SUPPORTED_LOCALES` MUST be rejected with a 400
+ * without completing the onboarding.
  */
 /** @ignoreswagger */
 app.post(
@@ -61,7 +62,7 @@ app.post(
     }
 
     const { locale } = ctx.req.valid("json");
-    if (locale !== null) {
+    if (locale !== undefined) {
       await u.setMetadata(USER_LOCALE_METADATA_KEY, locale);
     }
 
