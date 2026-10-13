@@ -22,6 +22,7 @@ pub(crate) use grants::{
     grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
     grant_pagination_handles_full_pages_and_object_deletion,
+    grant_update_retry_succeeds_without_changes,
 };
 pub(crate) use modes::{
     permission_reads_conflict_with_changes_and_retry,
@@ -139,6 +140,34 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
     Ok(())
 }
 
+pub(crate) async fn object_creation_retry_succeeds_without_changes() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let mut root = ObjectResource::new_root(&tenant)?;
+    root.metadata.as_mut().context("missing metadata")?.xattrs =
+        HashMap::from([("user/tag".to_owned(), b"value".to_vec())]);
+    let root_grants = [grants::allow("u:retry", 0o6)];
+    let create = || {
+        fdb::with_transaction(|tx| {
+            let root = &root;
+            let root_grants = &root_grants;
+            async move { root.create(&tx, root_grants).await }
+        })
+    };
+    create().await?;
+    let tx = fdb::database()?.create_trx()?;
+    let committed = grants::records(&tx, &tenant.tenant_id).await?;
+
+    // A retry after an unknown commit result runs `create` again in a new transaction.
+    create().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    assert_eq!(grants::records(&tx, &tenant.tenant_id).await?, committed);
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.commit().await?;
+    Ok(())
+}
+
 pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let mut root = ObjectResource::new_root(&tenant)?;
@@ -163,6 +192,8 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
         .await?
         .context("missing root metadata")?;
 
+    // Another object with the same ID: identical attributes would read as this test's own retry.
+    root.ctime_ms = root.ctime_ms.map(|ctime_ms| ctime_ms + 1);
     root.metadata.as_mut().context("missing metadata")?.xattrs =
         HashMap::from([("new".to_owned(), b"must not commit".to_vec())]);
     let result = fdb::with_transaction(|tx| {
