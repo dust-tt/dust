@@ -36,6 +36,7 @@ import {
   renderEquippedSkillsUserMessage,
   renderFavoriteSkillsUserMessage,
 } from "@app/lib/api/assistant/skills_rendering";
+import { renderUserMemoryUserMessage } from "@app/lib/api/assistant/user_memory_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -74,6 +75,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
+import { userMemorySkill } from "@app/lib/resources/skill/code_defined/system/user_memory";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -96,7 +98,10 @@ import type {
   AgentMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  ModelConversationTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
@@ -614,10 +619,19 @@ export async function runModel(
     hasSelectedSpacesOutsideAgentScope,
     locale,
   });
+
+  let userMemoryMessage: UserMessageTypeModel | null = null;
+  if (systemSkills.some((skill) => skill.sId === userMemorySkill.sId)) {
+    userMemoryMessage = await renderUserMemoryUserMessage(auth, {
+      conversation,
+    });
+  }
+
   // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
     renderFavoriteSkillsUserMessage(favoriteSkills),
+    userMemoryMessage,
   ]);
 
   const modelConfig = modelInfo.endpoint.modelConfig;
