@@ -1,5 +1,6 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
@@ -33,16 +34,33 @@ export async function validatePodFileTabs(
      */
     existingFileTabPaths?: ReadonlySet<string>;
   }
-): Promise<Result<{ fileTabs: PodFileTab[]; tabsOrder: string[] }, Error>> {
+): Promise<
+  Result<
+    { fileTabs: PodFileTab[]; tabsOrder: string[] },
+    DustError<
+      // Malformed tab paths or nav order.
+      | "invalid_request_error"
+      | "limit_reached"
+      | "internal_error"
+      | "file_not_found"
+      | "file_not_previewable"
+    >
+  >
+> {
   if (fileTabs.length > MAX_POD_FILE_TABS) {
     return new Err(
-      new Error(`A pod can have at most ${MAX_POD_FILE_TABS} file tabs.`)
+      new DustError(
+        "limit_reached",
+        `A pod can have at most ${MAX_POD_FILE_TABS} file tabs.`
+      )
     );
   }
 
   const fsResult = await DustFileSystem.forPod(auth, space);
   if (fsResult.isErr()) {
-    return new Err(new Error("Failed to initialize file system."));
+    return new Err(
+      new DustError("internal_error", "Failed to initialize file system.")
+    );
   }
   const fs = fsResult.value;
 
@@ -56,11 +74,21 @@ export async function validatePodFileTabs(
       spaceId: space.sId,
     });
     if (!normalizedPath) {
-      return new Err(new Error(`Invalid file tab path: ${tab.path}`));
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          `Invalid file tab path: ${tab.path}`
+        )
+      );
     }
 
     if (seenPaths.has(normalizedPath)) {
-      return new Err(new Error(`Duplicate file tab path: ${normalizedPath}`));
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          `Duplicate file tab path: ${normalizedPath}`
+        )
+      );
     }
     seenPaths.add(normalizedPath);
     pathRemap.set(tab.path, normalizedPath);
@@ -70,12 +98,18 @@ export async function validatePodFileTabs(
     if (!isExistingTab) {
       const statResult = await fs.stat(normalizedPath);
       if (statResult.isErr() || !statResult.value) {
-        return new Err(new Error(`File tab file not found: ${normalizedPath}`));
+        return new Err(
+          new DustError(
+            "file_not_found",
+            `File tab file not found: ${normalizedPath}`
+          )
+        );
       }
 
       if (!isFilePreviewableContentType(statResult.value.contentType)) {
         return new Err(
-          new Error(
+          new DustError(
+            "file_not_previewable",
             `File tab path is not a previewable file: ${normalizedPath}`
           )
         );
@@ -99,7 +133,12 @@ export async function validatePodFileTabs(
 
   for (const id of POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS) {
     if (!normalizedTabsOrder.includes(id)) {
-      return new Err(new Error(`Nav order is missing system tab: ${id}`));
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          `Nav order is missing system tab: ${id}`
+        )
+      );
     }
   }
 

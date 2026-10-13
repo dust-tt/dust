@@ -263,7 +263,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_not_found",
           message: `Invalid data source: ${dataSourceId}`,
         },
       });
@@ -278,7 +278,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_view_already_exists",
           message: `View already exists for data source: ${dataSourceId}`,
         },
       });

@@ -993,19 +993,41 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   async updateName(
     auth: Authenticator,
     newName: string
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "global_space_not_renamable"
+        | "space_already_exists"
+        | "internal_error"
+      >
+    >
+  > {
     if (!auth.can("admin", this)) {
-      return new Err(new Error("Only admins can update space names."));
+      return new Err(
+        new DustError("unauthorized", "Only admins can update space names.")
+      );
     }
 
     if (this.isGlobal()) {
-      return new Err(new Error("The company space cannot be renamed."));
+      return new Err(
+        new DustError(
+          "global_space_not_renamable",
+          "The company space cannot be renamed."
+        )
+      );
     }
 
     const trimmedName = newName.trim();
     const existingSpace = await SpaceResource.fetchByName(auth, trimmedName);
     if (existingSpace && existingSpace.id !== this.id) {
-      return new Err(new Error("This space name is already used."));
+      return new Err(
+        new DustError(
+          "space_already_exists",
+          "This space name is already used."
+        )
+      );
     }
 
     await this.update({ name: trimmedName });
@@ -1017,7 +1039,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         `${this.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${this.name}`
       );
       if (memberRenameRes.isErr()) {
-        return memberRenameRes;
+        return new Err(
+          new DustError("internal_error", memberRenameRes.error.message)
+        );
       }
 
       if (this.isProject()) {
@@ -1027,7 +1051,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
           );
           if (editorRenameRes.isErr()) {
-            return editorRenameRes;
+            return new Err(
+              new DustError("internal_error", editorRenameRes.error.message)
+            );
           }
         }
       }
@@ -1592,7 +1618,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     Result<
       undefined,
       DustError<
-        | "invalid_request_error"
+        | "project_space_required"
         | "user_not_member"
         | "group_requirements_not_met"
         | "unauthorized"
@@ -1604,7 +1630,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (!this.isProject()) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "project_space_required",
           "You can only leave Pods, not regular spaces."
         )
       );

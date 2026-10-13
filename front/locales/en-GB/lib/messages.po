@@ -638,6 +638,146 @@ msgid "Another user has an active wake-up in this conversation. Only they can po
 msgstr "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
 
 #: front/lib/api_error_messages.ts
+msgid "Open Pods are disabled in this workspace. Make the Pod private instead."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only provisioned and manual groups can be given access to a space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be restricted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be renamed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This space has data sources or apps used by agents or skills."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a member of this Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Users can't be added to or removed from system or global groups."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of space can't have members."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type can't be added to this space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An OpenAI API key is required. Configure it in your workspace settings or contact an admin."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A data source with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data source names can't be empty or start with \"managed-\"."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be created."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data sources managed by a connection can't be edited."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This data source can't be deleted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This data source is already in this space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The search query is too short."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to any space to search."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "App names must be 1 to 64 characters long and use only letters, numbers, underscores and dashes."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A dataset with this name already exists in this app."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset names can only use letters, numbers and underscores."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The dataset data is invalid. Check that every entry matches the schema."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod has reached the maximum number of file tabs."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be opened in a tab."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The assignee must be a member of this Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod already has its starter tasks."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for Notion connections."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "No Google Drive connection found. Connect your Google Drive account first."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only tasks in \"Need to do\" can be started."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be added to a data source."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready yet. Try again in a moment."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file content can't be read as a table."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The title is too long."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This app is used by agents."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
 msgid "This isn't available for this type of message."
 msgstr ""
 

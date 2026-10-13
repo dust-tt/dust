@@ -349,7 +349,7 @@ export async function addFileToProject(
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "project_space_required",
       message: "Space is not a Pod.",
     });
   }
@@ -368,7 +368,7 @@ export async function addFileToProject(
     if (!file.mountFilePath) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_not_mounted",
         message: "File has no mount path and cannot be moved to the Pod.",
       });
     }
@@ -399,7 +399,7 @@ export async function addFileToProject(
     if (destExistsRes.value) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "name_conflict",
         message: "A file with this name already exists in the Pod.",
       });
     }
@@ -459,7 +459,7 @@ export async function addFrameV2ToProject(
   if (!sourceDirectoryPath) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_not_found",
       message: "Frame source folder not found.",
     });
   }
@@ -486,9 +486,7 @@ export async function addFrameV2ToProject(
     return new Err({
       name: "dust_error",
       code:
-        moved.error.code === "conflict"
-          ? "invalid_request_error"
-          : "internal_error",
+        moved.error.code === "conflict" ? "name_conflict" : "internal_error",
       message: moved.error.message,
     });
   }
@@ -516,7 +514,7 @@ export async function addContentNodeToProject(
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "project_space_required",
       message: "Space is not a project.",
     });
   }
@@ -708,7 +706,7 @@ export async function moveProjectFile(
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "project_space_required",
       message: "Space is not a project.",
     });
   }

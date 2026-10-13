@@ -252,7 +252,7 @@ async function handleDataSourceWithProvider({
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "data_source_provider_not_allowed_in_space",
         message: `Cannot post a datasource for provider: ${provider} in system space.`,
       },
     });
@@ -261,7 +261,7 @@ async function handleDataSourceWithProvider({
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "data_source_provider_not_allowed_in_space",
         message: `Cannot post a datasource for provider: ${provider} in regular space.`,
       },
     });
@@ -362,7 +362,7 @@ async function handleDataSourceWithProvider({
       {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "embedding_api_key_missing",
           message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
         },
       },
@@ -428,7 +428,7 @@ async function handleDataSourceWithProvider({
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "data_source_already_exists",
         message: "A data source with the same name already exists.",
       },
     });
@@ -483,7 +483,7 @@ async function handleDataSourceWithProvider({
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "connector_oauth_connection_not_found",
           message: "Failed to get the access token for the connector.",
         },
       });
@@ -513,7 +513,7 @@ async function handleDataSourceWithProvider({
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "connector_creation_failed",
             message: "Failed to create the connector.",
             connectors_error: connectorsRes.error,
           },

@@ -208,7 +208,7 @@ export async function startAgentForProjectTask(
   if (task.category !== "to_do") {
     return new Err({
       statusCode: 400,
-      type: "invalid_request_error",
+      type: "project_task_not_startable",
       message: "Only 'Need to do' items can be started.",
     });
   }
@@ -273,7 +273,8 @@ export async function startAgentForProjectTask(
   if (contentFragmentRes.isErr()) {
     return new Err({
       statusCode: 400,
-      type: "invalid_request_error",
+      // The content fragment is built server-side from the task.
+      type: "internal_server_error",
       message: contentFragmentRes.error.message,
     });
   }
@@ -286,10 +287,17 @@ export async function startAgentForProjectTask(
   );
 
   if (contentFragmentMsgRes.isErr()) {
+    const { code, message } = contentFragmentMsgRes.error;
     return new Err({
       statusCode: 400,
-      type: "invalid_request_error",
-      message: contentFragmentMsgRes.error.message,
+      // The content fragment is built server-side from the task: only the conversation state can
+      // make posting it fail on the caller's side.
+      type:
+        code === "conversation_locked" ||
+        code === "conversation_access_restricted"
+          ? code
+          : "internal_server_error",
+      message,
     });
   }
 

@@ -115,7 +115,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "dataset_already_exists",
           message: "The dataset name already exists in this app.",
         },
       });
@@ -129,7 +129,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "dataset_name_invalid",
           message:
             "The dataset name must only contain alphanumeric characters and " +
             "underscores and cannot be empty.",
@@ -147,7 +147,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "dataset_data_invalid",
           message: "The data passed as request body is invalid.",
         },
       });

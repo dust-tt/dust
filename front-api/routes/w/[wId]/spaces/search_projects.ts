@@ -24,7 +24,7 @@ app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "invalid_pagination_parameters",
         message: paginationRes.error.reason,
       },
     });

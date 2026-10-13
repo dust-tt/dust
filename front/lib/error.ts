@@ -59,6 +59,13 @@ export type DustErrorCode =
   | "activation_work_area_not_found"
   // Space errors
   | "space_already_exists"
+  // Space errors (domain:spaces)
+  | "project_space_required"
+  | "global_space_not_renamable"
+  | "embedding_api_key_missing"
+  | "file_not_previewable"
+  | "file_not_mounted"
+  | "project_task_not_found"
   // Conversation errors
   | "conversation_not_found"
   | "failed_to_copy_files"

@@ -638,6 +638,146 @@ msgid "Another user has an active wake-up in this conversation. Only they can po
 msgstr "Another user has an active wake-up in this conversation. Only they can post until it fires or is canceled."
 
 #: front/lib/api_error_messages.ts
+msgid "Open Pods are disabled in this workspace. Make the Pod private instead."
+msgstr "Open Pods are disabled in this workspace. Make the Pod private instead."
+
+#: front/lib/api_error_messages.ts
+msgid "Only provisioned and manual groups can be given access to a space."
+msgstr "Only provisioned and manual groups can be given access to a space."
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be restricted."
+msgstr "The company space can't be restricted."
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be renamed."
+msgstr "The company space can't be renamed."
+
+#: front/lib/api_error_messages.ts
+msgid "This space has data sources or apps used by agents or skills."
+msgstr "This space has data sources or apps used by agents or skills."
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a member of this Pod."
+msgstr "You're already a member of this Pod."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the space."
+msgstr "This user is already a member of the space."
+
+#: front/lib/api_error_messages.ts
+msgid "Users can't be added to or removed from system or global groups."
+msgstr "Users can't be added to or removed from system or global groups."
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of space can't have members."
+msgstr "This kind of space can't have members."
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type can't be added to this space."
+msgstr "This connection type can't be added to this space."
+
+#: front/lib/api_error_messages.ts
+msgid "An OpenAI API key is required. Configure it in your workspace settings or contact an admin."
+msgstr "An OpenAI API key is required. Configure it in your workspace settings or contact an admin."
+
+#: front/lib/api_error_messages.ts
+msgid "A data source with this name already exists."
+msgstr "A data source with this name already exists."
+
+#: front/lib/api_error_messages.ts
+msgid "Data source names can't be empty or start with \"managed-\"."
+msgstr "Data source names can't be empty or start with \"managed-\"."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be created."
+msgstr "The connection couldn't be created."
+
+#: front/lib/api_error_messages.ts
+msgid "Data sources managed by a connection can't be edited."
+msgstr "Data sources managed by a connection can't be edited."
+
+#: front/lib/api_error_messages.ts
+msgid "This data source can't be deleted."
+msgstr "This data source can't be deleted."
+
+#: front/lib/api_error_messages.ts
+msgid "This data source is already in this space."
+msgstr "This data source is already in this space."
+
+#: front/lib/api_error_messages.ts
+msgid "The search query is too short."
+msgstr "The search query is too short."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to any space to search."
+msgstr "You don't have access to any space to search."
+
+#: front/lib/api_error_messages.ts
+msgid "App names must be 1 to 64 characters long and use only letters, numbers, underscores and dashes."
+msgstr "App names must be 1 to 64 characters long and use only letters, numbers, underscores and dashes."
+
+#: front/lib/api_error_messages.ts
+msgid "A dataset with this name already exists in this app."
+msgstr "A dataset with this name already exists in this app."
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset names can only use letters, numbers and underscores."
+msgstr "Dataset names can only use letters, numbers and underscores."
+
+#: front/lib/api_error_messages.ts
+msgid "The dataset data is invalid. Check that every entry matches the schema."
+msgstr "The dataset data is invalid. Check that every entry matches the schema."
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod has reached the maximum number of file tabs."
+msgstr "This Pod has reached the maximum number of file tabs."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be opened in a tab."
+msgstr "This file can't be opened in a tab."
+
+#: front/lib/api_error_messages.ts
+msgid "The assignee must be a member of this Pod."
+msgstr "The assignee must be a member of this Pod."
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod already has its starter tasks."
+msgstr "This Pod already has its starter tasks."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for Notion connections."
+msgstr "This is only available for Notion connections."
+
+#: front/lib/api_error_messages.ts
+msgid "No Google Drive connection found. Connect your Google Drive account first."
+msgstr "No Google Drive connection found. Connect your Google Drive account first."
+
+#: front/lib/api_error_messages.ts
+msgid "Only tasks in \"Need to do\" can be started."
+msgstr "Only tasks in \"Need to do\" can be started."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be added to a data source."
+msgstr "This file can't be added to a data source."
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready yet. Try again in a moment."
+msgstr "The file isn't ready yet. Try again in a moment."
+
+#: front/lib/api_error_messages.ts
+msgid "The file content can't be read as a table."
+msgstr "The file content can't be read as a table."
+
+#: front/lib/api_error_messages.ts
+msgid "The title is too long."
+msgstr "The title is too long."
+
+#: front/lib/api_error_messages.ts
+msgid "This app is used by agents."
+msgstr "This app is used by agents."
+
+#: front/lib/api_error_messages.ts
 msgid "This isn't available for this type of message."
 msgstr "This isn't available for this type of message."
 

@@ -156,7 +156,7 @@ describe("POST /api/w/:wId/spaces", () => {
     expect(mockCreateSpaceAndGroup).not.toHaveBeenCalled();
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "open_pods_disabled",
         message:
           "Open projects are disabled by your workspace admin. Create a private project instead.",
       },
