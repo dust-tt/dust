@@ -31,17 +31,20 @@ import {
   parseLiveDocumentName,
   toLiveDocumentName,
 } from "@app/types/collab";
-import type {
-  CollabSourceReadResponse,
-  CollabSourceWriteResult,
-} from "@app/types/collab_internal";
+import type { CollabSourceWriteResult } from "@app/types/collab_internal";
 import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { authenticateConnection } from "@front-api/lib/collab/connection_access";
-import type { Document } from "@hocuspocus/server";
+import {
+  getLoadedSession,
+  getSession,
+  isStoppingWrites,
+  startSession,
+  stopWrites,
+} from "@front-api/lib/collab/session";
 import { Hocuspocus } from "@hocuspocus/server";
 import type * as Y from "yjs";
 
@@ -53,16 +56,6 @@ const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 // to `STORE_MAX_DEBOUNCE_MS` plus `STORE_DEBOUNCE_MS` of edits; a shutdown checkpoints them first.
 const STORE_DEBOUNCE_MS = 5 * 1000;
 const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
-
-/** What a loaded document needs beside its Yjs state to be checkpointed. */
-interface LiveSession {
-  comments: DfmComment[];
-  checkpoint: CollabSave;
-  checkpointFailed: boolean;
-  lastChangedBy: CollabAccess | undefined;
-  graceTimer: ReturnType<typeof setTimeout> | undefined;
-  commentCommands: Promise<void>;
-}
 
 const serverMessage = (message: LiveCommentServerMessage) =>
   JSON.stringify(message);
@@ -105,9 +98,6 @@ const commandRequestSchema = z.object({
   type: z.literal("command"),
   requestId: z.string().min(1),
 });
-
-const sessions = new WeakMap<Document, LiveSession>();
-const shuttingDown = new WeakSet<Hocuspocus<CollabAccess>>();
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -201,7 +191,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         refuse(documentName, loaded.error);
       }
       const { content, lastSave } = loaded.value;
-      sessions.set(document, {
+      startSession(document, {
         comments: content.comments,
         checkpoint: lastSave,
         checkpointFailed: false,
@@ -213,7 +203,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     async onChange({ document, context }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       if (session) {
         session.lastChangedBy = context;
       }
@@ -224,7 +214,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     // checkpoints instead, since each write is a new file revision that agents' conditional
     // writes conflict with.
     async onStoreDocument({ document, documentName }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       // Not `lastContext`: a direct connection's disconnect stores the document with its own
       // context, even when it changed nothing.
       const writer = session?.lastChangedBy;
@@ -274,7 +264,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     async onDisconnect({ instance, document }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       if (!session || document.getConnections().length > 0) {
         return;
       }
@@ -300,7 +290,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     async onStateless({ connection, document, documentName, payload }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       const file: CollabAccess = connection.context;
       const json = safeParseJSON(payload);
       const message = json.isOk()
@@ -440,7 +430,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
 export async function checkpointAllDocuments(
   hocuspocus: Hocuspocus<CollabAccess>
 ): Promise<void> {
-  shuttingDown.add(hocuspocus);
+  stopWrites(hocuspocus);
   // A load may still apply edits queued while it ran; its failure was already logged.
   for (const loading of [...hocuspocus.loadingDocuments.values()]) {
     await loading.catch(() => undefined);
@@ -448,7 +438,7 @@ export async function checkpointAllDocuments(
   // Their writes only reach the file through the checkpoints below.
   await Promise.all(
     [...hocuspocus.documents.values()].map(
-      (document) => sessions.get(document)?.commentCommands
+      (document) => getSession(document)?.commentCommands
     )
   );
   await concurrentExecutor(
@@ -469,48 +459,6 @@ export async function checkpointAllDocuments(
       ),
     { concurrency: 8 }
   );
-}
-
-/** The document and its session while one is open, once it has finished loading or unloading. */
-async function openSession(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  documentName: string
-): Promise<{ document: Document; session: LiveSession } | null> {
-  // Only their outcome matters, read from `documents` below: a failed load leaves no document, and
-  // `onLoadDocument` already logged why.
-  await Promise.allSettled([
-    hocuspocus.loadingDocuments.get(documentName),
-    hocuspocus.unloadingDocuments.get(documentName),
-  ]);
-  const document = hocuspocus.documents.get(documentName);
-  const session = document && sessions.get(document);
-  if (!document || document.isDestroyed || !session) {
-    return null;
-  }
-  return { document, session };
-}
-
-/**
- * @cc [owner:tdraier,label:product;concurrency] collab-live-source-read
- * A document MUST be reported open while Hocuspocus holds it, after waiting for a load or an
- * unload in progress, with as source what `yDocToDfm` gives for it and the session's threads.
- */
-export async function readLiveSource(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  documentName: string
-): Promise<Result<CollabSourceReadResponse, string>> {
-  const open = await openSession(hocuspocus, documentName);
-  if (!open) {
-    return new Ok({ open: false });
-  }
-  const source = yDocToDfm({
-    doc: open.document,
-    comments: open.session.comments,
-  });
-  if (source.isErr()) {
-    return source;
-  }
-  return new Ok({ open: true, source: source.value });
 }
 
 /**
@@ -535,8 +483,8 @@ export function showLiveAgentActivity(
  * @cc [owner:tdraier,label:product;concurrency;security] collab-live-source-write
  * A write MUST only target the document named after `file`'s workspace and path, so its checkpoint
  * writes the file the document was loaded from. It MUST answer `closed`, changing nothing, when
- * `readLiveSource` would report the document closed, and `changed`, changing nothing, unless the
- * source `readLiveSource` would return is `base`. Otherwise it MUST apply `source` with
+ * `readSessionSource` would report the document closed, and `changed`, changing nothing, unless the
+ * source `readSessionSource` would return is `base`. Otherwise it MUST apply `source` with
  * `replaceYDocContent` as a change from `file`, replace the session's threads with the ones it
  * returns, send them to every connection when they changed, and store the document so the
  * checkpoint writes the change; a source the editor refuses MUST fail and change nothing. `file`
@@ -566,11 +514,11 @@ export async function writeLiveSource(
     return new Err("The file cannot be written.");
   }
   const documentName = toLiveDocumentName(file.workspaceId, file.canonicalPath);
-  const open = await openSession(hocuspocus, documentName);
+  const open = await getLoadedSession(hocuspocus, documentName);
   if (!open) {
     return new Ok("closed");
   }
-  if (shuttingDown.has(hocuspocus)) {
+  if (isStoppingWrites(hocuspocus)) {
     return new Ok("busy");
   }
   const { document, session } = open;

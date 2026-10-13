@@ -30,11 +30,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import {
   checkpointAllDocuments,
   createCollabHocuspocus,
-  readLiveSource,
   showLiveAgentActivity,
   UNLOAD_GRACE_PERIOD_MS,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
+import { readSessionSource } from "@front-api/lib/collab/session";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { WebSocketLike } from "@hocuspocus/server";
 import type { Peer } from "crossws";
@@ -302,7 +302,7 @@ describe("createCollabHocuspocus", () => {
   });
 });
 
-describe("readLiveSource and writeLiveSource", () => {
+describe("readSessionSource and writeLiveSource", () => {
   const THREAD_SOURCE =
     "# Notes\n\nHello :comment-start{id=c1}there:comment-end{id=c1}.\n\n" +
     ":::annotations\n::comment{id=c1 status=open}\n\n" +
@@ -335,7 +335,7 @@ describe("readLiveSource and writeLiveSource", () => {
     hocuspocus: ReturnType<typeof createCollabHocuspocus>,
     name: string
   ) {
-    const read = await readLiveSource(hocuspocus, name);
+    const read = await readSessionSource(hocuspocus, name);
     if (read.isErr() || !read.value.open) {
       throw new Error("The document is not open.");
     }
@@ -346,7 +346,7 @@ describe("readLiveSource and writeLiveSource", () => {
     const hocuspocus = createCollabHocuspocus();
     const { agent, name } = await collabAccesses();
 
-    expect(await readLiveSource(hocuspocus, name)).toEqual(
+    expect(await readSessionSource(hocuspocus, name)).toEqual(
       new Ok({ open: false })
     );
     expect(
@@ -814,7 +814,7 @@ describe("comment threads in a live session", () => {
       const { writer, hocuspocus, url } = await start();
       const { channel } = await join(url, writer);
       const name = toLiveDocumentName(writer.workspaceId, writer.canonicalPath);
-      const read = await readLiveSource(hocuspocus, name);
+      const read = await readSessionSource(hocuspocus, name);
       if (read.isErr() || !read.value.open) {
         throw new Error("The document is not open.");
       }
@@ -851,7 +851,7 @@ describe("comment threads in a live session", () => {
       hocuspocus: ReturnType<typeof createCollabHocuspocus>,
       name: string
     ) {
-      const read = await readLiveSource(hocuspocus, name);
+      const read = await readSessionSource(hocuspocus, name);
       return read.isOk() && read.value.open ? read.value.source : null;
     }
 
@@ -866,7 +866,7 @@ describe("comment threads in a live session", () => {
       await vi.waitFor(() =>
         expect(channel.getThreads()).toEqual([THREAD, CREATED])
       );
-      const read = await readLiveSource(hocuspocus, name);
+      const read = await readSessionSource(hocuspocus, name);
       expect(read.isOk() && read.value.open && read.value.source).not.toContain(
         "edited"
       );
@@ -937,7 +937,7 @@ describe("comment threads in a live session", () => {
         seen.push(`${edit.agent.name} edit`);
       });
       provider.document.on("update", () => seen.push("update"));
-      const read = await readLiveSource(hocuspocus, name);
+      const read = await readSessionSource(hocuspocus, name);
       if (read.isErr() || !read.value.open) {
         throw new Error("The document is not open.");
       }

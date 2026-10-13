@@ -20,10 +20,10 @@ import {
 } from "@app/types/collab_internal";
 import { collabAccessErrorToApiError } from "@front-api/lib/collab/collab_access_errors";
 import {
-  readLiveSource,
   showLiveAgentActivity,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
+import { readSessionSource } from "@front-api/lib/collab/session";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -83,7 +83,7 @@ export function createInternalDocumentsApp(
         ctx.req.valid("json");
       const documentName = toLiveDocumentName(workspaceId, canonicalPath);
 
-      const read = await readLiveSource(hocuspocus, documentName);
+      const read = await readSessionSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {
         return ctx.json<CollabSourceReadResponse>(read.value);
       }
