@@ -96,7 +96,7 @@ impl From<Error> for storage::Error<Error> {
 }
 
 pub struct ObjectResource {
-    pub tenant_id: String,
+    pub tenant: TenantResource,
     pub object_id: ObjectId,
     pub parent_id: Option<ObjectId>,
     pub name: String,
@@ -133,33 +133,25 @@ type StoredAttributes = (
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] object-fetch-attributes
-     * Fetch MUST derive tenant scope from the supplied TenantResource, read object attributes with
-     * conflict tracking, and leave metadata unloaded. An invalid object ID MUST return InvalidId;
-     * a missing object MUST return None. Stored-data decoding failures MUST propagate as storage
-     * failures.
+     * Fetch MUST retain the supplied TenantResource, derive tenant scope from it, read object
+     * attributes with conflict tracking, and leave metadata unloaded. An invalid object ID MUST
+     * return InvalidId; a missing object MUST return None. Stored-data decoding failures MUST
+     * propagate as storage failures.
      */
     pub async fn fetch(
         tx: &Transaction,
         tenant: &TenantResource,
         object_id: &ObjectId,
     ) -> Result<Option<Self>, storage::Error<Error>> {
-        Self::fetch_in_tenant(tx, &tenant.tenant_id, object_id).await
-    }
-
-    pub(crate) async fn fetch_in_tenant(
-        tx: &Transaction,
-        tenant_id: &str,
-        object_id: &ObjectId,
-    ) -> Result<Option<Self>, storage::Error<Error>> {
         object_id.validate().map_err(|_| Error::InvalidId)?;
         let Some(value) = tx
-            .get(&Self::object_key(tenant_id, object_id), false)
+            .get(&Self::object_key(&tenant.tenant_id, object_id), false)
             .await
             .map_err(FdbBindingError::from)?
         else {
             return Ok(None);
         };
-        Self::from_value(tenant_id, object_id, &value).map(Some)
+        Self::from_value(tenant, object_id, &value).map(Some)
     }
 
     /**
@@ -171,12 +163,15 @@ impl ObjectResource {
      */
     pub async fn load_metadata(&mut self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
         let value = tx
-            .get(&Self::metadata_key(&self.tenant_id, &self.object_id), false)
+            .get(
+                &Self::metadata_key(&self.tenant.tenant_id, &self.object_id),
+                false,
+            )
             .await
             .map_err(FdbBindingError::from)?
             .ok_or(Error::MissingMetadata)?;
         let (created_at_ms, mime_type) = unpack(&value).map_err(FdbBindingError::PackError)?;
-        let prefix = tenant_subspace(&self.tenant_id).subspace(&(
+        let prefix = tenant_subspace(&self.tenant.tenant_id).subspace(&(
             METADATA_FAMILY,
             self.object_id.as_bytes().as_slice(),
             XATTR_FAMILY,
@@ -207,7 +202,7 @@ impl ObjectResource {
     }
 
     fn from_value(
-        tenant_id: &str,
+        tenant: &TenantResource,
         object_id: &ObjectId,
         value: &[u8],
     ) -> Result<Self, storage::Error<Error>> {
@@ -224,7 +219,7 @@ impl ObjectResource {
             grants_version,
         ): StoredAttributes = unpack(value).map_err(FdbBindingError::PackError)?;
         Ok(Self {
-            tenant_id: tenant_id.to_owned(),
+            tenant: tenant.clone(),
             object_id: *object_id,
             parent_id: parent_id
                 .map(|bytes| ObjectId::try_from(bytes.as_slice()))
@@ -253,7 +248,7 @@ impl ObjectResource {
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
         Ok(Self::new(
-            &tenant.tenant_id,
+            tenant,
             tenant.root_id,
             None,
             String::new(),
@@ -266,7 +261,7 @@ impl ObjectResource {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        tenant_id: &str,
+        tenant: &TenantResource,
         object_id: ObjectId,
         parent_id: Option<ObjectId>,
         name: String,
@@ -276,7 +271,7 @@ impl ObjectResource {
         now_ms: u64,
     ) -> Self {
         Self {
-            tenant_id: tenant_id.to_owned(),
+            tenant: tenant.clone(),
             object_id,
             parent_id,
             name,
@@ -322,7 +317,7 @@ impl ObjectResource {
         grants: &[Grant],
     ) -> Result<(), storage::Error<Error>> {
         let attributes = self.packed_attributes();
-        let key = Self::object_key(&self.tenant_id, &self.object_id);
+        let key = Self::object_key(&self.tenant.tenant_id, &self.object_id);
         let existing = tx.get(&key, false).await.map_err(FdbBindingError::from)?;
         if let Some(existing) = existing {
             // A retry after an unknown commit result finds our own record.
@@ -355,12 +350,12 @@ impl ObjectResource {
 
         tx.set(&key, &attributes);
         tx.set(
-            &Self::metadata_key(&self.tenant_id, &self.object_id),
+            &Self::metadata_key(&self.tenant.tenant_id, &self.object_id),
             &pack(&(metadata.created_at_ms, metadata.mime_type.as_deref())),
         );
         for (name, value) in &metadata.xattrs {
             tx.set(
-                &Self::xattr_key(&self.tenant_id, &self.object_id, name),
+                &Self::xattr_key(&self.tenant.tenant_id, &self.object_id, name),
                 value,
             );
         }
@@ -372,7 +367,7 @@ impl ObjectResource {
 
     fn save_attributes(&self, tx: &Transaction) {
         tx.set(
-            &Self::object_key(&self.tenant_id, &self.object_id),
+            &Self::object_key(&self.tenant.tenant_id, &self.object_id),
             &self.packed_attributes(),
         );
     }
@@ -520,7 +515,7 @@ impl ObjectResource {
             {
                 Ok((
                     prefix.pack(&(ALLOW, subject.as_str(), *mode)),
-                    Some(tenant_subspace(&self.tenant_id).pack(&(
+                    Some(tenant_subspace(&self.tenant.tenant_id).pack(&(
                         REVERSE_GRANT_FAMILY,
                         ALLOW,
                         subject.as_str(),
@@ -562,7 +557,7 @@ impl ObjectResource {
     }
 
     fn grant_subspace(&self) -> Subspace {
-        tenant_subspace(&self.tenant_id)
+        tenant_subspace(&self.tenant.tenant_id)
             .subspace(&(GRANT_FAMILY, self.object_id.as_bytes().as_slice()))
     }
 

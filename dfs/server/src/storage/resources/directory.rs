@@ -124,7 +124,7 @@ impl DirectoryResource {
 
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
         let child = ObjectResource::new(
-            &self.object.tenant_id,
+            &self.object.tenant,
             object_id,
             Some(self.object.object_id),
             name,
@@ -151,7 +151,7 @@ impl DirectoryResource {
         if Self::decode_child_id(entry)? != *object_id {
             return Err(Error::AlreadyExists.into());
         }
-        let mut child = ObjectResource::fetch_in_tenant(tx, &self.object.tenant_id, object_id)
+        let mut child = ObjectResource::fetch(tx, &self.object.tenant, object_id)
             .await?
             .ok_or(Error::Object(object::Error::NotFound))?;
         child.load_metadata(tx).await?;
@@ -208,7 +208,7 @@ impl DirectoryResource {
     }
 
     fn children_subspace(&self) -> Subspace {
-        tenant_subspace(&self.object.tenant_id)
+        tenant_subspace(&self.object.tenant.tenant_id)
             .subspace(&(FAMILY, self.object.object_id.as_bytes().as_slice()))
     }
 

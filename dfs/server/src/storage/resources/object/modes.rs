@@ -98,7 +98,7 @@ impl ObjectResource {
                     continue;
                 };
                 // Decode only actual ancestors; obsolete hints may point to unrelated records.
-                let object = Self::from_value(&tenant.tenant_id, &id, &value)?;
+                let object = Self::from_value(tenant, &id, &value)?;
                 if let Some(parent_id) = object.parent_id {
                     pending.push(parent_id);
                 }
