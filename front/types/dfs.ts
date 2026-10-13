@@ -167,29 +167,6 @@ export interface DfsFilesBatch {
   results: DfsFileResult[];
 }
 
-export interface DfsVersionCheck {
-  objectId: DfsObjectRef;
-  attrVersion?: bigint;
-  contentVersion?: bigint;
-}
-
-export type DfsValidationOutcome =
-  | "unchanged"
-  | "changed"
-  | "denied"
-  | "missing"
-  | "error";
-
-export interface DfsValidationResult {
-  outcome: DfsValidationOutcome;
-  errorCode?: DfsErrorCode;
-}
-
-export interface DfsValidationBatch {
-  results: DfsValidationResult[];
-  storeVersion: bigint;
-}
-
 // Filesystem mutations.
 
 export interface DfsCreateOperation {

@@ -7,7 +7,7 @@ use dfs_protocol::{
         EntryPage, ErrorCode, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LookupRequest,
         OperationBatch, ReadData, ReadFilesRequest, ReadRequest, RevokeSessionRequest,
         SearchRequest, SearchResults, Session, StatRequest, Tenant, UpdateGrantsRequest,
-        ValidateRequest, ValidationBatch, dfs_server::Dfs,
+        dfs_server::Dfs,
     },
 };
 use tokio::sync::RwLock;
@@ -253,14 +253,6 @@ impl Dfs for API {
         &self,
         request: Request<ReadFilesRequest>,
     ) -> Result<Response<FilesBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
-    }
-
-    async fn validate(
-        &self,
-        request: Request<ValidateRequest>,
-    ) -> Result<Response<ValidationBatch>, Status> {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }

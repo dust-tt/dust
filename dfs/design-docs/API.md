@@ -12,7 +12,7 @@ may be empty unless a minimum is specified. Numeric sizes and offsets are in byt
 - `ObjectId`: the identity of a real stored object, represented as a 16-byte UUIDv7. It remains
   stable across renames and moves. The real tenant root also has an `ObjectId`.
 - `ObjectRef`: either a real `ObjectId` or a virtual `root` / `shared` tag. Virtual references work
-  with `Stat`, `Lookup`, `List`, and `Validate`. Other operations require a real `ObjectId`.
+  with `Stat`, `Lookup`, and `List`. Other operations require a real `ObjectId`.
   Virtual `root` is a session projection, distinct from the stored tenant root.
 - `bytes`: a sequence of raw bytes.
 
@@ -131,8 +131,9 @@ unchanged when its entries are unchanged.
 
 Virtual `root` returns the stored tenant root's real ID, attributes, and versions, with the mode
 described above. Virtual `shared` has no stored timestamps; its `attr_version` and
-`content_version` stay fixed at 1, regardless of grants or topology changes. `Validate(shared)` always
-returns `CHANGED`. No version comparison replaces authorization or validates cached visibility.
+`content_version` stay fixed at 1, regardless of grants or topology changes. Clients must refresh
+its listing through `List`. No version comparison replaces authorization or confirms cached
+visibility.
 
 `Attr.store_version` is a nonnegative FDB `int64` version: the read snapshot for reads, or the
 successful commit for mutations. Authorization and attributes are read in the same transaction.
@@ -225,7 +226,6 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
-| `Validate` | `r` on each target. |
 | create | `w` on the parent. |
 | update, write | `w` on the target. |
 | rename | `w` on the source, any replacement, and affected parents. |
@@ -238,8 +238,8 @@ on real entries. Virtual shared remains read-only. Namespace mutations at virtua
 authenticated tenant's stored root on the server and enforce the session's effective grant
 permissions. Tenant administration uses its tenant key and is not restricted by object grants.
 
-Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
-explicitly. Mutation permission failures use `FORBIDDEN`.
+Ordinary reads conceal inaccessible objects as `NOT_FOUND`. Mutation permission failures use
+`FORBIDDEN`.
 
 Every permission check reads the target, its ancestry, and their grants in the operation's FDB
 transaction. Local tree hints only schedule reads; they never authorize access. Search indexing has
@@ -464,6 +464,11 @@ as its attributes. Virtual projections return synthetic metadata with MIME type 
 an empty xattr map, and `created: 0`. With the flag omitted or false, extended metadata is not returned;
 `attr_version` still covers it.
 
+Clients recheck access and cached versions through `Stat`, normally with metadata omitted. Compare
+`attr_version` and `content_version` independently to decide which cached state to refresh. Matching
+versions do not authorize writes or establish current grant-dependent visibility; refresh listings
+through `List`, always for `shared`.
+
 The encoded response is limited to 4 MiB. If requested metadata would exceed that budget, the RPC
 fails with `CAPACITY`; retry with fewer IDs. Metadata is never silently omitted from a successful
 result when requested.
@@ -533,15 +538,14 @@ Continue until `next_after` is absent, even after an empty page.
 
 Clients refresh cached pages through `List`. For real directories and virtual `root`,
 `Attr.content_version` from `Stat` identifies topology changes to entry names and object IDs.
-`Validate` can check those bindings, but unchanged versions do not confirm visibility: grants can
-change visibility without changing the version. Refresh through `List` to obtain current visibility. An
-unchanged directory version also does not validate child attributes embedded in an old page; those
-require separate checks or a refetch. Each fetched page includes current child attributes sharing
-the same `Attr.store_version` for that request. Pages are independently
-refreshed; traversal across pages does not promise a single snapshot, and validation does not
-retroactively make independently fetched pages coherent. The same refresh behavior applies to real
-directories and virtual projections. There is no separate listing token or version precondition on
-`List`.
+Unchanged versions do not confirm visibility: grants can change visibility without changing the
+version. Refresh through `List` to obtain current visibility. An unchanged directory version also does
+not validate child attributes embedded in an old page; those require separate checks or a refetch.
+Each fetched page includes current child attributes sharing the same `Attr.store_version`. Pages are
+independently refreshed; traversal across pages does not promise a single snapshot, and validation
+does not retroactively make independently fetched pages coherent. The same refresh behavior applies
+to real directories and virtual projections. There is no separate listing token or version
+precondition on `List`.
 
 Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes readable
 entry points with a matching explicit ALLOW using names suffixed with `--<object-id>`, allowing
@@ -608,76 +612,6 @@ Each input has exactly one result, in input order. Files larger than 1 MiB or th
 the 4 MiB encoded reply budget receive individual `CAPACITY` errors without being downloaded. The
 reply budget accounts for every result, including errors. Attributes and contents share one FDB
 snapshot. All returned attributes carry the same `object.store_version`.
-
-### Validate
-
-Rechecks access and compares cached attribute and/or content versions for files, directories, and
-virtual projections.
-
-**Arguments**
-
-```text
-ValidateRequest {
-  checks: VersionCheck[]         // From 1 to 256 checks.
-}
-
-VersionCheck {
-  object_id: ObjectRef
-  attr_version?: uint64          // Positive version of cached attributes and extended metadata.
-  content_version?: uint64       // Positive version of cached bytes or directory entries.
-}
-```
-
-Each check must supply at least one version; it may supply either version alone or both. An omitted
-version is not compared. A check with neither version, or with any supplied version equal to zero,
-rejects the request with `INVALID_INPUT`.
-
-**Returns**
-
-```text
-ValidationBatch {
-  results: ValidationResult[]    // One result per check, in the same order.
-  store_version: int64
-}
-
-ValidationResult {
-  outcome: UNCHANGED | CHANGED | DENIED | MISSING | ERROR
-  error?: ErrorDetails           // Details for denied, missing, or erroneous checks.
-}
-```
-
-Authorization is checked before comparing versions. Both versions, when supplied, are compared
-against the same current object view.
-
-Valid checks on virtual `shared` always return `CHANGED`, even when the supplied versions match.
-This applies to attribute-only checks, content-only checks, and checks of both versions. Both shared
-versions stay fixed at 1; clients must refresh its listing through `List`.
-
-For other existing, authorized objects:
-
-| Supplied versions | `UNCHANGED` when | `CHANGED` when |
-| --- | --- | --- |
-| `attr_version` only | The attribute version matches. | The attribute version differs. |
-| `content_version` only | The content version matches. | The content version differs. |
-| Both | Both versions match. | Either or both versions differ. |
-
-`UNCHANGED` renews read access and validates only the supplied versions; it does not authorize
-writes. Every mutation must independently check its required grant permissions. An attribute check
-covers the object's stored attributes and extended metadata, excluding mode changes caused by
-grants. A content check covers file bytes or a directory's entry-name/object-ID bindings, excluding
-visibility changes caused by grants. Refresh through `Stat` or `Lookup` for
-current grant-dependent attributes and through `List` for current entry visibility; `UNCHANGED` does
-not validate either from cached versions. An attribute-only check does not validate content or a
-cached `content_version`; a content-only check does not validate attributes or extended metadata.
-Even when both versions of a directory match, the attributes and contents of its children require
-their own checks. Session-scoped versions must come from the same session view.
-
-`CHANGED` does not identify which supplied version differed. Refresh the relevant state through
-`Stat`, `Read`/`ReadFiles`, or `List`; checking both versions does not necessarily require downloading
-file bytes again if a fresh `Stat` shows the content version still matches. `DENIED` means access is
-not allowed, `MISSING` means the object is absent, and `ERROR` covers other check failures. These
-outcomes take precedence over version comparisons. A backend failure can fail the entire RPC rather
-than establish freshness for only part of the batch.
 
 ## Filesystem mutations
 
