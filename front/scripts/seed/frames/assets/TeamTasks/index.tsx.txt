@@ -9,6 +9,15 @@ type TaskList = {
   tasks: { id: number; title: string; done: boolean; createdBy: string }[];
 };
 
+function isTaskList(value: unknown): value is TaskList {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "tasks" in value &&
+    Array.isArray(value.tasks)
+  );
+}
+
 export default function App() {
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,13 +26,15 @@ export default function App() {
   const addTask = useFrameFunctionMutation("add-task");
   const toggleTask = useFrameFunctionMutation("toggle-task");
   const deleteTask = useFrameFunctionMutation("delete-task");
-  const payload = list.data as TaskList | undefined;
-  const items = payload?.tasks ?? [];
+  const items = isTaskList(list.data) ? list.data.tasks : [];
 
   async function run(call: () => Promise<unknown>) {
     setError(null);
     try {
-      const updated = (await call()) as TaskList;
+      const updated = await call();
+      if (!isTaskList(updated)) {
+        throw new Error("Unexpected response from the task functions.");
+      }
       await list.mutate(updated, { revalidate: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
