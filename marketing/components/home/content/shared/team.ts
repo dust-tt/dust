@@ -714,6 +714,48 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/jean-charles-louis/",
     github: "https://github.com/louisjc",
   },
+  kristinphillips: {
+    name: "Kristin Phillips",
+    title: "Creative Director",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C5B8T3W04-09c3e1d406f4-512",
+    linkedIn: "https://www.linkedin.com/in/kristinphillipsdesign/",
+    github: "",
+  },
+  nataliedoandunnum: {
+    name: "Natalie Doan-Dunnum",
+    title: "Growth Marketing",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8RQF1D6W-5506d8f20eaa-512",
+    linkedIn: "https://www.linkedin.com/in/nddunnum/",
+    github: "",
+  },
+  christinehong: {
+    name: "Christine Hong",
+    title: "Founder's Office",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8Q126R54-76d9613a544f-512",
+    linkedIn: "https://www.linkedin.com/in/christineluhong/",
+    github: "",
+  },
+  effyhasan: {
+    name: "Effy Hasan",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8KNNMHMH-0d379b31ecc5-512",
+    linkedIn: "https://www.linkedin.com/in/effy-hasan/",
+    github: "",
+  },
+  viktoriyakarpenko: {
+    name: "Viktoriya Karpenko",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8AJC0K2B-a0c798a1340f-512",
+    linkedIn: "https://www.linkedin.com/in/viktoriya-karpenko/",
+    github: "",
+  },
+  harryborovick: {
+    name: "Harry Borovick",
+    title: "General Counsel",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8Q11U59C-606871f967fc-512",
+    linkedIn: "https://www.linkedin.com/in/harry-borovick-73064b34/",
+    github: "",
+  },
 };
 
 export const TEAM_AVATAR_URLS: string[] = Object.values(PEOPLE).map(
