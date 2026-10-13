@@ -1,27 +1,27 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import type { LiveAgent } from "@app/types/collab";
 import type {
-  LiveAgent,
-  LiveSourceReadRequest,
-  LiveSourceReadResponse,
-  LiveSourceWriteRequest,
-  LiveSourceWriteResult,
-} from "@app/types/collab";
+  CollabSourceReadRequest,
+  CollabSourceReadResponse,
+  CollabSourceWriteRequest,
+  CollabSourceWriteResult,
+} from "@app/types/collab_internal";
 import {
   COLLAB_INTERNAL_ROUTES_PREFIX,
-  LIVE_SOURCE_READ_PATH,
-  LIVE_SOURCE_WRITE_PATH,
-  LIVE_SOURCE_WRITE_WAIT_MS,
-  liveSourceReadResponseSchema,
-  liveSourceWriteResponseSchema,
-} from "@app/types/collab";
+  COLLAB_SOURCE_READ_PATH,
+  COLLAB_SOURCE_WRITE_PATH,
+  COLLAB_SOURCE_WRITE_WAIT_MS,
+  collabSourceReadResponseSchema,
+  collabSourceWriteResponseSchema,
+} from "@app/types/collab_internal";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 // Long enough for the collab server to answer a write that waited its whole turn.
-const COLLAB_SOURCE_TIMEOUT_MS = 2 * LIVE_SOURCE_WRITE_WAIT_MS;
+const COLLAB_SOURCE_TIMEOUT_MS = 2 * COLLAB_SOURCE_WRITE_WAIT_MS;
 
 const apiErrorSchema = z.object({
   error: z.object({ type: z.string(), message: z.string() }),
@@ -52,7 +52,7 @@ const isRefusal = (status: number) =>
 /** The collab server's answer, or `null` when nothing listens: no session can then be open. */
 async function postToCollabServer<S extends z.ZodTypeAny>(
   path: string,
-  body: LiveSourceReadRequest | LiveSourceWriteRequest,
+  body: CollabSourceReadRequest | CollabSourceWriteRequest,
   schema: S
 ): Promise<Result<z.infer<S> | null, CollabSourceError>> {
   const url = config.getCollabServerInternalUrl();
@@ -111,16 +111,16 @@ export async function readCollabSource(
   auth: Authenticator,
   canonicalPath: string,
   agent?: LiveAgent
-): Promise<Result<LiveSourceReadResponse, CollabSourceError>> {
+): Promise<Result<CollabSourceReadResponse, CollabSourceError>> {
   const answer = await postToCollabServer(
-    LIVE_SOURCE_READ_PATH,
+    COLLAB_SOURCE_READ_PATH,
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
       userId: auth.user()?.sId,
       canonicalPath,
       agent,
     },
-    liveSourceReadResponseSchema
+    collabSourceReadResponseSchema
   );
   if (answer.isErr()) {
     return answer;
@@ -150,7 +150,7 @@ export async function writeCollabSource(
     source: string;
     agent?: LiveAgent;
   }
-): Promise<Result<LiveSourceWriteResult, CollabSourceError>> {
+): Promise<Result<CollabSourceWriteResult, CollabSourceError>> {
   const user = auth.user();
   if (!user) {
     return new Err({
@@ -160,7 +160,7 @@ export async function writeCollabSource(
     });
   }
   const answer = await postToCollabServer(
-    LIVE_SOURCE_WRITE_PATH,
+    COLLAB_SOURCE_WRITE_PATH,
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
       userId: user.sId,
@@ -169,7 +169,7 @@ export async function writeCollabSource(
       source,
       agent,
     },
-    liveSourceWriteResponseSchema
+    collabSourceWriteResponseSchema
   );
   if (answer.isErr()) {
     return answer;

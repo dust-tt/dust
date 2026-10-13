@@ -29,11 +29,8 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import type { LiveAgentEditMessage, LiveIdRange } from "@app/types/collab";
-import {
-  BODY_FRAGMENT_NAME,
-  LIVE_SOURCE_WRITE_WAIT_MS,
-  toLiveDocumentName,
-} from "@app/types/collab";
+import { BODY_FRAGMENT_NAME, toLiveDocumentName } from "@app/types/collab";
+import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import { Err, Ok } from "@app/types/shared/result";
 import {
   authenticateConnection,
@@ -1029,7 +1026,7 @@ describe("comment threads in a live session", () => {
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
       const writing = edit();
-      await vi.advanceTimersByTimeAsync(LIVE_SOURCE_WRITE_WAIT_MS);
+      await vi.advanceTimersByTimeAsync(COLLAB_SOURCE_WRITE_WAIT_MS);
       expect(await writing).toEqual(new Ok("busy"));
 
       vi.useRealTimers();

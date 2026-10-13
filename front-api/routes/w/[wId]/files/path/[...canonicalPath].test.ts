@@ -1476,7 +1476,7 @@ describe("PUT of a Markdown file held by a live session", () => {
     const response = await put(workspace, path, "# New\n");
 
     expect(response.status).toBe(412);
-    expect((await response.json()).error.type).toBe("live_document_conflict");
+    expect((await response.json()).error.type).toBe("collab_session_conflict");
     expect(writeCollabSource).toHaveBeenCalledTimes(3);
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });

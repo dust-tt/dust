@@ -4,7 +4,7 @@ import "./lib/startup-log";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import { COLLAB_INTERNAL_ROUTES_PREFIX } from "@app/types/collab";
+import { COLLAB_INTERNAL_ROUTES_PREFIX } from "@app/types/collab_internal";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { serve } from "@hono/node-server";
