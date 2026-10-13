@@ -22,20 +22,9 @@ export function useOnboardingConversation({
     }
     isCreatingRef.current = true;
 
-    const language =
-      typeof navigator !== "undefined"
-        ? (navigator.language?.split("-")[0] ?? null)
-        : null;
-
     const res = await clientFetch(
       `/api/w/${workspaceId}/assistant/conversations/send-onboarding`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ language }),
-      }
+      { method: "POST" }
     );
 
     if (res.ok) {

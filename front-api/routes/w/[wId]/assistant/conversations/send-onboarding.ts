@@ -1,7 +1,9 @@
-import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
+import {
+  createOnboardingConversationIfNeeded,
+  getOnboardingLanguage,
+} from "@app/lib/api/assistant/onboarding";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { PostSendOnboardingResponseBody } from "@app/types/api/assistant/onboarding";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -15,11 +17,7 @@ app.post("/", async (ctx): HandlerResult<PostSendOnboardingResponseBody> => {
 
   const body = await ctx.req.json().catch(() => ({}));
 
-  // Accept language from body or fall back to Accept-Language header.
-  const acceptLanguage = ctx.req.header("accept-language");
-  const language = isString(body?.language)
-    ? body.language
-    : (acceptLanguage?.split(",")[0]?.split("-")[0] ?? null);
+  const language = getOnboardingLanguage(ctx.req.header("accept-language"));
 
   // Only workspaces with debug tools enabled can force creation (for testing purposes).
   const force =
