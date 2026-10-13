@@ -131,7 +131,7 @@ const { runToolActivity: runRetryableToolActivityWithExplicitCancellation } =
     },
   });
 
-const { claimNeverStartedToolActivityActivity } = proxyActivities<
+const { claimToolActivityNeverStartedActivity } = proxyActivities<
   typeof toolActivityStartMarkerActivities
 >({
   startToCloseTimeout: "1 minute",
@@ -143,7 +143,7 @@ const { claimNeverStartedToolActivityActivity } = proxyActivities<
 /**
  * @cc [owner:tdraier,label:error-handling;concurrency] retry-never-started-once
  * The tool activity MUST be rescheduled at most once, and only after a `runToolActivity` heartbeat
- * timeout for which `claimNeverStartedToolActivityActivity` returned true. Any other failure, or a
+ * timeout for which `claimToolActivityNeverStartedActivity` returned true. Any other failure, or a
  * failure of the rescheduled attempt, MUST be rethrown unchanged. Relies on every agent loop worker
  * running `runToolActivity`'s `claim-start-before-work`.
  */
@@ -164,7 +164,7 @@ async function runNonRetryableToolActivity(
     }
 
     const { workflowId, runId } = workflowInfo();
-    const neverStarted = await claimNeverStartedToolActivityActivity({
+    const neverStarted = await claimToolActivityNeverStartedActivity({
       workflowId,
       runId,
       activityId: err.activityId,

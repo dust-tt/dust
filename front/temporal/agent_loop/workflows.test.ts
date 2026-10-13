@@ -16,7 +16,7 @@ const {
   deprecatePatch,
   patched,
   checkCreditsActivity,
-  claimNeverStartedToolActivityActivity,
+  claimToolActivityNeverStartedActivity,
   finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
@@ -34,7 +34,7 @@ const {
   deprecatePatch: vi.fn(),
   patched: vi.fn(),
   checkCreditsActivity: vi.fn(),
-  claimNeverStartedToolActivityActivity: vi.fn(),
+  claimToolActivityNeverStartedActivity: vi.fn(),
   finalizeCreditSpendCheckpointPausedAgentLoopActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
@@ -80,7 +80,7 @@ vi.mock("@temporalio/workflow", () => {
       retry?: { maximumAttempts?: number };
     }) => ({
       checkCreditsActivity,
-      claimNeverStartedToolActivityActivity,
+      claimToolActivityNeverStartedActivity,
       compactionActivity: unusedActivity,
       compactionCleanupActivity: unusedActivity,
       ensureConversationTitleActivity: unusedActivity,
@@ -308,7 +308,7 @@ describe("never started tool activity rescheduling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     patched.mockReturnValue(true);
-    claimNeverStartedToolActivityActivity.mockResolvedValue(true);
+    claimToolActivityNeverStartedActivity.mockResolvedValue(true);
     finalizeErroredSandboxChildToolActivity.mockResolvedValue(undefined);
   });
 
@@ -327,7 +327,7 @@ describe("never started tool activity rescheduling", () => {
 
     expect(runToolActivity).toHaveBeenCalledTimes(2);
     expect(patched).toHaveBeenCalledWith("retry-never-started-tool-activity");
-    expect(claimNeverStartedToolActivityActivity).toHaveBeenCalledWith({
+    expect(claimToolActivityNeverStartedActivity).toHaveBeenCalledWith({
       workflowId: "workflow-id",
       runId: "run-id",
       activityId: "3",
@@ -351,7 +351,7 @@ describe("never started tool activity rescheduling", () => {
   });
 
   it("does not reschedule a tool activity that claimed its start", async () => {
-    claimNeverStartedToolActivityActivity.mockResolvedValue(false);
+    claimToolActivityNeverStartedActivity.mockResolvedValue(false);
     runToolActivity.mockRejectedValue(makeToolHeartbeatTimeout());
 
     await runSandboxChildToolWorkflow({
@@ -381,7 +381,7 @@ describe("never started tool activity rescheduling", () => {
     });
 
     expect(runToolActivity).toHaveBeenCalledOnce();
-    expect(claimNeverStartedToolActivityActivity).not.toHaveBeenCalled();
+    expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
     expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledOnce();
   });
 
@@ -397,7 +397,7 @@ describe("never started tool activity rescheduling", () => {
     });
 
     expect(runToolActivity).toHaveBeenCalledOnce();
-    expect(claimNeverStartedToolActivityActivity).not.toHaveBeenCalled();
+    expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
     expect(patched).not.toHaveBeenCalledWith(
       "retry-never-started-tool-activity"
     );
