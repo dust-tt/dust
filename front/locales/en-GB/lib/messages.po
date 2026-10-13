@@ -58,7 +58,7 @@ msgid "Something went wrong on our side."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
-msgid "The request is invalid."
+msgid "The request is malformed."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
@@ -311,6 +311,14 @@ msgstr ""
 
 #: front/lib/api_error_messages.ts
 msgid "The service is temporarily unavailable."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This feature isn't enabled for your workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in Pods."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
