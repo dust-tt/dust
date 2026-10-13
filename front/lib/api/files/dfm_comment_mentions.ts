@@ -145,10 +145,10 @@ function commentMessageContent(
 
 /**
  * @cc [owner:tdraier,label:product;performance] document-comment-mentions
- * Each new message of a save that mentions agents or users MUST be handed to a durable job
- * keyed by the normalized document path and the message, so it is posted once however many
- * saves bring it, and the save MUST NOT wait for it to be posted. Messages without mentions MUST
- * NOT be handed over. A failure MUST be logged and MUST NOT undo or fail the save.
+ * Each new message that mentions agents or users MUST be handed to a durable job keyed by the
+ * normalized document path and the message, so it is posted once however often it is handed
+ * over, and the caller MUST NOT wait for it to be posted. Messages without mentions MUST NOT be
+ * handed over. A failure MUST be logged and MUST NOT fail the caller.
  */
 export async function dispatchCommentMentions(
   auth: Authenticator,

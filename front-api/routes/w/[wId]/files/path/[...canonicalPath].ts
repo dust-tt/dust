@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/collab/live_session_write";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import {
   type DfmCommentSignatureError,
   validateMarkdownCommentsForWrite,
@@ -88,8 +87,7 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
- * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused;
- * a new comment that mentions agents or users is posted to the document's conversation.
+ * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused.
  * While a live session holds a Markdown file, a PUT goes through the session instead of the file
  * and returns no revision; one with X-Dust-If-Revision-Match returns 412.
  */
@@ -781,15 +779,11 @@ app.put(
       );
     }
     if (live.value.kind === "written") {
-      await dispatchCommentMentions(auth, {
-        scopedPath: canonicalPath,
-        newMessages: live.value.value,
-      });
       return new Response(null, { status: 200 });
     }
 
-    // Only Markdown in a co_edition workspace has its comments checked and new messages; any
-    // other write gets null `newMessages`, and possibly a revision binding it to what was checked.
+    // Only Markdown in a co_edition workspace has its comments checked; any other write possibly
+    // gets a revision binding it to what was checked.
     const markdownCheck = await validateMarkdownCommentsForWrite(
       auth,
       dustFs,
@@ -800,7 +794,7 @@ app.put(
     if (markdownCheck.isErr()) {
       return apiError(ctx, mapMarkdownCheckError(markdownCheck.error));
     }
-    const { revision: checkedRevision, newMessages } = markdownCheck.value;
+    const { revision: checkedRevision } = markdownCheck.value;
 
     // A Markdown write is conditional on the revision its comments were validated against.
     const writeResult = await writeCanonicalFileContent(
@@ -847,13 +841,6 @@ app.put(
         }
       }
       return apiError(ctx, mapDustFsError(error));
-    }
-
-    if (newMessages) {
-      await dispatchCommentMentions(auth, {
-        scopedPath: canonicalPath,
-        newMessages,
-      });
     }
 
     return new Response(null, {

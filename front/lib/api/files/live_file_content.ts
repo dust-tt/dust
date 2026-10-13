@@ -4,10 +4,7 @@ import {
   writeThroughLiveSession,
 } from "@app/lib/api/collab/live_session_write";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type {
-  DfmCommentSignatureError,
-  NewCommentMessage,
-} from "@app/lib/api/files/dfm_comment_signatures";
+import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
 import { validateCommentSignaturesForUser } from "@app/lib/api/files/dfm_comment_signatures";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,7 +42,7 @@ export async function writeFileContentThroughLiveSession(
   }
 ): Promise<
   Result<
-    LiveSessionWrite<NewCommentMessage[]>,
+    LiveSessionWrite<undefined>,
     LiveSessionWriteError | DfmCommentSignatureError
   >
 > {
@@ -71,7 +68,7 @@ export async function writeFileContentThroughLiveSession(
       source
     ): Promise<
       Result<
-        { source: string; value: NewCommentMessage[] },
+        { source: string; value: undefined },
         LiveSessionWriteError | DfmCommentSignatureError
       >
     > => {
@@ -83,15 +80,15 @@ export async function writeFileContentThroughLiveSession(
           )
         );
       }
-      const newMessages = validateCommentSignaturesForUser(auth, {
+      const validated = validateCommentSignaturesForUser(auth, {
         filePath,
         previous: source,
         next,
       });
-      if (newMessages.isErr()) {
-        return newMessages;
+      if (validated.isErr()) {
+        return validated;
       }
-      return new Ok({ source: next, value: newMessages.value });
+      return new Ok({ source: next, value: undefined });
     },
   });
 }

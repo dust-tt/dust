@@ -134,11 +134,11 @@ export async function applyLiveCommentCommand(
 /**
  * @cc [owner:tdraier,label:product] live-comment-mentions
  * `message`, the one `applyLiveCommentCommand` stored for an accepted `command`, MUST be handed
- * to `dispatchCommentMentions` for `file`'s user and path, as a save of the file would. Its quote
- * MUST be the one an `add` carries, as the browser anchors its thread only once it is accepted,
- * and for a `reply` the text its thread's anchors cover in `doc` as `yDocCommentedTexts` gives
- * it, so agents get the editor's text either way, and none only when the body cannot be read. A
- * message without mentions MUST NOT read `doc`, as that converts the whole document.
+ * to `dispatchCommentMentions` for `file`'s user and path. Its quote MUST be the one an `add`
+ * carries, as the browser anchors its thread only once it is accepted, and for a `reply` the
+ * text its thread's anchors cover in `doc` as `yDocCommentedTexts` gives it, so agents get the
+ * editor's text either way, and none only when the body cannot be read. A message without
+ * mentions MUST NOT read `doc`, as that converts the whole document.
  */
 export async function dispatchLiveCommentMentions(
   file: LiveFile,
