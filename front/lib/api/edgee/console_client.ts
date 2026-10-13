@@ -20,6 +20,10 @@ export type DeleteEdgeeGatewayApiKeyParams = EdgeeOrganizationAccess & {
   apiKeyId: string;
 };
 
+type RevealEdgeeGatewayApiKeyParams = EdgeeOrganizationAccess & {
+  apiKeyId: string;
+};
+
 export type EdgeeGatewayApiKey = {
   apiKeyId: string;
   apiKey: string;
@@ -27,13 +31,16 @@ export type EdgeeGatewayApiKey = {
 
 const CreatedApiKeyResponseSchema = z.object({
   id: z.string(),
+});
+
+const RevealedApiKeyResponseSchema = z.object({
   key: z.string(),
 });
 
 /**
  * @cc [owner:pmilliotte,label:security] edgee-console-errors-never-carry-secrets
  * Errors returned by this client MUST NOT include the Edgee response body nor the admin token:
- * the body of a key creation carries the gateway key secret.
+ * the body of a key reveal carries the gateway key secret.
  */
 async function callConsoleApi(
   { adminToken, organizationId }: EdgeeOrganizationAccess,
@@ -93,14 +100,45 @@ export async function createEdgeeGatewayApiKey({
     return res;
   }
 
-  const parsed = CreatedApiKeyResponseSchema.safeParse(res.value);
-  if (!parsed.success) {
+  const created = CreatedApiKeyResponseSchema.safeParse(res.value);
+  if (!created.success) {
     return new Err(
       new Error("Edgee Console API returned an unexpected api key shape")
     );
   }
 
-  return new Ok({ apiKeyId: parsed.data.id, apiKey: parsed.data.key });
+  const apiKeyId = created.data.id;
+  const revealRes = await revealEdgeeGatewayApiKey({ ...access, apiKeyId });
+  if (revealRes.isErr()) {
+    await deleteEdgeeGatewayApiKey({ ...access, apiKeyId });
+    return revealRes;
+  }
+
+  return new Ok({ apiKeyId, apiKey: revealRes.value });
+}
+
+// Edgee leaves the secret out of the creation response and reveals it once, on this call only.
+async function revealEdgeeGatewayApiKey({
+  apiKeyId,
+  ...access
+}: RevealEdgeeGatewayApiKeyParams): Promise<Result<string, Error>> {
+  const res = await callConsoleApi(
+    access,
+    `/api_keys/${encodeURIComponent(apiKeyId)}/reveal`,
+    { method: "GET" }
+  );
+  if (res.isErr()) {
+    return res;
+  }
+
+  const revealed = RevealedApiKeyResponseSchema.safeParse(res.value);
+  if (!revealed.success) {
+    return new Err(
+      new Error("Edgee Console API returned an unexpected revealed key shape")
+    );
+  }
+
+  return new Ok(revealed.data.key);
 }
 
 export async function deleteEdgeeGatewayApiKey({

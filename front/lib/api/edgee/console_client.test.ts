@@ -48,10 +48,12 @@ describe("Edgee console client", () => {
     expect(res.isErr()).toBe(true);
   });
 
-  it("creates a gateway key in the organization and returns its id and secret", async () => {
-    mockTrustedFetch.mockResolvedValue(
-      jsonResponse(200, { id: "key_1", key: "sk-edgee-1", active: true })
-    );
+  it("creates a gateway key in the organization and returns its id and revealed secret", async () => {
+    mockTrustedFetch
+      .mockResolvedValueOnce(jsonResponse(200, { id: "key_1", active: true }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { id: "key_1", key: "sk-edgee-1", active: true })
+      );
 
     const res = await createEdgeeGatewayApiKey({
       adminToken: "pat",
@@ -72,6 +74,34 @@ describe("Edgee console client", () => {
       type: "api",
       email: "user@example.com",
     });
+    const [revealUrl, revealInit] = mockTrustedFetch.mock.calls[1];
+    expect(revealUrl).toBe(
+      "https://api.edgee.app/v1/organizations/org_1/api_keys/key_1/reveal"
+    );
+    expect(revealInit.method).toBe("GET");
+  });
+
+  it("deletes the created gateway key when its secret cannot be revealed", async () => {
+    mockTrustedFetch
+      .mockResolvedValueOnce(jsonResponse(200, { id: "key_1", active: true }))
+      .mockResolvedValueOnce(
+        jsonResponse(400, { error: { message: "already revealed" } })
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const res = await createEdgeeGatewayApiKey({
+      adminToken: "pat",
+      organizationId: "org_1",
+      name: "dust:w1:u1",
+      email: null,
+    });
+
+    expect(res.isErr()).toBe(true);
+    const [deleteUrl, deleteInit] = mockTrustedFetch.mock.calls[2];
+    expect(deleteUrl).toBe(
+      "https://api.edgee.app/v1/organizations/org_1/api_keys/key_1"
+    );
+    expect(deleteInit.method).toBe("DELETE");
   });
 
   it("returns an error, without the response body, when Edgee rejects the call", async () => {
