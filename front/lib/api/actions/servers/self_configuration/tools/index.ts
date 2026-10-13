@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import { getNextRaisedReasoningEffort } from "@app/lib/api/actions/servers/self_configuration/helpers";
+import { raiseReasoningEffort } from "@app/lib/api/actions/servers/self_configuration/helpers";
 import {
   ADJUST_REASONING_EFFORT_TOOL_NAME,
   SELF_CONFIGURATION_TOOLS_METADATA,
@@ -14,7 +14,7 @@ import assert from "assert";
 
 const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
   [ADJUST_REASONING_EFFORT_TOOL_NAME]: async (
-    { direction },
+    { direction, steps = 1 },
     { runContext }
   ) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
@@ -30,8 +30,8 @@ const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
     const { modelInfo, stepContext } = runContext;
     const from =
       stepContext.reasoningEffortInEffect ?? modelInfo.reasoningEffort ?? null;
-    const to = getNextRaisedReasoningEffort(modelInfo, from);
-    if (from === null || to === null) {
+    const to = raiseReasoningEffort(modelInfo, { from, steps });
+    if (from === null || to === null || to === from) {
       return new Err(
         new MCPError(
           from === null ||
