@@ -18,6 +18,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
+import { Lexer } from "marked";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
@@ -354,10 +355,18 @@ describe("saveDfm", () => {
 
   it("parses the tokens it checked instead of lexing the Markdown again", () => {
     const parse = vi.spyOn(MarkdownManager.prototype, "parse");
+    const lex = vi.spyOn(Lexer.prototype, "lex");
 
-    roundTrip(`# Title\n\nSome **bold** text.\n\n${THREAD}`);
-
+    const { envelope, content } = load(
+      `# Title\n\nSome **bold** text.\n\n${THREAD}`
+    );
+    // Loading reads the body, then checks the Markdown a save would write reads back the same.
+    expect(lex).toHaveBeenCalledTimes(2);
+    lex.mockClear();
+    expect(saveDfm(envelope, content).isOk()).toBe(true);
+    expect(lex).toHaveBeenCalledTimes(1);
     expect(parse).not.toHaveBeenCalled();
+    lex.mockRestore();
     parse.mockRestore();
   });
 
