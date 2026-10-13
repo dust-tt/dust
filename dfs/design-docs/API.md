@@ -31,8 +31,8 @@ Attr {
   atime?: Timestamp
   mtime?: Timestamp
   ctime?: Timestamp
-  attr_version: uint64           // Version of attributes and metadata; excludes grant changes.
-  content_version: uint64        // Version of bytes or directory entries; excludes grant changes.
+  attr_version: uint64           // Version of attributes and metadata.
+  content_version: uint64        // Version of bytes or directory entries.
   store_version: int64           // FDB read snapshot or successful mutation commit version.
   metadata?: ExtendedMetadata    // Present when extended metadata was requested.
 }
@@ -104,36 +104,15 @@ only with the same field for the same tenant and object. Attribute versions and 
 all directories, including virtual projections, are additionally scoped to the session's visible
 namespace; they are not comparable across different sessions.
 
-`attr_version` advances when stored attributes or extended metadata change, including size,
-timestamps, MIME type, xattrs, the object's own name, and its stored parent. Renames and moves advance
-it even when file contents are unchanged. Grant changes never advance `attr_version`, even when
-grants on the object or its ancestors change the reported mode. Comparing `attr_version` requires a
-fresh authorization check; matching versions alone never grant access or confirm that grant-dependent
-attributes are unchanged.
-Fetching optional metadata or returning a newer `store_version` does not itself change
-`attr_version`.
-The version fields themselves are excluded from attribute-change detection, avoiding recursive
-version bumps. Content mutations advance `attr_version` whenever they change size or timestamps.
-
-For a regular file, `content_version` starts at 1 and advances atomically with nonempty writes and
-changes to file size, including truncation and extension. A nonempty write advances it even when the
-supplied bytes equal the existing bytes. Mode, timestamps, MIME type, xattrs, grants, renames, and
-moves do not advance it.
-
-For a real directory, `content_version` starts at 1 and advances atomically whenever its stored
-immediate entries change: a child is created, removed, renamed, moved in or out, or replaced by
-another object under the same name. It covers the mapping of stored entry names to object IDs, not
-the child attributes included in `List` responses. Grant changes never advance it, even when they
-change which entries are visible to the session. Editing a child's contents or attributes alone does
-not advance its parent's `content_version`. Renaming or moving the directory itself advances its
-`attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
-unchanged when its entries are unchanged.
+`attr_version` covers an object's attributes and extended metadata. `content_version` covers a
+file's bytes, or a directory's mapping of stored entry names to object IDs, not the child attributes
+included in `List` responses. [VERSIONS.md](VERSIONS.md) lists which operations update each version
+and timestamp. Comparing versions requires a fresh authorization check; matching versions alone
+never grant access or confirm that grant-dependent attributes are unchanged.
 
 Virtual `root` returns the stored tenant root's real ID, attributes, and versions, with the mode
-described above. Virtual `shared` has no stored timestamps; its `attr_version` and
-`content_version` stay fixed at 1, regardless of grants or topology changes. Clients must refresh
-its listing through `List`. No version comparison replaces authorization or confirms cached
-visibility.
+described above. Clients must refresh the listing of virtual `shared` through `List`. No version
+comparison replaces authorization or confirms cached visibility.
 
 `Attr.store_version` is a nonnegative FDB `int64` version: the read snapshot for reads, or the
 successful commit for mutations. Authorization and attributes are read in the same transaction.
@@ -461,8 +440,8 @@ identifies the object in `object.id` and the shared FDB snapshot in `object.stor
 An individual missing or inaccessible object does not prevent results for the other IDs. With
 `include_metadata=true`, each successful result populates `object.metadata` from the same FDB snapshot
 as its attributes. Virtual projections return synthetic metadata with MIME type `inode/directory`,
-an empty xattr map, and `created: 0`. With the flag omitted or false, extended metadata is not returned;
-`attr_version` still covers it.
+an empty xattr map, and `created: 0`. With the flag omitted or false, extended metadata is not
+returned.
 
 Clients recheck access and cached versions through `Stat`, normally with metadata omitted. Compare
 `attr_version` and `content_version` independently to decide which cached state to refresh. Matching
@@ -538,9 +517,8 @@ Continue until `next_after` is absent, even after an empty page.
 
 Clients refresh cached pages through `List`. For real directories and virtual `root`,
 `Attr.content_version` from `Stat` identifies topology changes to entry names and object IDs.
-Unchanged versions do not confirm visibility: grants can change visibility without changing the
-version. Refresh through `List` to obtain current visibility. An unchanged directory version also does
-not validate child attributes embedded in an old page; those require separate checks or a refetch.
+Unchanged versions do not confirm visibility, which grants control. Refresh through `List` to
+obtain current visibility. An unchanged directory version also does not validate child attributes embedded in an old page; those require separate checks or a refetch.
 Each fetched page includes current child attributes sharing the same `Attr.store_version`. Pages are
 independently refreshed; traversal across pages does not promise a single snapshot, and validation
 does not retroactively make independently fetched pages coherent. The same refresh behavior applies
@@ -668,8 +646,7 @@ Returned attributes reflect the final committed state, rather than an intermedia
 each operation. Removed objects have no returned attributes. Removal returns the surviving parent's
 attributes in `mutation.related`. Other operations may omit parents changed only by listing
 membership and its associated version bookkeeping; clients must invalidate omitted parents' cached
-attributes and listing pages. Attribute and content versions follow the shared rules above and
-advance atomically with their corresponding changes.
+attributes and listing pages.
 
 Every attribute returned in `mutation.object` or `mutation.related` across the batch carries the
 same `Attr.store_version`: the batch's commit version, or the transaction's read version when no
@@ -763,8 +740,6 @@ RenameOperation {
 **Successful result:** `mutation.object` contains the moved object's final attributes if it survives.
 The source object and affected parents must be accessible. Replacement requires the same kind;
 a destination directory must be empty. Moving a directory into itself or a descendant is rejected.
-The object's `attr_version` advances on a rename or parent change; the affected parents' listing
-content versions advance as well.
 
 ### remove operation
 

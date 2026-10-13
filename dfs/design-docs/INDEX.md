@@ -45,7 +45,7 @@ boundaries, and planned search indexing.
 
 ## Versions
 
-The [versions proposal](VERSIONS.md) lists which versions and timestamps each file and directory
+[VERSIONS.md](VERSIONS.md) lists which versions and timestamps each file and directory
 operation updates.
 
 ## URI

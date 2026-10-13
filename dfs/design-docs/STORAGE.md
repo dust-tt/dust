@@ -99,17 +99,15 @@ index entries are also removed. Authentication rejects expired sessions independ
 Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
 attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
-Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, an empty name,
-and both versions at 1.
+Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, and an empty name.
 
 Object creation validates all xattrs before staging writes and stores them with attributes and base
 metadata in the same transaction. A retry that finds exactly the attributes it would write succeeds
 without writing; any other occupant of the ID fails with `AlreadyExists`. Each xattr name is a
 separate tuple component. An empty value denotes a present xattr with empty bytes; a missing key
-denotes an absent xattr. Extended metadata
-reads combine the base entry and xattr entries from the same transaction. Xattr changes commit with
-`attr_version` and preserve the 32 KiB limit on combined xattr name/value bytes. Object deletion clears
-both the base metadata entry and all xattr entries.
+denotes an absent xattr. Extended metadata reads combine the base entry and xattr entries from the
+same transaction. Xattr changes preserve the 32 KiB limit on combined xattr name/value bytes. Object
+deletion clears both the base metadata entry and all xattr entries.
 
 The MIME type in base metadata is optional (`Option<String>`); `None` is encoded as FDB tuple null.
 A create or update request with `mime_type: ""` clears it by storing `None`, and subsequent metadata
@@ -119,7 +117,7 @@ The stored parent and basename support inheritance and namespace maintenance. Th
 atomically with directory entries; public `Attr` exposes only the basename. Moves preserve object
 IDs and content keys and require no descendant path rewrites. Virtual `root` and `shared` are
 projections; the real tenant root is an ordinary stored object. Virtual `root` returns its real ID and
-versions; `shared` has no stored record and keeps both versions fixed at 1.
+versions; `shared` has no stored record.
 
 Effective `mode` and `store_version` are computed per response. Directory execute/traverse derives
 from read permission. File size, versions, and affected blocks commit together. Missing blocks read as
@@ -127,13 +125,10 @@ zeroes within the logical size; truncation discards trailing data so extension c
 
 ### Directory state and versions
 
-Both versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters
-initialized to 1. Update them atomically according to the [API version rules](API.md#shared-types),
-using checked increments that fail before commit on overflow. Directory entry changes read and
-update the parent record's timestamps and versions in the same transaction. Concurrent sibling
-changes may conflict and retry.
-
-[VERSIONS.md](VERSIONS.md) lists which versions and timestamps each operation updates.
+Both versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters.
+Update them and the timestamps atomically as [VERSIONS.md](VERSIONS.md) lists, using checked
+increments that fail before commit on overflow. Directory entry changes read and update the parent
+record in the same transaction. Concurrent sibling changes may conflict and retry.
 
 ## Grants
 
@@ -163,7 +158,7 @@ Authorization walks the real ancestor chain in one transaction. At each level, D
 bits, then matching ALLOW adds bits. Only read/write bits exist; a deeper ALLOW can reopen access.
 Reverse scans return candidates requiring deduplication and full permission/projection checks. DENY
 creates no entry point. Inherited grants are never materialized, so grant changes need no descendant
-rewrites and never bump object versions.
+rewrites.
 
 ## Transactions
 
