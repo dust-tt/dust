@@ -77,9 +77,13 @@ export class DfsFileSystem {
     private readonly client: DfsFileSystemClient,
     options: { readChunkBytes?: number } = {}
   ) {
-    this.readChunkBytes = Math.min(
-      options.readChunkBytes ?? MAX_READ_CHUNK_BYTES,
-      MAX_READ_CHUNK_BYTES
+    // At least one byte, so that every read makes progress.
+    this.readChunkBytes = Math.max(
+      1,
+      Math.min(
+        options.readChunkBytes ?? MAX_READ_CHUNK_BYTES,
+        MAX_READ_CHUNK_BYTES
+      )
     );
   }
 
