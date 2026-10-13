@@ -26,12 +26,11 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.123";
-const DSBX_CLI_VERSION = "0.1.67";
+const DUST_BASE_IMAGE_VERSION = "0.8.124";
+const DSBX_CLI_VERSION = "0.1.68";
 // SHA-256 of dsbx-linux-x86_64 at DSBX_CLI_VERSION, printed in the release body.
 // Bump it with the version.
-const DSBX_CLI_SHA256 =
-  "477b99e0660301bff644368e53bc3e00be4f57a1ed5c11d46a8f67e33f88b940";
+const DSBX_CLI_SHA256 = "PENDING_DSBX_0_1_68_RELEASE_SHA256";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
