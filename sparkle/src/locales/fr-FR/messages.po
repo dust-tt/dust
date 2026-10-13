@@ -157,7 +157,6 @@ msgid "Next image"
 msgstr "Image suivante"
 
 #: src/components/InputWithSave.tsx
-#: src/components/LegacyInputWithSave.tsx
 #: src/components/Toolbar.tsx
 msgid "Save"
 msgstr "Enregistrer"

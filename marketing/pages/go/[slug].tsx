@@ -1,4 +1,4 @@
-import { LogIn01, SpinnerBrand } from "@dust-tt/sparkle";
+import { LogIn01, Spinner } from "@dust-tt/sparkle";
 import CustomErrorPage from "@marketing/components/pages/CustomErrorPage";
 import { clientFetch } from "@marketing/lib/egress/client";
 import { GoResolveSuccessSchema } from "@marketing/lib/go/schemas";
@@ -91,7 +91,7 @@ export default function GoPageNextJS() {
 
   return (
     <div className="flex h-dvh items-center justify-center">
-      <SpinnerBrand size="lg" />
+      <Spinner size="lg" />
     </div>
   );
 }

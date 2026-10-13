@@ -69,7 +69,10 @@ interface Hover3DProps {
  * effect (disabled on touch devices). Use it for showcase or marketing
  * surfaces where playful depth adds delight; keep it off dense, interactive
  * UI where motion would distract.
- * @summary Cursor-tracking 3D tilt container.
+ *
+ * @deprecated Scheduled for removal, no replacement. Do not add new usages.
+ *
+ * @summary Deprecated cursor-tracking 3D tilt container.
  */
 function Hover3D({
   children,
@@ -200,7 +203,11 @@ interface divProps {
   className?: string;
 }
 
-/** A layer inside Hover3D that shifts along the Z axis by its depth while hovered. */
+/**
+ * A layer inside Hover3D that shifts along the Z axis by its depth while hovered.
+ *
+ * @deprecated Scheduled for removal together with Hover3D, no replacement.
+ */
 const Div3D = ({ depth, children, className = "" }: divProps) => {
   const { isHovered, isTouchDevice } = useHover3D();
   const style = {

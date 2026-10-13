@@ -26,7 +26,6 @@ import {
 
 const meta = {
   title: "Navigation/NavigationList",
-  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {

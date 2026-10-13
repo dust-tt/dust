@@ -25,7 +25,6 @@ import {
 
 const meta = {
   title: "Lists/ContextItem",
-  tags: ["a11y-issues"],
   component: ContextItem,
   parameters: {
     docs: {

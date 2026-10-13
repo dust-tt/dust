@@ -25,7 +25,7 @@ const ICONS = {
 const meta = {
   title: "Actions/Button",
   component: Button,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

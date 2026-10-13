@@ -21,21 +21,6 @@ const dustTheme = create({
 addons.setConfig({
   theme: dustTheme,
   tagBadges: [
-    // Components whose stories have known axe-core violations (see the
-    // Accessibility panel). Remove the tag from a story file once fixed.
-    {
-      tags: "a11y-issues",
-      badge: {
-        text: "a11y",
-        style: { backgroundColor: "#FEE2E2", color: "#B91C1C" },
-        tooltip: "Has known accessibility violations",
-      },
-      display: {
-        sidebar: [{ type: "component", skipInherited: false }],
-        toolbar: false,
-        mdx: true,
-      },
-    },
     {
       tags: "needs-work",
       badge: {

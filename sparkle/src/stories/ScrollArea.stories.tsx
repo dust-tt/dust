@@ -22,7 +22,7 @@ const meta = {
       },
     },
   },
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
 } satisfies Meta<typeof ScrollArea>;
 
 export default meta;
