@@ -164,6 +164,10 @@ const SPECIAL_CASES_PATTERN = new RegExp(
   "gi"
 );
 
+function isSpecialCase(s: string): s is keyof typeof SPECIAL_CASES {
+  return Object.hasOwn(SPECIAL_CASES, s);
+}
+
 /**
  * @cc [owner:thomasc2a,label:product] special-cases-keep-their-casing
  * A `SPECIAL_CASES` value MUST appear exactly as written in the output, including when it starts
@@ -173,11 +177,10 @@ export function formatAsDisplayName(name: string): string {
   return slugify(name)
     .replace(/_/g, " ")
     .replace(/\b\w/, (char) => char.toUpperCase())
-    .replace(
-      SPECIAL_CASES_PATTERN,
-      (match) =>
-        SPECIAL_CASES[match.toLowerCase() as keyof typeof SPECIAL_CASES]
-    );
+    .replace(SPECIAL_CASES_PATTERN, (match) => {
+      const key = match.toLowerCase();
+      return isSpecialCase(key) ? SPECIAL_CASES[key] : match;
+    });
 }
 
 export function asDisplayToolName(name?: string | null) {
