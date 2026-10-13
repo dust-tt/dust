@@ -52,6 +52,7 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
             symlink.object_id.into(),
             root.object_id.into(),
         ],
+        false,
     )
     .await?;
     assert_eq!(results.len(), 7);
@@ -84,14 +85,14 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
     }
 
     assert!(matches!(
-        ObjectResource::stat(&tx, &session, &[ObjectRef::Invalid]).await,
+        ObjectResource::stat(&tx, &session, &[ObjectRef::Invalid], false).await,
         Err(storage::Error::Resource(object::Error::InvalidId))
     ));
 
     // An expired read version must fail outside the per-object results.
     let stale_tx = fdb::database()?.create_trx()?;
     stale_tx.set_read_version(1);
-    let result = ObjectResource::stat(&stale_tx, &session, &[root.object_id.into()]).await;
+    let result = ObjectResource::stat(&stale_tx, &session, &[root.object_id.into()], false).await;
     let Err(storage::Error::Transaction(error)) = result else {
         anyhow::bail!("FDB failures must escape the batch unchanged");
     };
@@ -115,7 +116,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             root.object_id.into(),
             ObjectRef::Root,
         ];
-        let results = ObjectResource::stat(&tx, &session, &refs).await?;
+        let results = ObjectResource::stat(&tx, &session, &refs, false).await?;
         assert_eq!(results.len(), refs.len());
         let shared = results[0]
             .as_ref()
@@ -184,7 +185,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
         attributes.7 += 1;
         attributes.8 += 1;
         tx.set(&key, &pack(&attributes));
-        let updated = ObjectResource::stat(&tx, &session, &refs).await?;
+        let updated = ObjectResource::stat(&tx, &session, &refs, false).await?;
         let updated_root = updated[1]
             .as_ref()
             .ok()
@@ -203,5 +204,139 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
         );
         assert!(matches!(updated[2], Err(object::Error::NotAuthorized)));
     }
+    Ok(())
+}
+
+pub(crate) async fn metadata_reads_preserve_snapshot_and_tenant_scope() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    let mut root = ObjectResource::new_root(&tenant)?;
+    let metadata = root.metadata.as_mut().context("missing metadata")?;
+    metadata.created_at_ms = 42;
+    metadata.mime_type = Some("text/plain".to_owned());
+    metadata.xattrs = std::collections::HashMap::from([
+        ("user/é".to_owned(), vec![0, 0xff, 1]),
+        ("empty".to_owned(), vec![]),
+    ]);
+    // Enough small entries to exercise range pagination while staying below the xattr byte limit.
+    for index in 0..1_000 {
+        metadata
+            .xattrs
+            .insert(format!("user/{index:04}"), vec![0xff; 8]);
+    }
+    let expected_xattrs: std::collections::BTreeMap<_, _> =
+        metadata.xattrs.clone().into_iter().collect();
+    let (mut other, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    other.root_id = root.object_id;
+    let other_root = ObjectResource::new_root(&other)?;
+    let (other_session, _) = SessionResource::new(&other, vec!["reader".to_owned()])?;
+    let tx = fdb::database()?.create_trx()?;
+    root.create(&tx, &[allow("reader", 4)]).await?;
+    other_root.create(&tx, &[allow("reader", 4)]).await?;
+    tx.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    let version = tx.get_read_version().await?;
+    let prefix = tenant_subspace(&tenant.tenant_id);
+    let metadata_key = prefix.pack(&("metadata", root.object_id.as_bytes().as_slice()));
+    let xattrs = prefix.subspace(&("metadata", root.object_id.as_bytes().as_slice(), "xattr"));
+    let update = fdb::database()?.create_trx()?;
+    update.set(&metadata_key, &pack(&(43_u64, None::<String>)));
+    update.set(&xattrs.pack(&"user/é"), b"new value");
+    update.set(&xattrs.pack(&"new"), b"new xattr");
+    update.commit().await?;
+
+    let refs = [root.object_id.into()];
+    let result = ObjectResource::stat(&tx, &session, &refs, true).await?;
+    let attr = result[0].as_ref().ok().context("missing attributes")?;
+    assert_eq!(attr.store_version, version);
+    let metadata = attr.metadata.as_ref().context("missing metadata")?;
+    assert_eq!(metadata.created, 42);
+    assert_eq!(metadata.mime_type.as_deref(), Some("text/plain"));
+    assert_eq!(metadata.xattrs, expected_xattrs);
+    let other_result = ObjectResource::stat(&tx, &other_session, &refs, true).await?;
+    let other_attr = other_result[0]
+        .as_ref()
+        .ok()
+        .context("missing other root")?;
+    let other_metadata = other_attr.metadata.as_ref().context("missing metadata")?;
+    assert_eq!(
+        other_metadata.created,
+        other_root
+            .metadata
+            .as_ref()
+            .context("missing metadata")?
+            .created_at_ms
+    );
+    assert_eq!(other_metadata.mime_type, None);
+    assert!(other_metadata.xattrs.is_empty());
+
+    let fresh = fdb::database()?.create_trx()?;
+    let result = ObjectResource::stat(&fresh, &session, &refs, true).await?;
+    let metadata = result[0]
+        .as_ref()
+        .ok()
+        .context("missing updated attributes")?
+        .metadata
+        .as_ref()
+        .context("missing updated metadata")?;
+    assert_eq!(metadata.created, 43);
+    assert_eq!(metadata.mime_type, None);
+    assert_eq!(metadata.xattrs["user/é"], b"new value");
+    assert_eq!(metadata.xattrs["new"], b"new xattr");
+    assert!(metadata.xattrs["empty"].is_empty());
+
+    // Corrupt metadata cannot affect unrequested reads or reveal an unreadable object.
+    fresh.set(&metadata_key, &[0xff]);
+    let result = ObjectResource::stat(&fresh, &session, &refs, false).await?;
+    assert!(
+        result[0]
+            .as_ref()
+            .ok()
+            .context("missing attributes")?
+            .metadata
+            .is_none()
+    );
+    assert!(matches!(
+        ObjectResource::stat(&fresh, &session, &refs, true).await,
+        Err(storage::Error::Transaction(
+            foundationdb::FdbBindingError::PackError(_)
+        ))
+    ));
+    fresh.clear(&metadata_key);
+    assert!(matches!(
+        ObjectResource::stat(&fresh, &session, &refs, true).await,
+        Err(storage::Error::Resource(object::Error::MissingMetadata))
+    ));
+    fresh.set(&metadata_key, &[0xff]);
+    root.update_grants(
+        &fresh,
+        &[GrantUpdate {
+            grant: allow("reader", 4),
+            remove: true,
+        }],
+    )?;
+    let result = ObjectResource::stat(&fresh, &session, &refs, true).await?;
+    assert!(matches!(result[0], Err(object::Error::NotAuthorized)));
+    let projected = ObjectResource::stat(
+        &fresh,
+        &session,
+        &[ObjectRef::Root, ObjectRef::Shared],
+        true,
+    )
+    .await?;
+    for result in projected {
+        let attr = result?;
+        let metadata = attr.metadata.context("missing virtual metadata")?;
+        assert_eq!(metadata.created, 0);
+        assert_eq!(metadata.mime_type.as_deref(), Some("inode/directory"));
+        assert!(metadata.xattrs.is_empty());
+    }
+
+    for tenant in [&tenant, &other] {
+        let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+        fresh.clear_range(&begin, &end);
+    }
+    fresh.commit().await?;
     Ok(())
 }

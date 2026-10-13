@@ -30,6 +30,7 @@ fn resources() -> Result<()> {
         object::permission_reads_conflict_with_changes_and_retry().await?;
         object::stat_distinguishes_object_errors_and_preserves_transaction_failures().await?;
         object::virtual_stat_projects_root_and_keeps_shared_versions_fixed().await?;
+        object::metadata_reads_preserve_snapshot_and_tenant_scope().await?;
         session::subjects_are_exact_deduplicated_and_bounded()?;
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
         session::session_creation_retry_succeeds_without_changes().await?;
