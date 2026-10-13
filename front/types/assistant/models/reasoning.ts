@@ -10,6 +10,11 @@ export { ORDERED_REASONING_EFFORTS };
 // send it.
 const LEGACY_LIGHT_REASONING_EFFORT = "light";
 
+// Relative reasoning effort changes, one step at a time (e.g. the agent's adjust_reasoning_effort).
+export const REASONING_EFFORT_DIRECTIONS = ["raise", "lower"] as const;
+export type ReasoningEffortDirection =
+  (typeof REASONING_EFFORT_DIRECTIONS)[number];
+
 export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
   none: "None",
   minimal: "Min",
