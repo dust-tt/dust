@@ -73,9 +73,7 @@ app.post(
       });
     }
 
-    const language = await getOnboardingLanguage(auth, {
-      acceptLanguage: ctx.req.header("accept-language"),
-    });
+    const language = getOnboardingLanguage(ctx.req.header("accept-language"));
 
     const followUpPrompt = buildOnboardingFollowUpPrompt(toolId, language);
 

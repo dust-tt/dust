@@ -5,7 +5,6 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { getLanguageName } from "@app/lib/i18n/language_name";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -469,28 +468,16 @@ const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
 :quickReply[Recent spreadsheets]{message="Show recently updated Excel files"} :quickReply[Changes this week]{message="Summarize changes to my Excel files this week"}`,
 };
 
-export async function getOnboardingLanguage(
-  auth: Authenticator,
-  { acceptLanguage }: { acceptLanguage: string | undefined }
-): Promise<string | null> {
-  // The browser's preferred language, even if Dust does not support it.
-  // Strip the quality parameter (`fr;q=1.0`) and region (`fr-FR`), then normalize anything that
-  // is not a bare language code to null so the workspace fallback still applies.
-  const browserLanguage = toLanguageCode(
+// The onboarding conversation always follows the browser's preferred language, even if Dust does
+// not support it. The user's saved locale is deliberately ignored.
+// Strip the quality parameter (`fr;q=1.0`) and region (`fr-FR`); anything that is not a bare
+// language code is dropped.
+export function getOnboardingLanguage(
+  acceptLanguage: string | undefined
+): string | null {
+  return toLanguageCode(
     acceptLanguage?.split(",")[0]?.split(";")[0]?.split("-")[0] ?? null
   );
-
-  const user = auth.user();
-  if (!user || !(await hasFeatureFlag(auth, "localisation"))) {
-    return browserLanguage;
-  }
-
-  const storedLocale = await user.getStoredLocale();
-  if (storedLocale) {
-    return storedLocale.split("-")[0];
-  }
-
-  return browserLanguage ?? auth.getNonNullableWorkspace().locale.split("-")[0];
 }
 
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;

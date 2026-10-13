@@ -17,9 +17,7 @@ app.post("/", async (ctx): HandlerResult<PostSendOnboardingResponseBody> => {
 
   const body = await ctx.req.json().catch(() => ({}));
 
-  const language = await getOnboardingLanguage(auth, {
-    acceptLanguage: ctx.req.header("accept-language"),
-  });
+  const language = getOnboardingLanguage(ctx.req.header("accept-language"));
 
   // Only workspaces with debug tools enabled can force creation (for testing purposes).
   const force =
