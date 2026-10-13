@@ -22,6 +22,7 @@ import type {
 } from "@app/types/api/user";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
+import type { SupportedLocale } from "@app/types/locale";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
@@ -156,9 +157,15 @@ export function useUserApprovals(owner: LightWorkspaceType) {
 }
 
 export function useCompleteUserOnboarding() {
-  const completeUserOnboarding = async () => {
+  const completeUserOnboarding = async ({
+    locale,
+  }: {
+    locale: SupportedLocale | null;
+  }) => {
     return clientFetch("/api/user/onboarding/complete", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale }),
     });
   };
 

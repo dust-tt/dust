@@ -144,6 +144,10 @@ msgid "Pick your role to customize your experience:"
 msgstr "Choisissez votre rôle pour personnaliser votre expérience :"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your preferred language:"
+msgstr "Votre langue préférée :"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Next"
 msgstr "Suivant"
 
