@@ -477,7 +477,8 @@ describe("comment threads in a live session", () => {
       throw new Error("The document did not load.");
     }
 
-    // Two browsers' connections, each sending a comment command.
+    // Two browsers' connections, each sending a comment command. They are built directly rather
+    // than joined over WebSockets: in this harness, joined connections end up with one context.
     const request = new Request("http://localhost/api/collab");
     for (const [index, context] of [first, second].entries()) {
       const socket = { send: vi.fn(), close: vi.fn(), readyState: 1 };

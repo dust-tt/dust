@@ -321,6 +321,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         // TODO(co-edition): a command still applies after its sender left, whose channel already
         // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;
+        // Every accepted command changes the threads.
         session.lastCommenter = file;
         // TODO(co-edition): broadcast only the changed thread rather than every thread to every
         // connection.
