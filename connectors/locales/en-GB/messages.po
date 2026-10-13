@@ -503,7 +503,7 @@ msgstr ""
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
 msgid "Message generation was canceled."
-msgstr ""
+msgstr "Message generation was cancelled."
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/stream_conversation_handler.ts

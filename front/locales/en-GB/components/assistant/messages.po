@@ -311,7 +311,7 @@ msgstr ""
 
 #: front/components/assistant/TagsSuggestDialog.tsx
 msgid "Analyzing your agents to create tags..."
-msgstr ""
+msgstr "Analysing your agents to create tags..."
 
 #: front/components/assistant/TagsSuggestDialog.tsx
 msgid "Tag suggestions from your workspace agents:"

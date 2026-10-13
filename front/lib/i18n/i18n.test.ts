@@ -15,4 +15,12 @@ describe("loadCatalog", () => {
     });
     expect(enGb._(descriptor)).toBe("Language");
   });
+
+  it("renders the en-GB translation where the en-GB catalog has one", async () => {
+    const enGb = setupI18n({
+      locale: "en-GB",
+      messages: { "en-GB": await loadCatalog("en-GB") },
+    });
+    expect(enGb._(msg`Pick a color`)).toBe("Pick a colour");
+  });
 });

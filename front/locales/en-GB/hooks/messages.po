@@ -301,11 +301,11 @@ msgstr ""
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
 msgid "Subscription canceled"
-msgstr ""
+msgstr "Subscription cancelled"
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 msgid "Your subscription has been canceled."
-msgstr ""
+msgstr "Your subscription has been cancelled."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 msgid "Reactivation failed"

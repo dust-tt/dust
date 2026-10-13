@@ -252,7 +252,7 @@ msgstr ""
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "self improving skills reinforcement analyze conversations"
-msgstr ""
+msgstr "self improving skills reinforcement analyse conversations"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "Enable batch processing"

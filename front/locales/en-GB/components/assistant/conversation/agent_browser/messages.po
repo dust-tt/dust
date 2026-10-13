@@ -31,7 +31,7 @@ msgstr ""
 
 #: front/components/assistant/conversation/agent_browser/shared.tsx
 msgid "Favorites"
-msgstr ""
+msgstr "Favourites"
 
 #: front/components/assistant/conversation/agent_browser/shared.tsx
 msgid "All agents"

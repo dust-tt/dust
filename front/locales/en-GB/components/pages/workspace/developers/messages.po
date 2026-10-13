@@ -175,7 +175,7 @@ msgstr ""
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
 msgid "{pendingCount, plural, one {You have a pending {totalPending} credit purchase awaiting payment.} other {You have # pending credit purchases totaling {totalPending} awaiting payment.}}"
-msgstr ""
+msgstr "{pendingCount, plural, one {You have a pending {totalPending} credit purchase awaiting payment.} other {You have # pending credit purchases totalling {totalPending} awaiting payment.}}"
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
 msgid "Complete your payment to activate your credits."

@@ -52,4 +52,4 @@ msgstr ""
 
 #: front/components/agent_builder/settings/avatar_picker/AgentBuilderEmojiPicker.tsx
 msgid "Pick a color"
-msgstr ""
+msgstr "Pick a colour"

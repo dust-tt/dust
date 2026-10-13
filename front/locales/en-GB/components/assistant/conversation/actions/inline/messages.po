@@ -23,11 +23,11 @@ msgstr ""
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
 msgid "Canceled after {duration}, without tools."
-msgstr ""
+msgstr "Cancelled after {duration}, without tools."
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
 msgid "Canceled after {duration}"
-msgstr ""
+msgstr "Cancelled after {duration}"
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
 msgid "Completed in {duration}, without tools."
@@ -39,11 +39,11 @@ msgstr ""
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
 msgid "Canceled, without tools."
-msgstr ""
+msgstr "Cancelled, without tools."
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
 msgid "Canceled"
-msgstr ""
+msgstr "Cancelled"
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
 msgid "Completed, without tools."

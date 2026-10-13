@@ -422,7 +422,7 @@ msgstr ""
 
 #: front/components/workspace/billing/SubscriptionStatusChip.tsx
 msgid "Canceled"
-msgstr ""
+msgstr "Cancelled"
 
 #: front/components/workspace/billing/SubscriptionStatusChip.tsx
 msgid "Ended"

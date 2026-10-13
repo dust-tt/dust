@@ -149,7 +149,7 @@ msgstr ""
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "What are your favorite platforms?"
-msgstr ""
+msgstr "What are your favourite platforms?"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognize some of these?"

@@ -661,7 +661,7 @@ msgstr ""
 
 #: front/components/spaces/SpaceCreateAppModal.tsx
 msgid "This description guides agents in understanding how to use your app effectively and determines its relevance in responding to user inquiries."
-msgstr ""
+msgstr "This description guides agents in understanding how to use your app effectively and determines its relevance in responding to user enquiries."
 
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 msgid "Available to"

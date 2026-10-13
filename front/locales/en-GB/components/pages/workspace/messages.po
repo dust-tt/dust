@@ -666,7 +666,7 @@ msgstr ""
 
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "verified domain auto join enrollment"
-msgstr ""
+msgstr "verified domain auto join enrolment"
 
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "team groups"

@@ -150,19 +150,19 @@ msgstr ""
 
 #: front/lib/swr/assistants.ts
 msgid "Agent added to favorites"
-msgstr ""
+msgstr "Agent added to favourites"
 
 #: front/lib/swr/assistants.ts
 msgid "Agent removed from favorites"
-msgstr ""
+msgstr "Agent removed from favourites"
 
 #: front/lib/swr/assistants.ts
 msgid "Error adding agent to favorites"
-msgstr ""
+msgstr "Error adding agent to favourites"
 
 #: front/lib/swr/assistants.ts
 msgid "Error removing agent from favorites"
-msgstr ""
+msgstr "Error removing agent from favourites"
 
 #: front/lib/swr/assistants.ts
 msgid "Error updating agent list"
@@ -723,7 +723,7 @@ msgstr ""
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s scheduled seat change has been canceled."
-msgstr ""
+msgstr "{memberName}'s scheduled seat change has been cancelled."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
@@ -1206,7 +1206,7 @@ msgstr ""
 
 #: front/lib/swr/skill_configurations.ts
 msgid "Added to favorites"
-msgstr ""
+msgstr "Added to favourites"
 
 #: front/lib/swr/skill_configurations.ts
 msgid "View"
@@ -1214,11 +1214,11 @@ msgstr ""
 
 #: front/lib/swr/skill_configurations.ts
 msgid "Failed to add {skillName} to favorites"
-msgstr ""
+msgstr "Failed to add {skillName} to favourites"
 
 #: front/lib/swr/skill_configurations.ts
 msgid "Failed to remove {skillName} from favorites"
-msgstr ""
+msgstr "Failed to remove {skillName} from favourites"
 
 #: front/lib/swr/skill_configurations.ts
 msgid "Failed to update reinforcement settings"
@@ -1538,7 +1538,7 @@ msgstr ""
 
 #: front/lib/swr/wakeups.ts
 msgid "Wake-up canceled"
-msgstr ""
+msgstr "Wake-up cancelled"
 
 #: front/lib/swr/webhook_source.ts
 msgid "Failed to create webhook source"

@@ -47,19 +47,19 @@ msgstr ""
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Remove from favorites"
-msgstr ""
+msgstr "Remove from favourites"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Add to favorites"
-msgstr ""
+msgstr "Add to favourites"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Remove this agent from your favorites"
-msgstr ""
+msgstr "Remove this agent from your favourites"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Add this agent to your favorites"
-msgstr ""
+msgstr "Add this agent to your favourites"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "View profile"
