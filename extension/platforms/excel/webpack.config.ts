@@ -64,6 +64,7 @@ export const getConfig = async ({
     devtool: isDevelopment ? "inline-source-map" : undefined,
     entry: {
       main: resolvePath("./main.tsx"),
+      auth: resolvePath("./dialog/auth.ts"),
     },
     output: {
       path: buildDirPath,
@@ -192,6 +193,11 @@ export const getConfig = async ({
         template: resolvePath("./taskpane.html"),
         filename: "taskpane.html",
         chunks: ["main"],
+      }),
+      new HtmlWebpackPlugin({
+        template: resolvePath("./dialog/auth.html"),
+        filename: "auth.html",
+        chunks: ["auth"],
       }),
     ],
     devServer: {
