@@ -113,11 +113,11 @@ msgstr ""
 
 #: front/components/assistant/details/AgentDetailsButtonBar.tsx
 msgid "Remove from favorites"
-msgstr ""
+msgstr "Remove from favourites"
 
 #: front/components/assistant/details/AgentDetailsButtonBar.tsx
 msgid "Add to favorites"
-msgstr ""
+msgstr "Add to favourites"
 
 #: front/components/assistant/details/AgentDetailsButtonBar.tsx
 msgid "New conversation"

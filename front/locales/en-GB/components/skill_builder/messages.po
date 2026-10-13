@@ -218,7 +218,7 @@ msgstr ""
 
 #: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
 msgid "Dust will analyze how this skill is used and suggest improvements to its instructions over time."
-msgstr ""
+msgstr "Dust will analyse how this skill is used and suggest improvements to its instructions over time."
 
 #: front/components/skill_builder/SkillBuilderFilesSection.tsx
 msgid "Duplicate files skipped."

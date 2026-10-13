@@ -33,6 +33,13 @@ describe("getBotI18n", () => {
     ).toBe("Answered by *Dust*");
   });
 
+  it("renders the en-GB translation where the catalog has one", async () => {
+    const enGb = await getBotI18n("en-GB");
+    expect(enGb._("Message generation was canceled.")).toBe(
+      "Message generation was cancelled."
+    );
+  });
+
   it("falls back to the English text for messages missing from the catalog", async () => {
     const fr = await getBotI18n("fr-FR");
     expect(fr._("Not in any catalog, {name}", { name: "Ada" })).toBe(

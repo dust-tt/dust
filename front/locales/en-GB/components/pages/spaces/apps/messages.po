@@ -82,7 +82,7 @@ msgstr ""
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
 msgid "Canceling..."
-msgstr ""
+msgstr "Cancelling..."
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
 msgid "Cancel"

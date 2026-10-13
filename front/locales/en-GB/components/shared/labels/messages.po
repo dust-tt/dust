@@ -19,7 +19,7 @@ msgstr ""
 
 #: front/components/shared/labels/MicrosoftLabelsSelector.tsx
 msgid "Only labeled content matching one of these labels will be synced. Unlabeled content is always included."
-msgstr ""
+msgstr "Only labelled content matching one of these labels will be synced. Unlabelled content is always included."
 
 #: front/components/shared/labels/MicrosoftLabelsSelector.tsx
 msgid "Type a label"

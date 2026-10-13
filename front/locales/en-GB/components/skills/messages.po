@@ -250,11 +250,11 @@ msgstr ""
 
 #: front/components/skills/SkillFavoriteButton.tsx
 msgid "Add to favorites"
-msgstr ""
+msgstr "Add to favourites"
 
 #: front/components/skills/SkillFavoriteButton.tsx
 msgid "Remove from favorites"
-msgstr ""
+msgstr "Remove from favourites"
 
 #: front/components/skills/SkillFilterPanel.tsx
 msgid "Too many tools selected."

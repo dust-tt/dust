@@ -627,7 +627,7 @@ msgstr ""
 
 #: front/lib/api_error_messages.ts
 msgid "Another user has an active wake-up in this conversation. Only they can post until it fires or is canceled."
-msgstr ""
+msgstr "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
 
 #: front/lib/api_error_messages.ts
 msgid "Code: {code}"
@@ -708,7 +708,7 @@ msgstr ""
 
 #: front/lib/connector_providers_ui.ts
 msgid "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection."
-msgstr ""
+msgstr "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection."
 
 #: front/lib/connector_providers_ui.ts
 msgid "You cannot select another Intercom Workspace.\n"

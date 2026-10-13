@@ -28,7 +28,7 @@ msgstr ""
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgid "Favorites"
-msgstr ""
+msgstr "Favourites"
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgctxt "catalog filter"
@@ -86,11 +86,11 @@ msgstr ""
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgid "Remove from favorites"
-msgstr ""
+msgstr "Remove from favourites"
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgid "Add to favorites"
-msgstr ""
+msgstr "Add to favourites"
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgid "Chat with {name}"
@@ -128,7 +128,7 @@ msgstr ""
 #: front/components/assistant/conversation/discover/DiscoverContainer.tsx
 msgctxt "discover tab"
 msgid "Catalog"
-msgstr ""
+msgstr "Catalogue"
 
 #: front/components/assistant/conversation/discover/DiscoverContainer.tsx
 msgctxt "page title"
