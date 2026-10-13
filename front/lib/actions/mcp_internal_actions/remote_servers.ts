@@ -6915,6 +6915,78 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10055,
+    name: "Swarmia",
+    description:
+      "Swarmia tools to query engineering metrics (DORA, PR cycle time, code and issue metrics), AI tool adoption and impact, key metrics, and saved Explore views.",
+    url: "https://app.swarmia.com/api/v1/mcp",
+    icon: "SwarmiaLogo",
+    documentationUrl:
+      "https://help.swarmia.com/settings/integrations/mcp-server",
+    connectionInstructions:
+      "Swarmia uses OAuth with dynamic client registration. Sign in with your Swarmia account to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      EntityQuery: "never_ask",
+      EntityReport: "never_ask",
+      DiscoverEntitySchema: "never_ask",
+      ListKeyMetrics: "never_ask",
+      EvaluateKeyMetric: "never_ask",
+      ListSavedExploreViews: "never_ask",
+      ExecuteSavedExploreView: "never_ask",
+      InvestmentCategoryQuery: "never_ask",
+      GetGHAWorkflowData: "never_ask",
+      GetSwarmiaKnowledge: "never_ask",
+      BuildAppLink: "never_ask",
+    },
+    toolDisplayLabels: {
+      EntityQuery: {
+        running: "Querying data on Swarmia",
+        done: "Queried data on Swarmia",
+      },
+      EntityReport: {
+        running: "Running a report on Swarmia",
+        done: "Ran a report on Swarmia",
+      },
+      DiscoverEntitySchema: {
+        running: "Exploring the data model on Swarmia",
+        done: "Explored the data model on Swarmia",
+      },
+      ListKeyMetrics: {
+        running: "Listing key metrics on Swarmia",
+        done: "Listed key metrics on Swarmia",
+      },
+      EvaluateKeyMetric: {
+        running: "Calculating a key metric on Swarmia",
+        done: "Calculated a key metric on Swarmia",
+      },
+      ListSavedExploreViews: {
+        running: "Listing saved views on Swarmia",
+        done: "Listed saved views on Swarmia",
+      },
+      ExecuteSavedExploreView: {
+        running: "Running a saved view on Swarmia",
+        done: "Ran a saved view on Swarmia",
+      },
+      InvestmentCategoryQuery: {
+        running: "Fetching investment categories from Swarmia",
+        done: "Fetched investment categories from Swarmia",
+      },
+      GetGHAWorkflowData: {
+        running: "Fetching a GitHub Actions workflow from Swarmia",
+        done: "Fetched a GitHub Actions workflow from Swarmia",
+      },
+      GetSwarmiaKnowledge: {
+        running: "Searching the Swarmia docs",
+        done: "Searched the Swarmia docs",
+      },
+      BuildAppLink: {
+        running: "Building a Swarmia link",
+        done: "Built a Swarmia link",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
