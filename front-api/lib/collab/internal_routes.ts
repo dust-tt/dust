@@ -20,10 +20,10 @@ import {
 } from "@app/types/collab_internal";
 import { collabAccessErrorToApiError } from "@front-api/lib/collab/collab_access_errors";
 import {
-  readLiveSource,
-  showLiveAgentActivity,
-  writeLiveSource,
-} from "@front-api/lib/collab/hocuspocus";
+  readSessionSource,
+  showAgentActivity,
+  writeSessionSource,
+} from "@front-api/lib/collab/session";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -83,7 +83,7 @@ export function createInternalDocumentsApp(
         ctx.req.valid("json");
       const documentName = toLiveDocumentName(workspaceId, canonicalPath);
 
-      const read = await readLiveSource(hocuspocus, documentName);
+      const read = await readSessionSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {
         return ctx.json<CollabSourceReadResponse>(read.value);
       }
@@ -123,7 +123,7 @@ export function createInternalDocumentsApp(
       }
       // Only once the reader may open the file: its editors then see the agent at work.
       if (agent) {
-        showLiveAgentActivity(hocuspocus, documentName, agent, "reading");
+        showAgentActivity(hocuspocus, documentName, agent, "reading");
       }
       return ctx.json<CollabSourceReadResponse>(read.value);
     }
@@ -154,7 +154,7 @@ export function createInternalDocumentsApp(
         });
       }
 
-      const written = await writeLiveSource(hocuspocus, {
+      const written = await writeSessionSource(hocuspocus, {
         file: file.value,
         base,
         source,

@@ -8,42 +8,29 @@ import {
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
-import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
-import type { DfmComment } from "@app/lib/markdown/dfm";
 import {
   concurrentExecutor,
   setTimeoutAsync,
 } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
-import type {
-  LiveAgent,
-  LiveAgentActivity,
-  LiveAgentEditMessage,
-  LiveAgentServerMessage,
-  LiveCommentErrorCode,
-  LiveCommentServerMessage,
-  LiveIdRange,
-} from "@app/types/collab";
+import type { LiveCommentErrorCode } from "@app/types/collab";
 import {
-  BODY_FRAGMENT_NAME,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
-  toLiveDocumentName,
 } from "@app/types/collab";
-import type {
-  CollabSourceReadResponse,
-  CollabSourceWriteResult,
-} from "@app/types/collab_internal";
-import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { authenticateConnection } from "@front-api/lib/collab/connection_access";
-import type { Document } from "@hocuspocus/server";
+import {
+  getSession,
+  serverMessage,
+  startSession,
+  stopWrites,
+} from "@front-api/lib/collab/session";
 import { Hocuspocus } from "@hocuspocus/server";
-import type * as Y from "yjs";
 
 import { z } from "zod";
 
@@ -54,48 +41,6 @@ const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 const STORE_DEBOUNCE_MS = 5 * 1000;
 const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
 
-/** What a loaded document needs beside its Yjs state to be checkpointed. */
-interface LiveSession {
-  comments: DfmComment[];
-  checkpoint: CollabSave;
-  checkpointFailed: boolean;
-  lastChangedBy: CollabAccess | undefined;
-  graceTimer: ReturnType<typeof setTimeout> | undefined;
-  commentCommands: Promise<void>;
-}
-
-const serverMessage = (message: LiveCommentServerMessage) =>
-  JSON.stringify(message);
-
-const agentActivityMessage = (
-  agent: LiveAgent,
-  activity: LiveAgentActivity
-): string =>
-  JSON.stringify({
-    type: "agent_activity",
-    agent,
-    activity,
-  } satisfies LiveAgentServerMessage);
-
-/** The Yjs items `transaction` inserted, by id. */
-const insertedRanges = (transaction: Y.Transaction): LiveIdRange[] => {
-  const ranges: LiveIdRange[] = [];
-  transaction.afterState.forEach((after, client) => {
-    const before = transaction.beforeState.get(client) ?? 0;
-    if (after > before) {
-      ranges.push({ client, clock: before, length: after - before });
-    }
-  });
-  return ranges;
-};
-
-const agentEditMessage = (agent: LiveAgent, inserted: LiveIdRange[]): string =>
-  JSON.stringify({
-    type: "agent_edit",
-    agent,
-    inserted,
-  } satisfies LiveAgentEditMessage);
-
 const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
 
@@ -105,9 +50,6 @@ const commandRequestSchema = z.object({
   type: z.literal("command"),
   requestId: z.string().min(1),
 });
-
-const sessions = new WeakMap<Document, LiveSession>();
-const shuttingDown = new WeakSet<Hocuspocus<CollabAccess>>();
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -201,7 +143,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         refuse(documentName, loaded.error);
       }
       const { content, lastSave } = loaded.value;
-      sessions.set(document, {
+      startSession(document, {
         comments: content.comments,
         checkpoint: lastSave,
         checkpointFailed: false,
@@ -213,7 +155,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     async onChange({ document, context }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       if (session) {
         session.lastChangedBy = context;
       }
@@ -224,7 +166,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     // checkpoints instead, since each write is a new file revision that agents' conditional
     // writes conflict with.
     async onStoreDocument({ document, documentName }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       // Not `lastContext`: a direct connection's disconnect stores the document with its own
       // context, even when it changed nothing.
       const writer = session?.lastChangedBy;
@@ -274,7 +216,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     async onDisconnect({ instance, document }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       if (!session || document.getConnections().length > 0) {
         return;
       }
@@ -300,7 +242,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     async onStateless({ connection, document, documentName, payload }) {
-      const session = sessions.get(document);
+      const session = getSession(document);
       const file: CollabAccess = connection.context;
       const json = safeParseJSON(payload);
       const message = json.isOk()
@@ -433,14 +375,14 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
  * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-checkpoint
  * Once no connection can send edits any more, every document MUST be checkpointed at once, in
  * place of its pending debounced store, including documents still loading, which are waited for
- * first. From the call on, `writeLiveSource` MUST answer `busy`, and the writes and comment
+ * first. From the call on, `writeSessionSource` MUST answer `busy`, and the writes and comment
  * commands already queued MUST finish before the checkpoints. The returned promise MUST resolve
  * only once each checkpoint has finished or failed.
  */
 export async function checkpointAllDocuments(
   hocuspocus: Hocuspocus<CollabAccess>
 ): Promise<void> {
-  shuttingDown.add(hocuspocus);
+  stopWrites(hocuspocus);
   // A load may still apply edits queued while it ran; its failure was already logged.
   for (const loading of [...hocuspocus.loadingDocuments.values()]) {
     await loading.catch(() => undefined);
@@ -448,7 +390,7 @@ export async function checkpointAllDocuments(
   // Their writes only reach the file through the checkpoints below.
   await Promise.all(
     [...hocuspocus.documents.values()].map(
-      (document) => sessions.get(document)?.commentCommands
+      (document) => getSession(document)?.commentCommands
     )
   );
   await concurrentExecutor(
@@ -469,224 +411,4 @@ export async function checkpointAllDocuments(
       ),
     { concurrency: 8 }
   );
-}
-
-/** The document and its session while one is open, once it has finished loading or unloading. */
-async function openSession(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  documentName: string
-): Promise<{ document: Document; session: LiveSession } | null> {
-  // Only their outcome matters, read from `documents` below: a failed load leaves no document, and
-  // `onLoadDocument` already logged why.
-  await Promise.allSettled([
-    hocuspocus.loadingDocuments.get(documentName),
-    hocuspocus.unloadingDocuments.get(documentName),
-  ]);
-  const document = hocuspocus.documents.get(documentName);
-  const session = document && sessions.get(document);
-  if (!document || document.isDestroyed || !session) {
-    return null;
-  }
-  return { document, session };
-}
-
-/**
- * @cc [owner:tdraier,label:product;concurrency] collab-live-source-read
- * A document MUST be reported open while Hocuspocus holds it, after waiting for a load or an
- * unload in progress, with as source what `yDocToDfm` gives for it and the session's threads.
- */
-export async function readLiveSource(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  documentName: string
-): Promise<Result<CollabSourceReadResponse, string>> {
-  const open = await openSession(hocuspocus, documentName);
-  if (!open) {
-    return new Ok({ open: false });
-  }
-  const source = yDocToDfm({
-    doc: open.document,
-    comments: open.session.comments,
-  });
-  if (source.isErr()) {
-    return source;
-  }
-  return new Ok({ open: true, source: source.value });
-}
-
-/**
- * @cc [owner:PopDaph,label:product] collab-agent-activity
- * Every connection of a document Hocuspocus holds MUST be told what `agent` is doing in it, and
- * nothing MUST be sent for a document it does not hold. Callers MUST only report an agent whose
- * user may read the document live (`checkCollabReadAccess`).
- */
-export function showLiveAgentActivity(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  documentName: string,
-  agent: LiveAgent,
-  activity: LiveAgentActivity
-): void {
-  const document = hocuspocus.documents.get(documentName);
-  if (document && !document.isDestroyed) {
-    document.broadcastStateless(agentActivityMessage(agent, activity));
-  }
-}
-
-/**
- * @cc [owner:tdraier,label:product;concurrency;security] collab-live-source-write
- * A write MUST only target the document named after `file`'s workspace and path, so its checkpoint
- * writes the file the document was loaded from. It MUST answer `closed`, changing nothing, when
- * `readLiveSource` would report the document closed, and `changed`, changing nothing, unless the
- * source `readLiveSource` would return is `base`. Otherwise it MUST apply `source` with
- * `replaceYDocContent` as a change from `file`, replace the session's threads with the ones it
- * returns, send them to every connection when they changed, and store the document so the
- * checkpoint writes the change; a source the editor refuses MUST fail and change nothing. `file`
- * MUST be able to write, and the session's storage MUST have revisions, since without them its
- * checkpoints could not be conditional; otherwise the write MUST fail and change nothing. It MUST
- * take its turn among the document's comment commands, answering `closed` if the document unloaded
- * meanwhile, and a write that fails MUST NOT hold the later ones. A write whose turn has not come
- * within `COLLAB_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
- * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
- * Nothing may run between the comparison with `base` and the change, so no edit can slip between
- * them. With `agent`, a change of the source MUST be announced to every connection as that agent
- * editing right before it is applied; it MUST be announced as reading again if the change is then
- * refused or leaves the document's body unchanged. Once a change of the body is applied, its update
- * MUST be sent, then the text it inserted announced as that agent's edit (`agent_edit`, the ids of
- * the items the change's own transaction inserted); failing to read them MUST only skip it.
- */
-export async function writeLiveSource(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  {
-    file,
-    base,
-    source,
-    agent,
-  }: { file: CollabAccess; base: string; source: string; agent?: LiveAgent }
-): Promise<Result<CollabSourceWriteResult, string>> {
-  if (!file.canWrite) {
-    return new Err("The file cannot be written.");
-  }
-  const documentName = toLiveDocumentName(file.workspaceId, file.canonicalPath);
-  const open = await openSession(hocuspocus, documentName);
-  if (!open) {
-    return new Ok("closed");
-  }
-  if (shuttingDown.has(hocuspocus)) {
-    return new Ok("busy");
-  }
-  const { document, session } = open;
-  if (session.checkpoint.revision === undefined) {
-    return new Err(
-      "This document's storage does not support safe changes yet."
-    );
-  }
-
-  let turn: "waiting" | "taken" | "expired" = "waiting";
-  const write = (): Result<CollabSourceWriteResult, string> => {
-    if (turn === "expired") {
-      return new Ok("busy");
-    }
-    turn = "taken";
-    // Unloaded while it waited for its turn: a reload reads the file into a new document.
-    if (document.isDestroyed) {
-      return new Ok("closed");
-    }
-    const current = yDocToDfm({ doc: document, comments: session.comments });
-    if (current.isErr()) {
-      return current;
-    }
-    if (current.value !== base) {
-      return new Ok("changed");
-    }
-
-    // Before the change: Hocuspocus may batch the update, never a stateless message.
-    const announced = agent !== undefined && source !== current.value;
-    if (announced) {
-      document.broadcastStateless(agentActivityMessage(agent, "editing"));
-    }
-    // Observed on the body: another spelling of the same document, or a change of front matter
-    // alone, leaves it as it was and gives editors nothing to show.
-    const body = document.getXmlFragment(BODY_FRAGMENT_NAME);
-    let bodyChanged = false;
-    let inserted: LiveIdRange[] = [];
-    const onBodyChange = (_events: unknown, transaction: Y.Transaction) => {
-      bodyChanged = true;
-      // Presentation only: a failure must not fail the write, which Yjs has applied.
-      try {
-        inserted = insertedRanges(transaction);
-      } catch (err) {
-        logger.warn(
-          { err: normalizeError(err), documentName },
-          "Could not read the text an agent's change inserted"
-        );
-      }
-    };
-    if (announced) {
-      body.observeDeep(onBodyChange);
-    }
-    let comments: Result<DfmComment[], string> = new Err(
-      "The change could not be applied."
-    );
-    try {
-      // As a direct connection's change, so `onChange` records `file` as its writer.
-      comments = replaceYDocContent(document, source, {
-        source: "local",
-        context: file,
-      });
-    } finally {
-      if (announced) {
-        body.unobserveDeep(onBodyChange);
-        if (comments.isErr() || !bodyChanged) {
-          document.broadcastStateless(agentActivityMessage(agent, "reading"));
-        }
-      }
-    }
-    if (comments.isErr()) {
-      return comments;
-    }
-    if (announced && inserted.length > 0) {
-      // The update first, so editors already hold the text the message names.
-      document.flush();
-      document.broadcastStateless(agentEditMessage(agent, inserted));
-    }
-    const threadsChanged =
-      JSON.stringify(comments.value) !== JSON.stringify(session.comments);
-    session.comments = comments.value;
-    // A change of the threads alone does not go through `onChange`.
-    session.lastChangedBy ??= file;
-    if (threadsChanged) {
-      document.broadcastStateless(
-        serverMessage({ type: "threads", comments: session.comments })
-      );
-    }
-    // Not awaited: Hocuspocus debounces the store and catches its failures, which
-    // `onStoreDocument` logs.
-    void hocuspocus.storeDocumentHooks(document, {
-      clientsCount: document.getConnectionsCount(),
-      document,
-      documentName,
-      instance: hocuspocus,
-      lastContext: file,
-      lastTransactionOrigin: undefined,
-    });
-    // TODO(co-edition): refuse writes while `session.checkpointFailed`: an accepted write only lives
-    // in memory until a checkpoint succeeds, and is lost if none ever does.
-    return new Ok("written");
-  };
-
-  // A comment command builds the threads across an await: the write takes its turn among them, so
-  // neither drops the threads the other wrote.
-  const written = session.commentCommands.then(write);
-  // A write that throws fails for its caller only, not for the commands queued after it.
-  session.commentCommands = Promise.allSettled([written]).then(() => undefined);
-
-  const answered = await Promise.race([
-    written,
-    setTimeoutAsync(COLLAB_SOURCE_WRITE_WAIT_MS),
-  ]);
-  // `write` runs at once when its turn comes: a turn already taken has finished.
-  if (answered === "timeout" && turn === "waiting") {
-    turn = "expired";
-    return new Ok("busy");
-  }
-  return written;
 }
