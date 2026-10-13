@@ -4,7 +4,6 @@ import { GovernancePageSkeleton } from "@app/components/pages/workspace/governan
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { SkillDiscoverabilityWarning } from "@app/components/pages/workspace/governance/SkillDiscoverabilityWarning";
-import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { ConversationExternalNotificationsToggle } from "@app/components/workspace/settings/ConversationExternalNotificationsToggle";
 import { InactiveAgentArchival } from "@app/components/workspace/settings/InactiveAgentArchival";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
@@ -24,7 +23,6 @@ import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
-import { useAppRouter } from "@app/lib/platform";
 import {
   getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
@@ -50,7 +48,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   ContentMessage,
-  Hoverable,
   InfoCircle,
   Tabs,
   TabsContent,
@@ -148,11 +145,6 @@ export const GovernancePage = () => {
     isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
-  const router = useAppRouter();
-  const handleNavigateToGroups = () => {
-    void router.push(`/w/${owner.sId}/members?tab=groups`);
-  };
-
   const agentsSections: {
     sectionId: AdminSectionId;
     label: string;
@@ -191,14 +183,6 @@ export const GovernancePage = () => {
 
   return (
     <GovernancePageLayout>
-      <LinkedSectionNotice>
-        <Trans>
-          Groups assigned here are managed in{" "}
-          <Hoverable variant="primary" onClick={handleNavigateToGroups}>
-            Members → Groups
-          </Hoverable>
-        </Trans>
-      </LinkedSectionNotice>
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as GovernanceTab)}
