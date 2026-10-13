@@ -276,7 +276,10 @@ function _getDustLikeGlobalAgent(
     omittedThinking?: boolean;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
-  const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
+  const {
+    agent_memory: agentMemoryMCPServerView,
+    self_configuration: selfConfigurationMCPServerView,
+  } = mcpServerViews;
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
 - Find and analyze data across your company knowledge
@@ -418,6 +421,27 @@ function _getDustLikeGlobalAgent(
       description: "The agent memory tool",
       mcpServerViewId: agentMemoryMCPServerView.sId,
       internalMCPServerId: agentMemoryMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+      dustProject: null,
+    });
+  }
+
+  if (selfConfigurationMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: agentId + "-self-configuration",
+      type: "mcp_server_configuration",
+      name: "self_configuration" satisfies InternalMCPServerNameType,
+      description: "The self configuration tool",
+      mcpServerViewId: selfConfigurationMCPServerView.sId,
+      internalMCPServerId: selfConfigurationMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
