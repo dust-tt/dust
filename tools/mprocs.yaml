@@ -176,6 +176,12 @@ procs:
       npm run dev:firefox
     autostart: false
 
+  extension-excel:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: |
+      npm run dev:excel
+    autostart: false
+
   firebase-webhook-router:
     cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
     shell: |
