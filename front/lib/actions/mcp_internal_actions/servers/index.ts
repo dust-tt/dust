@@ -190,10 +190,6 @@ export async function getInternalMCPServer(
       return (
         await import("@app/lib/api/actions/servers/conversation_files")
       ).default(auth, toolContext);
-    case "conversation_side_panel":
-      return (
-        await import("@app/lib/api/actions/servers/conversation_side_panel")
-      ).default(auth, toolContext);
     case "cursor_cloud_agents":
       return (
         await import("@app/lib/api/actions/servers/cursor_cloud_agents")

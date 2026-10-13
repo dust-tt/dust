@@ -151,10 +151,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(
       "`create_interactive_content_file`: create a Frame from an existing template"
     );
-    expect(framesSkill.mcpServers).toEqual([
-      { name: "interactive_content" },
-      { name: "conversation_side_panel" },
-    ]);
+    expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);
     await expect(
       InternalMCPServerInMemoryResource.isRestrictedForWorkspace(
         auth,

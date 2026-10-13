@@ -6,7 +6,6 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { CURSOR_CLOUD_AGENTS_SERVER } from "@app/lib/api/actions/servers/cursor_cloud_agents/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
@@ -122,10 +121,6 @@ const SERVER_SOURCES: Array<{
 }> = [
   { name: "agent_memory", tools: AGENT_MEMORY_SERVER.tools },
   { name: "conversation_files", tools: CONVERSATION_FILES_SERVER.tools },
-  {
-    name: "conversation_side_panel",
-    tools: CONVERSATION_SIDE_PANEL_SERVER.tools,
-  },
   {
     name: "cursor_cloud_agents",
     tools: CURSOR_CLOUD_AGENTS_SERVER.tools,

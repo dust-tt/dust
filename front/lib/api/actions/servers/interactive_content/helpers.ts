@@ -6,12 +6,12 @@ import { getFileDisplayName } from "@app/types/files";
  * Builds a progress notification for interactive content file operations.
  *
  * Panel refresh keys on `fileId@updatedAt`. Prefer (in order):
- * - `contentRevision` when the caller must force a remount (e.g. open_frame)
+ * - `contentRevision` when the caller must force a remount
  * - active Frames v2 publication id
  * - File.updatedAtMs
  *
- * Pass `autoOpen: false` for background publishes that should refresh an already
- * open Frame panel but not steal focus from another panel (e.g. file explorer).
+ * Pass `autoOpen: false` to refresh an already open Frame panel without stealing
+ * focus from another panel (e.g. file explorer).
  */
 export function buildInteractiveContentFileNotification(
   progressToken: string | number,
