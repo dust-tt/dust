@@ -1,3 +1,4 @@
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import {
   deleteWorkspaceGitHubConnection,
   setWorkspaceGitHubConnection,
@@ -54,6 +55,20 @@ app.post(
         api_error: {
           type: "invalid_request_error",
           message: "connectionId is required and must be a string.",
+        },
+      });
+    }
+
+    const connectionOwnershipRes = await checkConnectionOwnership(
+      auth,
+      connectionId
+    );
+    if (connectionOwnershipRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "You do not have permission to use this connection.",
         },
       });
     }

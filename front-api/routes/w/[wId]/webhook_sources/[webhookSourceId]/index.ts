@@ -1,3 +1,4 @@
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -65,6 +66,19 @@ app.patch(
       updates.remoteMetadata = { ...remoteMetadata };
     }
     if (oauthConnectionId && typeof oauthConnectionId === "string") {
+      const connectionOwnershipRes = await checkConnectionOwnership(
+        auth,
+        oauthConnectionId
+      );
+      if (connectionOwnershipRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "You do not have permission to use this connection.",
+          },
+        });
+      }
       updates.oauthConnectionId = oauthConnectionId;
     }
 

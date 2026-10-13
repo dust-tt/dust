@@ -4,9 +4,25 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const oauthMocks = vi.hoisted(() => ({
+  getAccessToken: vi.fn(),
+}));
+
+vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/types/oauth/oauth_api")>();
+  return {
+    ...actual,
+    OAuthAPI: vi.fn().mockImplementation(function OAuthAPIMock() {
+      return { getAccessToken: oauthMocks.getAccessToken };
+    }),
+  };
+});
 
 async function setupTest(role: MembershipRoleType = "admin") {
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
@@ -287,5 +303,41 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     expect(response.status).toBe(403);
     const responseData = await response.json();
     expect(responseData.error.type).toBe("workspace_auth_error");
+  });
+
+  describe("connection ownership", () => {
+    beforeEach(() => {
+      oauthMocks.getAccessToken.mockReset();
+    });
+
+    it("returns 403 and does not update oauthConnectionId when con_ connection belongs to another workspace", async () => {
+      const { workspace, auth } = await setupTest();
+      const webhookSource = await createWebhookSource(
+        workspace,
+        "Test Webhook Source"
+      );
+
+      oauthMocks.getAccessToken.mockResolvedValue(
+        new Ok({
+          connection: {
+            metadata: { workspace_id: "ws_other", user_id: "user_other" },
+          },
+        })
+      );
+
+      const response = await patchSource(workspace.sId, webhookSource.sId, {
+        oauthConnectionId: "con_abc123",
+      });
+
+      expect(response.status).toBe(403);
+      const responseData = await response.json();
+      expect(responseData.error.type).toBe("invalid_request_error");
+
+      const unchanged = await WebhookSourceResource.fetchById(
+        auth,
+        webhookSource.sId
+      );
+      expect(unchanged?.oauthConnectionId).toBeNull();
+    });
   });
 });

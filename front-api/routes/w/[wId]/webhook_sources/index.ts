@@ -1,5 +1,6 @@
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import config from "@app/lib/api/config";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -98,6 +99,22 @@ app.post(
           message: "Subscribed events must not be empty.",
         },
       });
+    }
+
+    if (connectionId) {
+      const connectionOwnershipRes = await checkConnectionOwnership(
+        auth,
+        connectionId
+      );
+      if (connectionOwnershipRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "You do not have permission to use this connection.",
+          },
+        });
+      }
     }
 
     const workspace = auth.getNonNullableWorkspace();
