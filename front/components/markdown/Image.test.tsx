@@ -55,6 +55,7 @@ describe("Img", () => {
               setVirtuosoMsg: vi.fn(),
               virtuosoMsg: null,
               data: undefined,
+              wasAutoOpenDismissedForFileId: () => false,
             }}
           >
             <FilePreviewProvider owner={mockOwner}>
