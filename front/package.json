@@ -7,6 +7,7 @@
   "exports": {
     "./components/*": "./components/*",
     "./lib/*": "./lib/*",
+    "./package.json": "./package.json",
     "./styles/*": "./styles/*",
     "./types/*": "./types/*"
   },

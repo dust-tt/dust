@@ -6,6 +6,7 @@ on:
       - package-lock.json
       - sdks/js/**
       - front/**
+      - dfs/protocol/proto/**
       - lingui.config.ts
       - scripts/i18n/**
       - sparkle/**
