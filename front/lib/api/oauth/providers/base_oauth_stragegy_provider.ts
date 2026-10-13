@@ -54,7 +54,10 @@ export interface BaseOAuthStrategyProvider {
   connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
 
   // Some providers sign their callback parameters in addition to using state.
-  isCallbackQueryValid?: (query: ParsedUrlQuery) => boolean;
+  isCallbackQueryValid?: (
+    query: ParsedUrlQuery,
+    connection: OAuthConnectionType
+  ) => boolean | Promise<boolean>;
 
   isExtraConfigValid: (
     extraConfig: ExtraConfigType,

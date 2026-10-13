@@ -857,6 +857,7 @@ export const CREDENTIALS_PROVIDERS = [
   "salesforce",
   "notion",
   "slack",
+  "shopify",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
