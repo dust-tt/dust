@@ -645,9 +645,16 @@ export class InternalMCPServerInMemoryResource {
       });
     }
 
+    // Like the update above, fields that were not provided keep their current value.
     this.internalServerCredential = {
-      sharedSecret: sharedSecret ?? null,
-      customHeaders: customHeaders ?? null,
+      sharedSecret:
+        sharedSecret !== undefined
+          ? sharedSecret
+          : (this.internalServerCredential?.sharedSecret ?? null),
+      customHeaders:
+        customHeaders !== undefined
+          ? customHeaders
+          : (this.internalServerCredential?.customHeaders ?? null),
     };
 
     return new Ok(undefined);
