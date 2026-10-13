@@ -9,22 +9,18 @@ import {
   DropdownMenuTrigger,
   Folder,
   Markdown,
-  MessageCircle01,
-  NavigationList,
-  NavigationListItem,
-  ScrollArea,
-  ScrollBar,
   Settings01,
+  XClose,
 } from "@dust-tt/sparkle";
-import {
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { getDataSourceIcon } from "../data/dataSources";
 import type { DataSource } from "../data/types";
+import {
+  PUPCHI_POD_FILES,
+  readPodDocument,
+  replyToPodComment,
+} from "../hooks/useMockConversations";
 import type {
   AgentMessage,
   ChatAgent,
@@ -34,6 +30,7 @@ import type {
 } from "../lib/coEdition";
 import { ConversationFilesPanel } from "./ConversationSidePanels";
 import { type AgentActivity, DocumentPanel } from "./doc/DocumentPanel";
+import { DocumentEditCard } from "./doc/DocumentEditCard";
 import type { DocSession } from "./doc/docTypes";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
@@ -48,6 +45,8 @@ import {
   NewConversationUserMessage,
 } from "./NewConversationMessages";
 import { PanelLayout, PanelLayoutNav, PanelLayoutPanel } from "./PanelLayout";
+import { PodPage } from "./PodPage";
+import { ProductionNav, ProductionNavTabs } from "./ProductionNav";
 
 // Dust's conversation layout (sidebar, conversation + composer, files side
 // panel) with a document co-edition panel next to the conversation.
@@ -234,6 +233,7 @@ function ConversationView({
   onSend,
   onOpenFile,
   subtitle,
+  onOpenEdit,
 }: {
   conversation: Conversation;
   agents: ChatAgent[];
@@ -243,6 +243,8 @@ function ConversationView({
   onOpenFile: (file: ChatFile) => void;
   /** Under the empty conversation's heading. */
   subtitle: string;
+  /** Opens the document an agent message edited, on its changes. */
+  onOpenEdit: (message: AgentMessage) => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastMessageId =
@@ -301,20 +303,31 @@ function ConversationView({
                   <NewConversationAgentMessage
                     hideActions={message.status === "streaming"}
                     isLastMessage={message.id === lastMessageId}
-                    citations={message.files.map((file) => (
-                      <NewCitation
-                        key={file.key}
-                        visual={getDataSourceIcon(toDataSource(file))}
-                        label={file.title}
-                        size="lg"
-                        onClick={() => onOpenFile(file)}
-                      />
-                    ))}
+                    citations={(message.edit ? [] : message.files).map(
+                      (file) => (
+                        <NewCitation
+                          key={file.key}
+                          visual={getDataSourceIcon(toDataSource(file))}
+                          label={file.title}
+                          size="lg"
+                          onClick={() => onOpenFile(file)}
+                        />
+                      )
+                    )}
                   >
                     <AgentMessageBody
                       message={message}
                       onOpenFile={onOpenFile}
                     />
+                    {message.edit && message.status === "done" && (
+                      <div className="pt-3">
+                        <DocumentEditCard
+                          title={message.edit.fileKey}
+                          subtitle={`Edited by ${message.agent.name}`}
+                          onClick={() => onOpenEdit(message)}
+                        />
+                      </div>
+                    )}
                   </NewConversationAgentMessage>
                 </NewConversationMessageGroup>
               )
@@ -345,6 +358,60 @@ function ConversationView({
   );
 }
 
+const fileNameOf = (path: string) => path.split("/").pop() ?? path;
+
+/**
+ * A markdown file of a Pod, open full page in the co-edition editor (today
+ * production opens it in a dialog, FilePreviewDialog).
+ */
+function PodDocument({
+  path,
+  session,
+  onSessionCreate,
+  onSessionChange,
+  agents,
+  agentName,
+  titleSlot,
+  toolbarSlot,
+}: {
+  path: string;
+  session: DocSession | undefined;
+  onSessionCreate: (session: DocSession) => void;
+  onSessionChange: (update: (session: DocSession) => DocSession) => void;
+  agents: ChatAgent[];
+  agentName: string;
+  titleSlot: HTMLElement | null;
+  toolbarSlot: HTMLElement | null;
+}) {
+  const authors = agents.map((a) => ({
+    name: a.name,
+    pictureUrl: a.pictureUrl,
+  }));
+  return (
+    <DocumentPanel
+      title={fileNameOf(path)}
+      loadDocument={() => readPodDocument(path)}
+      agentName={agentName}
+      session={session}
+      onSessionCreate={onSessionCreate}
+      onSessionChange={onSessionChange}
+      isConversationBusy={false}
+      conversationAgent={null}
+      agentRunCount={0}
+      toolbarSlot={toolbarSlot}
+      titleSlot={titleSlot}
+      diff={null}
+      onCloseDiff={() => {}}
+      askAgent={(request) => replyToPodComment({ ...request, fileKey: path })}
+      agents={authors}
+      fileAgents={[]}
+      findAgent={(name) =>
+        authors.find((a) => a.name.toLowerCase() === name.toLowerCase()) ?? null
+      }
+    />
+  );
+}
+
 // ── Conversations + documents ───────────────────────────────────────────────
 
 export function AgentConversations({
@@ -370,6 +437,18 @@ export function AgentConversations({
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isFilesOpen, setIsFilesOpen] = useState(false);
   const [openFile, setOpenFile] = useState<ChatFile | null>(null);
+  // A Pod's page in place of the conversation, with the markdown file open
+  // full page, if any.
+  const [podPage, setPodPage] = useState<{
+    pod: string;
+    openPath: string | null;
+  } | null>(null);
+  const [podTitleSlot, setPodTitleSlot] = useState<HTMLDivElement | null>(null);
+  const [podToolbarSlot, setPodToolbarSlot] = useState<HTMLDivElement | null>(
+    null
+  );
+  // The agent message whose edit the document panel shows as a diff.
+  const [diffMessageId, setDiffMessageId] = useState<string | null>(null);
   // Co-edition state per document, keyed by conversation and file.
   const [docSessions, setDocSessions] = useState<Record<string, DocSession>>(
     {}
@@ -378,9 +457,7 @@ export function AgentConversations({
   // Slot in the document panel's top bar where DocumentPanel renders its
   // actions (download, prototype options).
   // Slot next to the file name for the save status.
-  const [docTitleSlot, setDocTitleSlot] = useState<HTMLDivElement | null>(
-    null
-  );
+  const [docTitleSlot, setDocTitleSlot] = useState<HTMLDivElement | null>(null);
   const [docToolbarSlot, setDocToolbarSlot] = useState<HTMLDivElement | null>(
     null
   );
@@ -391,15 +468,22 @@ export function AgentConversations({
     agents[0];
   const files = conversationFiles(active);
 
+  const diffMessage = active.messages.find(
+    (m): m is AgentMessage =>
+      m.id === diffMessageId && m.role === "agent" && !!m.edit
+  );
+
   const closeSidePanels = () => {
     setIsFilesOpen(false);
     setOpenFile(null);
+    setDiffMessageId(null);
   };
 
   // A document gets the room it needs to be edited: the Files list closes.
   const openFileInPanel = (file: ChatFile) => {
     setIsFilesOpen(false);
     setOpenFile(file);
+    setDiffMessageId(null);
   };
 
   useEffect(() => {
@@ -416,6 +500,7 @@ export function AgentConversations({
 
   const selectConversation = (id: string) => {
     setActiveId(id);
+    setPodPage(null);
     closeSidePanels();
   };
 
@@ -437,132 +522,226 @@ export function AgentConversations({
   // `onNavClose` hides the sidebar when it overlays the panels (narrow
   // screens), once a conversation is picked or created.
   const renderNav = (onNavClose: () => void) => (
-    <div className="flex min-h-0 flex-1 flex-col bg-app-background">
-      <ScrollArea className="flex-1">
-        <ScrollBar orientation="vertical" size="minimal" />
-        <div className="flex items-center justify-between gap-2 p-sidebar-side-spacing">
-          <span className="heading-sm text-foreground">Conversations</span>
-          <Button
-            variant="highlight"
-            tooltip="Create a new conversation"
-            size="sm"
-            icon={MessageCircle01}
-            label="New"
-            onClick={() => {
-              startNewConversation();
-              closeSidePanels();
-              onNavClose();
-            }}
-          />
-        </div>
-        <NavigationList className="mx-sidebar-side-spacing pt-1">
-          {conversations.map((conversation) => (
-            <NavigationListItem
-              key={conversation.id}
-              label={conversation.title}
-              labelAnimation={conversation.isRunning ? "streaming" : "none"}
-              selected={conversation.id === active.id}
-              onClick={() => {
-                selectConversation(conversation.id);
-                onNavClose();
-              }}
-            />
-          ))}
-        </NavigationList>
-      </ScrollArea>
-    </div>
+    <ProductionNav
+      conversations={conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+        isRunning: c.isRunning,
+        createdAt: c.messages[0]?.createdAt ?? new Date(),
+      }))}
+      activeId={podPage ? null : active.id}
+      onSelect={(id) => {
+        selectConversation(id);
+        onNavClose();
+      }}
+      onNewConversation={() => {
+        startNewConversation();
+        setPodPage(null);
+        closeSidePanels();
+        onNavClose();
+      }}
+      selectedPod={podPage?.pod ?? null}
+      onSelectPod={(pod) => {
+        closeSidePanels();
+        setPodPage({ pod, openPath: null });
+        onNavClose();
+      }}
+    />
   );
 
   return (
-    <PanelLayout>
-      <PanelLayoutNav>{renderNav}</PanelLayoutNav>
+    <PanelLayout collapseNavWithSidePanel>
+      <PanelLayoutNav topBarLeft={<ProductionNavTabs />}>
+        {renderNav}
+      </PanelLayoutNav>
 
-      <PanelLayoutPanel
-        label={active.title}
-        isOpen={true}
-        onClose={() => {}}
-        // Never narrower than this, including when the document panel is
-        // dragged wider.
-        minimalWidth={400}
-        topBarLeft={
-          <Breadcrumbs
-            items={[{ label: active.title }]}
-            size="sm"
-            hasLighterFont
-          />
-        }
-        topBarRight={
-          <Button
-            size="sm"
-            variant="ghost-secondary"
-            icon={Folder}
-            tooltip="Files"
-            label={files.length > 0 ? String(files.length) : undefined}
-            onClick={() => {
-              if (isFilesOpen) {
-                closeSidePanels();
-              } else {
-                setIsFilesOpen(true);
+      {podPage ? (
+        <PanelLayoutPanel
+          label={podPage.openPath ? fileNameOf(podPage.openPath) : podPage.pod}
+          isOpen={true}
+          onClose={() => {}}
+          minimalWidth={400}
+          // The Pod, then the file open full page and its save status.
+          topBarLeft={
+            <div className="flex min-w-0 items-center gap-3">
+              <Breadcrumbs
+                items={[
+                  {
+                    label: podPage.pod,
+                    onClick: podPage.openPath
+                      ? () => setPodPage({ ...podPage, openPath: null })
+                      : undefined,
+                  },
+                  ...(podPage.openPath
+                    ? [{ label: fileNameOf(podPage.openPath) }]
+                    : []),
+                ]}
+                size="sm"
+                hasLighterFont
+              />
+              {podPage.openPath && (
+                <div
+                  ref={setPodTitleSlot}
+                  className="flex shrink-0 items-center empty:hidden"
+                />
+              )}
+            </div>
+          }
+          topBarRight={
+            podPage.openPath ? (
+              <div className="flex items-center gap-1">
+                <div
+                  ref={setPodToolbarSlot}
+                  className="flex items-center gap-1"
+                />
+                {/* Closes the file, back to the Pod's files. */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={XClose}
+                  tooltip="Close"
+                  onClick={() => setPodPage({ ...podPage, openPath: null })}
+                />
+              </div>
+            ) : undefined
+          }
+        >
+          {podPage.openPath ? (
+            <PodDocument
+              key={podPage.openPath}
+              path={podPage.openPath}
+              session={docSessions[`pod:${podPage.openPath}`]}
+              onSessionCreate={(session) =>
+                setDocSessions((prev) => ({
+                  ...prev,
+                  [`pod:${podPage.openPath}`]: session,
+                }))
+              }
+              onSessionChange={(update) =>
+                setDocSessions((prev) => {
+                  const key = `pod:${podPage.openPath}`;
+                  return prev[key]
+                    ? { ...prev, [key]: update(prev[key]) }
+                    : prev;
+                })
+              }
+              agents={agents}
+              agentName={selectedAgent.name}
+              titleSlot={podTitleSlot}
+              toolbarSlot={podToolbarSlot}
+            />
+          ) : (
+            <PodPage
+              files={PUPCHI_POD_FILES}
+              onOpenFile={(file) => {
+                if (file.path.endsWith(".md")) {
+                  setPodPage({ ...podPage, openPath: file.path });
+                }
+              }}
+            />
+          )}
+        </PanelLayoutPanel>
+      ) : (
+        <PanelLayoutPanel
+          label={active.title}
+          isOpen={true}
+          onClose={() => {}}
+          // Never narrower than this, including when the document panel is
+          // dragged wider.
+          minimalWidth={400}
+          topBarLeft={
+            <Breadcrumbs
+              items={[{ label: active.title }]}
+              size="sm"
+              hasLighterFont
+            />
+          }
+          topBarRight={
+            <Button
+              size="sm"
+              variant="ghost-secondary"
+              icon={Folder}
+              tooltip="Files"
+              label={files.length > 0 ? String(files.length) : undefined}
+              onClick={() => {
+                if (isFilesOpen) {
+                  closeSidePanels();
+                } else {
+                  // In place of the document, if one is open.
+                  setOpenFile(null);
+                  setDiffMessageId(null);
+                  setIsFilesOpen(true);
+                }
+              }}
+            />
+          }
+        >
+          <ConversationView
+            conversation={active}
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onSelectAgent={(agent) => setAgentId(agent.id)}
+            onSend={handleSend}
+            onOpenFile={openFileInPanel}
+            subtitle={subtitle}
+            onOpenEdit={(message) => {
+              const file = files.find((f) => f.key === message.edit?.fileKey);
+              if (file && message.edit) {
+                openFileInPanel(file);
+                setDiffMessageId(message.id);
               }
             }}
           />
-        }
-      >
-        <ConversationView
-          conversation={active}
-          agents={agents}
-          selectedAgent={selectedAgent}
-          onSelectAgent={(agent) => setAgentId(agent.id)}
-          onSend={handleSend}
-          onOpenFile={openFileInPanel}
-          subtitle={subtitle}
-        />
-      </PanelLayoutPanel>
+        </PanelLayoutPanel>
+      )}
 
+      {/* One side panel, for the conversation's Files or the document open
+      from them: each opens in place of the other. */}
       <PanelLayoutPanel
-        label="Files"
-        sizingType="secondary"
-        isOpen={isFilesOpen}
-        onClose={closeSidePanels}
-        topBarLeft={
-          <Breadcrumbs items={[{ label: "Files" }]} size="sm" hasLighterFont />
-        }
-      >
-        <ConversationFilesPanel
-          files={files.map(toDataSource)}
-          onFileOpen={(dataSource) => {
-            const file = files.find((f) => f.key === dataSource.id);
-            if (file) {
-              openFileInPanel(file);
-            }
-          }}
-        />
-      </PanelLayoutPanel>
-
-      <PanelLayoutPanel
-        label={openFile?.title ?? "File"}
+        label={isFilesOpen ? "Files" : (openFile?.title ?? "File")}
         // A document being edited takes focus, like a page.
         sizingType="default"
-        fullscreenEnabled
-        isOpen={openFile !== null}
-        onClose={() => setOpenFile(null)}
+        fullscreenEnabled={!isFilesOpen}
+        isOpen={isFilesOpen || openFile !== null}
+        onClose={closeSidePanels}
         // The file's name, then its save status (Figma, Co-edition top bar).
         topBarLeft={
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="min-w-16 truncate text-sm font-medium text-foreground">
-              {openFile?.title ?? "File"}
-            </span>
-            <div
-              ref={setDocTitleSlot}
-              className="flex shrink-0 items-center empty:hidden"
+          isFilesOpen ? (
+            <Breadcrumbs
+              items={[{ label: "Files" }]}
+              size="sm"
+              hasLighterFont
             />
-          </div>
+          ) : (
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="min-w-16 truncate text-sm font-medium text-foreground">
+                {openFile?.title ?? "File"}
+              </span>
+              <div
+                ref={setDocTitleSlot}
+                className="flex shrink-0 items-center empty:hidden"
+              />
+            </div>
+          )
         }
         topBarRight={
-          <div ref={setDocToolbarSlot} className="flex items-center gap-1" />
+          isFilesOpen ? undefined : (
+            <div ref={setDocToolbarSlot} className="flex items-center gap-1" />
+          )
         }
       >
-        {openFile && docKey && (
+        {isFilesOpen && (
+          <ConversationFilesPanel
+            files={files.map(toDataSource)}
+            onFileOpen={(dataSource) => {
+              const file = files.find((f) => f.key === dataSource.id);
+              if (file) {
+                openFileInPanel(file);
+              }
+            }}
+          />
+        )}
+        {!isFilesOpen && openFile && docKey && (
           <DocumentPanel
             key={docKey}
             title={openFile.title}
@@ -588,6 +767,17 @@ export function AgentConversations({
             }
             toolbarSlot={docToolbarSlot}
             titleSlot={docTitleSlot}
+            diff={
+              diffMessage?.edit && diffMessage.edit.fileKey === openFile.key
+                ? {
+                    before: diffMessage.edit.before,
+                    after: diffMessage.edit.after,
+                    by: diffMessage.agent.name,
+                    at: diffMessage.createdAt,
+                  }
+                : null
+            }
+            onCloseDiff={() => setDiffMessageId(null)}
             askAgent={(request) =>
               askFromComment(active, { ...request, fileKey: openFile.key })
             }

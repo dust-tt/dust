@@ -221,6 +221,20 @@ interface DocumentPanelProps {
   toolbarSlot: HTMLElement | null;
   /** Element next to the file name where the save status renders. */
   titleSlot: HTMLElement | null;
+  /**
+   * An agent's edit to show as a diff over the document, in place of the
+   * editor (opened from its card in the conversation).
+   */
+  diff: DocEditDiff | null;
+  onCloseDiff: () => void;
+}
+
+export interface DocEditDiff {
+  before: string;
+  after: string;
+  /** The agent that made the edit. */
+  by: string;
+  at: Date;
 }
 
 /** An agent working on the document: thinking, or typing its edit. */
@@ -401,6 +415,17 @@ function DocPresences({
   );
 }
 
+/** Over a diff: whose edit it is. */
+function DiffHeader({ diff }: { diff: DocEditDiff }) {
+  return (
+    <span className="truncate rounded-md bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-xs">
+      <span className="font-medium text-foreground">@{diff.by}</span>
+      {"'s changes · "}
+      {diff.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+    </span>
+  );
+}
+
 /** Production's CoEditionBadge. */
 function CoEditionBadge() {
   return (
@@ -437,6 +462,8 @@ export function DocumentPanel({
   isConversationBusy,
   conversationAgent,
   agentRunCount,
+  diff,
+  onCloseDiff,
 }: DocumentPanelProps) {
   const { isFullscreen, setFullscreen } = usePanelFullscreen();
   const editorRef = useRef<DocEditorHandle>(null);
@@ -788,6 +815,45 @@ export function DocumentPanel({
     onSessionChange,
     applyAgentEdit,
   ]);
+
+  // An agent's edit opened from the conversation: drawn over the document
+  // until a click outside the changes, or Escape.
+  const hasEditor = !!session;
+  useEffect(() => {
+    if (!hasEditor) {
+      return;
+    }
+    editorRef.current?.showDiff(
+      diff ? { before: diff.before, after: diff.after } : null
+    );
+  }, [hasEditor, diff?.before, diff?.after]);
+  const onCloseDiffRef = useRef(onCloseDiff);
+  useLayoutEffect(() => {
+    onCloseDiffRef.current = onCloseDiff;
+  });
+  const isDiffShown = !!diff;
+  useEffect(() => {
+    if (!isDiffShown) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".doc-diff-del, .doc-diff-ins")) {
+        onCloseDiffRef.current();
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        onCloseDiffRef.current();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isDiffShown]);
 
   if (loadError) {
     return (
@@ -1586,8 +1652,9 @@ export function DocumentPanel({
                 {/* The alpha badge, at the top of the document and over
                 everything (the comments list included) while it scrolls.
                 Only the badge takes clicks. */}
-                <div className="pointer-events-none sticky top-3 z-40 mb-5 flex [&>*]:pointer-events-auto">
+                <div className="pointer-events-none sticky top-3 z-40 mb-5 flex items-center gap-2 [&>*]:pointer-events-auto">
                   <CoEditionBadge />
+                  {diff && <DiffHeader diff={diff} />}
                 </div>
                 <DocEditor
                   ref={editorRef}

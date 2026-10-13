@@ -74,6 +74,13 @@ Single-protein recipes, no artificial colors, and an explicit exclusion of xylit
 - Repeat purchase within 45–60 days.
 `;
 
+// The benchmark as it was uploaded, before the agent's first edit (seeded in
+// the conversation the story opens on).
+const UPLOADED_DOCUMENT = DOCUMENT.replace(
+  "Pupchi should own the first-year moments instead: the first sit, the first walk, the first night at home.",
+  "Pupchi should lead on natural ingredients and a bakery look."
+).replace("Trial: 5,000 pouches", "Trial: 3,000 pouches");
+
 const NEXT_STEPS = `## Next steps
 
 - Run the concept test with both taglines in the first two weeks.
@@ -99,16 +106,102 @@ const REPLIES = {
     "I added a **Next steps** section at the end of the benchmark.",
   alreadyHasNextSteps:
     "The benchmark already ends with next steps. Comment on a passage and mention me, and I'll rework it.",
+  seededEdit:
+    "Done: the positioning now leans on the first-year moments rather than the bakery look, and the trial target is 5,000 pouches.",
   reworkedPassage: "Done: I expanded this passage with what we know so far.",
   answeredQuestion:
     "The prices are shelf prices collected this month. I'd confirm them with Sales before the concept test.",
 };
+
+const LAUNCH_PLAN = `# Pupchi launch plan
+
+## Goal
+
+Launch Pupchi in 300 pet stores and online by March, with 5,000 pouches sold in the first 8 weeks.
+
+## Timeline
+
+- January: concept test with both taglines, pouch size locked with Finance.
+- February: retail sell-in, launch email and social ads ready.
+- March: in-store launch and online availability.
+
+## Owners
+
+- Brand: packaging, taglines and launch creative.
+- Sales: retail sell-in and shelf placement.
+- Growth: launch email, social ads and the puppy-parent community.
+`;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The files of the Pupchi launch Pod (production's Pod Files). */
+export const PUPCHI_POD_FILES = [
+  { path: "pupchi-benchmark.md", contentType: "text/markdown", daysAgo: 0.02 },
+  { path: "Launch plan.md", contentType: "text/markdown", daysAgo: 2 },
+  { path: "Retail pricing.csv", contentType: "text/csv", daysAgo: 3 },
+  { path: "Pouch mockups.png", contentType: "image/png", daysAgo: 5 },
+  {
+    path: "Research/Puppy owner survey.pdf",
+    contentType: "application/pdf",
+    daysAgo: 9,
+  },
+  {
+    path: "Research/Competitor shelf photos.png",
+    contentType: "image/png",
+    daysAgo: 12,
+  },
+  {
+    path: "Research/Concept test brief.md",
+    contentType: "text/markdown",
+    daysAgo: 14,
+  },
+].map(({ daysAgo, ...file }) => ({
+  ...file,
+  modifiedAt: new Date(Date.now() - daysAgo * DAY_MS),
+}));
+
+const POD_DOCUMENTS: Record<string, string> = {
+  "pupchi-benchmark.md": DOCUMENT,
+  "Launch plan.md": LAUNCH_PLAN,
+  "Research/Concept test brief.md": `# Concept test brief
+
+Test both taglines with 600 puppy parents, on pack mockups and in a social ad.
+
+- “Tiny treat, big moment.”
+- “Made for their first year.”
+
+Success: top-2-box purchase intent above 40%.
+`,
+};
+
+/** A markdown file of the Pupchi launch Pod. */
+export async function readPodDocument(path: string): Promise<string> {
+  const text = POD_DOCUMENTS[path];
+  if (text === undefined) {
+    throw new Error("This document doesn't exist.");
+  }
+  return text;
+}
+
+/** An agent's fixed reply to a comment on a Pod document (no conversation). */
+export async function replyToPodComment(
+  request: CommentRequest
+): Promise<{ reply: string; markdown: string }> {
+  await sleep(2200);
+  const reply = replyToComment(request);
+  return {
+    reply: reply.content,
+    markdown: reply.markdown ?? request.markdown,
+  };
+}
 
 interface MockReply {
   content: string;
   tools: string[];
   // The document after the reply, if the reply edits it.
   markdown?: string;
+  // The document the agent edited (with the user's edits), if not the stored one.
+  before?: string;
 }
 
 // Markdown → plain text, to find which block a comment's quote is in.
@@ -152,6 +245,7 @@ function replyToMessage(
       content: REPLIES.addedNextSteps,
       tools: ["documents__edit"],
       markdown: `${openDocument.markdown.trimEnd()}\n\n${NEXT_STEPS}\n`,
+      before: openDocument.markdown,
     };
   }
   if (!hasDocument) {
@@ -173,6 +267,7 @@ function replyToComment(request: CommentRequest): MockReply {
     content: REPLIES.reworkedPassage,
     tools: ["documents__edit"],
     markdown: withPassageReworked(request.markdown, request.passage),
+    before: request.markdown,
   };
 }
 
@@ -199,6 +294,7 @@ function newConversation(): Conversation {
 // The conversation the story opens on: the document is already there.
 function seededConversation(): Conversation {
   const createdAt = new Date(Date.now() - 30 * 60 * 1000);
+  const editedAt = new Date(Date.now() - 10 * 60 * 1000);
   return {
     id: "pupchi",
     title: "Pupchi competitive benchmark",
@@ -220,6 +316,26 @@ function seededConversation(): Conversation {
         files: [documentFile(createdAt)],
         status: "done",
         createdAt,
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content:
+          "Bakery-style is crowded: reposition us on the first year. And Finance agreed to 5,000 pouches for the trial.",
+        createdAt: editedAt,
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "agent",
+        agent: AGENTS[0],
+        content: REPLIES.seededEdit,
+        tools: [
+          { id: crypto.randomUUID(), name: "documents__edit", status: "done" },
+        ],
+        files: [documentFile(editedAt)],
+        edit: { fileKey: FILE_KEY, before: UPLOADED_DOCUMENT, after: DOCUMENT },
+        status: "done",
+        createdAt: editedAt,
       },
     ],
   };
@@ -322,9 +438,17 @@ export function useMockConversations(): Conversations {
           ),
         }));
       }
+      const fileId = `${conversation.id}:${FILE_KEY}`;
+      const before = reply.before ?? files.current.get(fileId);
       if (reply.markdown !== undefined) {
-        files.current.set(`${conversation.id}:${FILE_KEY}`, reply.markdown);
+        files.current.set(fileId, reply.markdown);
       }
+      const edit =
+        reply.markdown !== undefined &&
+        before !== undefined &&
+        reply.markdown !== before
+          ? { fileKey: FILE_KEY, before, after: reply.markdown }
+          : undefined;
       const words = reply.content.split(/(?<=\s)/);
       for (let i = 0; i < words.length && isMounted.current; i += 3) {
         const chunk = words.slice(i, i + 3).join("");
@@ -335,6 +459,7 @@ export function useMockConversations(): Conversations {
         ...m,
         content: reply.content,
         files: reply.markdown !== undefined ? [documentFile(new Date())] : [],
+        edit,
         status: "done",
       }));
       updateConversation(conversation.id, (c) => ({ ...c, isRunning: false }));

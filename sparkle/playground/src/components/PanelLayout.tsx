@@ -440,9 +440,18 @@ PanelLayoutPanel.displayName = "PanelLayoutPanel";
 
 export interface PanelLayoutProps {
   children: ReactNode;
+  /**
+   * The nav collapses whenever a side panel opens, whatever the room, and
+   * stays collapsed when the panels close. The nav toggle opens it again
+   * (next to the panels too), until the next panel opens.
+   */
+  collapseNavWithSidePanel?: boolean;
 }
 
-export function PanelLayout({ children }: PanelLayoutProps) {
+export function PanelLayout({
+  children,
+  collapseNavWithSidePanel = false,
+}: PanelLayoutProps) {
   // ── Parse children ──────────────────────────────────────────────────────
   // Slot 0 = PanelLayoutNav, slots 1-3 = PanelLayoutPanel (P2, P3, P4)
   const childArray = Array.isArray(children) ? children : [children];
@@ -579,6 +588,9 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   /** Opened from the toggle button when the panels leave no room for the
    *  inline nav. Cleared as soon as the cursor leaves the overlay. */
   const [navPinned, setNavPinned] = useState(false);
+  /** Opened from the toggle button while the panels had taken its room: the
+   *  inline nav stays, the panels make room for it. Cleared when it hides. */
+  const [navForced, setNavForced] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageW, setStageW] = useState(0);
@@ -669,12 +681,16 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     stageW > 0 &&
     (panelEvicted ||
       effectiveFullscreen !== null ||
-      (stageW < NAV_AUTOHIDE_BELOW && visible.length >= 2) ||
+      ((collapseNavWithSidePanel || stageW < NAV_AUTOHIDE_BELOW) &&
+        visible.length >= 2) ||
       (stageW < NAV_WITH_THREE_PANELS_FROM && visible.length >= 3) ||
       (stageW < NAV_WITH_FOUR_PANELS_FROM && visible.length >= 4) ||
       navW + NAV_CARD_GAP + minWidthOf(visible) > stageW);
 
-  const showNavInline = navIntent && !isMobile && !spaceTight;
+  const showNavInline =
+    navIntent &&
+    !isMobile &&
+    (navForced ? effectiveFullscreen === null : !spaceTight);
   const navHidden = !showNavInline;
 
   // Even within the count cap, evict upper-most non-focus panels that cannot
@@ -696,7 +712,20 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   // fullscreen.
   const visibleKey = `${visible.join(",")}|${effectiveFocus}`;
   const prevVisibleKey = useRef(visibleKey);
+  const prevVisible = useRef(visible);
   if (prevVisibleKey.current !== visibleKey) {
+    // A panel opening collapses the nav, which stays collapsed once the
+    // panels close: only the toggle brings it back.
+    if (
+      collapseNavWithSidePanel &&
+      visible.some((i) => !prevVisible.current.includes(i))
+    ) {
+      Promise.resolve().then(() => {
+        setNavIntent(false);
+        setNavForced(false);
+      });
+    }
+    prevVisible.current = visible;
     if (manualWidths.some((w) => w !== null)) {
       Promise.resolve().then(() => setManualWidths([null, null, null]));
     }
@@ -913,20 +942,21 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   );
 
   // ── Nav toggle ──────────────────────────────────────────────────────────
-  // With room for the inline nav the button restores it. When the panels have
-  // taken that room, the overlay is the only way to show the nav, so the
-  // button opens it — the one case where it is shown without the cursor being
-  // at the left edge. It then behaves like a peek: leaving it closes it.
+  // The button always opens the inline nav; when the panels have taken its
+  // room, they make room for it. (The overlay still peeks in from the left
+  // edge.)
   const toggleNav = () => {
     if (showNavInline) {
       setNavIntent(false);
+      setNavForced(false);
       return;
     }
-    if (!isMobile && !spaceTight) {
-      setNavIntent(true);
-      return;
-    }
-    setNavPinned((v) => !v);
+    // The inline nav, even when the panels had taken its room: they shrink
+    // (or the upper-most ones close) to make room for it.
+    setNavIntent(true);
+    setNavForced(spaceTight);
+    setNavPinned(false);
+    setNavPeek(false);
   };
 
   // ── Nav show/hide button ────────────────────────────────────────────────
@@ -986,7 +1016,10 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                           variant="ghost"
                           size="sm"
                           icon={HideMenu}
-                          onClick={() => setNavIntent(false)}
+                          onClick={() => {
+                            setNavIntent(false);
+                            setNavForced(false);
+                          }}
                           tooltip="Hide navigation"
                         />
                       )}
@@ -1186,7 +1219,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   left={navChild?.props.topBarLeft}
                   right={navChild?.props.topBarRight}
                 />
-                <div className="flex-1">
+                <div className="flex min-h-0 flex-1 flex-col">
                   {mountNavOverlayContent ? resolvedNavChildren : null}
                 </div>
               </div>

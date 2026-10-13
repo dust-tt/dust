@@ -22,6 +22,13 @@ export interface ChatFile {
   createdAt: Date;
 }
 
+/** A document edit an agent made in a reply: the document before and after. */
+export interface DocEdit {
+  fileKey: string;
+  before: string;
+  after: string;
+}
+
 export type ChatMessage =
   | { id: string; role: "user"; content: string; createdAt: Date }
   | {
@@ -31,6 +38,8 @@ export type ChatMessage =
       content: string;
       tools: ToolStep[];
       files: ChatFile[];
+      /** The reply edited an existing document. */
+      edit?: DocEdit;
       status: "streaming" | "done";
       createdAt: Date;
     };
