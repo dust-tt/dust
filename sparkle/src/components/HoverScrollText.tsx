@@ -17,7 +17,7 @@ function hoverScrollStyle(overflowPx: number): HoverScrollStyle {
   };
 }
 
-interface HoverScrollTextProps {
+export interface HoverScrollTextProps {
   className?: string;
   text: string;
 }
@@ -25,7 +25,7 @@ interface HoverScrollTextProps {
 /**
  * @cc [owner:adrsimon,label:react;product] scrolls-only-when-truncated
  * The text MUST scroll forward only while an ancestor `group` is hovered and the text overflows
- * its box. When the hover ends it eases back to its start. Without overflow, or under reduced
+ * its box. When the hover ends it snaps back to its start. Without overflow, or under reduced
  * motion, it MUST render as a plain ellipsis-truncated line.
  */
 export function HoverScrollText({ className, text }: HoverScrollTextProps) {
@@ -59,10 +59,10 @@ export function HoverScrollText({ className, text }: HoverScrollTextProps) {
           "block truncate",
           canScroll &&
             cn(
-              "transition-transform duration-200 ease-out-cubic",
               "group-hover:overflow-visible group-hover:text-clip",
               "group-hover:translate-x-[calc(var(--scroll-distance)*-1)]",
-              "group-hover:delay-300 group-hover:duration-(--scroll-duration) group-hover:ease-linear"
+              // Transition only while hovered so the text snaps back when the hover ends.
+              "group-hover:transition-transform group-hover:delay-300 group-hover:duration-(--scroll-duration) group-hover:ease-linear"
             )
         )}
         style={canScroll ? hoverScrollStyle(overflowPx) : undefined}

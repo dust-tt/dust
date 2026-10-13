@@ -185,6 +185,7 @@ export {
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
+export type { HoverScrollTextProps } from "./HoverScrollText";
 export { HoverScrollText } from "./HoverScrollText";
 export type { DoubleIconProps } from "./Icon";
 export { DoubleIcon, Icon } from "./Icon";
