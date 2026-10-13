@@ -323,6 +323,58 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
 });
 
 describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
+  it("rejects userFavorite from a key that carries no user", async () => {
+    const { workspace, key, agentConfig, auth } = await setupTest("admin");
+
+    const response = await patchAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId,
+      { userFavorite: true, instructions: "Updated instructions" }
+    );
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(400);
+    expect(data.error.type).toBe("invalid_request_error");
+
+    const unchanged = await AgentResource.fetchById(auth, agentConfig.sId);
+    expect(unchanged?.version).toBe(agentConfig.version);
+  });
+
+  it("sets userFavorite for the user impersonated by a system key", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentConfig.sId}`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${systemKey.secret}`,
+          "content-type": "application/json",
+          "x-api-user-email": user.email,
+          "x-dust-role": "admin",
+        },
+        body: JSON.stringify({ userFavorite: true }),
+      }
+    );
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.userFavorite).toBe(true);
+  });
+
   it("applies configuration patch fields beyond userFavorite (regression dust-tt/dust#26698)", async () => {
     const { workspace, key, agentConfig } = await setupTest();
 
