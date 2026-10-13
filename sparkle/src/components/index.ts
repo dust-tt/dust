@@ -131,15 +131,6 @@ export {
 export { DiffBlock, type DiffChange } from "./DiffBlock";
 export type { DiscoveryGlintProps } from "./DiscoveryGlint";
 export { DiscoveryGlint } from "./DiscoveryGlint";
-export {
-  Document,
-  type DocumentComment,
-  type DocumentCommentAuthor,
-  type DocumentCommentReply,
-  type DocumentProps,
-  type DocumentSaveOutcome,
-  type DocumentSaveResult,
-} from "./Document";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,

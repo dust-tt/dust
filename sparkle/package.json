@@ -152,9 +152,6 @@
     "@tanstack/react-table": "^8.13.0",
     "@tanstack/react-virtual": "^3.5.0",
     "@tiptap/core": "^3.31.4",
-    "@tiptap/extension-bubble-menu": "^3.31.4",
-    "@tiptap/extensions": "^3.31.4",
-    "@tiptap/markdown": "^3.31.4",
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
@@ -177,7 +174,6 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.3",
     "tailwind-scrollbar-hide": "^1.1.7",
-    "unist-util-visit": "^5.0.0",
-    "zod": "^3.25.76"
+    "unist-util-visit": "^5.0.0"
   }
 }
