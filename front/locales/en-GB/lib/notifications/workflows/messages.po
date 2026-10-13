@@ -38,6 +38,7 @@ msgid "Reply to {requesterName}"
 msgstr ""
 
 #: front/lib/notifications/workflows/agent-message-feedback.ts
+#: front/lib/notifications/workflows/document-comment-mention.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "Someone"
 msgstr ""
@@ -237,6 +238,22 @@ msgstr ""
 
 #: front/lib/notifications/workflows/credit-usage-alert.ts
 msgid "Purchase credits"
+msgstr ""
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "{author} mentioned you in \"{fileName}\""
+msgstr ""
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "{author} mentioned you in a comment on \"{fileName}\"."
+msgstr ""
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "View document"
+msgstr ""
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "[Dust] You were mentioned {count, plural, one {once} other {# times}}"
 msgstr ""
 
 #: front/lib/notifications/workflows/frame-sharing.ts
