@@ -38,6 +38,10 @@ const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
 const EGRESS_FORWARDER_LOG_PATH = "/tmp/dust-forwarder.log";
 const EGRESS_SETUP_WAIT_RETRIES = 6;
 const EGRESS_SETUP_WAIT_MS = 500;
+// E2B applies an exec's timeoutMs to the whole RPC, including waiting for envd
+// to report the process start, so this budget also absorbs network and envd
+// latency: at 1s a single slow round trip failed otherwise healthy invocations.
+const EGRESS_HEALTHCHECK_TIMEOUT_MS = 5_000;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
 const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 
@@ -340,7 +344,7 @@ async function checkEgressForwarderHealth(
   // reads /proc/net/{tcp,udp} which is fine non-root but pointless to split.
   const result = await traceSandboxStartupPhase("egress.healthcheck", () =>
     sandbox.execRoot(auth, buildEgressHealthcheckCommand(), {
-      timeoutMs: 1_000,
+      timeoutMs: EGRESS_HEALTHCHECK_TIMEOUT_MS,
     })
   );
 
