@@ -856,6 +856,16 @@ export class DfsFileSystem {
       return file;
     }
     const { objectId, attr } = file.value;
+    // Writing a file while streaming it would truncate it before it is fully read.
+    const destination = await this.resolve(dest);
+    if (destination.isErr()) {
+      return destination;
+    }
+    if (destination.value?.id === objectId) {
+      return new Err(
+        new DfsError("invalid_input", "Cannot copy a file onto itself.")
+      );
+    }
     const withMetadata = await this.statById(objectId, true);
     if (withMetadata.isErr()) {
       return withMetadata;
@@ -863,7 +873,8 @@ export class DfsFileSystem {
     return this.write(
       dest,
       Readable.from(this.readChunks(objectId, attr)),
-      { mimeType: withMetadata.value?.metadata?.mimeType }
+      // An empty MIME type clears the destination's, as the source has none.
+      { mimeType: withMetadata.value?.metadata?.mimeType ?? "" }
     );
   }
 

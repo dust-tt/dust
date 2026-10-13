@@ -417,6 +417,40 @@ describe("DfsFileSystem", () => {
     );
   });
 
+  it("refuses to copy a file onto itself, even through another URI", async () => {
+    const { fs, at } = setup();
+    // More than one write chunk, so a self-copy would truncate it while reading it.
+    const file = await fs.write(at("data.bin"), "0123456789");
+    expect(file.isOk()).toBe(true);
+    if (!file.isOk()) {
+      return;
+    }
+
+    const byPath = await fs.copy(at("data.bin"), at("data.bin"));
+    const byId = await fs.copy(at("data.bin"), file.value.uri);
+
+    expect(byPath.isErr() && byPath.error.code).toBe("invalid_input");
+    expect(byId.isErr() && byId.error.code).toBe("invalid_input");
+    expect(await readText(fs, at("data.bin"))).toBe("0123456789");
+  });
+
+  it("copies a file without MIME type, clearing the destination's", async () => {
+    const { fs, at } = setup();
+    await fs.write(at("src.bin"), "src", { mimeType: "" });
+    await fs.write(at("existing.bin"), "old", { mimeType: "text/plain" });
+
+    await fs.copy(at("src.bin"), at("new.bin"));
+    await fs.copy(at("src.bin"), at("existing.bin"));
+
+    for (const name of ["new.bin", "existing.bin"]) {
+      const stat = await fs.stat(at(name), { includeMetadata: true });
+      expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
+        undefined
+      );
+      expect(await readText(fs, at(name))).toBe("src");
+    }
+  });
+
   it("moves a file keeping its id and refuses to overwrite unless asked", async () => {
     const { fs, at } = setup();
     const original = await fs.write(at("a.txt"), "a");

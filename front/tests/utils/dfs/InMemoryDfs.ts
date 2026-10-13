@@ -26,7 +26,8 @@ interface FakeNode {
   name: string;
   kind: DfsObjectKind;
   data: Buffer;
-  mimeType: string;
+  // Undefined once cleared with an empty MIME type.
+  mimeType: string | undefined;
   children: Map<string, DfsObjectId>;
   attrVersion: bigint;
   contentVersion: bigint;
@@ -44,10 +45,12 @@ function checkName(name: string) {
   }
 }
 
-// A simplified version of the API's "valid and at most 255 bytes" MIME type rule.
+// A simplified version of the API's "valid and at most 255 bytes" MIME type rule. An empty MIME
+// type is valid: it clears the stored one.
 function checkMimeType(mimeType: string | undefined) {
   if (
     mimeType !== undefined &&
+    mimeType !== "" &&
     (!/^[^/\s]+\/[^/\s]+$/.test(mimeType) || Buffer.byteLength(mimeType) > 255)
   ) {
     throw new OperationError("invalid_input");
@@ -100,8 +103,12 @@ export class InMemoryDfs implements DfsFileSystemClient {
       kind,
       data: Buffer.alloc(0),
       mimeType:
-        mimeType ??
-        (kind === "directory" ? "inode/directory" : "application/octet-stream"),
+        mimeType === ""
+          ? undefined
+          : (mimeType ??
+            (kind === "directory"
+              ? "inode/directory"
+              : "application/octet-stream")),
       children: new Map(),
       attrVersion: BigInt(1),
       contentVersion: BigInt(1),
@@ -370,7 +377,7 @@ export class InMemoryDfs implements DfsFileSystemClient {
           throw new OperationError("is_directory");
         }
         if (op.mimeType !== undefined) {
-          node.mimeType = op.mimeType;
+          node.mimeType = op.mimeType === "" ? undefined : op.mimeType;
         }
         if (op.size !== undefined) {
           const resized = Buffer.alloc(op.size);
