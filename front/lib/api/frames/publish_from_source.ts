@@ -6,7 +6,7 @@ import {
   buildAndPublishFramePublication,
   buildFramePublication,
 } from "@app/lib/api/frames/build_and_publish";
-import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { reconcileFramePublicationDatabasesOnStagedSource } from "@app/lib/api/frames/database_reconciliation";
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import {
@@ -15,6 +15,8 @@ import {
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
+import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
+import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { getFrameFunctionSharingConflict } from "@app/lib/api/share/frame_sharing";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -430,6 +432,49 @@ async function resolveLegacyFrameReplacement(
 }
 
 /**
+ * Reconcile declared databases on the Frame sandbox after legacy→v2 conversion.
+ * Staging + reconcile only; callers own convert/restore. No-op when no databases.
+ */
+async function reconcileConvertedLegacyFrameDatabases(
+  auth: Authenticator,
+  {
+    frame,
+    manifest,
+    sourceFiles,
+  }: {
+    frame: FileResource;
+    manifest: FrameManifest;
+    sourceFiles: FramePublicationSourceFile[];
+  }
+): Promise<Result<void, SandboxFunctionError>> {
+  if (manifest.databases.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const ensureResult = await ensureFrameSandboxReady(auth, frame);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+  const { sandbox } = ensureResult.value;
+  return withStagedFrameSource(
+    auth,
+    { sandbox, sourceFiles },
+    async (stagingDirectory) =>
+      reconcileFramePublicationDatabasesOnStagedSource(auth, {
+        frame,
+        sandbox,
+        stagingDirectory,
+        manifest,
+      })
+  );
+}
+
+/**
  * @cc [owner:pierremilliotte,label:product;backend] legacy-frame-replacement-is-atomic
  * Replacing a legacy Frame MUST leave it untouched unless the v2 replacement builds, passes its
  * publication contracts, and activates. A build or contract failure MUST NOT convert the legacy
@@ -538,11 +583,14 @@ async function replaceLegacyFrameFromSource(
       manifestMountFilePath: target.manifestMountFilePath,
     };
     try {
-      const reconciliation = await reconcileFramePublicationDatabases(auth, {
-        frame: legacyFrame,
-        manifest,
-        sourceFiles,
-      });
+      const reconciliation = await reconcileConvertedLegacyFrameDatabases(
+        auth,
+        {
+          frame: legacyFrame,
+          manifest,
+          sourceFiles,
+        }
+      );
       if (reconciliation.isErr()) {
         logger.warn(
           { ...logContext, error: reconciliation.error },
