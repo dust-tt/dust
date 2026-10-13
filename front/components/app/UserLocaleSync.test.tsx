@@ -49,6 +49,7 @@ function renderUserLocaleSync(onReady?: () => void) {
 describe("UserLocaleSync", () => {
   beforeAll(async () => {
     await loadCatalog("fr-FR");
+    await loadCatalog("en-GB");
   });
 
   beforeEach(() => {
