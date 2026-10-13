@@ -1,5 +1,7 @@
 import {
+  escapeFrameEmbedLines,
   findFrameEmbedDirective,
+  isFrameEmbedPath,
   parseFrameEmbedDirective,
   serializeFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
@@ -34,5 +36,19 @@ describe("frame embed directive", () => {
   it("finds a directive only at the start of a line", () => {
     expect(findFrameEmbedDirective('Intro\n::frame{path="a"}')).toBe(6);
     expect(findFrameEmbedDirective('Intro ::frame{path="a"}')).toBe(-1);
+    expect(findFrameEmbedDirective('::frame{path="a"}')).toBe(-1);
   });
+
+  it("escapes every line that opens like a directive", () => {
+    expect(
+      escapeFrameEmbedLines('::frame{path="a"}\nText ::frame{\n::frame{x')
+    ).toBe('\\::frame{path="a"}\nText ::frame{\n\\::frame{x');
+  });
+
+  it.each(["", "pod-abc/a\nb.tsx", "pod-abc/a\rb.tsx"])(
+    "refuses the path %j",
+    (path) => {
+      expect(isFrameEmbedPath(path)).toBe(false);
+    }
+  );
 });

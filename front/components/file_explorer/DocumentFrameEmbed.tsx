@@ -1,10 +1,8 @@
 import { DocumentFrameFallback } from "@app/components/editor/document/DocumentFrame";
 import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
-import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
+import { useRenderableFrameAtPath } from "@app/hooks/useRenderableFrameAtPath";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
-import { isFrameContentType, stripMimeParameters } from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -26,8 +24,10 @@ export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
   const vizUrl = useContext(AuthContext)?.vizUrl;
   const scope = parseCanonicalScopedPath(path)?.scope;
   const podId = scope?.kind === "canonical-pod" ? scope.id : null;
-  const { fileId, fileContent, fileContentType, isLoading, error } =
-    usePodFrameRenderableContent({ owner, framePath: path });
+  const { frame, isLoading } = useRenderableFrameAtPath({
+    owner,
+    framePath: path,
+  });
   const { spaceInfo: podInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: podId,
@@ -42,17 +42,7 @@ export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
     );
   }
 
-  const contentType = fileContentType
-    ? stripMimeParameters(fileContentType)
-    : null;
-  if (
-    error ||
-    !vizUrl ||
-    !fileId ||
-    !fileContent ||
-    !contentType ||
-    !isFrameContentType(contentType)
-  ) {
+  if (!vizUrl || !frame) {
     return <DocumentFrameFallback path={path} />;
   }
 
@@ -64,16 +54,12 @@ export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
         conversationId={
           scope?.kind === "canonical-conversation" ? scope.id : null
         }
-        fileContent={fileContent}
+        fileContent={frame.fileContent}
         vizUrl={vizUrl}
-        identifier={`viz-document-frame-${fileId}`}
+        identifier={`viz-document-frame-${frame.fileId}`}
         isPodEditor={podInfo?.isEditor}
         isPodMember={podInfo?.isMember}
-        frameId={
-          getFrameFunctionReferenceKind(contentType) === "v2"
-            ? fileId
-            : undefined
-        }
+        frameId={frame.frameId}
         framePath={path}
       />
     </div>

@@ -1,5 +1,6 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
+import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
 import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
@@ -25,10 +26,6 @@ interface DocumentMarkdownPreviewProps {
   resolveImageSource: DocumentProps["resolveImageSource"];
 }
 
-interface FrameEmbedProps {
-  path: string;
-}
-
 interface MarkdownNode {
   type: string;
   name?: string;
@@ -42,12 +39,14 @@ interface MarkdownNode {
 }
 
 // The renderer reads any `::frame` leaf directive; the editor reads only the exact line
-// `parseFrameEmbedDirective` accepts, at the start of a top-level line, so the preview re-reads the
-// directive's source the same way and shows anything else as the text the editor keeps.
+// `parseFrameEmbedDirective` accepts, at the start of a top-level line and never opening a list
+// item, so the preview re-reads the directive's source the same way and shows anything else as
+// the text the editor keeps.
 function withFrameEmbeds(
   node: MarkdownNode,
   source: string,
-  isTopLevel: boolean
+  isTopLevel: boolean,
+  opensListItem: boolean
 ): MarkdownNode {
   if (
     node.type === "leafDirective" &&
@@ -60,7 +59,9 @@ function withFrameEmbeds(
     }
     const raw = source.slice(start.offset, end);
     const parsed =
-      !isTopLevel || start.column === 1 ? parseFrameEmbedDirective(raw) : null;
+      !opensListItem && (!isTopLevel || start.column === 1)
+        ? parseFrameEmbedDirective(raw)
+        : null;
     if (!parsed) {
       return { type: "paragraph", children: [{ type: "text", value: raw }] };
     }
@@ -76,8 +77,13 @@ function withFrameEmbeds(
   return node.children
     ? {
         ...node,
-        children: node.children.map((child) =>
-          withFrameEmbeds(child, source, node.type === "root")
+        children: node.children.map((child, index) =>
+          withFrameEmbeds(
+            child,
+            source,
+            node.type === "root",
+            node.type === "listItem" && index === 0
+          )
         ),
       }
     : node;
@@ -85,12 +91,12 @@ function withFrameEmbeds(
 
 function frameEmbedDirective() {
   return (tree: MarkdownNode, file: { value: unknown }) =>
-    withFrameEmbeds(tree, String(file.value), false);
+    withFrameEmbeds(tree, String(file.value), false, false);
 }
 
 const MARKDOWN_PLUGINS = [frameEmbedDirective];
 
-const FrameEmbed = ({ path }: FrameEmbedProps) => (
+const FrameEmbed = ({ path }: DocumentFramePathProps) => (
   <div className="my-6">
     <DocumentFrameDisplay path={path} />
   </div>

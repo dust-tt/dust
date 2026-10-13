@@ -1423,6 +1423,21 @@ describe("Document Frame embeds", () => {
         .match(/::frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
     ).toHaveLength(2);
   });
+  it("does not paste a Frame whose path it cannot write", async () => {
+    const dom = await renderFrames();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        '<div data-document-frame=""></div><div data-document-frame="pod-abc/a&#10;b.tsx"></div>'
+      );
+    });
+
+    expect(
+      dom.editor.getJSON().content?.filter((node) => node.type === "frameEmbed")
+    ).toHaveLength(1);
+  });
+
   it("keeps a Frame mounted when the read-only preview re-renders", async () => {
     const renderPreview = () => (
       <DocumentEditor
@@ -1454,7 +1469,7 @@ describe("Document Frame embeds", () => {
     ];
     render(
       <DocumentEditor
-        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::frame{path="pod-abc/quoted.tsx"}\n\n| A |\n| --- |\n| 1 |\n`}
+        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::frame{path="pod-abc/quoted.tsx"}\n\n- ::frame{path="pod-abc/listed.tsx"}\n\n| A |\n| --- |\n| 1 |\n`}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
         resolveImageSource={NO_IMAGE_SOURCE}
@@ -1468,5 +1483,8 @@ describe("Document Frame embeds", () => {
     for (const line of rejected) {
       expect(screen.getByText(line.trim())).toBeDefined();
     }
+    expect(
+      screen.getByText('::frame{path="pod-abc/listed.tsx"}')
+    ).toBeDefined();
   });
 });

@@ -8,6 +8,7 @@ import {
   substituteAnchorDirectives,
 } from "@app/components/editor/document/DocumentCommentAnchor";
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
+import { DOCUMENT_FRAME_NODE_NAME } from "@app/components/editor/document/DocumentFrame";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
 import {
   hasExtraCells,
@@ -16,8 +17,10 @@ import {
 } from "@app/components/editor/document/DocumentTable";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
+import { serializeFrameEmbedDirective } from "@app/lib/markdown/frame_embed";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   ExtendableConfig,
   JSONContent,
@@ -220,8 +223,33 @@ const imagesInParagraphs = (node: JSONContent): JSONContent => {
   };
 };
 
+// A list item opens with a paragraph, so a frame line opening one reads as the text its paragraph
+// writes back escaped.
+const framesOpeningListItemsAsText = (node: JSONContent): JSONContent => {
+  if (!node.content) {
+    return node;
+  }
+  const content = node.content.map(framesOpeningListItemsAsText);
+  const [first] = content;
+  if (
+    node.type === "listItem" &&
+    first?.type === DOCUMENT_FRAME_NODE_NAME &&
+    isString(first.attrs?.path)
+  ) {
+    content[0] = {
+      type: "paragraph",
+      content: [
+        { type: "text", text: serializeFrameEmbedDirective(first.attrs.path) },
+      ],
+    };
+  }
+  return { ...node, content };
+};
+
 const parseMarkdown = (markdown: string): JSONContent =>
-  imagesInParagraphs(documentMarkdown.parse(markdown));
+  framesOpeningListItemsAsText(
+    imagesInParagraphs(documentMarkdown.parse(markdown))
+  );
 
 const withoutEdgeSpaces = (inlines: JSONContent[]): JSONContent[] => {
   const trimmed = [...inlines];

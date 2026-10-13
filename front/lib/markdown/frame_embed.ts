@@ -8,14 +8,23 @@ const FRAME_EMBED_DIRECTIVE_REGEX = new RegExp(
   String.raw`^::${FRAME_EMBED_DIRECTIVE_NAME}\{path="((?:[^"&<>'\n]|&(?:amp|lt|gt|quot|#39);)+)"\}[ \t]*(?:\n|$)`
 );
 
+const FRAME_EMBED_DIRECTIVE_START = String.raw`::${FRAME_EMBED_DIRECTIVE_NAME}\{`;
+
 const FRAME_EMBED_DIRECTIVE_START_REGEX = new RegExp(
-  String.raw`(^|\n)::${FRAME_EMBED_DIRECTIVE_NAME}\{`
+  String.raw`\n${FRAME_EMBED_DIRECTIVE_START}`
 );
 
-/** Index of the first line that may open a frame embed in `src`, or -1. */
+const FRAME_EMBED_LINE_START_REGEX = new RegExp(
+  String.raw`(^|\n)(${FRAME_EMBED_DIRECTIVE_START})`,
+  "g"
+);
+
+// marked looks for the block that interrupts a paragraph in the paragraph's source after its first
+// character, so the start of `src` is not the start of a line.
+/** Index of the first line of `src` after its first that may open a frame embed, or -1. */
 export function findFrameEmbedDirective(src: string): number {
-  const match = src.match(FRAME_EMBED_DIRECTIVE_START_REGEX);
-  return match?.index === undefined ? -1 : match.index + match[1].length;
+  const index = src.search(FRAME_EMBED_DIRECTIVE_START_REGEX);
+  return index === -1 ? -1 : index + 1;
 }
 
 /**
@@ -23,7 +32,9 @@ export function findFrameEmbedDirective(src: string): number {
  * A frame embed MUST be read only from a line holding exactly `::frame{path="<path>"}`, trailing
  * spaces aside, its path HTML-escaped and non-empty; anything else MUST NOT parse, so a writer
  * never drops what the directive does not define. `serializeFrameEmbedDirective` MUST write a
- * line this function reads back to the same path.
+ * line this function reads back to the same path for any path `isFrameEmbedPath` accepts.
+ * `escapeFrameEmbedLines` MUST leave no line opening with `::frame{`, and its output MUST read
+ * back as Markdown text unchanged.
  */
 export function parseFrameEmbedDirective(
   src: string
@@ -34,4 +45,12 @@ export function parseFrameEmbedDirective(
 
 export function serializeFrameEmbedDirective(path: string): string {
   return `::${FRAME_EMBED_DIRECTIVE_NAME}{path="${escape(path)}"}`;
+}
+
+export function isFrameEmbedPath(path: string): boolean {
+  return path.length > 0 && !/[\r\n]/.test(path);
+}
+
+export function escapeFrameEmbedLines(markdown: string): string {
+  return markdown.replace(FRAME_EMBED_LINE_START_REGEX, "$1\\$2");
 }

@@ -1,10 +1,9 @@
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
 import { PodFileTabPreview } from "@app/components/pod/PodFileTabPreview";
 import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
-import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
+import { useRenderableFrameAtPath } from "@app/hooks/useRenderableFrameAtPath";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileMetadataFromPath } from "@app/lib/swr/files";
-import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import { isFrameContentType, stripMimeParameters } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
@@ -78,11 +77,7 @@ function PodFileTabVisualization({
   framePath: string;
   vizUrl: string | null;
 }) {
-  const { fileId, fileContent, fileContentType, isLoading, isNotFound } =
-    usePodFrameRenderableContent({
-      owner,
-      framePath,
-    });
+  const { frame, isLoading } = useRenderableFrameAtPath({ owner, framePath });
 
   if (isLoading) {
     return (
@@ -92,7 +87,7 @@ function PodFileTabVisualization({
     );
   }
 
-  if (isNotFound || !fileId || !fileContent || !vizUrl) {
+  if (!frame || !vizUrl) {
     return <MissingPodFileTabCallout path={framePath} kind="frame" />;
   }
 
@@ -102,16 +97,12 @@ function PodFileTabVisualization({
         <PodFrameVisualization
           owner={owner}
           spaceId={podInfo.sId}
-          fileContent={fileContent}
+          fileContent={frame.fileContent}
           vizUrl={vizUrl}
-          identifier={`viz-frame-tab-${fileId}`}
+          identifier={`viz-frame-tab-${frame.fileId}`}
           isPodEditor={podInfo.isEditor}
           isPodMember={podInfo.isMember}
-          frameId={
-            getFrameFunctionReferenceKind(fileContentType) === "v2"
-              ? fileId
-              : undefined
-          }
+          frameId={frame.frameId}
           framePath={framePath}
         />
       </div>

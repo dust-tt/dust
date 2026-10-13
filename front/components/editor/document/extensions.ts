@@ -7,6 +7,7 @@ import {
 import { DocumentFrame } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
+import { DocumentParagraph } from "@app/components/editor/document/DocumentParagraph";
 import {
   DocumentTable,
   DocumentTableCell,
@@ -40,7 +41,7 @@ const starterKitOptions: Partial<StarterKitOptions> = {
       ),
     },
   },
-  paragraph: { HTMLAttributes: { class: "my-2.5" } },
+  paragraph: false,
   bold: { HTMLAttributes: { class: "font-semibold" } },
   bulletList: { HTMLAttributes: { class: "my-3 list-disc pl-6" } },
   orderedList: { HTMLAttributes: { class: "my-3 list-decimal pl-6" } },
@@ -108,6 +109,7 @@ const buildSchemaExtensions = ({
     ? DocumentImage.configure({ resolveSource: resolveImageSource })
     : DocumentImage,
   DocumentFrame,
+  DocumentParagraph.configure({ HTMLAttributes: { class: "my-2.5" } }),
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),

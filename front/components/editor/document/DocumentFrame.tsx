@@ -1,6 +1,7 @@
 import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentEmbeds";
 import {
   findFrameEmbedDirective,
+  isFrameEmbedPath,
   parseFrameEmbedDirective,
   serializeFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
@@ -14,21 +15,17 @@ export const DOCUMENT_FRAME_NODE_NAME = "frameEmbed";
 
 const FRAME_PATH_ATTRIBUTE = "data-document-frame";
 
-interface DocumentFrameFallbackProps {
+export interface DocumentFramePathProps {
   path: string;
 }
 
-export const DocumentFrameFallback = ({ path }: DocumentFrameFallbackProps) => (
+export const DocumentFrameFallback = ({ path }: DocumentFramePathProps) => (
   <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
     {path}
   </p>
 );
 
-interface DocumentFrameDisplayProps {
-  path: string;
-}
-
-export const DocumentFrameDisplay = ({ path }: DocumentFrameDisplayProps) => {
+export const DocumentFrameDisplay = ({ path }: DocumentFramePathProps) => {
   const { renderFrame } = useContext(DocumentEmbedsContext);
 
   return renderFrame ? (
@@ -50,10 +47,12 @@ const DocumentFrameView = ({ node }: NodeViewProps) => {
 
 /**
  * @cc [owner:tdraier,label:product;security] document-frame-embed
- * A frame embed MUST be read only from a `frame-embed-directive` line and MUST keep its path
- * through load, save, copy and paste. It MUST display only through the host's `renderFrame`, and
- * without one as its path, so the editor never loads a Frame the host did not resolve. Events
- * inside it MUST reach the Frame, not the editor.
+ * A frame embed MUST be read only from a `frame-embed-directive` line, never as a list item's
+ * first block, which the schema holds only as a paragraph, and MUST keep its path through load,
+ * save, copy and paste. Pasted content MUST NOT create one whose path `isFrameEmbedPath` refuses.
+ * It MUST display only through the host's `renderFrame`, and without one as its path, so the
+ * editor never loads a Frame the host did not resolve. Events inside it MUST reach the Frame, not
+ * the editor.
  */
 export const DocumentFrame = Node.create({
   name: DOCUMENT_FRAME_NODE_NAME,
@@ -67,7 +66,15 @@ export const DocumentFrame = Node.create({
       parseHTML: (element) => element.getAttribute(FRAME_PATH_ATTRIBUTE),
     },
   }),
-  parseHTML: () => [{ tag: `div[${FRAME_PATH_ATTRIBUTE}]` }],
+  parseHTML: () => [
+    {
+      tag: `div[${FRAME_PATH_ATTRIBUTE}]`,
+      getAttrs: (element) =>
+        isFrameEmbedPath(element.getAttribute(FRAME_PATH_ATTRIBUTE) ?? "")
+          ? null
+          : false,
+    },
+  ],
   renderHTML: ({ node }) => {
     const path = isString(node.attrs.path) ? node.attrs.path : "";
     return ["div", { [FRAME_PATH_ATTRIBUTE]: path }, path];
