@@ -117,6 +117,7 @@ export { default as UkgLogo } from "./Ukg";
 export { default as ValTownLogo } from "./ValTown";
 export { default as VantaLogo } from "./Vanta";
 export { default as VideoLogo } from "./Video";
+export { default as WebflowLogo } from "./Webflow";
 export { default as YoutrustLogo } from "./Youtrust";
 export { default as ZaiLogo } from "./Zai";
 export { default as ZapierLogo } from "./Zapier";

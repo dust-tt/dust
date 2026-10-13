@@ -111,6 +111,7 @@ import {
   ValTownLogo,
   VantaLogo,
   VolumeMax,
+  WebflowLogo,
   YoutrustLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
@@ -314,6 +315,7 @@ export const InternalActionIcons = {
   UkgLogo,
   ValTownLogo,
   VantaLogo,
+  WebflowLogo,
   YoutrustLogo,
   ZendeskLogo,
 };

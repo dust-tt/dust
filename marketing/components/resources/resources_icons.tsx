@@ -93,6 +93,7 @@ import {
   ValTownLogo,
   VantaLogo,
   VolumeMax,
+  WebflowLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
@@ -233,6 +234,7 @@ export const InternalActionIcons = {
   UkgLogo,
   ValTownLogo,
   VantaLogo,
+  WebflowLogo,
   ZendeskLogo,
 };
 

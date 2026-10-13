@@ -3739,6 +3739,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
+  | "WebflowLogo"
   | "YoutrustLogo"
   | "ZendeskLogo"
 >();
