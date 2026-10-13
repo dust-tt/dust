@@ -30,6 +30,7 @@ import {
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+import { claimNeverStartedToolActivityActivity } from "@app/temporal/agent_loop/activities/tool_activity_start_marker";
 import {
   BATCH_QUEUE_NAME,
   INTERACTIVE_QUEUE_NAME,
@@ -131,6 +132,7 @@ async function runAgentLoopWorkerForQueue({
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
+      claimNeverStartedToolActivityActivity,
     },
     taskQueue,
     connection,
