@@ -5,9 +5,9 @@ import {
 
 import {
   EXCEL_TOOLS_METADATA,
-  NOOP_TOOL_NAME,
+  READ_WORKBOOK_TOOL_NAME,
 } from "@extension/platforms/excel/tools/metadata";
-import { noopTool } from "@extension/platforms/excel/tools/noopTool";
+import { readWorkbookTool } from "@extension/platforms/excel/tools/readWorkbookTool";
 import { registerClientTools } from "@extension/shared/lib/mcp_tools";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -17,7 +17,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  */
 export function registerAllTools(server: McpServer): void {
   const handlers: ClientToolHandlers<typeof EXCEL_TOOLS_METADATA> = {
-    [NOOP_TOOL_NAME]: () => noopTool(),
+    [READ_WORKBOOK_TOOL_NAME]: (params) => readWorkbookTool(params),
   };
 
   const tools = buildTools(EXCEL_TOOLS_METADATA, handlers);
