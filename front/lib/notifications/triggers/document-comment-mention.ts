@@ -157,9 +157,7 @@ export async function triggerDocumentCommentMentionNotifications(
         const document = userAuth
           ? await getReadableDocument(userAuth, documentPath)
           : null;
-        return document
-          ? { user: { ...user.toJSON(), lastReadAt: null }, document }
-          : null;
+        return document ? { user: user.toJSON(), document } : null;
       },
       { concurrency: 4 }
     )
@@ -168,6 +166,7 @@ export async function triggerDocumentCommentMentionNotifications(
     return new Ok(undefined);
   }
 
+  // Every reader is mentioned, so only a `never` notify condition drops one.
   const recipients = await filterParticipantsByNotifyCondition({
     auth,
     participants: readers.map(({ user }) => user),

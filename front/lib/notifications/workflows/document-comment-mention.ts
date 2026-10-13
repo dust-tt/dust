@@ -35,17 +35,24 @@ const MentionDetailsSchema = z.object({
   locationName: z.string(),
   workspaceName: z.string(),
   route: z.string(),
-  channels: z.object({
-    inApp: z.boolean(),
-    chat: z.boolean(),
-    email: z.boolean(),
-  }),
 });
 
 type MentionDetailsType = z.infer<typeof MentionDetailsSchema>;
 
+const ChannelsSchema = z.object({
+  inApp: z.boolean(),
+  chat: z.boolean(),
+  email: z.boolean(),
+});
+
+type ChannelsType = z.infer<typeof ChannelsSchema>;
+
 const MentionDetailsResultSchema = z.discriminatedUnion("success", [
-  z.object({ success: z.literal(true), data: MentionDetailsSchema }),
+  z.object({
+    success: z.literal(true),
+    data: MentionDetailsSchema,
+    channels: ChannelsSchema,
+  }),
   z.object({ success: z.literal(false) }),
 ]);
 
@@ -60,7 +67,7 @@ const UserNotificationDelaySchema = z.object({
  */
 async function getConversationChannels(
   subscriberId: string
-): Promise<MentionDetailsType["channels"]> {
+): Promise<ChannelsType> {
   const novu = await getNovuClient();
   const { result } = await novu.subscribers.preferences.list({ subscriberId });
   const preference = result.workflows.find(
@@ -93,7 +100,6 @@ async function getMentionDetails(
     locationName: document.locationName,
     workspaceName: auth.getNonNullableWorkspace().name,
     route: document.route,
-    channels: await getConversationChannels(subscriberId),
   };
 }
 
@@ -121,16 +127,22 @@ export const documentCommentMentionWorkflow = workflow(
     const detailsResult = await step.custom(
       "get-mention-details",
       async () => {
-        const details = subscriber.subscriberId
-          ? await getMentionDetails(subscriber.subscriberId, payload)
+        const { subscriberId } = subscriber;
+        const details = subscriberId
+          ? await getMentionDetails(subscriberId, payload)
           : null;
-        return details
-          ? { success: true as const, data: details }
+        return subscriberId && details
+          ? {
+              success: true as const,
+              data: details,
+              channels: await getConversationChannels(subscriberId),
+            }
           : { success: false as const };
       },
       { outputSchema: MentionDetailsResultSchema }
     );
     const details = detailsResult.success ? detailsResult.data : null;
+    const channels = detailsResult.success ? detailsResult.channels : null;
 
     const getI18n = async () =>
       getNotificationI18n(
@@ -156,7 +168,7 @@ export const documentCommentMentionWorkflow = workflow(
           data: { autoDelete: true },
         };
       },
-      { skip: async () => !details?.channels.inApp }
+      { skip: async () => !channels?.inApp }
     );
 
     await step.chat(
@@ -178,7 +190,7 @@ export const documentCommentMentionWorkflow = workflow(
       {
         skip: async () => {
           if (
-            !details?.channels.chat ||
+            !channels?.chat ||
             (await shouldSkipConversationExternalNotification(
               payload.workspaceId
             ))
@@ -195,7 +207,7 @@ export const documentCommentMentionWorkflow = workflow(
     );
 
     const skipEmail = async () =>
-      !details?.channels.email ||
+      !channels?.email ||
       shouldSkipConversationExternalNotification(payload.workspaceId);
 
     const userNotificationDelayStep = await step.custom(

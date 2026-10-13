@@ -227,7 +227,7 @@ export const shouldSkipConversation = async ({
  * Note: If a user is the only human participant in the conversation, they are
  * always notified regardless of their preference.
  */
-export const filterParticipantsByNotifyCondition = async ({
+export const filterParticipantsByNotifyCondition = async <T extends UserType>({
   auth,
   participants,
   mentionedUserIds,
@@ -235,11 +235,11 @@ export const filterParticipantsByNotifyCondition = async ({
   spaceModelId,
 }: {
   auth: Authenticator;
-  participants: (UserType & { lastReadAt: Date | null })[];
+  participants: T[];
   mentionedUserIds: Set<string>;
   totalParticipantCount: number;
   spaceModelId: ModelId | null;
-}): Promise<(UserType & { lastReadAt: Date | null })[]> => {
+}): Promise<T[]> => {
   const userModelIds = participants.map((p) => p.id);
 
   const generalPreferences =
