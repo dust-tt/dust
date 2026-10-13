@@ -35,6 +35,7 @@ const API_ERROR_TYPES = [
   "app_auth_error",
   "provider_auth_error",
   "provider_not_found",
+  "provider_endpoint_error",
   "dataset_not_found",
   "workspace_not_found",
   "workspace_in_different_cell",

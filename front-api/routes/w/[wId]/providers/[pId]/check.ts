@@ -1,3 +1,4 @@
+import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
 import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -55,22 +56,17 @@ app.post(
             },
           });
         }
+        const endpointError = validateAzureOpenAIEndpoint(config.endpoint);
+        if (endpointError) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "provider_endpoint_error",
+              message: endpointError,
+            },
+          });
+        }
         try {
-          const parsed = new URL(config.endpoint);
-          if (
-            !parsed.hostname.endsWith(".openai.azure.com") &&
-            !parsed.hostname.endsWith(".cognitive.microsoft.com")
-          ) {
-            return apiError(ctx, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "The endpoint is invalid (expecting `openai.azure.com` or `cognitive.microsoft.com`).",
-              },
-            });
-          }
-
           const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
@@ -88,7 +84,11 @@ app.post(
           return ctx.json({ ok: true });
         } catch {
           return ctx.json(
-            { ok: false, error: "Invalid Azure endpoint URL" },
+            {
+              ok: false,
+              error:
+                "Could not list deployments from the Azure OpenAI endpoint.",
+            },
             400
           );
         }

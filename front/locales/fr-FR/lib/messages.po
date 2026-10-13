@@ -126,6 +126,10 @@ msgid "Model provider not found."
 msgstr "Fournisseur de modèles introuvable."
 
 #: front/lib/api_error_messages.ts
+msgid "The model provider endpoint is invalid or can't be reached."
+msgstr "L’endpoint du fournisseur de modèles est invalide ou injoignable."
+
+#: front/lib/api_error_messages.ts
 msgid "Dataset not found."
 msgstr "Jeu de données introuvable."
 

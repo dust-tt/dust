@@ -26,6 +26,11 @@ BLOCKED_IPV6.addSubnet("64:ff9b::", 96, "ipv6"); // NAT64 (RFC 6052)
 BLOCKED_IPV6.addSubnet("::ffff:0:0", 96, "ipv6"); // IPv4-mapped (e.g. ::ffff:127.0.0.1)
 BLOCKED_IPV6.addSubnet("::ffff:0:0:0", 96, "ipv6"); // IPv4-translated
 
+const AZURE_OPENAI_HOST_SUFFIXES = [
+  ".openai.azure.com",
+  ".cognitive.microsoft.com",
+];
+
 function _isPrivateIp(address: string, family: 4 | 6): boolean {
   if (family === 4) {
     return BLOCKED_IPV4.check(address, "ipv4");
@@ -76,4 +81,26 @@ export async function validateExternalUrl(url: string): Promise<string | null> {
   }
 
   return null;
+}
+
+/**
+ * @cc [owner:philipperolet,label:security] azure-host-allowlist
+ * Returns null only when `endpoint` is an `https:` URL whose hostname ends in `.openai.azure.com` or
+ * `.cognitive.microsoft.com`. Returns an error message otherwise.
+ */
+/**
+ * @cc [owner:philipperolet,label:security] check-before-use
+ * Front MUST check the Azure OpenAI endpoint of a workspace provider config with this function
+ * before storing it, and before front itself sends a request to it, including when the endpoint is
+ * read back from a stored config.
+ */
+export function validateAzureOpenAIEndpoint(endpoint: string): string | null {
+  const url = URL.parse(endpoint);
+  const isAzureHttpsUrl =
+    url?.protocol === "https:" &&
+    AZURE_OPENAI_HOST_SUFFIXES.some((suffix) => url.hostname.endsWith(suffix));
+
+  return isAzureHttpsUrl
+    ? null
+    : "The endpoint is invalid (expecting an `https` URL on `openai.azure.com` or `cognitive.microsoft.com`).";
 }

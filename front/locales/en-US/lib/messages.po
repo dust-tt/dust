@@ -126,6 +126,10 @@ msgid "Model provider not found."
 msgstr "Model provider not found."
 
 #: front/lib/api_error_messages.ts
+msgid "The model provider endpoint is invalid or can't be reached."
+msgstr "The model provider endpoint is invalid or can't be reached."
+
+#: front/lib/api_error_messages.ts
 msgid "Dataset not found."
 msgstr "Dataset not found."
 
