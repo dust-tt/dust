@@ -26,7 +26,7 @@ import { toLiveDocumentName } from "@app/types/collab";
 import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import { Err, Ok } from "@app/types/shared/result";
 import {
-  checkpointNextRevision,
+  saveNextRevision,
   COMMENTS,
   collabAccess,
   DOCUMENT_NAME,
@@ -35,7 +35,7 @@ import {
   typeInto,
 } from "@front-api/lib/collab/collab.test_utils";
 import {
-  checkpointAllDocuments,
+  saveAllSessions,
   createCollabHocuspocus,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
@@ -75,14 +75,14 @@ vi.mock("@app/lib/api/collab/comments", () => ({
 describe("createCollabHocuspocus", () => {
   beforeEach(() => {
     vi.mocked(loadCollabSession).mockImplementation(loadSource);
-    checkpointNextRevision();
+    saveNextRevision();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("checkpoints each edit with the loaded threads, after the last revision written", async () => {
+  it("saves each edit with the loaded threads, after the last revision written", async () => {
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);
     // Faked once the database is set up, which needs real timers.
@@ -105,7 +105,7 @@ describe("createCollabHocuspocus", () => {
     expect(loadCollabSession).toHaveBeenCalledTimes(1);
   });
 
-  it("checkpoints every document at once on shutdown, edits waiting for their store included", async () => {
+  it("saves every document at once on shutdown, edits waiting for their store included", async () => {
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);
     vi.useFakeTimers();
@@ -115,7 +115,7 @@ describe("createCollabHocuspocus", () => {
     await hocuspocus.openDirectConnection("w1:user-u1/untouched.md", writer);
     expect(saveCollabSession).not.toHaveBeenCalled();
 
-    await checkpointAllDocuments(hocuspocus);
+    await saveAllSessions(hocuspocus);
 
     expect(saveCollabSession).toHaveBeenCalledTimes(1);
     expect(vi.mocked(saveCollabSession).mock.calls[0][0]).toBe(writer);
@@ -136,17 +136,17 @@ describe("createCollabHocuspocus", () => {
     });
 
     const opening = hocuspocus.openDirectConnection(DOCUMENT_NAME, writer);
-    let checkpointed = false;
-    const shutdown = checkpointAllDocuments(hocuspocus).then(() => {
-      checkpointed = true;
+    let saved = false;
+    const shutdown = saveAllSessions(hocuspocus).then(() => {
+      saved = true;
     });
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(checkpointed).toBe(false);
+    expect(saved).toBe(false);
 
     finishLoad();
     await opening;
     await shutdown;
-    expect(checkpointed).toBe(true);
+    expect(saved).toBe(true);
   });
 
   it("keeps a document for the grace period, then reads the file again", async () => {
@@ -196,7 +196,7 @@ describe("createCollabHocuspocus", () => {
     expect(loadCollabSession).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a document whose checkpoint failed after the grace period", async () => {
+  it("keeps a document whose save failed after the grace period", async () => {
     vi.mocked(saveCollabSession).mockResolvedValue(
       new Err("This file changed since it was loaded.")
     );
@@ -215,7 +215,7 @@ describe("createCollabHocuspocus", () => {
     expect(hocuspocus.getDocumentsCount()).toBe(1);
   });
 
-  it("checkpoints through the last writer when a reader disconnects", async () => {
+  it("saves through the last writer when a reader disconnects", async () => {
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);
     const reader = await collabAccess(false);
@@ -239,7 +239,7 @@ describe("createCollabHocuspocus", () => {
     expect(hocuspocus.getDocumentsCount()).toBe(0);
   });
 
-  it("refuses to checkpoint an edit made without write access", async () => {
+  it("refuses to save an edit made without write access", async () => {
     const hocuspocus = createCollabHocuspocus();
     const reader = await collabAccess(false);
     vi.useFakeTimers();
@@ -332,7 +332,7 @@ describe("comment threads in a live session", () => {
   let close: () => void = () => undefined;
 
   beforeEach(() => {
-    checkpointNextRevision();
+    saveNextRevision();
     vi.mocked(dispatchSessionCommentMentions).mockClear();
   });
 
@@ -399,7 +399,7 @@ describe("comment threads in a live session", () => {
     return { channel, provider };
   }
 
-  it("serves the threads, applies a command for every connection and checkpoints it", async () => {
+  it("serves the threads, applies a command for every connection and saves it", async () => {
     const { writer, hocuspocus, url } = await start();
     const { channel: mine } = await join(url, writer);
     const { channel: theirs } = await join(url, writer);
@@ -455,7 +455,7 @@ describe("comment threads in a live session", () => {
     expect(late.isErr() && late.error).toBe("unavailable");
   }, 15_000);
 
-  it("checkpoints a comment through the connection that last changed the text", async () => {
+  it("saves a comment through the connection that last changed the text", async () => {
     const { writer, hocuspocus, url } = await start();
     const { channel } = await join(url, writer);
     const editor = await collabAccess(true);
@@ -642,11 +642,11 @@ describe("comment threads in a live session", () => {
       expect(await liveSource(hocuspocus, name)).not.toContain("edited");
     }, 15_000);
 
-    it("finishes the queued writes before the shutdown checkpoint, then answers busy", async () => {
+    it("finishes the queued writes before the shutdown save, then answers busy", async () => {
       const { hocuspocus, name, held, writing, edit } =
         await writeBehindHeldAdd("refused");
 
-      const stopping = checkpointAllDocuments(hocuspocus);
+      const stopping = saveAllSessions(hocuspocus);
       expect(await edit()).toEqual(new Ok("busy"));
       held.release();
       await stopping;
@@ -654,8 +654,8 @@ describe("comment threads in a live session", () => {
       expect(await writing).toEqual(new Ok("written"));
       expect(await liveSource(hocuspocus, name)).toContain("edited");
       const [, live] = vi.mocked(saveCollabSession).mock.calls.at(-1) ?? [];
-      const checkpointed = live ? yDocToDfm(live) : null;
-      expect(checkpointed?.isOk() && checkpointed.value).toContain("edited");
+      const saved = live ? yDocToDfm(live) : null;
+      expect(saved?.isOk() && saved.value).toContain("edited");
     }, 15_000);
   });
 

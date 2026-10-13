@@ -28,11 +28,11 @@ import type * as Y from "yjs";
 /** What front-collab holds for an open file beside its Yjs state, to save it. */
 export interface CollabSession {
   comments: DfmComment[];
-  checkpoint: CollabSave;
-  checkpointFailed: boolean;
+  lastSave: CollabSave;
+  saveFailed: boolean;
   lastChangedBy: CollabAccess | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
-  commentCommands: Promise<void>;
+  pendingMutations: Promise<void>;
 }
 
 export const serverMessage = (message: LiveCommentServerMessage) =>
@@ -154,19 +154,19 @@ export function showAgentActivity(
 
 /**
  * @cc [owner:tdraier,label:product;concurrency;security] collab-session-source-write
- * A write MUST only target the document named after `file`'s workspace and path, so its checkpoint
+ * A write MUST only target the document named after `file`'s workspace and path, so its save
  * writes the file the document was loaded from. It MUST answer `closed`, changing nothing, when
  * `readSessionSource` would report the document closed, and `changed`, changing nothing, unless the
  * source `readSessionSource` would return is `base`. Otherwise it MUST apply `source` with
  * `replaceYDocContent` as a change from `file`, replace the session's threads with the ones it
  * returns, send them to every connection when they changed, and store the document so the
- * checkpoint writes the change; a source the editor refuses MUST fail and change nothing. `file`
+ * save writes the change; a source the editor refuses MUST fail and change nothing. `file`
  * MUST be able to write, and the session's storage MUST have revisions, since without them its
- * checkpoints could not be conditional; otherwise the write MUST fail and change nothing. It MUST
+ * saves could not be conditional; otherwise the write MUST fail and change nothing. It MUST
  * take its turn among the document's comment commands, answering `closed` if the document unloaded
  * meanwhile, and a write that fails MUST NOT hold the later ones. A write whose turn has not come
  * within `COLLAB_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
- * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
+ * retries a change that lands later; so MUST a write once `saveAllSessions` was called.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
  * editing right before it is applied; it MUST be announced as reading again if the change is then
@@ -195,7 +195,7 @@ export async function writeSessionSource(
     return new Ok("busy");
   }
   const { document, session } = open;
-  if (session.checkpoint.revision === undefined) {
+  if (session.lastSave.revision === undefined) {
     return new Err(
       "This document's storage does not support safe changes yet."
     );
@@ -289,16 +289,18 @@ export async function writeSessionSource(
       lastContext: file,
       lastTransactionOrigin: undefined,
     });
-    // TODO(co-edition): refuse writes while `session.checkpointFailed`: an accepted write only lives
-    // in memory until a checkpoint succeeds, and is lost if none ever does.
+    // TODO(co-edition): refuse writes while `session.saveFailed`: an accepted write only lives
+    // in memory until a save succeeds, and is lost if none ever does.
     return new Ok("written");
   };
 
   // A comment command builds the threads across an await: the write takes its turn among them, so
   // neither drops the threads the other wrote.
-  const written = session.commentCommands.then(write);
+  const written = session.pendingMutations.then(write);
   // A write that throws fails for its caller only, not for the commands queued after it.
-  session.commentCommands = Promise.allSettled([written]).then(() => undefined);
+  session.pendingMutations = Promise.allSettled([written]).then(
+    () => undefined
+  );
 
   const answered = await Promise.race([
     written,

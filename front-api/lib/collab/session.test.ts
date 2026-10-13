@@ -113,7 +113,7 @@ describe("readSessionSource and writeSessionSource", () => {
     expect(await openSource(hocuspocus, name)).toBe(SOURCE);
   });
 
-  it("write through the open session as the agent's change, then checkpoint it", async () => {
+  it("write through the open session as the agent's change, then save it", async () => {
     const hocuspocus = createCollabHocuspocus();
     const { agent, reader, name } = await collabAccesses();
     vi.useFakeTimers();
@@ -154,7 +154,7 @@ describe("readSessionSource and writeSessionSource", () => {
     expect(await openSource(hocuspocus, name)).not.toContain("edited");
   });
 
-  it("replace the session's threads, send them to every connection and checkpoint them", async () => {
+  it("replace the session's threads, send them to every connection and save them", async () => {
     const hocuspocus = createCollabHocuspocus();
     const { agent, reader, name } = await collabAccesses();
     vi.useFakeTimers();

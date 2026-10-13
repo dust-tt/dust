@@ -54,11 +54,9 @@ function isAuthorized(authorization: string | undefined): boolean {
  * for them, both answering as the collab ticket route does when they refuse. A read of an open
  * document, readable or not, MUST answer 403 when the request has no user, and a write MUST carry
  * one. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be refused
- * before it reaches the session, since no checkpoint could write it.
+ * before it reaches the session, since no save could write it.
  */
-export function createInternalDocumentsApp(
-  hocuspocus: Hocuspocus<CollabAccess>
-) {
+export function createInternalRoutes(hocuspocus: Hocuspocus<CollabAccess>) {
   const app = createHono();
 
   app.use("*", async (ctx, next) => {
