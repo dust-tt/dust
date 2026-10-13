@@ -108,7 +108,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             size="sm"
             onClick={disabled ? undefined : handleClick}
             disabled={disabled}
-            className="flex-row items-center gap-3 pr-4"
+            className="flex-row items-center gap-3"
           >
             <Avatar
               size="md"
@@ -142,7 +142,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
               <Icon
                 visual={ChevronRight}
                 size="sm"
-                className="shrink-0 text-muted-foreground"
+                className="mr-1 shrink-0 text-muted-foreground"
               />
             )}
           </Card>
