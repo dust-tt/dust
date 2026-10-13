@@ -1,6 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
@@ -15,6 +14,7 @@ import {
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { Spinner } from "@sparkle/components/Spinner";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import { Lock01 } from "@sparkle/icons";
 import {
@@ -60,11 +60,16 @@ const NavigationList = React.forwardRef<
 NavigationList.displayName = "NavigationList";
 
 /**
- * Status of a navigation item, rendered as a colored dot: `idle` shows
+ * Status of a navigation item, rendered at the end of the row: `idle` shows
  * nothing, `unread` a highlight dot, `blocked` an info dot, `error` a
- * warning dot.
+ * warning dot, `generating` a spinner.
  */
-export type NavigationListItemStatus = "idle" | "unread" | "blocked" | "error";
+export type NavigationListItemStatus =
+  | "idle"
+  | "unread"
+  | "blocked"
+  | "error"
+  | "generating";
 
 interface NavigationListItemProps
   extends
@@ -73,8 +78,8 @@ interface NavigationListItemProps
   selected?: boolean;
   disabled?: boolean;
   label?: string;
-  /** How the label renders: `none` plain text, `typing` a one-shot typing animation, `streaming` a shimmering animated text. */
-  labelAnimation?: "none" | "typing" | "streaming";
+  /** How the label renders: `none` plain text, `typing` a one-shot typing animation. */
+  labelAnimation?: "none" | "typing";
   /** Called when the `typing` label animation finishes. */
   onTypingAnimationComplete?: () => void;
   /** Scroll a truncated, non-animated label horizontally while the row is hovered. */
@@ -86,7 +91,7 @@ interface NavigationListItemProps
   moreMenu?: React.ReactNode;
   /** Keep the row's hover styling while the more menu is open. */
   keepHoverOnMoreMenu?: boolean;
-  /** Status dot shown at the end of the row (hidden while hovering when a `moreMenu` is present). */
+  /** Status shown at the end of the row (hidden while hovering when a `moreMenu` is present). */
   status?: NavigationListItemStatus;
   /** Count badge shown at the end of the row; hidden when 0 or undefined. */
   count?: number;
@@ -144,7 +149,7 @@ const NavigationListItem = React.forwardRef<
       }
     };
 
-    const shouldShowStatusDot = status !== "idle";
+    const shouldShowStatusDot = status !== "idle" && status !== "generating";
     const counterValue = count && count > 0 ? count : undefined;
 
     return (
@@ -209,8 +214,6 @@ const NavigationListItem = React.forwardRef<
                     duration={32}
                     onComplete={onTypingAnimationComplete}
                   />
-                ) : labelAnimation === "streaming" ? (
-                  <AnimatedText variant="muted">{label}</AnimatedText>
                 ) : scrollLabelOnHover ? (
                   <HoverScrollText text={label} />
                 ) : (
@@ -240,6 +243,17 @@ const NavigationListItem = React.forwardRef<
                     "group-focus-within/menu-item:hidden group-hover/menu-item:hidden"
                 )}
               />
+            )}
+            {status === "generating" && (
+              <div
+                className={cn(
+                  "flex flex-shrink-0",
+                  moreMenu &&
+                    "group-focus-within/menu-item:hidden group-hover/menu-item:hidden"
+                )}
+              >
+                <Spinner size="xs" />
+              </div>
             )}
             {shouldShowStatusDot && (
               <div

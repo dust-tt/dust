@@ -1198,15 +1198,15 @@ const ConversationListItem = memo(
       <NavigationListItem
         key={conversation.sId}
         selected={activeConversationId === conversation.sId}
-        status={showStatusDot ? getConversationDotStatus(conversation) : "idle"}
-        label={conversationLabel}
-        labelAnimation={
-          showTypingAnimation
-            ? "typing"
-            : isAgentLoopStreaming
-              ? "streaming"
-              : "none"
+        status={
+          isAgentLoopStreaming
+            ? "generating"
+            : showStatusDot
+              ? getConversationDotStatus(conversation)
+              : "idle"
         }
+        label={conversationLabel}
+        labelAnimation={showTypingAnimation ? "typing" : "none"}
         onTypingAnimationComplete={handleTypingAnimationComplete}
         scrollLabelOnHover
         href={getConversationRoute(owner.sId, conversation.sId)}
