@@ -569,7 +569,7 @@ export const PEOPLE: Record<string, TeamMember> = {
   },
   arthurvervaet: {
     name: "Arthur Vervaet",
-    title: "Software engineer",
+    title: "Software Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0BJHCXK57V-859354745ab0-72",
     linkedIn: "https://www.linkedin.com/in/arthur-vervaet",
     github: "https://github.com/avervaet",
@@ -730,7 +730,7 @@ export const PEOPLE: Record<string, TeamMember> = {
   },
   christinehong: {
     name: "Christine Hong",
-    title: "Founder's Office",
+    title: "Founders Office",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0C8Q126R54-76d9613a544f-512",
     linkedIn: "https://www.linkedin.com/in/christineluhong/",
     github: "",
