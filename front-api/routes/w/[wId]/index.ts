@@ -920,7 +920,7 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "feature_flag_not_found",
+            type: "feature_not_enabled",
             message:
               "The workspace default agent feature is not enabled for this workspace.",
           },
@@ -1014,7 +1014,7 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "feature_flag_not_found",
+            type: "feature_not_enabled",
             message:
               "The localisation feature is not enabled for this workspace.",
           },
