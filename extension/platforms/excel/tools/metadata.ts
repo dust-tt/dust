@@ -5,7 +5,7 @@ export const READ_WORKBOOK_TOOL_NAME = "read_workbook";
 
 const READ_WORKBOOK_TOOL_DESCRIPTION = `Reads data from the Excel workbook the user has open, with the Office.js Excel API.
 
-Each read gives an Office.js expression that starts at \`workbook\` (as in \`context.workbook\`), and the properties to load on the object it gives. The reads are sent to Excel in one batch; the result is a JSON array with one loaded object per read, in the same order. Only read operations are allowed.
+Each read gives an Office.js expression that starts with \`workbook\` (the \`context.workbook\` object, written without \`context.\`), and the properties to load on the object it gives. The reads are sent to Excel in one batch; the result is a JSON array with one loaded object per read, in the same order. Only read operations are allowed.
 
 Example — list the worksheets, read the selection and read a range in one call:
 { "reads": [
