@@ -173,7 +173,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: unit === "awu_credits" ? "w-52" : "w-40" },
+      meta: { className: unit === "awu_credits" ? "w-60 pl-8" : "w-48 pl-8" },
     },
     {
       header: headers.lockState,
