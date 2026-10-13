@@ -57,7 +57,6 @@ import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import {
   Button,
   cn,
-  LinkExternal01,
   LoadingBlock,
   Page,
   ResizableSidePanel,
@@ -176,7 +175,7 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 export function AnalyticsConsumptionPage() {
   const { t } = useLingui();
   const owner = useWorkspace();
-  const { user, isManager } = useAuth();
+  const { user } = useAuth();
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
   const viewState = useAnalyticsViewState();
@@ -257,23 +256,7 @@ export function AnalyticsConsumptionPage() {
               </div>
             }
           />
-          <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-row flex-wrap items-center gap-2">
-              <ConsumptionOverview
-                workspaceId={owner.sId}
-                period={state.period}
-              />
-            </div>
-            {isManager && (
-              <Button
-                label={t`Manage in Credits`}
-                variant="highlight-ghost"
-                size="xs"
-                iconRight={LinkExternal01}
-                href={`/w/${owner.sId}/credits`}
-              />
-            )}
-          </div>
+          <ConsumptionOverview workspaceId={owner.sId} period={state.period} />
         </Page.Vertical>
         <Tabs
           value={tab}
