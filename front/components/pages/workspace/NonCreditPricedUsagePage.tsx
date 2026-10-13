@@ -8,7 +8,6 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isAdmin } from "@app/types/user";
 import {
   Button,
-  LinkExternal01,
   Page,
   Plus,
   Tabs,
@@ -61,13 +60,6 @@ export function NonCreditPricedUsagePage() {
                 <Trans>Credits</Trans>
               </Page.H>
               <div className="flex items-center gap-4">
-                <Button
-                  label={t`Breakdown in analytics`}
-                  iconRight={LinkExternal01}
-                  size="xs"
-                  variant="highlight-ghost"
-                  href={`/w/${owner.sId}/analytics/consumption`}
-                />
                 {isWorkspaceAdmin ? (
                   <AdminSectionAnchor
                     sectionId={ADMIN_SECTION_IDS.usage.addCredits}
