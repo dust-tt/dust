@@ -14,6 +14,58 @@ struct ConnectionExpectedResponse {
 }
 
 #[tokio::test]
+async fn test_pending_connection_metadata_exposes_related_credential() -> anyhow::Result<()> {
+    let credential_content = json!({
+        "client_id": "test-shopify-client",
+        "client_secret": "test-shopify-secret"
+    });
+    let created = do_api_call(
+        "/connections".to_string(),
+        HttpMethod::POST,
+        &json!({
+            "provider": "shopify",
+            "metadata": { "shopify_store_domain": "test-store.myshopify.com" },
+            "related_credential": {
+                "metadata": { "workspace_id": "test-workspace", "user_id": "test-user" },
+                "content": credential_content
+            }
+        }),
+    )
+    .await
+    .response
+    .ok_or_else(|| anyhow::anyhow!("Missing create response"))?;
+    let connection_id = created["connection"]["connection_id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing connection ID"))?;
+
+    let metadata = do_api_call(
+        format!("/connections/{connection_id}/metadata"),
+        HttpMethod::GET,
+        &json!({}),
+    )
+    .await
+    .response
+    .ok_or_else(|| anyhow::anyhow!("Missing metadata response"))?;
+    assert_eq!(metadata["connection"]["status"], "pending");
+    let credential_id = metadata["connection"]["related_credential_id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing related credential ID"))?;
+
+    // Callback verification needs the stored app secret before the connection is finalized.
+    let credential = do_api_call(
+        format!("/credentials/{credential_id}"),
+        HttpMethod::GET,
+        &json!({}),
+    )
+    .await
+    .response
+    .ok_or_else(|| anyhow::anyhow!("Missing credential response"))?;
+    assert_eq!(credential["credential"]["provider"], "shopify");
+    assert_eq!(credential["credential"]["content"], credential_content);
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_redirect_uri_survives_metadata_reads_and_finalization() -> anyhow::Result<()> {
     let redirect_uri = "https://eu.dust.tt/oauth/mock/finalize";
     for initial_redirect_uri in [Some(redirect_uri), None] {

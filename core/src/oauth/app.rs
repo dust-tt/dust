@@ -242,6 +242,11 @@ pub struct ConnectionMetadataResponse {
 /// @cc [owner:flvndvd,label:api] expose-stored-redirect
 /// Metadata and access-token responses MUST include the connection's stored redirect_uri
 /// when present, including for connections created before redirect_uri was accepted at creation.
+/**
+ * @cc [owner:spolu,label:api] expose-related-credential
+ * Metadata and access-token responses MUST include the stored related_credential_id when present,
+ * including for pending connections whose callbacks require credentials before finalization.
+ */
 #[derive(Serialize, Deserialize)]
 pub struct ConnectionInfo {
     connection_id: String,
@@ -252,6 +257,8 @@ pub struct ConnectionInfo {
     // The finalize URI the connection was created or finalized with.
     #[serde(skip_serializing_if = "Option::is_none")]
     redirect_uri: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    related_credential_id: Option<String>,
 }
 
 async fn deprecated_connections_access_token(
@@ -317,6 +324,7 @@ async fn connections_access_token(
                                 status: c.status(),
                                 metadata: c.metadata().clone(),
                                 redirect_uri: c.redirect_uri(),
+                                related_credential_id: c.related_credential_id(),
                             },
                             access_token,
                             access_token_expiry: c.access_token_expiry(),
@@ -357,6 +365,7 @@ async fn connections_metadata(
                         status: c.status(),
                         metadata: c.metadata().clone(),
                         redirect_uri: c.redirect_uri(),
+                        related_credential_id: c.related_credential_id(),
                     },
                 })),
             }),
@@ -429,6 +438,7 @@ async fn connections_update_metadata(
                             status: c.status(),
                             metadata: c.metadata().clone(),
                             redirect_uri: c.redirect_uri(),
+                            related_credential_id: c.related_credential_id(),
                         },
                     })),
                 }),
