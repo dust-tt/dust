@@ -2,14 +2,14 @@ import { createServer } from "node:http";
 import type { CollabAccess } from "@app/lib/api/collab/access";
 import { checkCollabAccess } from "@app/lib/api/collab/access";
 import {
-  applyLiveCommentCommand,
-  dispatchLiveCommentMentions,
-} from "@app/lib/api/collab/live_comments";
+  applyCommentRequest,
+  dispatchSessionCommentMentions,
+} from "@app/lib/api/collab/comments";
 import {
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
-import { mintLiveTicket } from "@app/lib/api/collab/tickets";
+import { mintCollabTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystemError } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
@@ -68,9 +68,9 @@ vi.mock("@app/lib/api/collab/session_file", () => ({
   saveCollabSession: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/collab/live_comments", () => ({
-  applyLiveCommentCommand: vi.fn(),
-  dispatchLiveCommentMentions: vi.fn(async () => undefined),
+vi.mock("@app/lib/api/collab/comments", () => ({
+  applyCommentRequest: vi.fn(),
+  dispatchSessionCommentMentions: vi.fn(async () => undefined),
 }));
 
 const DOCUMENT_NAME = "w1:user-u1/notes.md";
@@ -528,7 +528,7 @@ describe("readLiveSource and writeLiveSource", () => {
 });
 
 async function ticketFor(auth: Authenticator, path: string) {
-  const ticket = await mintLiveTicket(auth, path);
+  const ticket = await mintCollabTicket(auth, path);
   if (ticket.isErr()) {
     throw new Error(ticket.error.message);
   }
@@ -729,7 +729,7 @@ describe("comment threads in a live session", () => {
 
   beforeEach(() => {
     checkpointNextRevision();
-    vi.mocked(dispatchLiveCommentMentions).mockClear();
+    vi.mocked(dispatchSessionCommentMentions).mockClear();
   });
 
   afterEach(() => {
@@ -759,7 +759,7 @@ describe("comment threads in a live session", () => {
         lastSave: { revision: "1", source: "" },
       });
     });
-    vi.mocked(applyLiveCommentCommand).mockImplementation(
+    vi.mocked(applyCommentRequest).mockImplementation(
       async (_file, comments, command) =>
         command.type === "add"
           ? new Ok({
@@ -807,7 +807,7 @@ describe("comment threads in a live session", () => {
       body: "Ship it.",
     });
     expect(added.isOk() && added.value).toEqual(CREATED);
-    const [file] = vi.mocked(applyLiveCommentCommand).mock.calls[0];
+    const [file] = vi.mocked(applyCommentRequest).mock.calls[0];
     expect(file.auth).toBe(writer.auth);
     expect(file.canonicalPath).toBe(writer.canonicalPath);
 
@@ -829,8 +829,8 @@ describe("comment threads in a live session", () => {
     });
     expect(refused.isErr() && refused.error).toBe("thread_changed");
     expect(theirs.getThreads()).toEqual([THREAD, CREATED]);
-    expect(dispatchLiveCommentMentions).toHaveBeenCalledOnce();
-    expect(vi.mocked(dispatchLiveCommentMentions).mock.calls[0]).toEqual([
+    expect(dispatchSessionCommentMentions).toHaveBeenCalledOnce();
+    expect(vi.mocked(dispatchSessionCommentMentions).mock.calls[0]).toEqual([
       file,
       expect.anything(),
       expect.objectContaining({ type: "add", commentId: "c2" }),
@@ -843,7 +843,7 @@ describe("comment threads in a live session", () => {
       body: "",
     });
     expect(invalid.isErr() && invalid.error).toBe("unavailable");
-    expect(applyLiveCommentCommand).toHaveBeenCalledTimes(2);
+    expect(applyCommentRequest).toHaveBeenCalledTimes(2);
 
     mine.close();
     expect(mine.getThreads()).toBeNull();
@@ -883,7 +883,7 @@ describe("comment threads in a live session", () => {
     const mine = await join(url, writer);
     const { channel: theirs } = await join(url, writer);
     let release = () => {};
-    vi.mocked(applyLiveCommentCommand).mockImplementationOnce(
+    vi.mocked(applyCommentRequest).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           release = () => resolve(new Err("thread_changed"));
@@ -892,7 +892,7 @@ describe("comment threads in a live session", () => {
 
     const waiting = mine.channel.send({ type: "delete", commentId: "c1" });
     await vi.waitFor(() =>
-      expect(applyLiveCommentCommand).toHaveBeenCalledTimes(1)
+      expect(applyCommentRequest).toHaveBeenCalledTimes(1)
     );
     mine.provider.disconnect();
     const lost = await waiting;
@@ -926,7 +926,7 @@ describe("comment threads in a live session", () => {
     // Holds the next command until `release`, then accepts or refuses it.
     function holdNextAdd(outcome: "accepted" | "refused") {
       const held = { release: () => {} };
-      vi.mocked(applyLiveCommentCommand).mockImplementationOnce(
+      vi.mocked(applyCommentRequest).mockImplementationOnce(
         (_file, comments) =>
           new Promise((resolve) => {
             held.release = () =>
@@ -962,7 +962,7 @@ describe("comment threads in a live session", () => {
         body: "Ship it.",
       });
       await vi.waitFor(() =>
-        expect(applyLiveCommentCommand).toHaveBeenCalledTimes(1)
+        expect(applyCommentRequest).toHaveBeenCalledTimes(1)
       );
       const edit = () =>
         writeLiveSource(hocuspocus, {

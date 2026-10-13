@@ -1,7 +1,7 @@
 import {
-  LIVE_TICKET_TTL_SECONDS,
-  mintLiveTicket,
-  redeemLiveTicket,
+  COLLAB_TICKET_TTL_SECONDS,
+  mintCollabTicket,
+  redeemCollabTicket,
 } from "@app/lib/api/collab/tickets";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { Authenticator } from "@app/lib/auth";
@@ -27,40 +27,40 @@ describe("live tickets", () => {
     await FeatureFlagFactory.basic(auth, "co_edition");
     const path = await writeUserFile(auth, "notes.md", "# Notes\n");
 
-    const ticket = await mintLiveTicket(auth, path);
+    const ticket = await mintCollabTicket(auth, path);
     expect(ticket.isOk()).toBe(true);
     if (!ticket.isOk()) {
       return;
     }
 
-    expect(await redeemLiveTicket(ticket.value)).toEqual({
+    expect(await redeemCollabTicket(ticket.value)).toEqual({
       workspaceId: workspace.sId,
       userId: user.sId,
       canonicalPath: path,
     });
-    expect(await redeemLiveTicket(ticket.value)).toBeNull();
+    expect(await redeemCollabTicket(ticket.value)).toBeNull();
   });
 
   it("expire", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "co_edition");
     const path = await writeUserFile(auth, "notes.md", "# Notes\n");
-    const ticket = await mintLiveTicket(auth, path);
+    const ticket = await mintCollabTicket(auth, path);
     if (!ticket.isOk()) {
       throw new Error("No ticket.");
     }
 
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(Date.now() + (LIVE_TICKET_TTL_SECONDS + 1) * 1000);
+    vi.setSystemTime(Date.now() + (COLLAB_TICKET_TTL_SECONDS + 1) * 1000);
 
-    expect(await redeemLiveTicket(ticket.value)).toBeNull();
+    expect(await redeemCollabTicket(ticket.value)).toBeNull();
   });
 
   it("are not minted without co_edition", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const path = await writeUserFile(auth, "notes.md", "# Notes\n");
 
-    const ticket = await mintLiveTicket(auth, path);
+    const ticket = await mintCollabTicket(auth, path);
 
     expect(ticket.isErr() && ticket.error.code).toBe("not_available");
   });
@@ -77,7 +77,7 @@ describe("live tickets", () => {
       workspace.sId
     );
 
-    const ticket = await mintLiveTicket(inMaintenance, path);
+    const ticket = await mintCollabTicket(inMaintenance, path);
 
     expect(ticket.isErr() && ticket.error.code).toBe("workspace_unavailable");
   });
@@ -87,7 +87,7 @@ describe("live tickets", () => {
     await FeatureFlagFactory.basic(auth, "co_edition");
     const path = await writeUserFile(auth, "notes.txt", "Hi.\n", "text/plain");
 
-    const ticket = await mintLiveTicket(auth, path);
+    const ticket = await mintCollabTicket(auth, path);
 
     expect(ticket.isErr() && ticket.error.code).toBe("not_markdown");
   });
@@ -100,12 +100,12 @@ describe("live tickets", () => {
       new Err(new DustFileSystemError("internal", "Read-only mount."))
     );
 
-    const ticket = await mintLiveTicket(auth, path);
+    const ticket = await mintCollabTicket(auth, path);
 
     expect(ticket.isErr() && ticket.error.code).toBe("read_only");
   });
 
   it("grant nothing for an unknown ticket", async () => {
-    expect(await redeemLiveTicket("not-a-ticket")).toBeNull();
+    expect(await redeemCollabTicket("not-a-ticket")).toBeNull();
   });
 });

@@ -12,7 +12,7 @@ import { useCallback } from "react";
  * for each connection.
  */
 /**
- * @cc [owner:PopDaph,label:error-handling] live-ticket-rejects
+ * @cc [owner:PopDaph,label:error-handling] collab-ticket-rejects
  * The returned function MUST reject when no ticket can be fetched, an exception to
  * `no-catching-own-errors` limited to it: the live session's provider takes it as its token
  * function and treats a rejection as a refused connection.
