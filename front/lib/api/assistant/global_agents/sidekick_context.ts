@@ -12,7 +12,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { GlobalAgentContext } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -34,8 +33,7 @@ export interface SidekickContext {
     context: MCPServerViewResource<"configuration">;
     templates: MCPServerViewResource<"configuration"> | null;
   } | null;
-  // The locale of the static first reply to a new agent. Only resolved for that turn.
-  newAgentFirstReplyLocale?: SupportedLocale | null;
+  locale: SupportedLocale | null;
 }
 
 /**
@@ -258,23 +256,13 @@ export async function buildWorkspaceContext(
 export async function buildSidekickContext(
   auth: Authenticator,
   agentsIdsToFetch: string[],
-  {
-    globalAgentContext,
-    featureFlags,
-  }: {
-    globalAgentContext?: GlobalAgentContext;
-    featureFlags: WhitelistableFeature[];
-  }
+  { featureFlags }: { featureFlags: WhitelistableFeature[] }
 ): Promise<SidekickContext | null> {
   if (!agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK)) {
     return null;
   }
 
-  const isNewAgentFirstTurn =
-    globalAgentContext?.userMessageRank === 0 &&
-    globalAgentContext.sidekickIsNewAgentFromScratch === true;
-
-  const [context, templates, newAgentFirstReplyLocale] = await Promise.all([
+  const [context, templates, locale] = await Promise.all([
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
@@ -285,10 +273,10 @@ export async function buildSidekickContext(
       AGENT_TEMPLATES_SERVER_NAME,
       { mode: "configuration" }
     ),
-    isNewAgentFirstTurn ? getAgentLocale(auth, featureFlags) : null,
+    getAgentLocale(auth, featureFlags),
   ]);
   return {
     mcpServerViews: context ? { context, templates } : null,
-    newAgentFirstReplyLocale,
+    locale,
   };
 }

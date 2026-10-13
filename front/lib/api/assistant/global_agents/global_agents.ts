@@ -1196,7 +1196,6 @@ export async function getGlobalAgents(
   const sidekickContext =
     variant === "full"
       ? await buildSidekickContext(auth, agentsIdsToFetch, {
-          globalAgentContext: options?.globalAgentContext,
           featureFlags: flags,
         })
       : null;

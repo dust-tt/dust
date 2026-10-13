@@ -203,17 +203,6 @@ You may also be able to find business requirement information by following <comp
       "Use `get_agent_config` to get the current instructions, tools, and skills",
   }),
 
-  triggersAndSchedules: `<triggers_and_schedules>
-You CANNOT configure triggers or schedules for the agent. When users ask about scheduling, automating runs, or triggering agents based on events (e.g., "run this agent every morning", "schedule a daily report", "trigger on new emails"), guide them as follows:
-
-- Explain that triggers and schedules are configured in the **Triggers** section of the Agent Builder, visible in the left panel.
-- Direct them to click the **"Add triggers"** button in the Triggers section.
-- From there, they can choose **"Schedule"** to run the agent on a recurring basis (e.g., daily, weekly) or select a **webhook** trigger to run the agent in response to external events.
-- If relevant to their use case, suggest what the schedule or trigger message content could be, so the agent receives useful context when triggered.
-
-Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
-</triggers_and_schedules>`,
-
   contextGuidance: `<context_guidance>
 The runtime context includes <user_context> and <workspace_context> tags injected separately.
 
@@ -225,7 +214,57 @@ You DO NOT need to call list_models, list_skills, or list_tools unless explicitl
 </context_guidance>`,
 };
 
-function buildSidekickInstructions(): string {
+// Agent output, not UI text: mirrors the Agent Builder labels from the Lingui catalogs, which
+// server code cannot import.
+interface SidekickTriggersUILabels {
+  triggersSection: string;
+  addTriggersButton: string;
+  scheduleOption: string;
+}
+
+const EN_SIDEKICK_TRIGGERS_UI_LABELS: SidekickTriggersUILabels = {
+  triggersSection: "Triggers",
+  addTriggersButton: "Add triggers",
+  scheduleOption: "Schedule",
+};
+
+const FR_SIDEKICK_TRIGGERS_UI_LABELS: SidekickTriggersUILabels = {
+  triggersSection: "Déclencheurs",
+  addTriggersButton: "Ajouter des déclencheurs",
+  scheduleOption: "Planification",
+};
+
+/**
+ * @cc [owner:sfriquet,label:product] matches-agent-builder-labels
+ * Each locale's labels MUST equal the Agent Builder triggers UI strings rendered in that locale
+ * (`Triggers`, `Add triggers` and `Schedule` in `components/agent_builder/triggers`).
+ */
+const SIDEKICK_TRIGGERS_UI_LABELS_BY_LOCALE: Record<
+  SupportedLocale,
+  SidekickTriggersUILabels
+> = {
+  "en-US": EN_SIDEKICK_TRIGGERS_UI_LABELS,
+  "en-GB": EN_SIDEKICK_TRIGGERS_UI_LABELS,
+  "fr-FR": FR_SIDEKICK_TRIGGERS_UI_LABELS,
+};
+
+function triggersAndSchedulesSection(locale: SupportedLocale | null): string {
+  const { triggersSection, addTriggersButton, scheduleOption } =
+    SIDEKICK_TRIGGERS_UI_LABELS_BY_LOCALE[locale ?? DEFAULT_LOCALE];
+
+  return `<triggers_and_schedules>
+You CANNOT configure triggers or schedules for the agent. When users ask about scheduling, automating runs, or triggering agents based on events (e.g., "run this agent every morning", "schedule a daily report", "trigger on new emails"), guide them as follows:
+
+- Explain that triggers and schedules are configured in the **${triggersSection}** section of the Agent Builder, visible in the left panel.
+- Direct them to click the **"${addTriggersButton}"** button in the ${triggersSection} section.
+- From there, they can choose **"${scheduleOption}"** to run the agent on a recurring basis (e.g., daily, weekly) or select a **webhook** trigger to run the agent in response to external events.
+- If relevant to their use case, suggest what the schedule or trigger message content could be, so the agent receives useful context when triggered.
+
+Do NOT attempt to handle scheduling through instructions or tools — triggers are a separate configuration outside of what you can suggest.
+</triggers_and_schedules>`;
+}
+
+function buildSidekickInstructions(locale: SupportedLocale | null): string {
   const parts: string[] = [
     SIDEKICK_INSTRUCTION_SECTIONS.primary,
     SIDEKICK_INSTRUCTION_SECTIONS.agentWorkflow,
@@ -237,7 +276,7 @@ function buildSidekickInstructions(): string {
     SIDEKICK_INSTRUCTION_SECTIONS.knowledgeGuidance,
     SIDEKICK_INSTRUCTION_SECTIONS.companyDataGuidance,
     SIDEKICK_INSTRUCTION_SECTIONS.templates,
-    SIDEKICK_INSTRUCTION_SECTIONS.triggersAndSchedules,
+    triggersAndSchedulesSection(locale),
     SIDEKICK_INSTRUCTION_SECTIONS.workflowVisualization,
     SIDEKICK_INSTRUCTION_SECTIONS.responseStyle,
     SIDEKICK_INSTRUCTION_SECTIONS.contextGuidance,
@@ -338,7 +377,7 @@ export function _getSidekickGlobalAgent(
         ...(isNewAgentFromScratchFirstTurn && {
           metaData: {
             staticResponse: getSidekickNewAgentStaticResponse(
-              sidekickContext?.newAgentFirstReplyLocale ?? null
+              sidekickContext?.locale ?? null
             ),
           },
         }),
@@ -347,7 +386,9 @@ export function _getSidekickGlobalAgent(
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.SIDEKICK);
 
-  const instructions = buildSidekickInstructions();
+  const instructions = buildSidekickInstructions(
+    sidekickContext?.locale ?? null
+  );
 
   return {
     id: -1,
