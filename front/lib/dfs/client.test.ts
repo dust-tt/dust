@@ -26,27 +26,27 @@ describe("DfsClient", () => {
     const { client, transport } = setup({
       CreateSession: new Ok(
         DfsWireFactory.session({
-          subjects: ["u:a@dust.tt", "g:eng"],
+          subjects: ["u:usr_a", "g:eng"],
           sessionKey: SESSION_KEY,
         })
       ),
     });
 
     const res = await client.createSession({
-      subjects: ["u:a@dust.tt", "g:eng"],
+      subjects: ["u:usr_a", "g:eng"],
     });
 
     expect(res.isOk() && res.value).toEqual({
       id: "session-1",
       tenantId: "tenant-1",
-      subjects: ["u:a@dust.tt", "g:eng"],
+      subjects: ["u:usr_a", "g:eng"],
       sessionKey: SESSION_KEY,
       expiresAtMs: 1700003600000,
     });
     expect(transport.calls).toEqual([
       {
         method: "CreateSession",
-        request: { subjects: ["u:a@dust.tt", "g:eng"] },
+        request: { subjects: ["u:usr_a", "g:eng"] },
         key: SESSION_KEY,
       },
     ]);

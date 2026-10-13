@@ -145,7 +145,7 @@ These budgets bound RPC work alongside FDB's separate affected-data transaction 
 protobuf budget does not guarantee that an operation fits the store's transaction budget.
 
 Filesystem and search calls derive the tenant and subject set exclusively from the active session.
-The tenant key holder asserts the session's subjects, such as `u:spolu@dust.tt` and `g:engineering`.
+The tenant key holder asserts the session's subjects, such as `u:<userSId>` and `g:<groupSId>`.
 Subjects are opaque, case-sensitive strings matched exactly; the server does not resolve group
 membership or infer additional subjects. Sessions contain subjects, not grants or permission masks.
 
@@ -195,7 +195,7 @@ access to the parent. Descendants inherit the child's resulting permissions.
 
 For example, after ALLOW `g:engineering rw` on `/project`, DENY `w` on `/project/archive` leaves
 matching sessions with `r`: the subtree can be read and traversed but not modified. DENY `rw` on
-`/project/private` removes all access. ALLOW `u:spolu@dust.tt r` on `/project/private/reports` restores
+`/project/private` removes all access. ALLOW `u:<userSId> r` on `/project/private/reports` restores
 read/traverse access there for that subject, with inheritance to its descendants. The inaccessible
 parent stays hidden; the reopened entry point can be discovered through `/shared`.
 
