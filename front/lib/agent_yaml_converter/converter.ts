@@ -1,10 +1,12 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { processAdditionalConfiguration } from "@app/lib/actions/additional_configuration";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   AgentYAMLAction,
   AgentYAMLConfig,
@@ -16,6 +18,10 @@ import type {
   AgentYAMLTag,
 } from "@app/lib/agent_yaml_converter/schemas";
 import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -26,13 +32,20 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as yaml from "js-yaml";
 
 export class AgentYAMLConverter {
+  /**
+   * @cc [owner:fabiencelier,label:product] stored-knowledge-selection
+   * The toolset's `data_sources` and `tables` MUST carry the resource ids stored on `actions`
+   * (`dataSources[].filter.parents.in`, `tables[].tableId`), including ids that no longer resolve
+   * to a content node. They MUST NOT be derived from a lookup that can drop ids.
+   */
   static async fromBuilderFormData(
     auth: Authenticator,
-    formData: AgentBuilderFormData,
+    formData: Omit<AgentBuilderFormData, "actions">,
+    actions: MCPServerConfigurationType[],
     spaces: AgentYAMLSpace[]
   ): Promise<Result<AgentYAMLConfig, Error>> {
     try {
-      const actionsResult = await this.convertActions(auth, formData.actions);
+      const actionsResult = await this.convertActions(auth, actions);
       if (actionsResult.isErr()) {
         return actionsResult;
       }
@@ -101,85 +114,57 @@ export class AgentYAMLConverter {
       }));
   }
 
-  private static convertTablesConfigurations(
-    configurations: Record<
-      string,
-      {
-        dataSourceView: { sId: string };
-        selectedResources: Array<{ internalId: string }>;
-      }
-    >
-  ): AgentYAMLTableConfiguration[] {
-    const tables: AgentYAMLTableConfiguration[] = [];
-    for (const config of Object.values(configurations)) {
-      for (const resource of config.selectedResources) {
-        if (resource.internalId) {
-          tables.push({
-            view_id: config.dataSourceView.sId,
-            table_id: resource.internalId,
-          });
-        }
-      }
-    }
-    return tables;
-  }
-
   private static async convertActions(
     auth: Authenticator,
-    actions: AgentBuilderFormData["actions"]
+    actions: MCPServerConfigurationType[]
   ): Promise<Result<AgentYAMLAction[], Error>> {
     const convertedActions: AgentYAMLAction[] = [];
     for (const action of actions) {
-      const mcpServerName = await this.getMCPServerNameFromConfig(
-        auth,
-        action.configuration
-      );
+      if (!isServerSideMCPServerConfiguration(action)) {
+        return new Err(
+          new Error(`Client-side tool "${action.name}" cannot be exported`)
+        );
+      }
+
+      const mcpServerName = await this.getMCPServerNameFromConfig(auth, action);
       if (!mcpServerName) {
         return new Err(
           new Error("Could not determine MCP server name from configuration")
         );
       }
 
-      const tablesConfig = action.configuration.tablesConfigurations
-        ? this.convertTablesConfigurations(
-            action.configuration.tablesConfigurations
-          )
-        : undefined;
-
       convertedActions.push({
         name: action.name,
-        description: action.description,
+        description: action.description ?? "",
         type: "MCP",
         configuration: {
           mcp_server_name: mcpServerName,
-          data_sources: action.configuration.dataSourceConfigurations
-            ? this.convertDataSourceConfigurations(
-                action.configuration.dataSourceConfigurations
-              )
+          data_sources: action.dataSources
+            ? this.convertDataSourceConfigurations(action.dataSources)
             : undefined,
           tables:
-            tablesConfig && tablesConfig.length > 0 ? tablesConfig : undefined,
-          child_agent_id: action.configuration.childAgentId ?? undefined,
-          time_frame: action.configuration.timeFrame ?? undefined,
-          json_schema: action.configuration.jsonSchema ?? undefined,
-          additional_configuration:
-            Object.keys(action.configuration.additionalConfiguration || {})
-              .length > 0
-              ? action.configuration.additionalConfiguration
+            action.tables && action.tables.length > 0
+              ? this.convertTablesConfigurations(action.tables)
               : undefined,
-          dust_app_configuration: action.configuration.dustAppConfiguration
+          child_agent_id: action.childAgentId ?? undefined,
+          time_frame: action.timeFrame ?? undefined,
+          json_schema: action.jsonSchema ?? undefined,
+          additional_configuration:
+            Object.keys(action.additionalConfiguration).length > 0
+              ? action.additionalConfiguration
+              : undefined,
+          dust_app_configuration: action.dustAppConfiguration
             ? {
                 type: "dust_app_run_configuration",
-                app_workspace_id:
-                  action.configuration.dustAppConfiguration.appWorkspaceId,
-                app_id: action.configuration.dustAppConfiguration.appId,
+                app_workspace_id: action.dustAppConfiguration.appWorkspaceId,
+                app_id: action.dustAppConfiguration.appId,
               }
             : undefined,
-          secret_name: action.configuration.secretName ?? undefined,
-          dust_project: action.configuration.dustProject
+          secret_name: action.secretName ?? undefined,
+          dust_project: action.dustProject
             ? {
-                workspace_id: action.configuration.dustProject.workspaceId,
-                project_id: action.configuration.dustProject.projectId,
+                workspace_id: action.dustProject.workspaceId,
+                project_id: action.dustProject.projectId,
               }
             : undefined,
         },
@@ -190,40 +175,31 @@ export class AgentYAMLConverter {
   }
 
   private static convertDataSourceConfigurations(
-    configurations: Record<
-      string,
-      {
-        dataSourceView: { sId: string };
-        selectedResources: Array<{ internalId: string }>;
-        isSelectAll: boolean;
-        tagsFilter: {
-          in: string[];
-          not: string[];
-          mode: "custom" | "auto";
-        } | null;
-      }
-    >
+    dataSources: DataSourceConfiguration[]
   ): Record<string, AgentYAMLDataSourceConfiguration> {
     const result: Record<string, AgentYAMLDataSourceConfiguration> = {};
 
-    for (const [key, config] of Object.entries(configurations)) {
-      result[key] = {
-        view_id: config.dataSourceView.sId,
-        selected_resources: config.selectedResources
-          .map((resource) => resource.internalId)
-          .filter(Boolean),
-        is_select_all: Boolean(config.isSelectAll),
-        tags_filter: config.tagsFilter
-          ? {
-              in: config.tagsFilter.in ?? [],
-              not: config.tagsFilter.not ?? [],
-              mode: config.tagsFilter.mode,
-            }
-          : null,
+    for (const { dataSourceViewId, filter } of dataSources) {
+      // No parents filter, or `parents.in: null`, selects the whole data source view.
+      const parentsIn = filter.parents?.in ?? null;
+      result[dataSourceViewId] = {
+        view_id: dataSourceViewId,
+        selected_resources: parentsIn ?? [],
+        is_select_all: parentsIn === null,
+        tags_filter: filter.tags,
       };
     }
 
     return result;
+  }
+
+  private static convertTablesConfigurations(
+    tables: TableDataSourceConfiguration[]
+  ): AgentYAMLTableConfiguration[] {
+    return tables.map((table) => ({
+      view_id: table.dataSourceViewId,
+      table_id: table.tableId,
+    }));
   }
 
   private static convertSlackIntegration(
