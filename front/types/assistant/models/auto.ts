@@ -67,8 +67,8 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "openai",
         modelId: GPT_6_LUNA_MODEL_ID,
-        reasoningEffort: "medium",
-        featureFlag: "standard_stream_gpt_6_luna_medium",
+        reasoningEffort: "high",
+        featureFlag: "standard_stream_gpt_6_luna_high",
       },
       {
         providerId: "openai",
