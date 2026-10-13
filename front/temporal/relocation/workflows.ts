@@ -17,6 +17,7 @@ import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
 import {
+  CancellationScope,
   continueAsNew,
   executeChild,
   proxyActivities,
@@ -56,18 +57,23 @@ export async function workspaceRelocationWorkflow({
     },
   ];
 
-  await concurrentExecutor(
-    workflowDetails,
-    async (w) => {
-      await executeChild(w.workflow, {
+  // Wait for both children to settle before failing: closing this workflow terminates any child
+  // still running, which would skip its cleanup.
+  const results = await Promise.allSettled(
+    workflowDetails.map((w) =>
+      executeChild(w.workflow, {
         workflowId: `${w.name}-${workspaceId}`,
         searchAttributes: parentSearchAttributes,
         args: [{ sourceCell, destCell, workspaceId }],
         memo,
-      });
-    },
-    { concurrency: 2 }
+      })
+    )
   );
+  for (const result of results) {
+    if (result.status === "rejected") {
+      throw result.reason;
+    }
+  }
 
   // 3) Relocate the core data source documents to the destination cell.
   await executeChild(workspaceRelocateCoreWorkflow, {
@@ -109,6 +115,11 @@ const getFrontDestinationCellActivities = (cell: CellType) => {
   });
 };
 
+/**
+ * @cc [owner:avervaet,label:security] staged-secrets-always-cleaned-up
+ * Once secret re-encryption ends, successfully or after its last failed attempt, the staged
+ * secrets object MUST be deleted.
+ */
 export async function workspaceRelocateFrontWorkflow({
   sourceCell,
   destCell,
@@ -156,7 +167,36 @@ export async function workspaceRelocateFrontWorkflow({
     });
   }
 
-  // 3) Relocate the associated files from the file storage to the destination cell.
+  // 3) Re-encrypt secrets copied above, since each cell encrypts them with its own secrets. It
+  // must run before anything in the destination cell reads them.
+  const { workflowId } = workflowInfo();
+  const secretsDataPath =
+    await sourceCellActivities.readSecretsFromSourceRegion({
+      destCell,
+      sourceCell,
+      workflowId,
+      workspaceId,
+    });
+  if (secretsDataPath) {
+    try {
+      await destinationCellActivities.reencryptSecretsInDestinationRegion({
+        dataPath: secretsDataPath,
+        destCell,
+        sourceCell,
+        workflowId,
+        workspaceId,
+      });
+    } finally {
+      // Cleanup must still run when the workflow is cancelled.
+      await CancellationScope.nonCancellable(() =>
+        destinationCellActivities.deleteStagedSecretsInDestinationRegion({
+          dataPath: secretsDataPath,
+        })
+      );
+    }
+  }
+
+  // 4) Relocate the associated files from the file storage to the destination cell.
   await executeChild(workspaceRelocateFrontFileStorageWorkflow, {
     workflowId: `workspaceRelocateFrontFileStorageWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
@@ -169,7 +209,7 @@ export async function workspaceRelocateFrontWorkflow({
     ],
   });
 
-  // 4) Recreate Elasticsearch indices in the destination cell.
+  // 5) Recreate Elasticsearch indices in the destination cell.
   await executeChild(workspaceRelocateFrontEsIndexationWorkflow, {
     workflowId: `workspaceRelocateFrontEsIndexationWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,

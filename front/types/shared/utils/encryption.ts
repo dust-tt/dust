@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import crypto from "crypto";
 
-type EncryptionUseCase = "developer_secret" | "mcp_server_credentials";
+export type EncryptionUseCase = "developer_secret" | "mcp_server_credentials";
 
 export function md5(str: string): string {
   return crypto.createHash("md5").update(str).digest("hex");

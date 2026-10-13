@@ -666,6 +666,10 @@ const config = {
       "DUST_MCP_SERVER_CREDENTIALS_SECRET"
     );
   },
+  // Shared by every cell, unlike the secrets above, so one cell can decrypt what another staged.
+  getRelocationTransportSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("RELOCATION_TRANSPORT_SECRET");
+  },
   // E2B Sandbox.
   getE2BSandboxConfig: (): {
     apiKey: string;
