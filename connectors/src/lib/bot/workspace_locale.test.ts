@@ -1,10 +1,10 @@
-import { resolveSlackLocale } from "@connectors/connectors/slack/lib/workspace_locale";
+import { resolveWorkspaceLocale } from "@connectors/lib/bot/workspace_locale";
 import { describe, expect, it } from "vitest";
 
-describe("resolveSlackLocale", () => {
+describe("resolveWorkspaceLocale", () => {
   it("uses the workspace locale over the locale the user chose in Dust", () => {
     expect(
-      resolveSlackLocale({
+      resolveWorkspaceLocale({
         localisationEnabled: true,
         userLocale: "en-GB",
         workspaceLocale: "fr-FR",
@@ -14,7 +14,7 @@ describe("resolveSlackLocale", () => {
 
   it("renders en-US when the workspace locale is not supported", () => {
     expect(
-      resolveSlackLocale({
+      resolveWorkspaceLocale({
         localisationEnabled: true,
         userLocale: "fr-FR",
         workspaceLocale: "ja-JP",
@@ -24,7 +24,7 @@ describe("resolveSlackLocale", () => {
 
   it("renders en-US when localisation is disabled", () => {
     expect(
-      resolveSlackLocale({
+      resolveWorkspaceLocale({
         localisationEnabled: false,
         userLocale: "fr-FR",
         workspaceLocale: "fr-FR",
@@ -33,6 +33,6 @@ describe("resolveSlackLocale", () => {
   });
 
   it("renders en-US when the Dust locales are unknown", () => {
-    expect(resolveSlackLocale(null)).toBe("en-US");
+    expect(resolveWorkspaceLocale(null)).toBe("en-US");
   });
 });

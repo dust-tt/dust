@@ -1,4 +1,4 @@
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
+import { getBotI18n } from "@connectors/lib/bot/i18n";
 import logger from "@connectors/logger/logger";
 import type { I18n } from "@lingui/core";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,7 +24,7 @@ describe("formatAgentMarkdownForSlack", () => {
   let i18n: I18n;
 
   beforeAll(async () => {
-    i18n = await getSlackI18n("en-US");
+    i18n = await getBotI18n("en-US");
   });
 
   beforeEach(() => {

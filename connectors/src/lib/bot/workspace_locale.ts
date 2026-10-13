@@ -1,6 +1,6 @@
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
+import { getBotI18n } from "@connectors/lib/bot/i18n";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { cacheWithRedisResult } from "@connectors/types";
@@ -10,13 +10,13 @@ import type { APIError, GetMemberLocaleResponseType } from "@dust-tt/client";
 import type { I18n } from "@lingui/core";
 
 /**
- * @cc [owner:Nils-Fedrigo,label:product] slack-locale-resolution
+ * @cc [owner:Nils-Fedrigo,label:product] workspace-locale-resolution
  * MUST return `DEFAULT_LOCALE` when `dustLocales` is `null` or its `localisationEnabled` is false.
  * Otherwise it MUST return the locale set in the Dust workspace settings (`workspaceLocale`) if it
  * is a `SUPPORTED_LOCALES` entry, and `DEFAULT_LOCALE` otherwise. The locales of individual users
- * (in Dust or in Slack) MUST NOT be used.
+ * (in Dust or in the chat platform) MUST NOT be used.
  */
-export function resolveSlackLocale(
+export function resolveWorkspaceLocale(
   dustLocales: GetMemberLocaleResponseType | null
 ): SupportedLocale {
   if (!dustLocales?.localisationEnabled) {
@@ -33,19 +33,19 @@ async function getDustLocales(connector: ConnectorResource) {
   );
 }
 
-// Bounds Dust -> Slack locale propagation to 10 min while avoiding a front call per bot message.
+// Bounds Dust -> bot locale propagation to 10 min while avoiding a front call per bot message.
 const getDustLocalesMemoized = cacheWithRedisResult<
   GetMemberLocaleResponseType,
   APIError,
   Parameters<typeof getDustLocales>
->(getDustLocales, (connector) => `slack-workspace-locale-${connector.id}`, {
+>(getDustLocales, (connector) => `bot-workspace-locale-${connector.id}`, {
   ttlMs: 10 * 60 * 1000,
 });
 
 /**
- * Returns the `I18n` to write Slack text in: the locale set in the Dust workspace settings.
+ * Returns the `I18n` to write bot text in: the locale set in the Dust workspace settings.
  */
-export async function getSlackI18nForWorkspace(
+export async function getBotI18nForWorkspace(
   connector: ConnectorResource
 ): Promise<I18n> {
   const dustLocalesRes = await getDustLocalesMemoized(connector);
@@ -56,7 +56,7 @@ export async function getSlackI18nForWorkspace(
     );
   }
 
-  return getSlackI18n(
-    resolveSlackLocale(dustLocalesRes.isOk() ? dustLocalesRes.value : null)
+  return getBotI18n(
+    resolveWorkspaceLocale(dustLocalesRes.isOk() ? dustLocalesRes.value : null)
   );
 }

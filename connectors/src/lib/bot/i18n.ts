@@ -12,7 +12,7 @@ import { compileMessage } from "@lingui/message-utils/compileMessage";
 
 /**
  * @cc [owner:Nils-Fedrigo,label:product] locales-dir-from-cwd
- * The Slack catalogs are read from `locales/` under the working directory: every connectors process
+ * The bot catalogs are read from `locales/` under the working directory: every connectors process
  * MUST run with the `connectors` package directory as its working directory.
  */
 const LOCALES_DIR = path.join(process.cwd(), "locales");
@@ -40,13 +40,13 @@ async function loadMessages(catalogLocale: CatalogLocale): Promise<Messages> {
 const i18nByLocale = new Map<SupportedLocale, Promise<I18n>>();
 
 /**
- * @cc [owner:Nils-Fedrigo,label:product;concurrency] slack-i18n-per-locale
+ * @cc [owner:Nils-Fedrigo,label:product;concurrency] bot-i18n-per-locale
  * MUST return an `I18n` instance dedicated to `locale`, whose locale never changes after creation:
  * the bot answers users with different locales concurrently in one process. It MUST render the
  * messages of the `CATALOG_LOCALE_BY_LOCALE[locale]` catalog, and messages without a translation
  * there MUST render their English text, with placeholders interpolated.
  */
-export function getSlackI18n(locale: SupportedLocale): Promise<I18n> {
+export function getBotI18n(locale: SupportedLocale): Promise<I18n> {
   let instance = i18nByLocale.get(locale);
   if (!instance) {
     instance = loadMessages(CATALOG_LOCALE_BY_LOCALE[locale]).then((messages) =>
