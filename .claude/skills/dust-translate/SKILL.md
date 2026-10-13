@@ -55,4 +55,9 @@ translate a message they share (`Cancel`, `Loading`) the same way in both by han
 
 ## Locale style guides
 
+Every catalog locale has a style guide (`catalog-locale-has-style-guide` in `front/types/locale.ts`),
+and every translation MUST follow the guide of its locale (`catalog-translations-follow-style-guide`
+in the root `CONTRACTS`).
+
+- `en-US` (source locale, written in the code): [references/en-US.md](references/en-US.md)
 - `fr-FR`: [references/fr-FR.md](references/fr-FR.md)

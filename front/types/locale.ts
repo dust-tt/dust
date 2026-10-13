@@ -10,6 +10,12 @@ export const DEFAULT_LOCALE: SupportedLocale = "en-US";
  * `SPARKLE_CATALOG_LOCALES` (sparkle/src/lib/i18n/locales.ts) and `VIZ_CATALOG_LOCALES`
  * (viz/app/lib/i18n/locales.ts).
  */
+/**
+ * @cc [owner:sfriquet,label:product] catalog-locale-has-style-guide
+ * Every `CATALOG_LOCALES` entry MUST have a style guide at
+ * `.claude/skills/dust-translate/references/{locale}.md`, listed in the `dust-translate` skill:
+ * adding a locale without written translation rules is a violation.
+ */
 export const CATALOG_LOCALES = [
   "en-US",
   "fr-FR",
