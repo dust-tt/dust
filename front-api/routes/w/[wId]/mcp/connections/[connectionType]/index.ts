@@ -1,4 +1,7 @@
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  type getServerTypeAndIdFromSId,
+  parseServerTypeAndIdFromSId,
+} from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalServerCredentialPolicy } from "@app/lib/actions/mcp_server_connection_credential_policies";
 import apiConfig from "@app/lib/api/config";
@@ -14,6 +17,7 @@ import {
   MCPServerConnectionResource,
   PostConnectionBodySchema,
 } from "@app/lib/resources/mcp_server_connection_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
@@ -238,7 +242,36 @@ app.post(
     const mcpServerId = validatedBody.mcpServerId;
     const authReference = getAuthReferenceFromBody(validatedBody);
 
-    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    const serverTypeAndIdRes = parseServerTypeAndIdFromSId(mcpServerId);
+    if (serverTypeAndIdRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_mcp_server_id",
+          message: serverTypeAndIdRes.error.message,
+        },
+      });
+    }
+    const { serverType } = serverTypeAndIdRes.value;
+
+    let remoteMCPServerModelId: number | null = null;
+    if (serverType === "remote") {
+      const remoteServer = await RemoteMCPServerResource.fetchById(
+        auth,
+        mcpServerId
+      );
+      if (!remoteServer) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "mcp_server_not_found",
+            message: "Remote MCP server not found.",
+          },
+        });
+      }
+      remoteMCPServerModelId = remoteServer.id;
+    }
+
     const err = await validateAuthReferenceForMCPConnection(auth, {
       authReference,
       mcpServerId,
@@ -259,7 +292,7 @@ app.post(
       connectionType,
       serverType,
       internalMCPServerId: serverType === "internal" ? mcpServerId : null,
-      remoteMCPServerId: serverType === "remote" ? id : null,
+      remoteMCPServerId: remoteMCPServerModelId,
     });
 
     return ctx.json({ success: true, connection: connectionResource.toJSON() });
