@@ -11,7 +11,6 @@ import {
 } from "@app/lib/api/collab/session_file";
 import { mintCollabTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { Authenticator } from "@app/lib/auth";
 import {
   onLiveAgentActivity,
@@ -21,12 +20,20 @@ import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import { createLiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import type { LiveAgentEditMessage, LiveIdRange } from "@app/types/collab";
-import { BODY_FRAGMENT_NAME, toLiveDocumentName } from "@app/types/collab";
+import { toLiveDocumentName } from "@app/types/collab";
 import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import { Err, Ok } from "@app/types/shared/result";
+import {
+  checkpointNextRevision,
+  COMMENTS,
+  collabAccess,
+  DOCUMENT_NAME,
+  loadSource,
+  SOURCE,
+  typeInto,
+} from "@front-api/lib/collab/collab.test_utils";
 import {
   checkpointAllDocuments,
   createCollabHocuspocus,
@@ -64,60 +71,6 @@ vi.mock("@app/lib/api/collab/comments", () => ({
   applyCommentRequest: vi.fn(),
   dispatchSessionCommentMentions: vi.fn(async () => undefined),
 }));
-
-const DOCUMENT_NAME = "w1:user-u1/notes.md";
-const SOURCE = "# Notes\n\nHello.\n";
-const COMMENTS: DfmComment[] = [];
-
-// TODO(co-edition): open a written file through `openCollabAccess` instead, and share `typeInto` with
-// session_file.test.ts.
-async function collabAccess(canWrite: boolean): Promise<CollabAccess> {
-  const { authenticator: auth, workspace } = await createResourceTest({});
-  const dustFs = await DustFileSystem.forUser(auth);
-  if (dustFs.isErr()) {
-    throw dustFs.error;
-  }
-  return {
-    auth,
-    workspaceId: workspace.sId,
-    canonicalPath: `user-${auth.getNonNullableUser().sId}/notes.md`,
-    dustFs: dustFs.value,
-    canWrite,
-  };
-}
-
-function typeInto(doc: Y.Doc, text: string) {
-  const paragraph = new Y.XmlElement("paragraph");
-  paragraph.insert(0, [new Y.XmlText(text)]);
-  const body = doc.getXmlFragment(BODY_FRAGMENT_NAME);
-  body.insert(body.length, [paragraph]);
-}
-
-/** What `loadCollabSession` returns for `SOURCE`, with fresh Yjs identities each time. */
-async function loadSource() {
-  const live = dfmToYDoc(SOURCE);
-  if (live.isErr()) {
-    throw new Error(live.error);
-  }
-  const content = yDocToDfm(live.value);
-  if (content.isErr()) {
-    throw new Error(content.error);
-  }
-  return new Ok({
-    content: { doc: live.value.doc, comments: COMMENTS },
-    lastSave: { revision: "1", source: content.value },
-  });
-}
-
-function checkpointNextRevision() {
-  vi.mocked(saveCollabSession).mockImplementation(
-    async (_file, _live, last) =>
-      new Ok({
-        revision: String(Number(last.revision) + 1),
-        source: "written",
-      })
-  );
-}
 
 describe("createCollabHocuspocus", () => {
   beforeEach(() => {
@@ -301,221 +254,6 @@ describe("createCollabHocuspocus", () => {
     expect(saveCollabSession).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(UNLOAD_GRACE_PERIOD_MS);
     expect(hocuspocus.getDocumentsCount()).toBe(1);
-  });
-});
-
-describe("readSessionSource and writeSessionSource", () => {
-  const THREAD_SOURCE =
-    "# Notes\n\nHello :comment-start{id=c1}there:comment-end{id=c1}.\n\n" +
-    ":::annotations\n::comment{id=c1 status=open}\n\n" +
-    '::message{author=agent:agt_1 name="Agent" at=2026-10-05T12:00:00.000Z}\n\nWhy?\n:::\n';
-  const EDITED = "# Notes\n\nHello, edited.\n";
-
-  beforeEach(() => {
-    vi.mocked(loadCollabSession).mockImplementation(loadSource);
-    vi.mocked(saveCollabSession).mockImplementation(
-      async (_file, _live, last) =>
-        new Ok({ revision: String(Number(last.revision) + 1), source: "" })
-    );
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  /** A writer, a reader of the same file, and the name of that file's live document. */
-  async function collabAccesses() {
-    const agent = await collabAccess(true);
-    return {
-      agent,
-      reader: { ...agent, canWrite: false },
-      name: toLiveDocumentName(agent.workspaceId, agent.canonicalPath),
-    };
-  }
-
-  async function openSource(
-    hocuspocus: ReturnType<typeof createCollabHocuspocus>,
-    name: string
-  ) {
-    const read = await readSessionSource(hocuspocus, name);
-    if (read.isErr() || !read.value.open) {
-      throw new Error("The document is not open.");
-    }
-    return read.value.source;
-  }
-
-  it("report a document nobody has open as closed, without loading it", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, name } = await collabAccesses();
-
-    expect(await readSessionSource(hocuspocus, name)).toEqual(
-      new Ok({ open: false })
-    );
-    expect(
-      await writeSessionSource(hocuspocus, {
-        file: agent,
-        base: SOURCE,
-        source: EDITED,
-      })
-    ).toEqual(new Ok("closed"));
-    expect(loadCollabSession).not.toHaveBeenCalled();
-  });
-
-  it("write only the document of the file's own path", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, reader, name } = await collabAccesses();
-    await hocuspocus.openDirectConnection(name, reader);
-
-    const written = await writeSessionSource(hocuspocus, {
-      file: {
-        ...agent,
-        canonicalPath: agent.canonicalPath.replace("notes.md", "other.md"),
-      },
-      base: SOURCE,
-      source: EDITED,
-    });
-
-    expect(written).toEqual(new Ok("closed"));
-    expect(await openSource(hocuspocus, name)).toBe(SOURCE);
-  });
-
-  it("write through the open session as the agent's change, then checkpoint it", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, reader, name } = await collabAccesses();
-    vi.useFakeTimers();
-    await hocuspocus.openDirectConnection(name, reader);
-    const base = await openSource(hocuspocus, name);
-    expect(base).toBe(SOURCE);
-
-    const written = await writeSessionSource(hocuspocus, {
-      file: agent,
-      base,
-      source: EDITED,
-    });
-
-    expect(written).toEqual(new Ok("written"));
-    expect(await openSource(hocuspocus, name)).toBe(EDITED);
-    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
-    expect(saveCollabSession).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(saveCollabSession).mock.calls[0][0]).toBe(agent);
-  });
-
-  it("refuse a write made against another source, changing nothing", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, name } = await collabAccesses();
-    const connection = await hocuspocus.openDirectConnection(name, {
-      ...agent,
-    });
-    const base = await openSource(hocuspocus, name);
-    await connection.transact((doc) => typeInto(doc, "Typed meanwhile."));
-
-    const written = await writeSessionSource(hocuspocus, {
-      file: agent,
-      base,
-      source: EDITED,
-    });
-
-    expect(written).toEqual(new Ok("changed"));
-    expect(await openSource(hocuspocus, name)).toContain("Typed meanwhile.");
-    expect(await openSource(hocuspocus, name)).not.toContain("edited");
-  });
-
-  it("replace the session's threads, send them to every connection and checkpoint them", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, reader, name } = await collabAccesses();
-    vi.useFakeTimers();
-    const connection = await hocuspocus.openDirectConnection(name, reader);
-    const broadcast = vi.spyOn(connection.document!, "broadcastStateless");
-
-    const written = await writeSessionSource(hocuspocus, {
-      file: agent,
-      base: await openSource(hocuspocus, name),
-      source: THREAD_SOURCE,
-    });
-
-    expect(written).toEqual(new Ok("written"));
-    expect(await openSource(hocuspocus, name)).toBe(THREAD_SOURCE);
-    expect(broadcast).toHaveBeenCalledTimes(1);
-    const [message] = broadcast.mock.calls[0];
-    expect(JSON.parse(message)).toMatchObject({
-      type: "threads",
-      comments: [{ id: "c1" }],
-    });
-    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
-    const [[writer, live]] = vi.mocked(saveCollabSession).mock.calls;
-    expect(writer).toBe(agent);
-    expect(live.comments.map(({ id }) => id)).toEqual(["c1"]);
-  });
-
-  it("keep applying writes after one that throws", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, reader, name } = await collabAccesses();
-    const connection = await hocuspocus.openDirectConnection(name, reader);
-    vi.spyOn(connection.document!, "broadcastStateless").mockImplementationOnce(
-      () => {
-        throw new Error("Broadcast failed.");
-      }
-    );
-
-    await expect(
-      writeSessionSource(hocuspocus, {
-        file: agent,
-        base: await openSource(hocuspocus, name),
-        source: THREAD_SOURCE,
-      })
-    ).rejects.toThrow("Broadcast failed.");
-    const written = await writeSessionSource(hocuspocus, {
-      file: agent,
-      base: await openSource(hocuspocus, name),
-      source: EDITED,
-    });
-
-    expect(written).toEqual(new Ok("written"));
-    expect(await openSource(hocuspocus, name)).toBe(EDITED);
-  });
-
-  it("refuse a write to a session whose storage has no revisions, changing nothing", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, reader, name } = await collabAccesses();
-    vi.mocked(loadCollabSession).mockImplementationOnce(async () => {
-      const loaded = await loadSource();
-      return new Ok({
-        ...loaded.value,
-        lastSave: { ...loaded.value.lastSave, revision: undefined },
-      });
-    });
-    await hocuspocus.openDirectConnection(name, reader);
-
-    const written = await writeSessionSource(hocuspocus, {
-      file: agent,
-      base: SOURCE,
-      source: EDITED,
-    });
-
-    expect(written.isErr()).toBe(true);
-    expect(await openSource(hocuspocus, name)).toBe(SOURCE);
-  });
-
-  it("refuse a source the editor refuses, or a file that cannot write, changing nothing", async () => {
-    const hocuspocus = createCollabHocuspocus();
-    const { agent, reader, name } = await collabAccesses();
-    await hocuspocus.openDirectConnection(name, reader);
-    const base = await openSource(hocuspocus, name);
-
-    const table = await writeSessionSource(hocuspocus, {
-      file: agent,
-      base,
-      source: "| a | b |\n|---|---|\n| 1 | 2 |\n",
-    });
-    const unwritable = await writeSessionSource(hocuspocus, {
-      file: reader,
-      base,
-      source: EDITED,
-    });
-
-    expect(table.isErr()).toBe(true);
-    expect(unwritable.isErr()).toBe(true);
-    expect(await openSource(hocuspocus, name)).toBe(base);
   });
 });
 
