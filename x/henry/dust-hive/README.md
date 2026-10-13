@@ -107,7 +107,7 @@ mkdir -p ~/.dust-hive
 cp /path/to/your/.env ~/.dust-hive/config.env
 ```
 
-The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.).
+The `config.env` can use plain `KEY=value` lines or `export` statements; dust-hive auto-exports everything it defines. It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.).
 
 2. **Start managed services** (temporal server + main zellij session):
 
