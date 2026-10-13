@@ -1,9 +1,9 @@
 import { generateKeyPairSync } from "node:crypto";
+import type { CollabAccess } from "@app/lib/api/collab/access";
 import {
   applyLiveCommentCommand,
   dispatchLiveCommentMentions,
 } from "@app/lib/api/collab/live_comments";
-import type { LiveFile } from "@app/lib/api/collab/live_file";
 import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
@@ -34,7 +34,7 @@ const THREAD: DfmComment = {
 const OTHER: DfmComment = { ...THREAD, id: "c2" };
 
 describe("applyLiveCommentCommand", () => {
-  let file: LiveFile;
+  let file: CollabAccess;
 
   beforeEach(async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
@@ -206,7 +206,7 @@ describe("dispatchLiveCommentMentions", () => {
       },
     ],
   });
-  let file: LiveFile;
+  let file: CollabAccess;
 
   function loadLive() {
     if (SOURCE.isErr()) {

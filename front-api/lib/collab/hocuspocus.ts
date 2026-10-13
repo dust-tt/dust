@@ -1,18 +1,20 @@
+import type {
+  CollabAccess,
+  CollabAccessError,
+} from "@app/lib/api/collab/access";
+import {
+  checkCollabAccess,
+  recheckCollabAccess,
+} from "@app/lib/api/collab/access";
 import {
   applyLiveCommentCommand,
   dispatchLiveCommentMentions,
 } from "@app/lib/api/collab/live_comments";
-import type {
-  LiveAccessError,
-  LiveCheckpoint,
-  LiveFile,
-} from "@app/lib/api/collab/live_file";
+import type { CollabSave } from "@app/lib/api/collab/session_file";
 import {
-  checkLiveAccess,
-  checkpointLiveDocument,
-  loadLiveDocument,
-  recheckLiveAccess,
-} from "@app/lib/api/collab/live_file";
+  loadCollabSession,
+  saveCollabSession,
+} from "@app/lib/api/collab/session_file";
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { Authenticator } from "@app/lib/auth";
@@ -59,9 +61,9 @@ const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
   comments: DfmComment[];
-  checkpoint: LiveCheckpoint;
+  checkpoint: CollabSave;
   checkpointFailed: boolean;
-  lastChangedBy: LiveFile | undefined;
+  lastChangedBy: CollabAccess | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
   commentCommands: Promise<void>;
 }
@@ -109,7 +111,7 @@ const commandRequestSchema = z.object({
 });
 
 const sessions = new WeakMap<Document, LiveSession>();
-const shuttingDown = new WeakSet<Hocuspocus<LiveFile>>();
+const shuttingDown = new WeakSet<Hocuspocus<CollabAccess>>();
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -134,12 +136,12 @@ function logUnexpected(
 /**
  * @cc [owner:PopDaph,label:security] live-connection-auth
  * A connection MUST open only with a ticket redeemed for the workspace and the file its document
- * name carries, and only if `checkLiveAccess` still lets the ticket's user open that file.
+ * name carries, and only if `checkCollabAccess` still lets the ticket's user open that file.
  */
 export async function authenticateConnection(
   parsed: { workspaceId: string; canonicalPath: string },
   token: string
-): Promise<Result<LiveFile, string>> {
+): Promise<Result<CollabAccess, string>> {
   const ticket = await redeemLiveTicket(token);
   if (
     !ticket ||
@@ -152,7 +154,7 @@ export async function authenticateConnection(
     ticket.userId,
     parsed.workspaceId
   );
-  const file = await checkLiveAccess(auth, parsed.canonicalPath);
+  const file = await checkCollabAccess(auth, parsed.canonicalPath);
   if (file.isErr()) {
     return new Err(file.error.message);
   }
@@ -191,8 +193,8 @@ export async function authenticateConnection(
  * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
  * the later ones. Any other message that is not a valid client message MUST be ignored.
  */
-export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
-  const hocuspocus = new Hocuspocus<LiveFile>({
+export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
+  const hocuspocus = new Hocuspocus<CollabAccess>({
     debounce: STORE_DEBOUNCE_MS,
     maxDebounce: STORE_MAX_DEBOUNCE_MS,
 
@@ -216,9 +218,9 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
     },
 
     async onLoadDocument({ context, document, documentName }) {
-      let loaded: Awaited<ReturnType<typeof loadLiveDocument>>;
+      let loaded: Awaited<ReturnType<typeof loadCollabSession>>;
       try {
-        loaded = await loadLiveDocument(context);
+        loaded = await loadCollabSession(context);
       } catch (err) {
         document.destroy();
         return logUnexpected(
@@ -230,16 +232,16 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         document.destroy();
         refuse(documentName, loaded.error);
       }
-      const { live, checkpoint } = loaded.value;
+      const { content, lastSave } = loaded.value;
       sessions.set(document, {
-        comments: live.comments,
-        checkpoint,
+        comments: content.comments,
+        checkpoint: lastSave,
         checkpointFailed: false,
         lastChangedBy: undefined,
         graceTimer: undefined,
         commentCommands: Promise.resolve(),
       });
-      return live.doc;
+      return content.doc;
     },
 
     async onChange({ document, context }) {
@@ -270,9 +272,9 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         throw new Error("The document was changed without a writer.");
       }
 
-      let checkpoint: Result<LiveCheckpoint, string>;
+      let checkpoint: Result<CollabSave, string>;
       try {
-        checkpoint = await checkpointLiveDocument(
+        checkpoint = await saveCollabSession(
           writer,
           { doc: document, comments: session.comments },
           session.checkpoint
@@ -331,7 +333,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
 
     async onStateless({ connection, document, documentName, payload }) {
       const session = sessions.get(document);
-      const file: LiveFile = connection.context;
+      const file: CollabAccess = connection.context;
       const json = safeParseJSON(payload);
       const message = json.isOk()
         ? liveCommentClientMessageSchema.safeParse(json.value)
@@ -468,7 +470,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
  * only once each checkpoint has finished or failed.
  */
 export async function checkpointAllDocuments(
-  hocuspocus: Hocuspocus<LiveFile>
+  hocuspocus: Hocuspocus<CollabAccess>
 ): Promise<void> {
   shuttingDown.add(hocuspocus);
   // A load may still apply edits queued while it ran; its failure was already logged.
@@ -503,7 +505,7 @@ export async function checkpointAllDocuments(
 
 /** The document and its session while one is open, once it has finished loading or unloading. */
 async function openSession(
-  hocuspocus: Hocuspocus<LiveFile>,
+  hocuspocus: Hocuspocus<CollabAccess>,
   documentName: string
 ): Promise<{ document: Document; session: LiveSession } | null> {
   // Only their outcome matters, read from `documents` below: a failed load leaves no document, and
@@ -526,7 +528,7 @@ async function openSession(
  * unload in progress, with as source what `yDocToDfm` gives for it and the session's threads.
  */
 export async function readLiveSource(
-  hocuspocus: Hocuspocus<LiveFile>,
+  hocuspocus: Hocuspocus<CollabAccess>,
   documentName: string
 ): Promise<Result<LiveSourceReadResponse, string>> {
   const open = await openSession(hocuspocus, documentName);
@@ -547,10 +549,10 @@ export async function readLiveSource(
  * @cc [owner:PopDaph,label:product] collab-agent-activity
  * Every connection of a document Hocuspocus holds MUST be told what `agent` is doing in it, and
  * nothing MUST be sent for a document it does not hold. Callers MUST only report an agent whose
- * user may read the document live (`checkLiveReadAccess`).
+ * user may read the document live (`checkCollabReadAccess`).
  */
 export function showLiveAgentActivity(
-  hocuspocus: Hocuspocus<LiveFile>,
+  hocuspocus: Hocuspocus<CollabAccess>,
   documentName: string,
   agent: LiveAgent,
   activity: LiveAgentActivity
@@ -584,13 +586,13 @@ export function showLiveAgentActivity(
  * the items the change's own transaction inserted); failing to read them MUST only skip it.
  */
 export async function writeLiveSource(
-  hocuspocus: Hocuspocus<LiveFile>,
+  hocuspocus: Hocuspocus<CollabAccess>,
   {
     file,
     base,
     source,
     agent,
-  }: { file: LiveFile; base: string; source: string; agent?: LiveAgent }
+  }: { file: CollabAccess; base: string; source: string; agent?: LiveAgent }
 ): Promise<Result<LiveSourceWriteResult, string>> {
   if (!file.canWrite) {
     return new Err("The file cannot be written.");
@@ -730,7 +732,7 @@ export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
  * @cc [owner:PopDaph,label:security;performance] collab-access-recheck
  * The collab server MUST start a sweep every `ACCESS_RECHECK_INTERVAL_MS`, unless the previous one
  * is still running. Every WebSocket document connection of this process open when the sweep starts
- * MUST be checked again with `recheckLiveAccess`, with an Authenticator freshly built for its user
+ * MUST be checked again with `recheckCollabAccess`, with an Authenticator freshly built for its user
  * in this sweep, and MUST be closed when the check fails or throws.
  * A failure checking one user and document MUST NOT stop the others: it is logged and their
  * connections closed, an exception to `no-catching-own-errors` limited to it. The returned promise
@@ -739,7 +741,7 @@ export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
  * system's permission checks, which have no batch API, and run at most 4 at a time.
  */
 export async function recheckAllConnections(
-  hocuspocus: Hocuspocus<LiveFile>
+  hocuspocus: Hocuspocus<CollabAccess>
 ): Promise<void> {
   const startedAt = Date.now();
   // One check per user and document, however many tabs they have open. Each process sweeps only
@@ -747,7 +749,7 @@ export async function recheckAllConnections(
   const groups = new Map<string, Connection[]>();
   for (const document of hocuspocus.documents.values()) {
     for (const connection of document.getConnections()) {
-      const context: LiveFile = connection.context;
+      const context: CollabAccess = connection.context;
       const key = `${context.auth.getNonNullableUser().sId}:${document.name}`;
       const group = groups.get(key);
       if (group) {
@@ -788,10 +790,10 @@ export async function recheckAllConnections(
         }
         closed += connections.length;
       };
-      let access: Result<void, LiveAccessError>;
+      let access: Result<void, CollabAccessError>;
       try {
         const fresh = await authenticatorFor(userId, workspaceId);
-        access = await recheckLiveAccess(fresh, canonicalPath);
+        access = await recheckCollabAccess(fresh, canonicalPath);
       } catch (err) {
         failed++;
         logger.error(

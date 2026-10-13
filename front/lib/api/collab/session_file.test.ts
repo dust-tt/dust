@@ -1,8 +1,8 @@
+import { openCollabAccess } from "@app/lib/api/collab/access";
 import {
-  checkpointLiveDocument,
-  loadLiveDocument,
-  openLiveFile,
-} from "@app/lib/api/collab/live_file";
+  loadCollabSession,
+  saveCollabSession,
+} from "@app/lib/api/collab/session_file";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
@@ -50,25 +50,25 @@ describe("live document names", () => {
   });
 });
 
-describe("openLiveFile and loadLiveDocument", () => {
+describe("openCollabAccess and loadCollabSession", () => {
   it("open the user's Markdown file for writing and load its content", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const path = await writeUserFile(auth, "notes.md", "# Notes\n\nHello.\n");
 
-    const file = await openLiveFile(auth, path);
+    const file = await openCollabAccess(auth, path);
     expect(file.isOk()).toBe(true);
     if (!file.isOk()) {
       return;
     }
     expect(file.value.canWrite).toBe(true);
 
-    const loaded = await loadLiveDocument(file.value);
+    const loaded = await loadCollabSession(file.value);
     expect(loaded.isOk()).toBe(true);
     if (loaded.isOk()) {
       expect(
-        loaded.value.live.doc.getXmlFragment(BODY_FRAGMENT_NAME).toString()
+        loaded.value.content.doc.getXmlFragment(BODY_FRAGMENT_NAME).toString()
       ).toContain("Hello.");
-      expect(loaded.value.checkpoint.content).toBe("# Notes\n\nHello.\n");
+      expect(loaded.value.lastSave.source).toBe("# Notes\n\nHello.\n");
     }
   });
 
@@ -76,7 +76,7 @@ describe("openLiveFile and loadLiveDocument", () => {
     const { authenticator: auth } = await createResourceTest({});
     const path = await writeUserFile(auth, "notes.markdown", "# Notes\n");
 
-    expect((await openLiveFile(auth, path)).isOk()).toBe(true);
+    expect((await openCollabAccess(auth, path)).isOk()).toBe(true);
   });
 
   it("refuse a file that is not Markdown", async () => {
@@ -88,7 +88,7 @@ describe("openLiveFile and loadLiveDocument", () => {
       "text/plain"
     );
 
-    expect((await openLiveFile(auth, path)).isErr()).toBe(true);
+    expect((await openCollabAccess(auth, path)).isErr()).toBe(true);
   });
 
   it("refuse a path that is not normalized", async () => {
@@ -96,8 +96,10 @@ describe("openLiveFile and loadLiveDocument", () => {
     const path = await writeUserFile(auth, "notes.md", "# Notes\n");
     const [scope, name] = path.split("/");
 
-    expect((await openLiveFile(auth, `${scope}/./${name}`)).isErr()).toBe(true);
-    expect((await openLiveFile(auth, path)).isOk()).toBe(true);
+    expect((await openCollabAccess(auth, `${scope}/./${name}`)).isErr()).toBe(
+      true
+    );
+    expect((await openCollabAccess(auth, path)).isOk()).toBe(true);
   });
 
   it("refuse a path with a trailing slash, which a backend may resolve to the file", async () => {
@@ -107,7 +109,7 @@ describe("openLiveFile and loadLiveDocument", () => {
       new Ok({ contentType: "text/markdown", sizeBytes: 8 })
     );
 
-    expect((await openLiveFile(auth, `${path}/`)).isErr()).toBe(true);
+    expect((await openCollabAccess(auth, `${path}/`)).isErr()).toBe(true);
   });
 
   it("refuse a missing file", async () => {
@@ -117,7 +119,7 @@ describe("openLiveFile and loadLiveDocument", () => {
       (filePath) => !filePath.endsWith("missing.md")
     );
 
-    expect((await openLiveFile(auth, path)).isErr()).toBe(true);
+    expect((await openCollabAccess(auth, path)).isErr()).toBe(true);
   });
 
   it("refuse a directory named like a Markdown file", async () => {
@@ -127,7 +129,7 @@ describe("openLiveFile and loadLiveDocument", () => {
       new Ok({ contentType: "application/x-directory", sizeBytes: 0 })
     );
 
-    expect((await openLiveFile(auth, path)).isErr()).toBe(true);
+    expect((await openCollabAccess(auth, path)).isErr()).toBe(true);
   });
 
   it("refuse a file larger than the file API can write", async () => {
@@ -140,7 +142,7 @@ describe("openLiveFile and loadLiveDocument", () => {
       })
     );
 
-    expect((await openLiveFile(auth, path)).isErr()).toBe(true);
+    expect((await openCollabAccess(auth, path)).isErr()).toBe(true);
   });
 
   it("refuse another user's file", async () => {
@@ -148,19 +150,19 @@ describe("openLiveFile and loadLiveDocument", () => {
     const { authenticator: other } = await createResourceTest({});
     const path = await writeUserFile(owner, "notes.md", "# Notes\n");
 
-    expect((await openLiveFile(other, path)).isErr()).toBe(true);
+    expect((await openCollabAccess(other, path)).isErr()).toBe(true);
   });
 });
 
-describe("checkpointLiveDocument", () => {
+describe("saveCollabSession", () => {
   async function loadUserFile(text: string) {
     const { authenticator: auth } = await createResourceTest({});
     const path = await writeUserFile(auth, "notes.md", text);
-    const file = await openLiveFile(auth, path);
+    const file = await openCollabAccess(auth, path);
     if (file.isErr()) {
       throw new Error(file.error.message);
     }
-    const loaded = await loadLiveDocument(file.value);
+    const loaded = await loadCollabSession(file.value);
     if (loaded.isErr()) {
       throw new Error(loaded.error);
     }
@@ -168,47 +170,47 @@ describe("checkpointLiveDocument", () => {
     return { auth, file: file.value, ...loaded.value };
   }
 
-  function typeInto(live: { doc: Y.Doc }, text: string) {
+  function typeInto(content: { doc: Y.Doc }, text: string) {
     const paragraph = new Y.XmlElement("paragraph");
     paragraph.insert(0, [new Y.XmlText(text)]);
-    const body = live.doc.getXmlFragment(BODY_FRAGMENT_NAME);
+    const body = content.doc.getXmlFragment(BODY_FRAGMENT_NAME);
     body.insert(body.length, [paragraph]);
   }
 
   it("does not write a document that has not changed", async () => {
-    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
+    const { file, content, lastSave } = await loadUserFile("# Notes\n");
 
-    const result = await checkpointLiveDocument(file, live, checkpoint);
-    expect(result.isOk() && result.value).toEqual(checkpoint);
+    const result = await saveCollabSession(file, content, lastSave);
+    expect(result.isOk() && result.value).toEqual(lastSave);
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
   it("writes an edit to the file", async () => {
-    const { auth, file, live, checkpoint } = await loadUserFile("# Notes\n");
-    typeInto(live, "Edited.");
+    const { auth, file, content, lastSave } = await loadUserFile("# Notes\n");
+    typeInto(content, "Edited.");
 
-    const result = await checkpointLiveDocument(file, live, checkpoint);
-    expect(result.isOk() && result.value.content).toContain("Edited.");
+    const result = await saveCollabSession(file, content, lastSave);
+    expect(result.isOk() && result.value.source).toContain("Edited.");
 
-    const reopened = await openLiveFile(auth, file.canonicalPath);
+    const reopened = await openCollabAccess(auth, file.canonicalPath);
     expect(reopened.isOk()).toBe(true);
     if (reopened.isOk()) {
-      const reloaded = await loadLiveDocument(reopened.value);
-      expect(reloaded.isOk() && reloaded.value.checkpoint.content).toContain(
+      const reloaded = await loadCollabSession(reopened.value);
+      expect(reloaded.isOk() && reloaded.value.lastSave.source).toContain(
         "Edited."
       );
     }
   });
 
   it("writes conditional on the last revision and returns the new one", async () => {
-    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
-    typeInto(live, "Edited.");
+    const { file, content, lastSave } = await loadUserFile("# Notes\n");
+    typeInto(content, "Edited.");
     vi.mocked(writeCanonicalFileContent).mockResolvedValueOnce(
       new Ok({ created: false, revision: "8" })
     );
 
-    const result = await checkpointLiveDocument(file, live, {
-      ...checkpoint,
+    const result = await saveCollabSession(file, content, {
+      ...lastSave,
       revision: "7",
     });
     expect(result.isOk() && result.value.revision).toBe("8");
@@ -216,16 +218,16 @@ describe("checkpointLiveDocument", () => {
   });
 
   it("fails when the file changed since its last revision", async () => {
-    const { file, live, checkpoint } = await loadUserFile("# Notes\n");
-    typeInto(live, "Edited.");
+    const { file, content, lastSave } = await loadUserFile("# Notes\n");
+    typeInto(content, "Edited.");
     vi.mocked(writeCanonicalFileContent).mockResolvedValueOnce(
       new Err(
         new WriteCanonicalFileContentError("revision_conflict", "File changed.")
       )
     );
 
-    const result = await checkpointLiveDocument(file, live, {
-      ...checkpoint,
+    const result = await saveCollabSession(file, content, {
+      ...lastSave,
       revision: "7",
     });
     expect(result.isErr()).toBe(true);

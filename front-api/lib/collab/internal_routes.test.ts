@@ -1,4 +1,4 @@
-import { checkLiveAccess } from "@app/lib/api/collab/live_file";
+import { checkCollabAccess } from "@app/lib/api/collab/access";
 import { ENVELOPE_MAP_NAME } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
@@ -129,7 +129,7 @@ describe("createInternalDocumentsApp", () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "co_edition");
     const canonicalPath = await writeUserFile(auth, "notes.md", "# Notes\n");
-    const file = await checkLiveAccess(auth, canonicalPath);
+    const file = await checkCollabAccess(auth, canonicalPath);
     if (file.isErr()) {
       throw new Error(file.error.message);
     }
