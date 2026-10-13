@@ -17,6 +17,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -546,6 +547,45 @@ describe("getJITServers", () => {
         return json.name ?? json.server.name;
       });
       expect(viewNames).toContain("pod_manager");
+    });
+
+    it("auto-enables schedules for the dust default agent", async () => {
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: {
+          ...agentConfig,
+          sId: GLOBAL_AGENTS_SID.DUST,
+        },
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "schedules", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+
+      const schedules = buckets.systemSkills.find((s) => s.sId === "schedules");
+      expect(schedules).toBeDefined();
+      const viewNames = schedules?.mcpServerConfigurations.map((c) => {
+        const json = c.view.toJSON();
+        return json.name ?? json.server.name;
+      });
+      expect(viewNames).toContain("triggers_management");
+    });
+
+    it("does not auto-enable schedules for other agents", async () => {
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "schedules", {
+        enabled: false,
+        system: false,
+        equipped: false,
+      });
     });
 
     it("auto-equips but does not auto-enable projects outside a project", async () => {

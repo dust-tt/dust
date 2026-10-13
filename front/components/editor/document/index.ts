@@ -1,11 +1,11 @@
 export {
-  Document,
+  DocumentEditor,
   hasOpenDocumentLayer,
-} from "@app/components/editor/document/Document";
+} from "@app/components/editor/document/DocumentEditor";
 export type {
   DocumentCommentAvatarSize,
   DocumentEmbeddableFile,
   DocumentEmbeddableFiles,
-  DocumentLiveParticipant,
+  CollabParticipant,
   DocumentProps,
 } from "@app/components/editor/document/types";

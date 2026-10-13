@@ -29,7 +29,7 @@ export interface DocumentProps {
    * read-only. The file's content shows read-only until the session has synced. Comments go
    * through the session.
    */
-  live?: DocumentLiveSession;
+  live?: CollabConnectionSettings;
   /**
    * Signs new comments and replies. Commenting requires an editable document and an author;
    * existing comments stay readable without one.
@@ -55,9 +55,7 @@ export interface DocumentProps {
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
   badge?: ReactNode;
   /** Renders the users in the live session, the current one first, such as an avatar stack. */
-  renderLiveParticipants?: (
-    participants: DocumentLiveParticipant[]
-  ) => ReactNode;
+  renderCollabParticipants?: (participants: CollabParticipant[]) => ReactNode;
 }
 
 /** A file of the document's conversation or pod, embedded by its path. */
@@ -77,7 +75,7 @@ export interface DocumentEmbeddableFiles {
 }
 
 /** Where and as whom a Document joins its live session. */
-export interface DocumentLiveSession {
+export interface CollabConnectionSettings {
   url: string;
   documentName: string;
   /** Fetches a one-time ticket for each connection; throws when access is refused. */
@@ -86,7 +84,7 @@ export interface DocumentLiveSession {
 }
 
 /** A user with the live document open. */
-export interface DocumentLiveParticipant {
+export interface CollabParticipant {
   id: string;
   name: string;
 }

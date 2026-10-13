@@ -16,13 +16,13 @@ import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 
 /** Who a live editor's caret belongs to, as other editors draw it. */
-export interface DocumentLiveUser {
+export interface CollabUser {
   id: string;
   name: string;
   color: string;
 }
 
-const liveCommentThreads = (channel: CommentChannel) => {
+const collabCommentThreads = (channel: CommentChannel) => {
   // Shared by every editor built from these extensions: one mounting once the channel has closed
   // still shows what the session last sent.
   let lastShown: DfmComment[] | null = null;
@@ -30,7 +30,7 @@ const liveCommentThreads = (channel: CommentChannel) => {
     Record<string, never>,
     { unsubscribe: (() => void) | null }
   >({
-    name: "liveCommentThreads",
+    name: "collabCommentThreads",
     addStorage: () => ({ unsubscribe: null }),
     onBeforeCreate() {
       // The session echoes every command, so most messages carry the threads already shown, and
@@ -61,7 +61,7 @@ const liveCommentThreads = (channel: CommentChannel) => {
 };
 
 /**
- * @cc [owner:PopDaph,label:product] document-live-extensions
+ * @cc [owner:PopDaph,label:product] collab-editor-extensions
  * A live document MUST use the same schema as `documentExtensions`, bind its body to the
  * `BODY_FRAGMENT_NAME` fragment of the shared document, and replace StarterKit's undo history
  * with the collaboration one, so undo reverts only the local user's own changes. A comment mark
@@ -69,13 +69,13 @@ const liveCommentThreads = (channel: CommentChannel) => {
  * marked, as for a comment with a thread.
  */
 /**
- * @cc [owner:tdraier,label:product] document-live-threads
+ * @cc [owner:tdraier,label:product] collab-editor-threads
  * A live document's threads MUST be the ones the session last sent, from the moment the editor
  * mounts, including an editor mounting once the channel has closed. They MUST be replaced whole
  * on each message, keeping every comment mark, outside undo history. Until the first one, they
  * MUST be the threads the channel was created with, or as loaded from the file when it has none.
  */
-export const buildLiveDocumentExtensions = ({
+export const buildCollabExtensions = ({
   t,
   document,
   awareness,
@@ -87,14 +87,14 @@ export const buildLiveDocumentExtensions = ({
   t: Translate;
   document: Y.Doc;
   awareness: Awareness | null;
-  user: DocumentLiveUser;
+  user: CollabUser;
   comments: CommentChannel;
   resolveImageSource: DocumentImageOptions["resolveSource"];
   /** The session's connection, which announces the agents' edits. */
   provider?: HocuspocusProvider;
 }): AnyExtension[] => [
   ...buildDocumentEditorExtensions(t, { live: true, resolveImageSource }),
-  liveCommentThreads(comments),
+  collabCommentThreads(comments),
   ...(provider ? [agentEdits(provider)] : []),
   Collaboration.configure({ document, field: BODY_FRAGMENT_NAME }),
   ...(awareness

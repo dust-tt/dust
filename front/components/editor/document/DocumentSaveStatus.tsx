@@ -30,7 +30,7 @@ const StatusRow = ({ children }: StatusRowProps) => (
   </div>
 );
 
-const LIVE_STATES: Record<
+const COLLAB_STATES: Record<
   CollabStatus,
   { label: MessageDescriptor; icon: ReactNode }
 > = {
@@ -46,14 +46,16 @@ const LIVE_STATES: Record<
   },
 };
 
-interface DocumentLiveStatusProps {
+interface CollabStatusIndicatorProps {
   status: CollabStatus;
 }
 
 /** Where the live session stands. */
-export const DocumentLiveStatus = ({ status }: DocumentLiveStatusProps) => {
+export const CollabStatusIndicator = ({
+  status,
+}: CollabStatusIndicatorProps) => {
   const { t } = useLingui();
-  const { icon, label } = LIVE_STATES[status];
+  const { icon, label } = COLLAB_STATES[status];
   return (
     <span
       role="status"
@@ -85,16 +87,16 @@ const AGENT_ACTIVITIES: Record<
   },
 };
 
-interface DocumentLiveAgentProps {
+interface CollabAgentIndicatorProps {
   activity: AgentEvent;
   avatar: ReactNode;
 }
 
 /** The agent at work in a live document: its avatar and what it does, with its name on hover. */
-export const DocumentLiveAgent = ({
+export const CollabAgentIndicator = ({
   activity,
   avatar,
-}: DocumentLiveAgentProps) => {
+}: CollabAgentIndicatorProps) => {
   const { t } = useLingui();
   const { name } = activity.agent;
   const { label, describe } = AGENT_ACTIVITIES[activity.activity];

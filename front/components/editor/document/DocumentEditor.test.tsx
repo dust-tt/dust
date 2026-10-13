@@ -1,12 +1,12 @@
+import { buildCollabExtensions } from "@app/components/editor/document/collabExtensions";
+import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
 import {
-  Document,
+  DocumentEditor,
   DocumentView,
   hasOpenDocumentLayer,
-} from "@app/components/editor/document/Document";
-import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
-import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
+} from "@app/components/editor/document/DocumentEditor";
 import type {
-  DocumentLiveParticipant,
+  CollabParticipant,
   DocumentProps,
   CollabStatus,
 } from "@app/components/editor/document/types";
@@ -16,8 +16,8 @@ import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import datadogLogger from "@app/logger/datadogLogger";
 import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
-import { LiveParticipantFactory } from "@app/tests/utils/LiveParticipantFactory";
-import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
+import { CollabParticipantFactory } from "@app/tests/utils/CollabParticipantFactory";
+import { CollabUserFactory } from "@app/tests/utils/CollabUserFactory";
 import type {
   CommentRequest,
   CommentRequestErrorCode,
@@ -153,14 +153,14 @@ async function renderDocument(
       verifyCommentMessage={verifyCommentMessage}
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={NO_IMAGE_SOURCE}
-      liveView={{
+      collabView={{
         status: "live",
         binding: {
-          extensions: buildLiveDocumentExtensions({
+          extensions: buildCollabExtensions({
             t: (descriptor) => descriptor.id ?? "",
             document: live.value.doc,
             awareness: null,
-            user: LiveUserFactory.build(),
+            user: CollabUserFactory.build(),
             comments: session.channel,
             resolveImageSource: NO_IMAGE_SOURCE,
           }),
@@ -612,7 +612,7 @@ describe("Document comments", () => {
     render(
       <DocumentView
         initialContent={SOURCE}
-        liveView={{ status: "live", binding: null }}
+        collabView={{ status: "live", binding: null }}
         statusContainer={container}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
@@ -634,7 +634,7 @@ describe("Document comments", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     render(
-      <Document
+      <DocumentEditor
         initialContent={SOURCE}
         headerControlsContainer={container}
         resolveImageSource={NO_IMAGE_SOURCE}
@@ -660,7 +660,7 @@ describe("Document comments", () => {
     const { container: documentRoot } = render(
       <DocumentView
         initialContent={SOURCE}
-        liveView={{ status: "live", binding: null }}
+        collabView={{ status: "live", binding: null }}
         headerControlsContainer={container}
         resolveImageSource={NO_IMAGE_SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
@@ -684,7 +684,7 @@ describe("Document comments", () => {
     const { container: documentRoot } = render(
       <DocumentView
         initialContent={SOURCE}
-        liveView={{ status: "live", binding: null }}
+        collabView={{ status: "live", binding: null }}
         headerControlsContainer={container}
         badge={<span data-testid="badge" />}
         resolveImageSource={NO_IMAGE_SOURCE}
@@ -705,7 +705,7 @@ describe("Document comments", () => {
 
   it("renders the host's avatars only for threads on screen", async () => {
     render(
-      <Document
+      <DocumentEditor
         initialContent={SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={(author, size) => (
@@ -892,25 +892,25 @@ describe("Document comments", () => {
 });
 
 describe("Document live participants", () => {
-  const PARTICIPANTS: DocumentLiveParticipant[] = [
-    LiveParticipantFactory.build({ id: "usr_bob", name: "Bob" }),
-    LiveParticipantFactory.build({ id: "usr_ada", name: "Ada" }),
+  const PARTICIPANTS: CollabParticipant[] = [
+    CollabParticipantFactory.build({ id: "usr_bob", name: "Bob" }),
+    CollabParticipantFactory.build({ id: "usr_ada", name: "Ada" }),
   ];
 
-  const renderLiveView = (
+  const renderCollabView = (
     status: CollabStatus,
-    participants: DocumentLiveParticipant[],
+    participants: CollabParticipant[],
     headerControlsContainer?: HTMLElement
   ) =>
     render(
       <DocumentView
         initialContent={SOURCE}
         headerControlsContainer={headerControlsContainer}
-        liveView={{ status, participants, binding: null }}
+        collabView={{ status, participants, binding: null }}
         resolveImageSource={NO_IMAGE_SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
-        renderLiveParticipants={(shown) => (
+        renderCollabParticipants={(shown) => (
           <span data-testid="participants">
             {shown.map(({ name }) => name).join(", ")}
           </span>
@@ -921,7 +921,7 @@ describe("Document live participants", () => {
   it("shows the participants right before the comments button in the host's container", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
-    renderLiveView("live", PARTICIPANTS, container);
+    renderCollabView("live", PARTICIPANTS, container);
 
     const toggle = await within(container).findByRole("button", {
       name: /^Comments/,
@@ -933,7 +933,7 @@ describe("Document live participants", () => {
   });
 
   it("shows the participants with the comments button above the document without a container", async () => {
-    const { container } = renderLiveView("live", PARTICIPANTS);
+    const { container } = renderCollabView("live", PARTICIPANTS);
 
     const toggle = await within(container).findByRole("button", {
       name: /^Comments/,
@@ -950,7 +950,7 @@ describe("Document live participants", () => {
       <DocumentView
         initialContent={SOURCE}
         headerControlsContainer={container}
-        liveView={{
+        collabView={{
           status: "live",
           participants: PARTICIPANTS,
           agent: {
@@ -964,7 +964,7 @@ describe("Document live participants", () => {
         renderCommentAuthorAvatar={(author, size) => (
           <span data-testid={`avatar:${author.kind}:${author.id}:${size}`} />
         )}
-        renderLiveParticipants={() => <span data-testid="participants" />}
+        renderCollabParticipants={() => <span data-testid="participants" />}
       />
     );
 
@@ -983,18 +983,18 @@ describe("Document live participants", () => {
   });
 
   it("shows no participants while the session is not live, or has no one else", async () => {
-    const { container, rerender } = renderLiveView("offline", PARTICIPANTS);
+    const { container, rerender } = renderCollabView("offline", PARTICIPANTS);
     await within(container).findByRole("button", { name: /^Comments/ });
     expect(within(container).queryByTestId("participants")).toBeNull();
 
     rerender(
       <DocumentView
         initialContent={SOURCE}
-        liveView={{ status: "live", participants: [], binding: null }}
+        collabView={{ status: "live", participants: [], binding: null }}
         resolveImageSource={NO_IMAGE_SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
-        renderLiveParticipants={() => <span data-testid="participants" />}
+        renderCollabParticipants={() => <span data-testid="participants" />}
       />
     );
     expect(within(container).queryByTestId("participants")).toBeNull();
@@ -1004,7 +1004,7 @@ describe("Document live participants", () => {
 describe("Document for a file the editor cannot open", () => {
   const renderRefused = (initialContent: string) =>
     render(
-      <Document
+      <DocumentEditor
         initialContent={initialContent}
         commentAuthor={AUTHOR}
         renderCommentAuthorAvatar={() => null}
@@ -1089,7 +1089,7 @@ describe("Document images", () => {
     resolveImageSource: DocumentProps["resolveImageSource"]
   ) => {
     const { container } = render(
-      <Document
+      <DocumentEditor
         initialContent={
           "![Chart](pod-abc/chart.png)\n\n![Logo](https://example.com/logo.png) and text\n"
         }
@@ -1162,7 +1162,7 @@ describe("Document images", () => {
     const element = (
       resolveImageSource: DocumentProps["resolveImageSource"]
     ) => (
-      <Document
+      <DocumentEditor
         initialContent={"Intro\n"}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}

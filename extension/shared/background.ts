@@ -37,9 +37,12 @@ import type {
   TypeTextResponse,
 } from "@extension/shared/messages";
 import type { OAuthAuthorizeResponse } from "@extension/shared/services/auth";
+import {
+  postWorkOSAuthenticate,
+  revokeWorkOSSession,
+} from "@extension/shared/services/auth";
 import type { FileData } from "@extension/shared/services/capture";
 import type { PlatformService } from "@extension/shared/services/platform";
-import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
 
@@ -387,11 +390,6 @@ const refreshToken = async (
   if (!authState.refreshingToken) {
     authState.refreshingToken = true;
     try {
-      const tokenParams: Record<string, string> = {
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      };
-
       const cellInfo = await platform.auth.getCellInfoFromStorage();
       if (!cellInfo) {
         log("No cell info found for token refresh.");
@@ -406,31 +404,18 @@ const refreshToken = async (
         return;
       }
 
-      const response = await fetch(`${cellInfo.url}/api/workos/authenticate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(tokenParams),
+      const tokensRes = await postWorkOSAuthenticate(cellInfo.url, {
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(
-          `Token refresh failed: ${data.error} - ${data.error_description}`
-        );
+      if (tokensRes.isErr()) {
+        throw new Error(`Token refresh failed: ${tokensRes.error.message}`);
       }
-
-      const data = await response.json();
 
       const handlers = authState.refreshRequests;
       authState.refreshRequests = [];
       handlers.forEach((sendResponse) => {
-        sendResponse({
-          success: true,
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken || refreshToken,
-          expirationDate: data.expirationDate,
-          authentication_method: data.authenticationMethod,
-        });
+        sendResponse(tokensRes.value);
       });
     } catch (error) {
       log("Token refresh failed", error);
@@ -455,39 +440,19 @@ const exchangeCodeForTokens = async (
   code: string,
   codeVerifier: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
-  try {
-    const tokenParams: Record<string, string> = {
-      code_verifier: codeVerifier,
-      code,
-    };
-
-    const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(tokenParams),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(
-        `Token exchange failed: ${data.error} - ${data.error_description}`
-      );
-    }
-
-    const data = await response.json();
-
+  const tokensRes = await postWorkOSAuthenticate(DUST_US_URL, {
+    code,
+    code_verifier: codeVerifier,
+  });
+  if (tokensRes.isErr()) {
+    log(`Token exchange failed: ${tokensRes.error.message}`);
     return {
-      success: true,
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expirationDate: data.expirationDate,
-      authentication_method: data.authenticationMethod,
+      success: false,
+      error: `Token exchange failed: ${tokensRes.error.message}`,
     };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error.";
-    log(`Token exchange failed: ${message}`, error);
-    return { success: false, error: `Token exchange failed: ${message}` };
   }
+
+  return tokensRes.value;
 };
 
 /**
@@ -506,42 +471,14 @@ const logout = async (
     return;
   }
 
-  const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-  const sessionId = decodedPayload?.sid;
-  if (!sessionId) {
-    log("No session ID found in access token.");
-    sendResponse({ success: false, error: "No session ID found." });
+  const revokeRes = await revokeWorkOSSession(DUST_US_URL, accessToken);
+  if (revokeRes.isErr()) {
+    log("Revoke session failed:", revokeRes.error.message);
+    sendResponse({ success: false, error: revokeRes.error.message });
     return;
   }
 
-  try {
-    const response = await fetch(`${DUST_US_URL}/api/workos/revoke-session`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      credentials: "omit",
-      body: JSON.stringify({ session_id: sessionId }),
-    });
-
-    if (!response.ok) {
-      log("Revoke session failed:", response.status);
-      sendResponse({
-        success: false,
-        error: `Revoke session failed: ${response.status}`,
-      });
-      return;
-    }
-
-    sendResponse({ success: true });
-  } catch (error) {
-    log("Revoke session failed:", error);
-    sendResponse({
-      success: false,
-      error: `Revoke session failed: ${error}`,
-    });
-  }
+  sendResponse({ success: true });
 };
 
 function capture(

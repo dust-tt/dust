@@ -1,5 +1,5 @@
 import type {
-  DocumentLiveSession,
+  CollabConnectionSettings,
   CollabStatus,
 } from "@app/components/editor/document/types";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
@@ -34,7 +34,9 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
  * from the threads last received by an earlier connection to the same document and user, if any.
  * Joining another document, or as another user, MUST close the current connection at once.
  */
-export function useCollabConnection(live: DocumentLiveSession | undefined): {
+export function useCollabConnection(
+  live: CollabConnectionSettings | undefined
+): {
   connection: CollabConnection | null;
   status: CollabStatus;
   /** The shown connection has changes the server has not confirmed yet. */

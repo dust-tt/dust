@@ -11,7 +11,7 @@ import {
   hasRelations,
   isDustProvidedSkill,
 } from "@app/lib/skill";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
+import type { GetSkillWithRelationsResponseBody } from "@app/types/api/skills";
 import type {
   SkillRelations,
   SkillType,
@@ -156,12 +156,12 @@ export function SkillDetailsContent({
 }
 
 interface SkillDetailsHeaderProps {
-  skill: GetSkillsWithRelationsResponseBody["skills"][number];
+  skill: GetSkillWithRelationsResponseBody["skill"];
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
   onFavoriteChange?: (
-    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    skill: GetSkillWithRelationsResponseBody["skill"],
     isFavorite: boolean
   ) => Promise<void>;
 }

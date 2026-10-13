@@ -5,13 +5,13 @@ export const TRIGGERS_MANAGEMENT_TOOLS_METADATA = [
   {
     name: "create_schedule",
     description:
-      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Pass podId to attach the schedule to a Pod so its runs land there. Limit: 20 schedule creations per user per day.",
+      "Create a durable, named schedule for recurring automation independent of the current conversation. Each occurrence starts a new run of this agent with the specified prompt. Use a wake-up instead to resume the current conversation later for a reminder, follow-up, or polling. Schedules are user-specific: each user can only view and manage their own schedules. Pass podId to attach the schedule to a Pod so its runs land there.",
     schema: {
       name: z
         .string()
         .max(255)
         .describe(
-          "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'. Schedule name MUST be unique."
+          "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'."
         ),
       podId: z
         .string()
@@ -103,7 +103,7 @@ export const TRIGGERS_MANAGEMENT_TOOLS_METADATA = [
         .string()
         .max(255)
         .describe(
-          "A short, descriptive name for the trigger (max 255 chars). Examples: 'On new GitHub PR', 'On Linear issue created'. Name MUST be unique for this agent."
+          "A short, descriptive name for the trigger (max 255 chars). Examples: 'On new GitHub PR', 'On Linear issue created'."
         ),
       sourceId: z
         .string()
@@ -157,7 +157,7 @@ export const TRIGGERS_MANAGEMENT_SERVER = {
     name: "triggers_management" as const,
     version: "1.0.0",
     description:
-      "Create schedules and event triggers to automate recurring and event-driven tasks.",
+      "Create durable agent automations that run on a recurring schedule or in response to external events.",
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,

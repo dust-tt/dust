@@ -20,6 +20,11 @@ export function usePanelStateListener({
   isLoading: boolean;
 }) {
   useEffect(() => {
+    // This listener needs `chrome.runtime`, which only browser extensions (Chrome, Firefox) have.
+    if (typeof chrome === "undefined" || !chrome.runtime?.onMessage) {
+      return;
+    }
+
     const onGetPanelState = (
       message: unknown,
       _sender: chrome.runtime.MessageSender,

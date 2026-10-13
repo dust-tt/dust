@@ -128,6 +128,10 @@ msgid "Last name"
 msgstr "Last name"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your preferred language:"
+msgstr "Your preferred language:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Your pronouns (optional):"
 msgstr "Your pronouns (optional):"
 

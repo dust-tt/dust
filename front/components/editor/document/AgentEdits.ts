@@ -141,7 +141,7 @@ function textItemPosition(
 }
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-edit-ranges
+ * @cc [owner:PopDaph,label:product] collab-agent-edit-ranges
  * The ranges MUST be exactly the text of the `inserted` items that `binding` shows, in document
  * order: each surviving text item clamped to its range, since items of one client merge across
  * changes. Items not integrated yet, deleted, inside a deleted block, or formatting alone MUST make
@@ -236,7 +236,7 @@ const applyAgentEdits = (
 };
 
 /**
- * @cc [owner:PopDaph,label:product;performance] live-agent-edit-glow
+ * @cc [owner:PopDaph,label:product;performance] collab-agent-edit-glow
  * A glow given by `withAgentEditGlow`, while its ranges are in the current document, MUST show
  * those ranges in the agent's color fading in CSS, with decorations unchanged while it runs, then
  * none after `GLOW_MS`. It MUST only add decorations, never change the document, the selection or
@@ -288,7 +288,7 @@ export const agentEditsPlugin = () =>
   });
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-edit-shown
+ * @cc [owner:PopDaph,label:product] collab-agent-edit-shown
  * Each agent edit the session announces MUST glow the text it inserted (`insertedTextRanges`) in
  * the document as it is when the announcement arrives, unless that text spans more than
  * `MAX_GLOWED_RANGES` ranges or none of it shows. A failure resolving it MUST only skip the glow,

@@ -10,14 +10,14 @@ import {
 } from "@app/components/editor/document/DocumentCommentsList";
 import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
-  DocumentLiveAgent,
-  DocumentLiveStatus,
+  CollabAgentIndicator,
+  CollabStatusIndicator,
   DocumentStatusIcon,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import type {
-  DocumentLiveParticipant,
+  CollabParticipant,
   DocumentProps,
   CollabStatus,
 } from "@app/components/editor/document/types";
@@ -34,8 +34,8 @@ import { lazy, Suspense, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
-const LiveDocument = lazy(
-  () => import("@app/components/editor/document/LiveDocument")
+const CollabEditor = lazy(
+  () => import("@app/components/editor/document/CollabEditor")
 );
 
 /**
@@ -49,7 +49,7 @@ const LiveDocument = lazy(
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only
- * When readOnly is true, or without live, Document MUST disable editing and formatting controls,
+ * When readOnly is true, or without live, DocumentEditor MUST disable editing and formatting controls,
  * including when these props change after mount. Hosts MUST apply their permissions through
  * readOnly.
  */
@@ -77,41 +77,41 @@ const LiveDocument = lazy(
  * stay in the column, under the status row.
  */
 /**
- * @cc [owner:tdraier,label:product] document-live-participants
- * While the live session is live and has participants, `renderLiveParticipants` MUST show them
+ * @cc [owner:tdraier,label:product] collab-editor-participants
+ * While the live session is live and has participants, `renderCollabParticipants` MUST show them
  * right before the comments button, wherever that button shows; otherwise nothing MUST render
  * for them.
  */
 /**
- * @cc [owner:tdraier,label:product] document-live-agent-placement
+ * @cc [owner:tdraier,label:product] collab-editor-agent-placement
  * While the session announces an agent at work, its avatar, from `renderCommentAuthorAvatar`, and
  * its activity MUST show before the participants, wherever the comments button shows, and not
  * with the save and live statuses.
  */
-export const Document = (props: DocumentProps) =>
+export const DocumentEditor = (props: DocumentProps) =>
   props.live ? (
     <Suspense
       fallback={
         <DocumentView
           {...props}
-          liveView={{ status: "connecting", binding: null }}
+          collabView={{ status: "connecting", binding: null }}
         />
       }
     >
-      <LiveDocument {...props} live={props.live} />
+      <CollabEditor {...props} live={props.live} />
     </Suspense>
   ) : (
     <DocumentView {...props} />
   );
 
 interface DocumentViewProps extends DocumentProps {
-  liveView?: {
+  collabView?: {
     status: CollabStatus;
     /** Changes not yet confirmed by the server. */
     syncing?: boolean;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: AgentEvent | null;
-    participants?: DocumentLiveParticipant[];
+    participants?: CollabParticipant[];
     /** Bound to the shared document once synced; until then the file shows read-only. */
     binding: {
       extensions: AnyExtension[];
@@ -205,9 +205,9 @@ export const hasOpenDocumentLayer = (root: ParentNode) =>
   root.querySelector("[data-document-layer]") !== null;
 
 /** The editor's binding to the shared document, and whether it still waits for one. */
-const liveEditorMode = (liveView: DocumentViewProps["liveView"]) => ({
-  binding: liveView?.binding ?? undefined,
-  waiting: liveView?.binding === null,
+const collabEditorMode = (collabView: DocumentViewProps["collabView"]) => ({
+  binding: collabView?.binding ?? undefined,
+  waiting: collabView?.binding === null,
 });
 
 interface DocumentEditingControlsProps {
@@ -232,7 +232,7 @@ const DocumentEditingControls = ({
     </>
   );
 
-/** The editor itself; `Document` binds it to the live session around it. */
+/** The editor itself; `DocumentEditor` binds it to the collab session around it. */
 export const DocumentView = ({
   initialContent,
   className,
@@ -240,7 +240,7 @@ export const DocumentView = ({
   headerControlsContainer,
   statusContainer,
   readOnly = false,
-  liveView,
+  collabView,
   commentAuthor,
   renderCommentAuthorAvatar,
   verifyCommentMessage,
@@ -248,10 +248,10 @@ export const DocumentView = ({
   commentInputExtensions,
   resolveImageSource,
   embeddableFiles,
-  renderLiveParticipants,
+  renderCollabParticipants,
   badge,
 }: DocumentViewProps) => {
-  const live = liveEditorMode(liveView);
+  const live = collabEditorMode(collabView);
   const { editor, editable, unsupported, isSavable } = useDocumentEditor({
     initialContent,
     readOnly: readOnly || live.waiting,
@@ -289,16 +289,16 @@ export const DocumentView = ({
   }
 
   const participants =
-    liveView?.status === "live" ? (liveView.participants ?? []) : [];
+    collabView?.status === "live" ? (collabView.participants ?? []) : [];
   const showParticipants =
-    renderLiveParticipants !== undefined && participants.length > 0;
-  const agent = liveView?.agent ?? null;
+    renderCollabParticipants !== undefined && participants.length > 0;
+  const agent = collabView?.agent ?? null;
   const showControls = showCommentsToggle || showParticipants || agent !== null;
   // One element, so the participants keep their place before the button in a shared container.
   const controls = (
     <div className="flex items-center gap-2">
       {agent && (
-        <DocumentLiveAgent
+        <CollabAgentIndicator
           activity={agent}
           avatar={renderCommentAuthorAvatar(
             { kind: "agent", id: agent.agent.agentId, name: agent.agent.name },
@@ -306,7 +306,7 @@ export const DocumentView = ({
           )}
         />
       )}
-      {showParticipants && renderLiveParticipants(participants)}
+      {showParticipants && renderCollabParticipants(participants)}
       {showCommentsToggle && (
         <DocumentCommentsToggle
           listId={listId}
@@ -334,9 +334,9 @@ export const DocumentView = ({
         createPortal(
           <DocumentStatusIcon
             live={
-              liveView && {
-                status: liveView.status,
-                syncing: liveView.syncing ?? false,
+              collabView && {
+                status: collabView.status,
+                syncing: collabView.syncing ?? false,
               }
             }
           />,
@@ -346,8 +346,8 @@ export const DocumentView = ({
         controls={showControls && !headerControlsContainer && controls}
         badge={badge}
       >
-        {liveView && !statusContainer && (
-          <DocumentLiveStatus status={liveView.status} />
+        {collabView && !statusContainer && (
+          <CollabStatusIndicator status={collabView.status} />
         )}
       </DocumentStatus>
       {editor && showCommentsToggle && (

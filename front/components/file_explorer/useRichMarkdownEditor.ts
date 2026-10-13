@@ -7,7 +7,7 @@ export interface MarkdownRichEditor {
   /** Scoped path of the file the editor edits. */
   path: string;
   /** The live session server the document is edited in. */
-  liveUrl: string;
+  collabUrl: string;
   initialContent: string;
 }
 
@@ -15,7 +15,7 @@ interface UseRichMarkdownEditorParams {
   /** The rich editor is wanted for this file: the flag is on and the file is editable. */
   enabled: boolean;
   /** The live session server, when one is reachable; without one, the rich editor does not open. */
-  liveUrl: string | undefined;
+  collabUrl: string | undefined;
   entryPath: string | undefined;
   isActive: boolean;
   /** The file text as fetched, or null while it loads. */
@@ -32,7 +32,7 @@ export interface RichMarkdownEditorState {
 interface Opened {
   content: string;
   /** The live session server at that moment: the editor never moves under the user. */
-  liveUrl: string;
+  collabUrl: string;
 }
 
 /**
@@ -40,13 +40,13 @@ interface Opened {
  * reachable then, and never reopens on later fetches: the session holds the document.
  */
 /**
- * @cc [owner:PopDaph,label:product] live-mode-latched
+ * @cc [owner:PopDaph,label:product] collab-mode-latched
  * The rich editor MUST open only with a live session server, and an open editor MUST keep the one
- * it opened with until the file is reopened: `liveUrl` changing or disappearing MUST NOT move it.
+ * it opened with until the file is reopened: `collabUrl` changing or disappearing MUST NOT move it.
  */
 export function useRichMarkdownEditor({
   enabled,
-  liveUrl,
+  collabUrl,
   entryPath,
   isActive,
   rawContent,
@@ -62,8 +62,8 @@ export function useRichMarkdownEditor({
 
   const opens = enabled && (opened !== null || !isTruncated);
   // Latched while rendering, not in an effect, so the editor shows in the same commit.
-  if (opens && opened === null && rawContent !== null && liveUrl) {
-    setOpened({ content: rawContent, liveUrl });
+  if (opens && opened === null && rawContent !== null && collabUrl) {
+    setOpened({ content: rawContent, collabUrl });
   }
 
   return {
@@ -72,7 +72,7 @@ export function useRichMarkdownEditor({
         ? {
             mountKey: entryPath,
             path: entryPath,
-            liveUrl: opened.liveUrl,
+            collabUrl: opened.collabUrl,
             initialContent: opened.content,
           }
         : null,

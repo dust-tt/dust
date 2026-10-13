@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { parse } from "csv-parse";
 import * as fs from "fs";
 

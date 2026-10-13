@@ -6,13 +6,15 @@ import {
   getInitialSelectedPlatforms,
   validateProfileForm,
 } from "@app/components/onboarding/ProfileOnboardingSteps";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useUserLocale } from "@app/hooks/useUserLocale";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useCompleteUserOnboarding, usePatchUser } from "@app/lib/swr/user";
 import { useWelcomeData } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import type { SupportedLocale } from "@app/types/locale";
 import { useEffect, useMemo, useState } from "react";
 
 interface UseProfileOnboardingFormProps {
@@ -31,6 +33,12 @@ export function useProfileOnboardingForm({
   const { workspace, user } = useAuth();
   const { patchUser } = usePatchUser();
   const { completeUserOnboarding } = useCompleteUserOnboarding();
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
+  // The language the UI is currently in. By default it's their workspace locale
+  const { userLocale: defaultLocale, mutateAuthContext } = useUserLocale({
+    owner: workspace,
+  });
 
   const { welcomeData, isFirstAdmin, emailProvider, isWelcomeDataLoading } =
     useWelcomeData({ workspaceId: workspace.sId });
@@ -47,6 +55,7 @@ export function useProfileOnboardingForm({
   const [selectedPlatforms, setSelectedPlatforms] = useState<
     Set<FavoritePlatform>
   >(new Set());
+  const [locale, setLocale] = useState<SupportedLocale>(defaultLocale);
   const [showErrors, setShowErrors] = useState(false);
   const [platformsInitialized, setPlatformsInitialized] = useState(false);
 
@@ -81,8 +90,16 @@ export function useProfileOnboardingForm({
     });
 
     // Clear the pending profile onboarding marker from the user metadata
-    // (set at the user's first login).
-    await completeUserOnboarding();
+    // (set at the user's first login). With the `localisation` flag, the locale is saved even when
+    // left to the default.
+    const completed = await completeUserOnboarding({
+      locale: hasLocalisation ? locale : undefined,
+    });
+
+    if (completed && hasLocalisation && locale !== defaultLocale) {
+      // Switches the UI to the saved locale.
+      await mutateAuthContext();
+    }
 
     if (typeof window !== "undefined") {
       window.dataLayer = window.dataLayer ?? [];
@@ -139,6 +156,9 @@ export function useProfileOnboardingForm({
     isFirstAdmin,
     formData,
     setFormData,
+    // Null when the language cannot be picked (`localisation` flag disabled).
+    locale: hasLocalisation ? locale : null,
+    setLocale,
     formErrors,
     showErrors,
     selectedPlatforms,
