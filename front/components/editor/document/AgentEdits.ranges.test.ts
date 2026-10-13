@@ -5,8 +5,8 @@ import {
   insertedTextRanges,
 } from "@app/components/editor/document/AgentEdits";
 import { documentSchema } from "@app/components/editor/document/content";
-import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
-import type { LiveIdRange } from "@app/types/collab";
+import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
+import type { InsertedIdRange } from "@app/types/collab";
 import { EditorState } from "@tiptap/pm/state";
 import { EditorView } from "@tiptap/pm/view";
 import {
@@ -91,7 +91,7 @@ async function session(blocks: Block[]) {
    */
   const fromAgent = (change: () => void) => {
     const before = Y.encodeStateVector(server);
-    let inserted: LiveIdRange[] = [];
+    let inserted: InsertedIdRange[] = [];
     const onAfter = (transaction: Y.Transaction) => {
       inserted = [];
       transaction.afterState.forEach((after, client) => {
@@ -112,7 +112,7 @@ async function session(blocks: Block[]) {
   };
 
   /** What the browser glows for `inserted`: the text of each range. */
-  const glowed = (inserted: LiveIdRange[]) =>
+  const glowed = (inserted: InsertedIdRange[]) =>
     insertedTextRanges(binding, inserted).map(({ from, to }) =>
       view.state.doc.textBetween(from, to)
     );
@@ -223,7 +223,7 @@ describe("insertedTextRanges", () => {
 
     const glow = agentEditGlow(view.state, {
       type: "agent_edit",
-      agent: LiveAgentFactory.build(),
+      agent: CollabAgentFactory.build(),
       inserted: edit.inserted,
     });
     if (glow) {

@@ -1,29 +1,29 @@
-import { onStatelessMessage } from "@app/lib/client/live_session";
+import { onStatelessMessage } from "@app/lib/client/collab/messages";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import type {
-  LiveCommentClientMessage,
-  LiveCommentCommand,
-  LiveCommentErrorCode,
-  LiveCommentServerMessage,
+  CommentClientMessage,
+  CommentRequest,
+  CommentRequestErrorCode,
+  CommentServerMessage,
 } from "@app/types/collab";
-import { liveCommentServerMessageSchema } from "@app/types/collab";
+import { commentServerMessageSchema } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { v4 as uuidv4 } from "uuid";
 
 /** The comment side of a live connection. */
-export interface LiveCommentChannel {
+export interface CommentChannel {
   getThreads: () => DfmComment[] | null;
   onThreads: (listener: (comments: DfmComment[]) => void) => () => void;
   send: (
-    command: LiveCommentCommand
-  ) => Promise<Result<DfmComment | null, LiveCommentErrorCode>>;
+    command: CommentRequest
+  ) => Promise<Result<DfmComment | null, CommentRequestErrorCode>>;
   close: () => void;
 }
 
 /**
- * @cc [owner:tdraier,label:product] live-comment-channel
+ * @cc [owner:tdraier,label:product] collab-comment-channel
  * The channel MUST ask the server for the threads when created and each time the provider syncs
  * again, and MUST report the threads it was created with until the server's arrive. It MUST
  * resolve each command with the server's answer to that command only. A command
@@ -32,24 +32,24 @@ export interface LiveCommentChannel {
  * channel MUST NOT report threads, and every command waiting or sent after MUST resolve as
  * `unavailable`, so no caller waits for an answer a lost connection will never bring.
  */
-export function createLiveCommentChannel(
+export function createCommentChannel(
   provider: HocuspocusProvider,
   initialThreads: DfmComment[] | null
-): LiveCommentChannel {
+): CommentChannel {
   let threads = initialThreads;
   let closed = false;
   const listeners = new Set<(comments: DfmComment[]) => void>();
   const pending = new Map<
     string,
-    (result: Result<DfmComment | null, LiveCommentErrorCode>) => void
+    (result: Result<DfmComment | null, CommentRequestErrorCode>) => void
   >();
 
-  const sendMessage = (message: LiveCommentClientMessage) =>
+  const sendMessage = (message: CommentClientMessage) =>
     provider.sendStateless(JSON.stringify(message));
   const requestThreads = () => sendMessage({ type: "threads" });
   const answer = (
     requestId: string,
-    result: Result<DfmComment | null, LiveCommentErrorCode>
+    result: Result<DfmComment | null, CommentRequestErrorCode>
   ) => {
     const resolve = pending.get(requestId);
     pending.delete(requestId);
@@ -60,7 +60,7 @@ export function createLiveCommentChannel(
     pending.clear();
   };
 
-  const onMessage = (message: LiveCommentServerMessage) => {
+  const onMessage = (message: CommentServerMessage) => {
     if (closed) {
       return;
     }
@@ -82,7 +82,7 @@ export function createLiveCommentChannel(
 
   const stopMessages = onStatelessMessage(
     provider,
-    liveCommentServerMessageSchema,
+    commentServerMessageSchema,
     onMessage
   );
   provider.on("synced", requestThreads);

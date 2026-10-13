@@ -7,7 +7,7 @@ import {
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { Authenticator } from "@app/lib/auth";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import type {
   CollabSourceReadResponse,
   CollabSourceWriteResponse,
@@ -79,7 +79,7 @@ export function createInternalRoutes(hocuspocus: Hocuspocus<CollabAccess>) {
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, agent } =
         ctx.req.valid("json");
-      const documentName = toLiveDocumentName(workspaceId, canonicalPath);
+      const documentName = toSessionName(workspaceId, canonicalPath);
 
       const read = await readSessionSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {

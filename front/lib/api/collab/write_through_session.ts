@@ -4,7 +4,7 @@ import {
 } from "@app/lib/api/collab/client";
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
-import type { LiveAgent } from "@app/types/collab";
+import type { CollabAgent } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -64,7 +64,7 @@ export async function writeThroughCollabSession<T, E extends Error>(
     change: (
       source: string
     ) => Promise<Result<{ source: string; value: T }, E>>;
-    agent?: LiveAgent;
+    agent?: CollabAgent;
   }
 ): Promise<Result<CollabSessionWrite<T>, CollabSessionWriteError | E>> {
   for (let attempt = 0; attempt < MAX_SESSION_WRITE_ATTEMPTS; attempt++) {

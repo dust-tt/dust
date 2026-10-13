@@ -17,7 +17,7 @@ import { useCallback } from "react";
  * `no-catching-own-errors` limited to it: the live session's provider takes it as its token
  * function and treats a rejection as a refused connection.
  */
-export function useLiveTicket({
+export function useCollabTicket({
   owner,
   filePath,
 }: {

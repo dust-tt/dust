@@ -1,4 +1,4 @@
-import { useLiveSession } from "@app/hooks/useLiveSession";
+import { useCollabConnection } from "@app/hooks/useCollabConnection";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import type { Configuration } from "@hocuspocus/server";
 import { Server } from "@hocuspocus/server";
@@ -15,7 +15,7 @@ const getTicket = async () => "ticket";
 const newServer = (configuration: Partial<Configuration> = {}) =>
   new Server({ quiet: true, port: 0, stopOnSignals: false, ...configuration });
 
-describe("useLiveSession", () => {
+describe("useCollabConnection", () => {
   let server: Server;
 
   beforeEach(async () => {
@@ -29,7 +29,7 @@ describe("useLiveSession", () => {
 
   function renderSession(tickets: () => Promise<string> = getTicket) {
     return renderHook(() =>
-      useLiveSession({
+      useCollabConnection({
         url: `ws://127.0.0.1:${server.address.port}`,
         documentName: DOCUMENT_NAME,
         getTicket: tickets,
@@ -169,7 +169,7 @@ describe("useLiveSession", () => {
     server = newServer();
     try {
       const { unmount } = renderHook(() =>
-        useLiveSession({
+        useCollabConnection({
           url: `ws://127.0.0.1:${port}`,
           documentName: DOCUMENT_NAME,
           getTicket,

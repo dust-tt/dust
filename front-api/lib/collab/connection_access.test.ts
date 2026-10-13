@@ -9,7 +9,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import { Err } from "@app/types/shared/result";
 import {
   authenticateConnection,
@@ -169,7 +169,7 @@ describe("recheckAllConnections", () => {
     }
     const request = new Request("http://localhost/api/collab");
     const document = await hocuspocus.createDocument(
-      toLiveDocumentName(workspace.sId, path),
+      toSessionName(workspace.sId, path),
       request,
       "socket",
       { readOnly: false, isAuthenticated: true },

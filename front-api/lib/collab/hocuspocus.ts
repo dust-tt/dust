@@ -14,10 +14,10 @@ import {
 } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
-import type { LiveCommentErrorCode } from "@app/types/collab";
+import type { CommentRequestErrorCode } from "@app/types/collab";
 import {
-  liveCommentClientMessageSchema,
-  parseLiveDocumentName,
+  commentClientMessageSchema,
+  parseSessionName,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -41,7 +41,7 @@ const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 const STORE_DEBOUNCE_MS = 5 * 1000;
 const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
 
-const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
+const refusedMessage = (requestId: string, error: CommentRequestErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
 
 type CommandResult = Awaited<ReturnType<typeof applyCommentRequest>>;
@@ -110,7 +110,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
 
     // The token is a ticket minted by front-api for this user, workspace and file.
     async onAuthenticate({ documentName, token, connectionConfig }) {
-      const parsed = parseLiveDocumentName(documentName);
+      const parsed = parseSessionName(documentName);
       if (!parsed) {
         refuse(documentName, "Invalid document name.");
       }
@@ -246,7 +246,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       const file: CollabAccess = connection.context;
       const json = safeParseJSON(payload);
       const message = json.isOk()
-        ? liveCommentClientMessageSchema.safeParse(json.value)
+        ? commentClientMessageSchema.safeParse(json.value)
         : null;
       if (!session || !message?.success) {
         logger.info(

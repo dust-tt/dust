@@ -7,13 +7,13 @@ import {
   documentSchema,
   parseDocumentContent,
 } from "@app/components/editor/document/content";
-import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
+import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
 import type { Node } from "@tiptap/pm/model";
 import { EditorState } from "@tiptap/pm/state";
 import { DecorationSet } from "@tiptap/pm/view";
 import { describe, expect, it } from "vitest";
 
-const AGENT = LiveAgentFactory.build();
+const AGENT = CollabAgentFactory.build();
 
 function doc(markdown: string): Node {
   const parsed = parseDocumentContent(markdown);

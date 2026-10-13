@@ -6,14 +6,14 @@ import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 import type {
-  LiveAgent,
-  LiveAgentActivity,
-  LiveAgentEditMessage,
-  LiveAgentServerMessage,
-  LiveCommentServerMessage,
-  LiveIdRange,
+  CollabAgent,
+  AgentActivity,
+  AgentEditMessage,
+  AgentActivityMessage,
+  CommentServerMessage,
+  InsertedIdRange,
 } from "@app/types/collab";
-import { BODY_FRAGMENT_NAME, toLiveDocumentName } from "@app/types/collab";
+import { BODY_FRAGMENT_NAME, toSessionName } from "@app/types/collab";
 import type {
   CollabSourceWriteResult,
   CollabSourceReadResponse,
@@ -35,22 +35,22 @@ export interface CollabSession {
   pendingMutations: Promise<void>;
 }
 
-export const serverMessage = (message: LiveCommentServerMessage) =>
+export const serverMessage = (message: CommentServerMessage) =>
   JSON.stringify(message);
 
 const agentActivityMessage = (
-  agent: LiveAgent,
-  activity: LiveAgentActivity
+  agent: CollabAgent,
+  activity: AgentActivity
 ): string =>
   JSON.stringify({
     type: "agent_activity",
     agent,
     activity,
-  } satisfies LiveAgentServerMessage);
+  } satisfies AgentActivityMessage);
 
 /** The Yjs items `transaction` inserted, by id. */
-const insertedRanges = (transaction: Y.Transaction): LiveIdRange[] => {
-  const ranges: LiveIdRange[] = [];
+const insertedRanges = (transaction: Y.Transaction): InsertedIdRange[] => {
+  const ranges: InsertedIdRange[] = [];
   transaction.afterState.forEach((after, client) => {
     const before = transaction.beforeState.get(client) ?? 0;
     if (after > before) {
@@ -60,12 +60,15 @@ const insertedRanges = (transaction: Y.Transaction): LiveIdRange[] => {
   return ranges;
 };
 
-const agentEditMessage = (agent: LiveAgent, inserted: LiveIdRange[]): string =>
+const agentEditMessage = (
+  agent: CollabAgent,
+  inserted: InsertedIdRange[]
+): string =>
   JSON.stringify({
     type: "agent_edit",
     agent,
     inserted,
-  } satisfies LiveAgentEditMessage);
+  } satisfies AgentEditMessage);
 
 const sessions = new WeakMap<Document, CollabSession>();
 const writesStopped = new WeakSet<Hocuspocus<CollabAccess>>();
@@ -143,8 +146,8 @@ export async function readSessionSource(
 export function showAgentActivity(
   hocuspocus: Hocuspocus<CollabAccess>,
   documentName: string,
-  agent: LiveAgent,
-  activity: LiveAgentActivity
+  agent: CollabAgent,
+  activity: AgentActivity
 ): void {
   const document = hocuspocus.documents.get(documentName);
   if (document && !document.isDestroyed) {
@@ -181,12 +184,12 @@ export async function writeSessionSource(
     base,
     source,
     agent,
-  }: { file: CollabAccess; base: string; source: string; agent?: LiveAgent }
+  }: { file: CollabAccess; base: string; source: string; agent?: CollabAgent }
 ): Promise<Result<CollabSourceWriteResult, string>> {
   if (!file.canWrite) {
     return new Err("The file cannot be written.");
   }
-  const documentName = toLiveDocumentName(file.workspaceId, file.canonicalPath);
+  const documentName = toSessionName(file.workspaceId, file.canonicalPath);
   const open = await getLoadedSession(hocuspocus, documentName);
   if (!open) {
     return new Ok("closed");
@@ -228,7 +231,7 @@ export async function writeSessionSource(
     // alone, leaves it as it was and gives editors nothing to show.
     const body = document.getXmlFragment(BODY_FRAGMENT_NAME);
     let bodyChanged = false;
-    let inserted: LiveIdRange[] = [];
+    let inserted: InsertedIdRange[] = [];
     const onBodyChange = (_events: unknown, transaction: Y.Transaction) => {
       bodyChanged = true;
       // Presentation only: a failure must not fail the write, which Yjs has applied.

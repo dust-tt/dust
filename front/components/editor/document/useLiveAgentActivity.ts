@@ -1,5 +1,5 @@
-import type { LiveAgentEvent } from "@app/lib/client/live_agents";
-import { onLiveAgentActivity } from "@app/lib/client/live_agents";
+import type { AgentEvent } from "@app/lib/client/collab/agents";
+import { onAgentActivity } from "@app/lib/client/collab/agents";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { useEffect, useState } from "react";
 
@@ -17,11 +17,11 @@ const EDITING_SHOWN_MS = 4_000;
  */
 export function useLiveAgentActivity(
   provider: HocuspocusProvider | null
-): LiveAgentEvent | null {
+): AgentEvent | null {
   // Kept with its provider: until the effect's cleanup runs, a new provider would see the old one's.
   const [shown, setShown] = useState<{
     provider: HocuspocusProvider;
-    event: LiveAgentEvent;
+    event: AgentEvent;
   } | null>(null);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function useLiveAgentActivity(
       return;
     }
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = onLiveAgentActivity(provider, (event) => {
+    const unsubscribe = onAgentActivity(provider, (event) => {
       clearTimeout(timer);
       setShown({ provider, event });
       timer = setTimeout(

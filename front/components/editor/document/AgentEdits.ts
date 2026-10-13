@@ -1,10 +1,10 @@
-import { onLiveAgentEdit } from "@app/lib/client/live_agents";
-import { liveCaretColor } from "@app/lib/client/live_session";
+import { onAgentEdit } from "@app/lib/client/collab/agents";
+import { caretColor } from "@app/lib/client/collab/messages";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
-  LiveAgent,
-  LiveAgentEditMessage,
-  LiveIdRange,
+  CollabAgent,
+  AgentEditMessage,
+  InsertedIdRange,
 } from "@app/types/collab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
@@ -38,7 +38,7 @@ interface TextRange {
 
 /** The text an agent's change inserted, as `ranges` of `doc`. */
 export interface AgentEditGlow {
-  agent: LiveAgent;
+  agent: CollabAgent;
   ranges: TextRange[];
   doc: Node;
 }
@@ -149,7 +149,7 @@ function textItemPosition(
  */
 export function insertedTextRanges(
   binding: ProsemirrorBinding,
-  inserted: LiveIdRange[]
+  inserted: InsertedIdRange[]
 ): TextRange[] {
   const { store } = binding.doc;
   const cache: Offsets = new Map();
@@ -193,8 +193,12 @@ export const withAgentEditGlow = (
   return state.tr.setMeta(agentEditsKey, meta);
 };
 
-const glowDecorations = (doc: Node, agent: LiveAgent, ranges: TextRange[]) => {
-  const highlight = `color-mix(in srgb, ${liveCaretColor(agent.agentId)} ${GLOW_PERCENT}%, transparent)`;
+const glowDecorations = (
+  doc: Node,
+  agent: CollabAgent,
+  ranges: TextRange[]
+) => {
+  const highlight = `color-mix(in srgb, ${caretColor(agent.agentId)} ${GLOW_PERCENT}%, transparent)`;
   return DecorationSet.create(
     doc,
     ranges.map(({ from, to }) =>
@@ -292,7 +296,7 @@ export const agentEditsPlugin = () =>
  */
 export function agentEditGlow(
   state: EditorState,
-  { agent, inserted }: LiveAgentEditMessage
+  { agent, inserted }: AgentEditMessage
 ): Transaction | null {
   const binding = ySyncPluginKey.getState(state)?.binding;
   if (!(binding instanceof ProsemirrorBinding)) {
@@ -310,7 +314,7 @@ export const agentEdits = (provider: HocuspocusProvider) =>
       name: "agentEdits",
       addStorage: () => ({ unsubscribe: null }),
       onCreate() {
-        this.storage.unsubscribe = onLiveAgentEdit(provider, (edit) => {
+        this.storage.unsubscribe = onAgentEdit(provider, (edit) => {
           if (this.editor.isDestroyed) {
             return;
           }

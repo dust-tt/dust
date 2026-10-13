@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { LiveAgent } from "@app/types/collab";
+import type { CollabAgent } from "@app/types/collab";
 import type {
   CollabSourceReadRequest,
   CollabSourceReadResponse,
@@ -110,7 +110,7 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
 export async function readCollabSource(
   auth: Authenticator,
   canonicalPath: string,
-  agent?: LiveAgent
+  agent?: CollabAgent
 ): Promise<Result<CollabSourceReadResponse, CollabSourceError>> {
   const answer = await postToCollabServer(
     COLLAB_SOURCE_READ_PATH,
@@ -148,7 +148,7 @@ export async function writeCollabSource(
     canonicalPath: string;
     base: string;
     source: string;
-    agent?: LiveAgent;
+    agent?: CollabAgent;
   }
 ): Promise<Result<CollabSourceWriteResult, CollabSourceError>> {
   const user = auth.user();

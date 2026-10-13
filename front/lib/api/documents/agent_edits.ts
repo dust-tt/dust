@@ -6,7 +6,7 @@ import {
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { extractAnchors } from "@app/lib/markdown/dfm";
-import type { LiveAgent } from "@app/types/collab";
+import type { CollabAgent } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -122,7 +122,7 @@ export async function readAgentDocument(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
-  agent?: LiveAgent
+  agent?: CollabAgent
 ): Promise<Result<{ source: string }, DfmStoredDocumentError>> {
   return readCurrentDocumentSource(auth, dustFs, scopedPath, agent);
 }
@@ -153,7 +153,7 @@ export async function editAgentDocument(
     oldString: string;
     newString: string;
     expectedReplacements: number;
-    agent?: LiveAgent;
+    agent?: CollabAgent;
   }
 ): Promise<
   Result<

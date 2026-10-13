@@ -6,8 +6,8 @@ import type { DfmCommentSignatureError } from "@app/lib/api/documents/comment_si
 import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { extractFromString } from "@app/lib/mentions/format";
 import type {
-  LiveCommentCommand,
-  LiveCommentErrorCode,
+  CommentRequest,
+  CommentRequestErrorCode,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -16,7 +16,7 @@ import type * as Y from "yjs";
 
 const signatureRefusal = ({
   code,
-}: DfmCommentSignatureError): LiveCommentErrorCode =>
+}: DfmCommentSignatureError): CommentRequestErrorCode =>
   code === "unwritable_message" ? "unwritable" : "unavailable";
 
 /**
@@ -37,7 +37,7 @@ const signatureRefusal = ({
 export async function applyCommentRequest(
   file: CollabAccess,
   comments: DfmComment[],
-  command: LiveCommentCommand
+  command: CommentRequest
 ): Promise<
   Result<
     {
@@ -45,7 +45,7 @@ export async function applyCommentRequest(
       created: DfmComment | null;
       added: DfmMessage | null;
     },
-    LiveCommentErrorCode
+    CommentRequestErrorCode
   >
 > {
   if (!file.canWrite) {
@@ -143,7 +143,7 @@ export async function applyCommentRequest(
 export async function dispatchSessionCommentMentions(
   file: CollabAccess,
   doc: Y.Doc,
-  command: LiveCommentCommand,
+  command: CommentRequest,
   message: DfmMessage
 ): Promise<void> {
   if (extractFromString(message.body).length === 0) {
