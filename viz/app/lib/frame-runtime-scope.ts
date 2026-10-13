@@ -9,6 +9,7 @@ import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { WriteFileParams } from "@viz/app/types";
 import * as dustDocumentV1 from "@viz/components/dust/document/v1";
 import * as dustFrame from "@viz/components/dust/frame";
+import * as dustMermaid from "@viz/components/dust/mermaid";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 import * as dustSlideshowV2 from "@viz/components/dust/slideshow/v2";
 import * as shadcn from "@viz/components/ui";
@@ -49,6 +50,7 @@ export function createFrameRuntimeImports({
     "motion/react": motion,
     "@dust/document/v1": dustDocumentV1,
     "@dust/frame": dustFrame,
+    "@dust/mermaid": dustMermaid,
     "@dust/slideshow/v1": dustSlideshowV1,
     "@dust/slideshow/v2": dustSlideshowV2,
     "@dust/react-hooks": {

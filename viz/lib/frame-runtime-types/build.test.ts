@@ -125,6 +125,7 @@ import { motion } from "motion/react";
 import { cn } from "utils";
 import { cn as currentCn } from "@viz/lib/utils";
 import { Document, type DocumentProps } from "@dust/document/v1";
+import { Mermaid, type MermaidProps } from "@dust/mermaid";
 import * as slideshowV1 from "@dust/slideshow/v1";
 import * as slideshowV2 from "@dust/slideshow/v2";
 import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError, useFile, readFile, writeFile } from "@dust/react-hooks";
@@ -149,7 +150,8 @@ let error: SandboxFunctionCallError | undefined;
 export default function App() {
   const [label] = useState("Hello");
   const document: DocumentProps = { path: "./content.json", className: "rounded-xl", readOnly: false, autosaveDebounceMs: 5000, visuals: { revenue: <div>Chart</div> } };
-  return <><Button variant="outline">{label}</Button><Document {...document} /></>;
+  const diagram: MermaidProps = { chart: "flowchart LR\\n  A --> B", className: "w-full" };
+  return <><Button variant="outline">{label}</Button><Document {...document} /><Mermaid {...diagram} /></>;
 }
 `,
       })
@@ -159,6 +161,10 @@ export default function App() {
   it.each([
     [
       'import { Document } from "@dust/document/v1"; export default () => <Document />',
+      2741,
+    ],
+    [
+      'import { Mermaid } from "@dust/mermaid"; export default () => <Mermaid />',
       2741,
     ],
     [
