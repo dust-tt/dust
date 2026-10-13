@@ -5,7 +5,11 @@ import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { JOB_TYPE_OPTIONS } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
-import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
+import {
+  isSupportedLocale,
+  LOCALE_LABELS,
+  SUPPORTED_LOCALES,
+} from "@app/types/locale";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user";
@@ -216,13 +220,19 @@ export function UserProfileStep({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuRadioGroup value={locale}>
+              <DropdownMenuRadioGroup
+                value={locale}
+                onValueChange={(value) => {
+                  if (isSupportedLocale(value)) {
+                    onLocaleChange(value);
+                  }
+                }}
+              >
                 {SUPPORTED_LOCALES.map((supportedLocale) => (
                   <DropdownMenuRadioItem
                     key={supportedLocale}
                     value={supportedLocale}
                     label={LOCALE_LABELS[supportedLocale]}
-                    onClick={() => onLocaleChange(supportedLocale)}
                   />
                 ))}
               </DropdownMenuRadioGroup>
