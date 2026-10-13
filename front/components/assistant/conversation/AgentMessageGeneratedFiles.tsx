@@ -4,13 +4,7 @@ import {
   frameSlideshowContentType,
   isFrameContentType,
 } from "@app/types/files";
-import {
-  ActionFrame,
-  Avatar,
-  Card,
-  CitationGrid,
-  cn,
-} from "@dust-tt/sparkle";
+import { ActionFrame, Avatar, Card, CitationGrid, cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
