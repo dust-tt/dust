@@ -176,7 +176,7 @@ export function ToolSetupCard({
   const toolDisplayName = asDisplayToolName(toolId) || toolName;
 
   return (
-    <div className="mb-2 mr-2 inline-block w-72 align-top">
+    <div className="mb-2 mr-2 inline-block w-72 align-top font-sans">
       <ContentMessage
         title={t`${toolDisplayName} tool`}
         icon={getIcon(matchingMCPServer.icon)}
