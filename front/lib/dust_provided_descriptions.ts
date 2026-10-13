@@ -50,6 +50,7 @@ const CODE_DEFINED_SKILL_DESCRIPTIONS: Record<
   pptx: msg`Read, edit, and create slide presentations`,
   projects: msg`Allow agents to create conversations & messages in Pods, leverage Pods knowledge.`,
   sandbox: msg`Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).`,
+  schedules: msg`Create schedules and event triggers to automate recurring and event-driven tasks.`,
   "sheet-to-frame": msg`Turn a data-entry spreadsheet into a real app: a form that fills in the obvious, formulas that become fields nobody types, and your existing rows carried over.`,
   "skill-authoring": msg`Deprecated: use the "Build Agents and Skills" skill instead. Let this agent create and refine reusable Skills for your workspace.`,
   support: msg`Get help with Dust using public docs, open-source issues, and community knowledge.`,
@@ -127,7 +128,7 @@ const INTERNAL_MCP_SERVER_DESCRIPTIONS: Record<
   front: msg`Manage support conversations, messages, and customer interactions.`,
   skill_management: null,
   skill_authoring: msg`Create and update reusable workspace Skills.`,
-  triggers_management: msg`Create schedules and event triggers to automate recurring and event-driven tasks.`,
+  triggers_management: msg`Create durable agent automations that run on a recurring schedule or in response to external events.`,
   pod_manager: msg({
     message:
       "Manage Pod metadata, members, conversations, and Company Data references. Raw Pod file operations (create, read, search, write, delete) live in the `files` MCP server under `pod-<id>/<rel>` scoped paths.",
@@ -139,7 +140,7 @@ const INTERNAL_MCP_SERVER_DESCRIPTIONS: Record<
   user_mentions: msg`Tools for mentioning users in conversations.`,
   poke: null,
   ask_user_question: msg`Ask the user a question with multiple-choice options.`,
-  wakeups: msg`Schedule wake-ups that re-invoke the agent at a later time.`,
+  wakeups: msg`Resume the current conversation later for reminders, follow-ups, and polling.`,
   clari_copilot: msg`Access Clari Copilot call transcripts, AI summaries, and action items.`,
   plan_mode: msg({
     message:

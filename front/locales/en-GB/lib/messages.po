@@ -855,6 +855,10 @@ msgid "Run code, scripts, and shell commands in the conversation's Computer (a s
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
+msgid "Create schedules and event triggers to automate recurring and event-driven tasks."
+msgstr ""
+
+#: front/lib/dust_provided_descriptions.ts
 msgid "Turn a data-entry spreadsheet into a real app: a form that fills in the obvious, formulas that become fields nobody types, and your existing rows carried over."
 msgstr ""
 
@@ -1111,7 +1115,7 @@ msgid "Create and update reusable workspace Skills."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Create schedules and event triggers to automate recurring and event-driven tasks."
+msgid "Create durable agent automations that run on a recurring schedule or in response to external events."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1143,7 +1147,7 @@ msgid "Ask the user a question with multiple-choice options."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Schedule wake-ups that re-invoke the agent at a later time."
+msgid "Resume the current conversation later for reminders, follow-ups, and polling."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
