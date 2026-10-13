@@ -217,6 +217,7 @@ describe("DfsFileSystem", () => {
     const created = await fs.write(at("notes.txt"), "abc", {
       mimeType: "text/plain",
     });
+    expect(await readText(fs, at("notes.txt"))).toBe("abc");
     const overwritten = await fs.write(at("notes.txt"), "xy");
 
     expect(created.isOk() && overwritten.isOk()).toBe(true);
@@ -342,5 +343,9 @@ describe("DfsFileSystem", () => {
 
     expect(res.isErr() && res.error.code).toBe("invalid_input");
     expect(await readText(fs, at("notes.txt"))).toBe("abc");
+    const stat = await fs.stat(at("notes.txt"), { includeMetadata: true });
+    expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
+      "text/plain"
+    );
   });
 });

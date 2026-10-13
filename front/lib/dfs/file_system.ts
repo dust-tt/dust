@@ -152,13 +152,14 @@ async function* contentChunks(
  * `mkdir` and `write` MUST create the missing intermediate directories of a URI's path one level at
  * a time. A directory that already exists, including one created concurrently (`already_exists`),
  * MUST be reused; a file there MUST fail with `not_directory`. `mkdir` MUST fail with
- * `already_exists` when an object exists at the URI.
+ * `already_exists` when an object exists at the URI's path, and with `invalid_input` on a URI
+ * without a path. Directories created for a write are kept when the write then fails.
  */
 /**
  * @cc [owner:fabiencelier,label:product] chunked-writes
- * `write` MUST keep the ObjectId of an existing file. Caller-supplied metadata (MIME type) MUST be
- * applied in its own `Apply` before the content changes, so that an invalid value changes nothing.
- * Content MUST be written with one `Apply` per chunk, in order, the first one also creating or
+ * `write` MUST keep the ObjectId of an existing file. For an existing file, caller-supplied metadata
+ * (MIME type) MUST be applied in its own `Apply` before the content changes, so that an invalid
+ * value leaves the file unchanged; a new file MUST be created with it. Content MUST be written with one `Apply` per chunk, in order, the first one also creating or
  * truncating the file: content fitting in one chunk is replaced atomically, larger content is not,
  * and a failure leaves the content written so far in place.
  */
