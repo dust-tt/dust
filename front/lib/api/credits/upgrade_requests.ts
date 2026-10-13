@@ -4,9 +4,10 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { isUserBlocked } from "@app/lib/api/credits/access_control";
 import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upgrade";
+import { resolveSharedUsageLimitGroupForUser } from "@app/lib/api/groups/group_shared_usage_limit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import { notifyUpgradeRequested } from "@app/lib/notifications/triggers/upgrade-request-created";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
@@ -95,7 +96,13 @@ async function isUpgradeRequestReasonRequired(
 
 async function notifyManagersAndAdminsOfUpgradeRequest(
   auth: Authenticator,
-  { request }: { request: MembershipUpgradeRequestResource }
+  {
+    request,
+    budgetGroupName,
+  }: {
+    request: MembershipUpgradeRequestResource;
+    budgetGroupName: string | null;
+  }
 ): Promise<void> {
   //swallow errors
   try {
@@ -123,6 +130,8 @@ async function notifyManagersAndAdminsOfUpgradeRequest(
       requesterName: requester.fullName() ?? requester.name,
       requesterEmail: requester.email ?? null,
       reason: request.reason,
+      cause: request.cause,
+      groupName: budgetGroupName,
     });
   } catch (err) {
     logger.error(
@@ -228,7 +237,17 @@ export async function createUpgradeRequest(
     },
   });
 
-  void notifyManagersAndAdminsOfUpgradeRequest(auth, { request });
+  const budgetGroup =
+    request.cause === "group_shared_limit"
+      ? await resolveSharedUsageLimitGroupForUser(
+          await Authenticator.internalAdminForWorkspace(workspace.sId),
+          { user }
+        )
+      : null;
+  void notifyManagersAndAdminsOfUpgradeRequest(auth, {
+    request,
+    budgetGroupName: budgetGroup?.name ?? null,
+  });
 
   return new Ok(request.toJSON());
 }
