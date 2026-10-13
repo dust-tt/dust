@@ -77,6 +77,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     }
 
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      hasFramesV2: false,
       path: `conversation-${conversation.sId}/notes.txt`,
       url: "not-a-url",
     });
@@ -105,6 +106,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     }
 
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      hasFramesV2: false,
       path: `conversation-${conversation.sId}/notes.txt`,
       url: "http://example.com/file.txt",
     });
@@ -140,6 +142,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
 
     const path = `conversation-${conversation.sId}/imported-${Date.now()}.txt`;
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      hasFramesV2: false,
       path,
       url: "https://example.com/imported.txt",
     });
@@ -177,6 +180,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     }
 
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      hasFramesV2: false,
       path: `conversation-${conversation.sId}/large.pdf`,
       url: "https://example.com/large.pdf",
     });
@@ -218,6 +222,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     }
 
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      hasFramesV2: false,
       path: `conversation-${conversation.sId}/aborted.txt`,
       url: "https://example.com/aborted.txt",
     });
@@ -251,6 +256,7 @@ describe("uploadFileFromUrlToFileSystem", () => {
     }
 
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      hasFramesV2: false,
       path: `conversation-${conversation.sId}/frame.html`,
       url: "https://example.com/frame.html",
     });

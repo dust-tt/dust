@@ -2,6 +2,7 @@ import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions
 import createFilesServer from "@app/lib/api/actions/servers/files";
 import {
   FILES_CAT_ACTION_NAME,
+  FILES_EDIT_ACTION_NAME,
   FILES_EXTRACT_TEXT_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
@@ -40,6 +41,38 @@ describe("PDF skill and files tools availability", () => {
       );
       expect(toolNames).toContain(FILES_CAT_ACTION_NAME);
       expect(toolNames).toContain(FILES_LIST_ACTION_NAME);
+    }
+  );
+});
+
+describe("files edit tool description", () => {
+  it.each([true, false])(
+    "points Frame publishing at the tooling of the workspace (frames_v2: %s)",
+    async (framesV2Enabled) => {
+      const { authenticator: auth } = await createResourceTest({});
+      if (framesV2Enabled) {
+        await FeatureFlagFactory.basic(auth, "frames_v2");
+      }
+
+      const server = await createFilesServer(auth);
+      const client = new Client({ name: "files-test", version: "1.0.0" });
+      const [clientTransport, serverTransport] =
+        InMemoryWithAuthTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      await client.connect(clientTransport);
+
+      const { tools } = await client.listTools();
+      await client.close();
+
+      const editTool = tools.find(
+        (tool) => tool.name === FILES_EDIT_ACTION_NAME
+      );
+      expect(editTool?.description?.includes("dsbx frame publish")).toBe(
+        framesV2Enabled
+      );
+      expect(
+        editTool?.description?.includes("publish_interactive_content_file")
+      ).toBe(!framesV2Enabled);
     }
   );
 });

@@ -20,6 +20,7 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
+import { hasFeatureFlag } from "@app/lib/auth";
 import {
   isInteractiveContentType,
   stripMimeParameters,
@@ -167,7 +168,7 @@ export async function editHandler(
   let text = `Updated \`${path}\`: made ${occurrences} replacement${pluralize(occurrences)}.`;
 
   if (isFrameSource) {
-    text += ` ${frameSourceUpdatedNotice()}`;
+    text += ` ${frameSourceUpdatedNotice(await hasFeatureFlag(auth, "frames_v2"))}`;
   }
 
   return new Ok([{ type: "text", text }]);

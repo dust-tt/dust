@@ -10,6 +10,7 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { uploadFileFromUrlToFileSystem } from "@app/lib/api/file_system/upload_from_url";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import { isAllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
@@ -41,6 +42,7 @@ export async function uploadFromUrlHandler(
     path,
     url,
     contentType: content_type,
+    hasFramesV2: await hasFeatureFlag(auth, "frames_v2"),
   });
 
   if (uploadResult.isErr()) {

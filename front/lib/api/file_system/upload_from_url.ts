@@ -78,10 +78,12 @@ export async function uploadFileFromUrlToFileSystem(
     path,
     url,
     contentType: contentTypeOverride,
+    hasFramesV2,
   }: {
     path: string;
     url: string;
     contentType?: string;
+    hasFramesV2: boolean;
   }
 ): Promise<Result<UploadFromUrlResult, UploadFromUrlError>> {
   const validUrl = validateUrl(url);
@@ -128,7 +130,9 @@ export async function uploadFileFromUrlToFileSystem(
   );
 
   if (isInteractiveContentType(finalContentType)) {
-    return new Err({ message: frameFileCreateRejectedError().message });
+    return new Err({
+      message: frameFileCreateRejectedError(hasFramesV2).message,
+    });
   }
 
   if (!isSupportedFileContentType(finalContentType)) {
@@ -174,7 +178,9 @@ export async function uploadFileFromUrlToFileSystem(
   if (statResult.value !== null) {
     const existingMimeType = stripMimeParameters(statResult.value.contentType);
     if (isInteractiveContentType(existingMimeType)) {
-      return new Err({ message: frameFileEditRejectedError().message });
+      return new Err({
+        message: frameFileEditRejectedError(hasFramesV2).message,
+      });
     }
   }
 
