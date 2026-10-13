@@ -247,7 +247,7 @@ export async function readCurrentDocumentSource(
  * While a live session holds the document, the file MUST NOT be read or written: after the name
  * check of `readStoredDocument`, the change MUST go through `writeThroughCollabSession` with `agent`
  * (`collab-session-write`), and the file MUST exist before `change` receives the session's source,
- * parsed; the session refuses a storage without revisions itself (`collab-live-source-write`).
+ * parsed; the session refuses a storage without revisions itself (`collab-session-source-write`).
  */
 export async function writeDocumentChange<T, E extends Error>(
   auth: Authenticator,
