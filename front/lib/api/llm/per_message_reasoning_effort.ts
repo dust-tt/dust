@@ -1,4 +1,3 @@
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
@@ -17,14 +16,14 @@ export function supportsPerMessageReasoningEffort(
 }
 
 /**
- * @cc [owner:aubin-tchoi,label:product] per-message-effort-only-raises
+ * @cc [owner:aubin-tchoi,label:product] per-message-effort-changes
  * Returns true iff `model` supports per-message reasoning effort, `from` (the effort in effect: the
  * request's top-level effort or a per-message effort already applied) and `to` are efforts `model`
- * supports other than `none`, and `to` is strictly above `from`. It MUST return false when `from`
- * is `none` or null: the top-level thinking config then is disabled or the model default, and a
+ * supports other than `none`, and `to` differs from `from`. It MUST return false when `from` or
+ * `to` is `none` or `from` is null: thinking is then disabled or the model default, and a
  * per-message effort can 400 there.
  */
-export function canRaiseReasoningEffortPerMessage(
+export function canChangeReasoningEffortPerMessage(
   model: ModelConfigurationType,
   { from, to }: { from: ReasoningEffort | null; to: ReasoningEffort }
 ): boolean {
@@ -35,21 +34,19 @@ export function canRaiseReasoningEffortPerMessage(
     to !== "none" &&
     model.supportedReasoningEfforts[from] &&
     model.supportedReasoningEfforts[to] &&
-    ORDERED_REASONING_EFFORTS.indexOf(to) >
-      ORDERED_REASONING_EFFORTS.indexOf(from)
+    to !== from
   );
 }
 
 /**
- * @cc [owner:aubin-tchoi,label:product] effort-messages-only-raise
- * Returns `items` in order, without the per-message efforts (`getEffort` non-null) that do not
- * raise the effort in effect per `canRaiseReasoningEffortPerMessage`. The effort in effect starts
- * at `effort` (the request's top-level effort) and becomes each kept item's effort, so the kept
- * ones strictly increase: a later top-level effort at or above a marker supersedes it, and a marker
- * never lowers an earlier raise. Model constructors render every effort message they receive, so
- * the messages sent to a model MUST go through this filter.
+ * @cc [owner:aubin-tchoi,label:product] effort-messages-change-effort
+ * Returns `items` in order, without the per-message efforts (`getEffort` non-null) that cannot
+ * change the effort in effect per `canChangeReasoningEffortPerMessage`. The effort in effect starts
+ * at `effort` (the request's top-level effort) and becomes each kept item's effort, so each kept
+ * item moves it. Model constructors render every effort message they receive, so the messages sent
+ * to a model MUST go through this filter.
  */
-export function filterRaisingReasoningEfforts<T>(
+export function filterApplicableReasoningEfforts<T>(
   model: ModelConfigurationType,
   items: T[],
   {
@@ -66,7 +63,7 @@ export function filterRaisingReasoningEfforts<T>(
     const to = getEffort(item);
     if (to !== null) {
       if (
-        !canRaiseReasoningEffortPerMessage(model, { from: effortInEffect, to })
+        !canChangeReasoningEffortPerMessage(model, { from: effortInEffect, to })
       ) {
         continue;
       }
