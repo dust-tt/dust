@@ -14,6 +14,12 @@ export interface DfsResolvedObject {
   attr: DfsAttr;
 }
 
+/** A directory entry, with the child's canonical URI when the listing returned its attributes. */
+export interface DfsListedEntry {
+  name: string;
+  object?: DfsResolvedObject;
+}
+
 const LIST_PAGE_LIMIT = 4096;
 
 function isDirectory(attr: DfsAttr): boolean {
@@ -190,8 +196,11 @@ export class DfsFileSystem {
     return attr.isErr() ? attr : new Ok(attr.value !== null);
   }
 
-  /** Immediate children of the directory at `uri`, in basename order. */
-  async list(uri: string): Promise<Result<DfsEntry[], DfsError>> {
+  /**
+   * Immediate children of the directory at `uri`, in basename order, with the canonical URIs built
+   * from the attributes `List` returns.
+   */
+  async list(uri: string): Promise<Result<DfsListedEntry[], DfsError>> {
     const attr = await this.require(uri);
     if (attr.isErr()) {
       return attr;
@@ -203,7 +212,23 @@ export class DfsFileSystem {
     if (directoryId.isErr()) {
       return directoryId;
     }
-    return this.listById(directoryId.value);
+    const entries = await this.listById(directoryId.value);
+    if (entries.isErr()) {
+      return entries;
+    }
+    const listed: DfsListedEntry[] = [];
+    for (const { name, object } of entries.value) {
+      if (!object) {
+        listed.push({ name });
+        continue;
+      }
+      const child = resolved(object);
+      if (child.isErr()) {
+        return child;
+      }
+      listed.push({ name, object: child.value });
+    }
+    return new Ok(listed);
   }
 
   private async listById(

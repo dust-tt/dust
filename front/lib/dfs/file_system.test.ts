@@ -55,13 +55,16 @@ describe("DfsFileSystem", () => {
   it("lists a directory and reports missing or invalid URIs", async () => {
     const { dfs, fs, at } = setup();
     const dirId = dfs.createDirectory(dfs.rootId, "dir");
-    dfs.createFile(dirId, "b.txt", "b");
-    dfs.createFile(dirId, "a.txt", "a");
+    const bId = dfs.createFile(dirId, "b.txt", "b");
+    const aId = dfs.createFile(dirId, "a.txt", "a");
 
     const listing = await fs.list(at("dir"));
-    expect(listing.isOk() && listing.value.map((e) => e.name)).toEqual([
-      "a.txt",
-      "b.txt",
+    expect(
+      listing.isOk() &&
+        listing.value.map((e) => ({ name: e.name, uri: e.object?.uri }))
+    ).toEqual([
+      { name: "a.txt", uri: `dfs://a.txt--${aId}` },
+      { name: "b.txt", uri: `dfs://b.txt--${bId}` },
     ]);
     const listFile = await fs.list(at("dir/a.txt"));
     expect(listFile.isErr() && listFile.error.code).toBe("not_directory");
