@@ -85,12 +85,11 @@ a chip.
 
 ## Signatures
 
-The editor never signs anything. With `signCommentMessage`, posting a comment or a reply asks the
-server to write the message, with the user's name, the server's time and a signature, and the
-editor inserts what it returns; a refusal keeps the typed text and shows the reason. Saving then
-goes through the file API, which refuses a new message it did not sign for the saving user, or a
-verified one moved within its thread (`front/lib/api/files/dfm_comment_signatures.ts`), and
-never rewrites the file. Signatures bind the file's path and the message before each one, so a
+The editor never signs anything. Comments are posted through the live session, whose server writes
+each message with the user's name, the server's time and a signature; a refusal keeps the typed
+text and shows the reason. A save through the file API refuses a new message the server did not
+sign for the saving user, or a verified one moved within its thread
+(`front/lib/api/files/dfm_comment_signatures.ts`), and never rewrites the file. Signatures bind the file's path and the message before each one, so a
 renamed or moved file reads as unverified. A comment an agent posts with `documents.add_comment`
 is signed by the server for that agent (`front/lib/api/files/dfm_agent_comments.ts`). With
 `verifyCommentMessage`, threads mark each message whose signature does not check out as

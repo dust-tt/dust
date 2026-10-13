@@ -12,10 +12,7 @@ import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { resolveDocumentImageSource } from "@app/components/file_explorer/utils";
-import {
-  useDfmMessageVerifier,
-  useSignDfmCommentMessage,
-} from "@app/hooks/useDfmCommentSignatures";
+import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
 import { useLiveTicket } from "@app/hooks/useLiveTicket";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { liveCaretColor } from "@app/lib/client/live_session";
@@ -381,10 +378,6 @@ function RichMarkdownDocument({
   statusContainer,
 }: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
-  const signCommentMessage = useSignDfmCommentMessage({
-    owner,
-    filePath: editor.path,
-  });
   const verifyCommentMessage = useDfmMessageVerifier({
     owner,
     filePath: editor.path,
@@ -440,7 +433,6 @@ function RichMarkdownDocument({
       commentAuthor={
         user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
       }
-      signCommentMessage={signCommentMessage}
       verifyCommentMessage={verifyCommentMessage ?? undefined}
       renderCommentBody={(body) => (
         <CommentBodyMarkdown owner={owner} body={body} />

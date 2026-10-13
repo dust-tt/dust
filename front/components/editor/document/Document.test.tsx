@@ -4,18 +4,27 @@ import {
   hasOpenDocumentLayer,
 } from "@app/components/editor/document/Document";
 import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
+import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import type {
   DocumentLiveParticipant,
   DocumentProps,
   LiveStatus,
 } from "@app/components/editor/document/types";
+import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import datadogLogger from "@app/logger/datadogLogger";
 import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { LiveParticipantFactory } from "@app/tests/utils/LiveParticipantFactory";
+import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
+import type {
+  LiveCommentCommand,
+  LiveCommentErrorCode,
+} from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   act,
   fireEvent,
@@ -39,23 +48,126 @@ const hasEditor = (
 ): element is HTMLElement & { editor: Editor } =>
   element !== null && "editor" in element && element.editor !== undefined;
 
+type SessionAnswer = (
+  command: LiveCommentCommand,
+  accept: (command: LiveCommentCommand) => LiveCommentAnswer
+) => Promise<LiveCommentAnswer>;
+
+type LiveCommentAnswer = Result<DfmComment | null, LiveCommentErrorCode>;
+
+/**
+ * A live session's comment side: it applies each command to its threads and sends them, as the
+ * server does, writing new messages as `AUTHOR` at `AT`. `answer` answers instead, and can still
+ * accept the command.
+ */
+function commentSession(initialThreads: DfmComment[], answer?: SessionAnswer) {
+  let threads = initialThreads;
+  const listeners = new Set<(comments: DfmComment[]) => void>();
+  const broadcast = (next: DfmComment[]) => {
+    threads = next;
+    listeners.forEach((listener) => listener(next));
+  };
+  const message = (body: string): DfmMessage => ({
+    author: AUTHOR,
+    createdAt: AT,
+    body,
+  });
+  const accept = (command: LiveCommentCommand): LiveCommentAnswer => {
+    const others = threads.filter(({ id }) => id !== command.commentId);
+    const thread = threads.find(({ id }) => id === command.commentId);
+    switch (command.type) {
+      case "add": {
+        const created: DfmComment = {
+          id: command.commentId,
+          status: "open",
+          messages: [message(command.body)],
+        };
+        broadcast([...threads, created]);
+        return new Ok(created);
+      }
+      case "reply":
+        broadcast(
+          threads.map((t) =>
+            t === thread
+              ? { ...t, messages: [...t.messages, message(command.body)] }
+              : t
+          )
+        );
+        return new Ok(null);
+      case "resolve":
+        broadcast(
+          threads.map((t) =>
+            t === thread
+              ? { ...t, status: command.resolved ? "resolved" : "open" }
+              : t
+          )
+        );
+        return new Ok(null);
+      case "delete":
+        broadcast(others);
+        return new Ok(null);
+      default:
+        return assertNever(command);
+    }
+  };
+  const send = vi.fn(
+    async (command: LiveCommentCommand): Promise<LiveCommentAnswer> =>
+      answer ? answer(command, accept) : accept(command)
+  );
+  const channel: LiveCommentChannel = {
+    getThreads: () => threads,
+    onThreads: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    send,
+    close: () => listeners.clear(),
+  };
+  return { channel, send };
+}
+
+/** Renders `initialContent` as a live document bound to a fresh shared document. */
 async function renderDocument(
   initialContent: string,
-  verifyCommentMessage?: DfmMessageVerifier,
-  signCommentMessage?: DocumentProps["signCommentMessage"]
+  {
+    verifyCommentMessage,
+    commentInputExtensions,
+    answer,
+  }: {
+    verifyCommentMessage?: DfmMessageVerifier;
+    commentInputExtensions?: DocumentProps["commentInputExtensions"];
+    answer?: SessionAnswer;
+  } = {}
 ) {
-  const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+  const live = dfmToYDoc(initialContent);
+  if (live.isErr()) {
+    throw new Error(live.error);
+  }
+  const session = commentSession(live.value.comments, answer);
   const { container } = render(
-    <Document
+    <DocumentView
       initialContent={initialContent}
-      onSave={onSave}
-      autosaveDebounceMs={60_000}
       commentAuthor={AUTHOR}
       renderCommentAuthorAvatar={() => null}
       renderCommentBody={(body) => <p>{body}</p>}
       verifyCommentMessage={verifyCommentMessage}
-      signCommentMessage={signCommentMessage}
+      commentInputExtensions={commentInputExtensions}
       resolveImageSource={NO_IMAGE_SOURCE}
+      liveView={{
+        status: "live",
+        binding: {
+          extensions: buildLiveDocumentExtensions({
+            t: (descriptor) => descriptor.id ?? "",
+            document: live.value.doc,
+            awareness: null,
+            user: LiveUserFactory.build(),
+            comments: session.channel,
+            resolveImageSource: NO_IMAGE_SOURCE,
+          }),
+          connected: true,
+          comments: session.channel,
+        },
+      }}
     />
   );
   const dom = await waitFor(() => {
@@ -65,7 +177,7 @@ async function renderDocument(
     }
     return element;
   });
-  return { dom, editor: dom.editor, onSave };
+  return { dom, editor: dom.editor, session };
 }
 
 const highlight = (dom: HTMLElement, id: string) => {
@@ -303,19 +415,16 @@ describe("Document comments", () => {
     expect(field.editor.getText()).toBe("Too bold?");
   });
 
-  it("freezes a new comment and shows progress while the server signs it", async () => {
-    let finishSigning = () => undefined as unknown;
-    const sign = vi.fn(
-      (_commentId: string, _thread: DfmMessage[], body: string) =>
-        new Promise<Result<DfmMessage, string>>((resolve) => {
-          finishSigning = () =>
-            resolve(new Ok({ author: AUTHOR, createdAt: AT, body }));
-        })
-    );
-    const { dom, editor } = await renderDocument(
+  it("freezes a new comment and shows progress while the session creates it", async () => {
+    let finishSending = () => undefined as unknown;
+    const { dom, editor, session } = await renderDocument(
       "Hello brave world.\n",
-      undefined,
-      sign
+      {
+        answer: (command, accept) =>
+          new Promise((resolve) => {
+            finishSending = () => resolve(accept(command));
+          }),
+      }
     );
 
     startComment(dom, editor, "brave");
@@ -328,29 +437,23 @@ describe("Document comments", () => {
     );
     expect(field.editor.isEditable).toBe(false);
     fireEvent.keyDown(field, { key: "Enter" });
-    expect(sign).toHaveBeenCalledTimes(1);
+    expect(session.send).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      finishSigning();
+      finishSending();
     });
 
     expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
   });
 
   it("keeps a new comment and its text on Escape while it is being sent", async () => {
-    let finishSigning = () => undefined as unknown;
-    const sign = vi.fn(
-      (_commentId: string, _thread: DfmMessage[], body: string) =>
-        new Promise<Result<DfmMessage, string>>((resolve) => {
-          finishSigning = () =>
-            resolve(new Ok({ author: AUTHOR, createdAt: AT, body }));
-        })
-    );
-    const { dom, editor } = await renderDocument(
-      "Hello brave world.\n",
-      undefined,
-      sign
-    );
+    let finishSending = () => undefined as unknown;
+    const { dom, editor } = await renderDocument("Hello brave world.\n", {
+      answer: (command, accept) =>
+        new Promise((resolve) => {
+          finishSending = () => resolve(accept(command));
+        }),
+    });
 
     startComment(dom, editor, "brave");
     const field = await findCommentField("Comment");
@@ -365,23 +468,18 @@ describe("Document comments", () => {
     expect(field.editor.getText()).toBe("Too bold?");
 
     await act(async () => {
-      finishSigning();
+      finishSending();
     });
   });
 
   it("gives focus back to the field once a refused comment is no longer pending", async () => {
     let refuse = () => undefined as unknown;
-    const sign = vi.fn(
-      () =>
-        new Promise<Result<DfmMessage, string>>((resolve) => {
-          refuse = () => resolve(new Err("Could not sign."));
-        })
-    );
-    const { dom, editor } = await renderDocument(
-      "Hello brave world.\n",
-      undefined,
-      sign
-    );
+    const { dom, editor } = await renderDocument("Hello brave world.\n", {
+      answer: () =>
+        new Promise((resolve) => {
+          refuse = () => resolve(new Err("unavailable"));
+        }),
+    });
 
     startComment(dom, editor, "brave");
     const field = await findCommentField("Comment");
@@ -398,7 +496,9 @@ describe("Document comments", () => {
       refuse();
     });
 
-    expect(screen.getByRole("alert").textContent).toBe("Could not sign.");
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Commenting is unavailable."
+    );
     await waitFor(() => expect(document.activeElement).toBe(field));
   });
 
@@ -414,11 +514,8 @@ describe("Document comments", () => {
   });
 
   it("does not submit line breaks alone", async () => {
-    const sign = vi.fn();
-    const { dom, editor } = await renderDocument(
-      "Hello brave world.\n",
-      undefined,
-      sign
+    const { dom, editor, session } = await renderDocument(
+      "Hello brave world.\n"
     );
 
     startComment(dom, editor, "brave");
@@ -430,7 +527,7 @@ describe("Document comments", () => {
       fireEvent.keyDown(field, { key: "Enter" });
     });
 
-    expect(sign).not.toHaveBeenCalled();
+    expect(session.send).not.toHaveBeenCalled();
     expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
   });
 
@@ -684,7 +781,9 @@ describe("Document comments", () => {
   ])(
     "marks a message as unverified only when its check fails (verified: %s)",
     async (verified, marks) => {
-      const { dom } = await renderDocument(SOURCE, async () => verified);
+      const { dom } = await renderDocument(SOURCE, {
+        verifyCommentMessage: async () => verified,
+      });
 
       fireEvent.click(highlight(dom, "c1"));
 
@@ -1192,25 +1291,10 @@ describe("Document Escape inside a host dialog", () => {
   });
 
   async function startCommentWithSuggestion() {
-    const { container } = render(
-      <Document
-        initialContent={"Hello brave world.\n"}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
-        commentAuthor={AUTHOR}
-        commentInputExtensions={[ActiveSuggestion]}
-        renderCommentAuthorAvatar={() => null}
-        renderCommentBody={(body) => <p>{body}</p>}
-        resolveImageSource={NO_IMAGE_SOURCE}
-      />
-    );
-    const dom = await waitFor(() => {
-      const element = container.querySelector(".tiptap");
-      if (!hasEditor(element)) {
-        throw new Error("Editor did not mount.");
-      }
-      return element;
+    const { dom, editor } = await renderDocument("Hello brave world.\n", {
+      commentInputExtensions: [ActiveSuggestion],
     });
-    startComment(dom, dom.editor, "brave");
+    startComment(dom, editor, "brave");
     const field = await findCommentField("Comment");
     typeComment(field, "Too bold?");
     return field;
