@@ -162,14 +162,6 @@ function mockEsSuccess(
   );
 }
 
-function enableFeatureFlag() {
-  vi.spyOn(Authenticator.prototype, "hasFeatureFlag").mockResolvedValue(true);
-}
-
-function disableFeatureFlag() {
-  vi.spyOn(Authenticator.prototype, "hasFeatureFlag").mockResolvedValue(false);
-}
-
 // A user-role key holding `read_analytics` on `target` only, through a regular_auto grant group.
 async function createGroupScopedKey() {
   const { workspace, globalGroup } = await createPublicApiMockRequest({
@@ -225,8 +217,7 @@ function consumptionExportRequest({
 }
 
 describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
-  it("returns 200 CSV for admin API key with feature flag", async () => {
-    enableFeatureFlag();
+  it("returns 200 CSV for admin API key", async () => {
     mockEsSuccess(MOCK_ES_TOOL_DOC);
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
@@ -257,7 +248,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 200 NDJSON when format=ndjson", async () => {
-    enableFeatureFlag();
     mockEsSuccess(MOCK_ES_TOOL_DOC);
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
@@ -282,33 +272,7 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     expect(parsed).not.toHaveProperty("creditsDirect");
   });
 
-  it("returns 403 when feature flag is not enabled", async () => {
-    disableFeatureFlag();
-    const { workspace, key } = await createPublicApiMockRequest({
-      role: "admin",
-    });
-
-    const response = await consumptionExportRequest({
-      workspace,
-      key,
-      body: {
-        startDate: "2024-06-01T00:00:00Z",
-        endDate: "2024-06-15T00:00:00Z",
-      },
-    });
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "feature_flag_not_found",
-        message:
-          "The workspace does not have access to the consumption export API.",
-      },
-    });
-  });
-
   it("returns 403 for read-only API key", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "user",
     });
@@ -327,7 +291,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 200 for a user API key on groups it can read, listing only those groups", async () => {
-    enableFeatureFlag();
     const { workspace, key, target, other } = await createGroupScopedKey();
     mockEsSuccess(docWithUserGroups([other.sId, target.sId]));
 
@@ -352,7 +315,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("lists every group of the user for an admin API key", async () => {
-    enableFeatureFlag();
     const { workspace, globalGroup, target, other } =
       await createGroupScopedKey();
     const adminKey = await KeyFactory.admin(globalGroup);
@@ -375,7 +337,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 403 for a user API key without a group filter, or with an empty group id", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createGroupScopedKey();
 
     for (const filter of [
@@ -399,7 +360,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 403 for a user API key when one requested group is not readable", async () => {
-    enableFeatureFlag();
     const { workspace, key, target, other } = await createGroupScopedKey();
     mockedSearchConsumptionAnalytics.mockClear();
 
@@ -419,7 +379,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 400 when time range exceeds 30 days", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -440,7 +399,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 400 when startDate is after endDate", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -463,7 +421,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 400 for missing required fields", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -499,7 +456,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 405 for GET", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -520,7 +476,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("accepts optional filter parameter", async () => {
-    enableFeatureFlag();
     mockEsSuccess();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
@@ -540,7 +495,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 400 when filter values exceed 500 dimensions", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -566,7 +520,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 400 when filter values exceed 500 across all dimensions", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -593,7 +546,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 400 when a filter value exceeds 256 characters", async () => {
-    enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -615,7 +567,6 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   });
 
   it("returns 500 with API error on ES failure", async () => {
-    enableFeatureFlag();
     mockedSearchConsumptionAnalytics.mockResolvedValueOnce(
       new Err(new ElasticsearchError("query_error", "shard failure"))
     );

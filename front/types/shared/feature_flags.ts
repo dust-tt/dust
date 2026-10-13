@@ -440,12 +440,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "sfriquet",
   },
-  consumption_export_api: {
-    description:
-      "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
-    stage: "ask_owner",
-    owner: "sfriquet",
-  },
   agent_message_consumption_writes: {
     description:
       "Write agent-message consumption items and outbox events as usage is incurred. Shadow mode keeps existing billing.",
