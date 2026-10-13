@@ -46,6 +46,7 @@ import { GoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream } from "@app/li
 import { GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_8_flash_global_google_ai_studio";
 import { GoogleGeminiFourArgonEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_4_argon_eu_agent_platform";
 import { GoogleGeminiFourArgonGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_4_argon_global_agent_platform";
+import { GoogleGeminiFourArgonGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_4_argon_global_google_ai_studio";
 import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_codestral_eu_mistral";
 import { MistralMistralLarge4EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_4_eu_mistral";
 import { MistralMistralLarge4GlobalMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_4_global_mistral";
@@ -139,6 +140,7 @@ import { GoogleGeminiThreeDotEightFlashGlobalAgentPlatformStreamSetup } from "@a
 import { GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_gemini_3_8_flash_global_google_ai_studio.test";
 import { GoogleGeminiFourArgonEuropeAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_gemini_4_argon_eu_agent_platform.test";
 import { GoogleGeminiFourArgonGlobalAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_gemini_4_argon_global_agent_platform.test";
+import { GoogleGeminiFourArgonGlobalGoogleAiStudioStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_gemini_4_argon_global_google_ai_studio.test";
 import { MistralCodestralEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_codestral_eu_mistral.test";
 import { MistralMistralLarge4EuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_large_4_eu_mistral.test";
 import { MistralMistralLarge4GlobalMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_large_4_global_mistral.test";
@@ -288,6 +290,8 @@ export const STREAM_ENDPOINT_SETUPS = {
     GoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStreamSetup,
   [GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream.id]:
     GoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStreamSetup,
+  [GoogleGeminiFourArgonGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiFourArgonGlobalGoogleAiStudioStreamSetup,
   [MistralCodestralEuropeMistralStream.id]:
     MistralCodestralEuropeMistralStreamSetup,
   [MistralMistralLargeEuropeMistralStream.id]:

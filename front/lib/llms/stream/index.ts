@@ -43,6 +43,7 @@ import { DustGoogleGeminiThreeDotEightFlashGlobalAgentPlatformStream } from "@ap
 import { DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_8_flash_global_google_ai_studio";
 import { DustGoogleGeminiFourArgonEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_4_argon_eu_agent_platform";
 import { DustGoogleGeminiFourArgonGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_4_argon_global_agent_platform";
+import { DustGoogleGeminiFourArgonGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_4_argon_global_google_ai_studio";
 import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_codestral_eu_mistral";
 import { DustMistralMistralLarge4EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_4_eu_mistral";
 import { DustMistralMistralLarge4GlobalMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_4_global_mistral";
@@ -205,6 +206,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream,
   [DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream.id]:
     DustGoogleGeminiThreeDotEightFlashGlobalGoogleAiStudioStream,
+  [DustGoogleGeminiFourArgonGlobalGoogleAiStudioStream.id]:
+    DustGoogleGeminiFourArgonGlobalGoogleAiStudioStream,
 
   [DustMistralCodestralEuropeMistralStream.id]:
     DustMistralCodestralEuropeMistralStream,
