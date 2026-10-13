@@ -74,7 +74,7 @@ const ONBOARDING_AVAILABLE_TOOLS = getOnboardingAvailableTools();
 
 function buildAvailableToolsList(): string {
   const toolLines = ONBOARDING_AVAILABLE_TOOLS.map(
-    (tool) => `- ${tool.name} (${tool.sId}) - ${tool.description}`,
+    (tool) => `- ${tool.name} (${tool.sId}) - ${tool.description}`
   ).join("\n");
 
   return `
@@ -106,7 +106,7 @@ const ROLE_TO_PRIMARY_TOOL: Partial<
 function getToolsForOnboarding(
   favoritePlatforms: FavoritePlatform[],
   emailProvider: EmailProviderType,
-  jobType: JobType | null,
+  jobType: JobType | null
 ): InternalMCPServerNameType[] {
   let tools: InternalMCPServerNameType[] = [...favoritePlatforms];
 
@@ -181,13 +181,13 @@ function buildOnboardingPrompt(options: {
   const tools = getToolsForOnboarding(
     options.favoritePlatforms,
     options.emailProvider,
-    options.userJobType as JobType | null,
+    options.userJobType as JobType | null
   );
 
   const topTools = tools.slice(0, 2);
 
   const alreadyConfiguredTopTool = topTools.find((tool) =>
-    options.configuredTools.includes(tool),
+    options.configuredTools.includes(tool)
   );
 
   const topToolSetupDirectives = topTools
@@ -234,7 +234,7 @@ function buildOnboardingPrompt(options: {
         topToolsWithDescriptions,
         topToolSetupDirectives,
         suggestedTopToolNames,
-        languageName,
+        languageName
       );
 
   const languageInstruction = languageName
@@ -379,7 +379,7 @@ function buildFirstMessageWithToolSetup(
   toolsWithDescriptions: string,
   toolSetupDirectives: string,
   suggestedToolNames: string,
-  languageName: string | null,
+  languageName: string | null
 ): string {
   const requiredEndingInstruction = languageName
     ? "You MUST end your message with these directives. Translate the text inside `[...]` and the `message` values and keep everything else unchanged:"
@@ -412,7 +412,7 @@ ${toolSetupDirectives}
 }
 
 function buildFirstMessageWithConfiguredTool(
-  toolId: InternalMCPServerNameType,
+  toolId: InternalMCPServerNameType
 ): string {
   const toolName = asDisplayName(toolId);
   const queryGuidance =
@@ -471,13 +471,13 @@ const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
 
 export async function getOnboardingLanguage(
   auth: Authenticator,
-  { acceptLanguage }: { acceptLanguage: string | undefined },
+  { acceptLanguage }: { acceptLanguage: string | undefined }
 ): Promise<string | null> {
   // The browser's preferred language, even if Dust does not support it.
   // Strip the quality parameter (`fr;q=1.0`) and region (`fr-FR`), then normalize anything that
   // is not a bare language code to null so the workspace fallback still applies.
   const browserLanguage = toLanguageCode(
-    acceptLanguage?.split(",")[0]?.split(";")[0]?.split("-")[0] ?? null,
+    acceptLanguage?.split(",")[0]?.split(";")[0]?.split("-")[0] ?? null
   );
 
   const user = auth.user();
@@ -497,7 +497,7 @@ const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what
 
 export function buildOnboardingFollowUpPrompt(
   toolId: string,
-  language: string | null,
+  language: string | null
 ): string {
   const queryGuidance =
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
@@ -524,7 +524,7 @@ export async function createOnboardingConversationIfNeeded(
   { force, language }: { force?: boolean; language?: string | null } = {
     force: false,
     language: null,
-  },
+  }
 ): Promise<Result<string | null, APIErrorWithContentfulStatusCode>> {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -550,7 +550,7 @@ export async function createOnboardingConversationIfNeeded(
   if (!force) {
     const existingMetadata = await user.getMetadata(
       "onboarding:conversation",
-      owner.id,
+      owner.id
     );
 
     if (existingMetadata?.value) {
@@ -579,11 +579,11 @@ export async function createOnboardingConversationIfNeeded(
 
   // Email provider is user-scoped (same email across all workspaces).
   const emailProviderMetadata = await user.getMetadata(
-    "onboarding:email_provider",
+    "onboarding:email_provider"
   );
   const storedEmailProvider = emailProviderMetadata?.value;
   const emailProvider: EmailProviderType = isEmailProviderType(
-    storedEmailProvider,
+    storedEmailProvider
   )
     ? storedEmailProvider
     : "other";
@@ -595,7 +595,7 @@ export async function createOnboardingConversationIfNeeded(
   // Favorite platforms is workspace-scoped.
   const favoritePlatformsMetadata = await user.getMetadata(
     "favorite_platforms",
-    owner.id,
+    owner.id
   );
 
   let favoritePlatforms: FavoritePlatform[] = [];
@@ -661,7 +661,7 @@ export async function createOnboardingConversationIfNeeded(
   await user.setMetadata(
     "onboarding:conversation",
     conversationResource.sId,
-    owner.id,
+    owner.id
   );
 
   return new Ok(conversationResource.sId);

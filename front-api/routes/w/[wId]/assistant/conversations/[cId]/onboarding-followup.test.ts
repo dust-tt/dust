@@ -25,7 +25,7 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 
 async function createOnboardingConversation(
   auth: Authenticator,
-  workspace: WorkspaceType,
+  workspace: WorkspaceType
 ): Promise<ConversationWithoutContentType> {
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -41,7 +41,7 @@ async function createOnboardingConversation(
 function postFollowUp(
   workspace: { sId: string },
   conversationId: string,
-  headers: Record<string, string> = {},
+  headers: Record<string, string> = {}
 ) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/conversations/${conversationId}/onboarding-followup`,
@@ -49,17 +49,17 @@ function postFollowUp(
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ toolId: "gmail" }),
-    },
+    }
   );
 }
 
 async function listUserMessageContents(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  conversation: ConversationWithoutContentType
 ): Promise<string[]> {
   const conversationResource = await ConversationResource.fetchById(
     auth,
-    conversation.sId,
+    conversation.sId
   );
   if (!conversationResource) {
     throw new Error("Conversation not found");
@@ -68,7 +68,7 @@ async function listUserMessageContents(
     limit: 10,
   });
   return messages.flatMap((m) =>
-    m.userMessage ? [m.userMessage.content] : [],
+    m.userMessage ? [m.userMessage.content] : []
   );
 }
 
@@ -102,14 +102,14 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
     const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
-      workspace.sId,
+      workspace.sId
     );
     const conversation = await createOnboardingConversation(
       otherAuth,
-      workspace,
+      workspace
     );
     expect(
-      await ConversationResource.fetchById(auth, conversation.sId),
+      await ConversationResource.fetchById(auth, conversation.sId)
     ).not.toBeNull();
 
     const response = await postFollowUp(workspace, conversation.sId);
