@@ -10,6 +10,12 @@ export const SYNC_PERIOD_DURATION_MS = 60_000;
 export const INTERVAL_BETWEEN_SYNCS_MS = 120_000; // 2 minutes
 
 // How long to wait before running the GC sync again
+/**
+ * @cc [owner:philipperolet,label:performance] below-front-stall-threshold
+ * MUST stay below `TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS` in
+ * `front/lib/production_checks/checks/check_notion_active_workflows.ts`, otherwise that check
+ * reports sleeping garbage collectors as stalled.
+ */
 export const INTERVAL_BETWEEN_GC_SYNCS_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 export const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
