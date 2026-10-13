@@ -12,17 +12,14 @@ import {
 import { mintCollabTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { Authenticator } from "@app/lib/auth";
-import {
-  onLiveAgentActivity,
-  onLiveAgentEdit,
-} from "@app/lib/client/live_agents";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
-import { createLiveCommentChannel } from "@app/lib/client/live_comments";
+import { onAgentActivity, onAgentEdit } from "@app/lib/client/collab/agents";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
+import { createCommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
-import type { LiveAgentEditMessage, LiveIdRange } from "@app/types/collab";
-import { toLiveDocumentName } from "@app/types/collab";
+import type { AgentEditMessage, InsertedIdRange } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -328,7 +325,7 @@ describe("comment threads in a live session", () => {
   };
   const CREATED: DfmComment = { ...THREAD, id: "c2" };
   const providers: HocuspocusProvider[] = [];
-  const channels: LiveCommentChannel[] = [];
+  const channels: CommentChannel[] = [];
   let close: () => void = () => undefined;
 
   beforeEach(() => {
@@ -393,7 +390,7 @@ describe("comment threads in a live session", () => {
     });
     providers.push(provider);
     await new Promise<void>((resolve) => provider.on("synced", resolve));
-    const channel = createLiveCommentChannel(provider, null);
+    const channel = createCommentChannel(provider, null);
     channels.push(channel);
     await vi.waitFor(() => expect(channel.getThreads()).not.toBeNull());
     return { channel, provider };
@@ -553,7 +550,7 @@ describe("comment threads in a live session", () => {
     ) {
       const { writer, hocuspocus, url } = await start();
       const { channel } = await join(url, writer);
-      const name = toLiveDocumentName(writer.workspaceId, writer.canonicalPath);
+      const name = toSessionName(writer.workspaceId, writer.canonicalPath);
       const read = await readSessionSource(hocuspocus, name);
       if (read.isErr() || !read.value.open) {
         throw new Error("The document is not open.");
@@ -660,19 +657,19 @@ describe("comment threads in a live session", () => {
   });
 
   describe("an agent's activity", () => {
-    const AGENT = LiveAgentFactory.build();
+    const AGENT = CollabAgentFactory.build();
 
     /** What reaches a browser, in order: agent messages and document updates. */
     async function watch() {
       const { writer, hocuspocus, url } = await start();
       const { provider } = await join(url, writer);
-      const name = toLiveDocumentName(writer.workspaceId, writer.canonicalPath);
+      const name = toSessionName(writer.workspaceId, writer.canonicalPath);
       const seen: string[] = [];
-      const edits: LiveAgentEditMessage[] = [];
-      onLiveAgentActivity(provider, ({ agent, activity }) =>
+      const edits: AgentEditMessage[] = [];
+      onAgentActivity(provider, ({ agent, activity }) =>
         seen.push(`${agent.name} ${activity}`)
       );
-      onLiveAgentEdit(provider, (edit) => {
+      onAgentEdit(provider, (edit) => {
         edits.push(edit);
         seen.push(`${edit.agent.name} edit`);
       });
@@ -693,7 +690,7 @@ describe("comment threads in a live session", () => {
     }
 
     /** The text of `ranges` the browser's document holds, as the editor resolves it. */
-    const textOf = (document: Y.Doc, ranges: LiveIdRange[]) =>
+    const textOf = (document: Y.Doc, ranges: InsertedIdRange[]) =>
       ranges
         .map(({ client, clock, length }) => {
           const structs = document.store.clients.get(client) ?? [];

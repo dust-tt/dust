@@ -8,19 +8,19 @@ import { buildLiveDocumentExtensions } from "@app/components/editor/document/liv
 import type {
   DocumentLiveParticipant,
   DocumentProps,
-  LiveStatus,
+  CollabStatus,
 } from "@app/components/editor/document/types";
 import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import datadogLogger from "@app/logger/datadogLogger";
-import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
+import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
 import { LiveParticipantFactory } from "@app/tests/utils/LiveParticipantFactory";
 import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
 import type {
-  LiveCommentCommand,
-  LiveCommentErrorCode,
+  CommentRequest,
+  CommentRequestErrorCode,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -49,11 +49,11 @@ const hasEditor = (
   element !== null && "editor" in element && element.editor !== undefined;
 
 type SessionAnswer = (
-  command: LiveCommentCommand,
-  accept: (command: LiveCommentCommand) => LiveCommentAnswer
+  command: CommentRequest,
+  accept: (command: CommentRequest) => LiveCommentAnswer
 ) => Promise<LiveCommentAnswer>;
 
-type LiveCommentAnswer = Result<DfmComment | null, LiveCommentErrorCode>;
+type LiveCommentAnswer = Result<DfmComment | null, CommentRequestErrorCode>;
 
 /**
  * A live session's comment side: it applies each command to its threads and sends them, as the
@@ -72,7 +72,7 @@ function commentSession(initialThreads: DfmComment[], answer?: SessionAnswer) {
     createdAt: AT,
     body,
   });
-  const accept = (command: LiveCommentCommand): LiveCommentAnswer => {
+  const accept = (command: CommentRequest): LiveCommentAnswer => {
     const others = threads.filter(({ id }) => id !== command.commentId);
     const thread = threads.find(({ id }) => id === command.commentId);
     switch (command.type) {
@@ -111,10 +111,10 @@ function commentSession(initialThreads: DfmComment[], answer?: SessionAnswer) {
     }
   };
   const send = vi.fn(
-    async (command: LiveCommentCommand): Promise<LiveCommentAnswer> =>
+    async (command: CommentRequest): Promise<LiveCommentAnswer> =>
       answer ? answer(command, accept) : accept(command)
   );
-  const channel: LiveCommentChannel = {
+  const channel: CommentChannel = {
     getThreads: () => threads,
     onThreads: (listener) => {
       listeners.add(listener);
@@ -898,7 +898,7 @@ describe("Document live participants", () => {
   ];
 
   const renderLiveView = (
-    status: LiveStatus,
+    status: CollabStatus,
     participants: DocumentLiveParticipant[],
     headerControlsContainer?: HTMLElement
   ) =>
@@ -954,7 +954,7 @@ describe("Document live participants", () => {
           status: "live",
           participants: PARTICIPANTS,
           agent: {
-            agent: LiveAgentFactory.build({ agentId: "dust", name: "Dust" }),
+            agent: CollabAgentFactory.build({ agentId: "dust", name: "Dust" }),
             activity: "editing",
           },
           binding: null,

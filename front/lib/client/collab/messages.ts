@@ -15,12 +15,12 @@ const CARET_COLORS = [
 ];
 
 /** A stable caret color per user, so others recognize them across sessions. */
-export function liveCaretColor(userId: string): string {
+export function caretColor(userId: string): string {
   return CARET_COLORS[Math.floor(rand(userId)() * CARET_COLORS.length)];
 }
 
 /**
- * @cc [owner:PopDaph,label:product] live-stateless-messages
+ * @cc [owner:PopDaph,label:product] collab-stateless-messages
  * `listener` MUST be called with every stateless message of `provider` that `schema` accepts, in
  * the order received, and never after the returned function is called. Any other message MUST be
  * ignored.

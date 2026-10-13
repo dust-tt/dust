@@ -1,6 +1,6 @@
-import type { LiveStatus } from "@app/components/editor/document/types";
-import type { LiveAgentEvent } from "@app/lib/client/live_agents";
-import type { LiveAgentActivity } from "@app/types/collab";
+import type { CollabStatus } from "@app/components/editor/document/types";
+import type { AgentEvent } from "@app/lib/client/collab/agents";
+import type { AgentActivity } from "@app/types/collab";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AlertCircle,
@@ -31,7 +31,7 @@ const StatusRow = ({ children }: StatusRowProps) => (
 );
 
 const LIVE_STATES: Record<
-  LiveStatus,
+  CollabStatus,
   { label: MessageDescriptor; icon: ReactNode }
 > = {
   connecting: { label: msg`Connecting…`, icon: <Spinner size="xs" /> },
@@ -47,7 +47,7 @@ const LIVE_STATES: Record<
 };
 
 interface DocumentLiveStatusProps {
-  status: LiveStatus;
+  status: CollabStatus;
 }
 
 /** Where the live session stands. */
@@ -68,8 +68,8 @@ export const DocumentLiveStatus = ({ status }: DocumentLiveStatusProps) => {
   );
 };
 
-const LIVE_AGENT_ACTIVITIES: Record<
-  LiveAgentActivity,
+const AGENT_ACTIVITIES: Record<
+  AgentActivity,
   {
     label: MessageDescriptor;
     describe: (name: string) => MessageDescriptor;
@@ -86,7 +86,7 @@ const LIVE_AGENT_ACTIVITIES: Record<
 };
 
 interface DocumentLiveAgentProps {
-  activity: LiveAgentEvent;
+  activity: AgentEvent;
   avatar: ReactNode;
 }
 
@@ -97,7 +97,7 @@ export const DocumentLiveAgent = ({
 }: DocumentLiveAgentProps) => {
   const { t } = useLingui();
   const { name } = activity.agent;
-  const { label, describe } = LIVE_AGENT_ACTIVITIES[activity.activity];
+  const { label, describe } = AGENT_ACTIVITIES[activity.activity];
   return (
     <Tooltip
       tooltipTriggerAsChild
@@ -135,7 +135,7 @@ const statusIcon = ({
   status,
   syncing,
 }: {
-  status: LiveStatus;
+  status: CollabStatus;
   syncing: boolean;
 }): { state: StatusIconState; label: MessageDescriptor } => {
   switch (status) {
@@ -155,7 +155,7 @@ const statusIcon = ({
 };
 
 interface DocumentStatusIconProps {
-  live?: { status: LiveStatus; syncing: boolean };
+  live?: { status: CollabStatus; syncing: boolean };
 }
 
 /**

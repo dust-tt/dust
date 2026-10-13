@@ -19,14 +19,14 @@ import { DocumentSelectionToolbar } from "@app/components/editor/document/Docume
 import type {
   DocumentLiveParticipant,
   DocumentProps,
-  LiveStatus,
+  CollabStatus,
 } from "@app/components/editor/document/types";
 import type { DocumentCommentsController } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
-import type { LiveAgentEvent } from "@app/lib/client/live_agents";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { AgentEvent } from "@app/lib/client/collab/agents";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
@@ -106,17 +106,17 @@ export const Document = (props: DocumentProps) =>
 
 interface DocumentViewProps extends DocumentProps {
   liveView?: {
-    status: LiveStatus;
+    status: CollabStatus;
     /** Changes not yet confirmed by the server. */
     syncing?: boolean;
     /** What an agent is doing in the document, as the session last announced. */
-    agent?: LiveAgentEvent | null;
+    agent?: AgentEvent | null;
     participants?: DocumentLiveParticipant[];
     /** Bound to the shared document once synced; until then the file shows read-only. */
     binding: {
       extensions: AnyExtension[];
       connected: boolean;
-      comments: LiveCommentChannel;
+      comments: CommentChannel;
     } | null;
   };
 }

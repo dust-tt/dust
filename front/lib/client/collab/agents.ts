@@ -1,46 +1,46 @@
-import { onStatelessMessage } from "@app/lib/client/live_session";
+import { onStatelessMessage } from "@app/lib/client/collab/messages";
 import type {
-  LiveAgent,
-  LiveAgentActivity,
-  LiveAgentEditMessage,
+  CollabAgent,
+  AgentActivity,
+  AgentEditMessage,
 } from "@app/types/collab";
 import {
-  liveAgentEditMessageSchema,
-  liveAgentServerMessageSchema,
+  agentEditMessageSchema,
+  agentActivityMessageSchema,
 } from "@app/types/collab";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 
-export interface LiveAgentEvent {
-  agent: LiveAgent;
-  activity: LiveAgentActivity;
+export interface AgentEvent {
+  agent: CollabAgent;
+  activity: AgentActivity;
 }
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-activity-listener
+ * @cc [owner:PopDaph,label:product] collab-agent-activity-listener
  * `listener` MUST be called with every agent activity the server sends on `provider`, in the
  * order received, and never after the returned function is called. Any other stateless message
  * MUST be ignored.
  */
-export function onLiveAgentActivity(
+export function onAgentActivity(
   provider: HocuspocusProvider,
-  listener: (event: LiveAgentEvent) => void
+  listener: (event: AgentEvent) => void
 ): () => void {
   return onStatelessMessage(
     provider,
-    liveAgentServerMessageSchema,
+    agentActivityMessageSchema,
     ({ agent, activity }) => listener({ agent, activity })
   );
 }
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-edit-listener
+ * @cc [owner:PopDaph,label:product] collab-agent-edit-listener
  * `listener` MUST be called with every agent edit the server announces on `provider`, in the order
  * received, and never after the returned function is called. Any other stateless message MUST be
  * ignored.
  */
-export function onLiveAgentEdit(
+export function onAgentEdit(
   provider: HocuspocusProvider,
-  listener: (edit: LiveAgentEditMessage) => void
+  listener: (edit: AgentEditMessage) => void
 ): () => void {
-  return onStatelessMessage(provider, liveAgentEditMessageSchema, listener);
+  return onStatelessMessage(provider, agentEditMessageSchema, listener);
 }

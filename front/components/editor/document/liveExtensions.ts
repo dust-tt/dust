@@ -3,7 +3,7 @@ import { getDocumentComments } from "@app/components/editor/document/DocumentCom
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import type { Translate } from "@app/components/editor/document/extensions";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
@@ -22,7 +22,7 @@ export interface DocumentLiveUser {
   color: string;
 }
 
-const liveCommentThreads = (channel: LiveCommentChannel) => {
+const liveCommentThreads = (channel: CommentChannel) => {
   // Shared by every editor built from these extensions: one mounting once the channel has closed
   // still shows what the session last sent.
   let lastShown: DfmComment[] | null = null;
@@ -88,7 +88,7 @@ export const buildLiveDocumentExtensions = ({
   document: Y.Doc;
   awareness: Awareness | null;
   user: DocumentLiveUser;
-  comments: LiveCommentChannel;
+  comments: CommentChannel;
   resolveImageSource: DocumentImageOptions["resolveSource"];
   /** The session's connection, which announces the agents' edits. */
   provider?: HocuspocusProvider;

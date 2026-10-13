@@ -8,7 +8,7 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
@@ -58,7 +58,7 @@ const SESSION_THREADS: DfmComment[] = [
 function fakeCommentChannel() {
   const listeners = new Set<(comments: DfmComment[]) => void>();
   let threads: DfmComment[] | null = null;
-  const channel: LiveCommentChannel = {
+  const channel: CommentChannel = {
     getThreads: () => threads,
     onThreads: (listener) => {
       listeners.add(listener);

@@ -2,7 +2,7 @@ import {
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import { Ok } from "@app/types/shared/result";
 import {
   collabAccess,
@@ -63,7 +63,7 @@ describe("readSessionSource and writeSessionSource", () => {
     return {
       agent,
       reader: { ...agent, canWrite: false },
-      name: toLiveDocumentName(agent.workspaceId, agent.canonicalPath),
+      name: toSessionName(agent.workspaceId, agent.canonicalPath),
     };
   }
 

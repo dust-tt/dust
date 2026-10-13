@@ -1,21 +1,21 @@
 import type {
   DocumentLiveSession,
-  LiveStatus,
+  CollabStatus,
 } from "@app/components/editor/document/types";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
-import { createLiveCommentChannel } from "@app/lib/client/live_comments";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
+import { createCommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 /** A shared document synced with the server, and the connection that keeps it in sync. */
-export interface LiveConnection {
+export interface CollabConnection {
   /** Unique per connection: an editor bound to one never outlives it. */
   id: number;
   document: Y.Doc;
   provider: HocuspocusProvider;
-  comments: LiveCommentChannel;
+  comments: CommentChannel;
   close: () => void;
 }
 
@@ -25,7 +25,7 @@ const RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 
 /**
- * @cc [owner:PopDaph,label:product] document-live-reconnect
+ * @cc [owner:PopDaph,label:product] collab-connection-reconnect
  * A shared document MUST be shown only once it has synced with the server. After a disconnect,
  * or the server closing the document, its connection MUST NOT reconnect: the server may hold
  * another copy of the document by then, and merging the old one into it would duplicate the
@@ -34,17 +34,17 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
  * from the threads last received by an earlier connection to the same document and user, if any.
  * Joining another document, or as another user, MUST close the current connection at once.
  */
-export function useLiveSession(live: DocumentLiveSession | undefined): {
-  connection: LiveConnection | null;
-  status: LiveStatus;
+export function useCollabConnection(live: DocumentLiveSession | undefined): {
+  connection: CollabConnection | null;
+  status: CollabStatus;
   /** The shown connection has changes the server has not confirmed yet. */
   syncing: boolean;
 } {
-  const [connection, setConnection] = useState<LiveConnection | null>(null);
-  const [status, setStatus] = useState<LiveStatus>("connecting");
+  const [connection, setConnection] = useState<CollabConnection | null>(null);
+  const [status, setStatus] = useState<CollabStatus>("connecting");
   const [syncing, setSyncing] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const shownRef = useRef<LiveConnection | null>(null);
+  const shownRef = useRef<CollabConnection | null>(null);
   // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
   const failuresRef = useRef(0);
   // TODO(co-edition): the threads also live in the channel and the editor; one store per session,
@@ -84,7 +84,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
     let closed = false;
     let destroyed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
-    let comments: LiveCommentChannel | null = null;
+    let comments: CommentChannel | null = null;
     const close = () => {
       if (destroyed) {
         return;
@@ -128,7 +128,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         }
         synced = true;
         failuresRef.current = 0;
-        comments = createLiveCommentChannel(provider, lastThreadsRef.current);
+        comments = createCommentChannel(provider, lastThreadsRef.current);
         const next = {
           id: nextConnectionId++,
           document,

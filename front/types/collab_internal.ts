@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { liveAgentSchema } from "@app/types/collab";
+import { collabAgentSchema } from "@app/types/collab";
 
 /**
  * Agents change a live document through the collab server's internal routes: they read the
@@ -16,7 +16,7 @@ export const collabSourceReadRequestSchema = z.object({
   workspaceId: z.string().min(1),
   userId: z.string().min(1).optional(),
   canonicalPath: z.string().min(1),
-  agent: liveAgentSchema.optional(),
+  agent: collabAgentSchema.optional(),
 });
 
 export type CollabSourceReadRequest = z.infer<
