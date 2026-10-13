@@ -90,7 +90,9 @@ export function resolveFrameSourceMovePaths({
     !sourcePrefix ||
     !destinationPrefix ||
     sourcePrefix.kind === "user" ||
-    destinationPrefix.kind === "user"
+    destinationPrefix.kind === "user" ||
+    sourcePrefix.kind === "conversation_metadata" ||
+    destinationPrefix.kind === "conversation_metadata"
   ) {
     return new Err(
       new FrameSourceMoveError(

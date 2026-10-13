@@ -20,6 +20,7 @@ import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_CONVERSATION_METADATA,
   SCOPED_PREFIX_POD,
   SCOPED_PREFIX_USER,
 } from "@app/types/file_system";
@@ -40,7 +41,7 @@ import type { FileSystemBackend } from "./file_system_backend";
 // ---------------------------------------------------------------------------
 
 type ParsedScopedPath = {
-  kind: "conversation" | "pod" | "user";
+  kind: "conversation" | "conversation_metadata" | "pod" | "user";
   id: string;
   /** Path component after `<kind>-<id>/`, empty string for a root listing. */
   rel: string;
@@ -62,6 +63,11 @@ function parseScopedPath(scopedPath: string): ParsedScopedPath | null {
   if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION)) {
     const id = prefix.slice(SCOPED_PREFIX_CONVERSATION.length);
     return id ? { kind: "conversation", id, rel } : null;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION_METADATA)) {
+    const id = prefix.slice(SCOPED_PREFIX_CONVERSATION_METADATA.length);
+    return id ? { kind: "conversation_metadata", id, rel } : null;
   }
 
   if (prefix.startsWith(SCOPED_PREFIX_POD)) {
@@ -89,6 +95,7 @@ const GCS_LIST_PAGE_SIZE = 200;
  *
  * Path translation (internal, never exposed):
  *   `conversation-{cId}/{rel}` -> `w/{wId}/conversations/{cId}/files/{rel}`
+ *   `conversation_metadata-{cId}/{rel}` -> `w/{wId}/conversations/{cId}/{rel}` (`files` reserved)
  *   `pod-{pId}/{rel}`          -> `w/{wId}/pods/{pId}/files/{rel}`
  */
 export class GCSFileSystemBackend implements FileSystemBackend {
@@ -106,6 +113,15 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     switch (p.kind) {
       case "conversation":
         return `w/${this.workspaceId}/conversations/${p.id}/files/${p.rel}`;
+
+      // At the conversation root, where `files` is reserved for the conversation's own files. The
+      // root itself is rejected too: listing it would walk them.
+      case "conversation_metadata": {
+        const [firstSegment] = p.rel.split("/");
+        return firstSegment.length > 0 && firstSegment !== "files"
+          ? `w/${this.workspaceId}/conversations/${p.id}/${p.rel}`
+          : null;
+      }
 
       case "pod":
         return `w/${this.workspaceId}/pods/${p.id}/files/${p.rel}`;
@@ -148,6 +164,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     switch (mount.kind) {
       case "conversation":
         return `w/${this.workspaceId}/conversations/${mount.id}/files`;
+
+      case "conversation_metadata":
+        return `w/${this.workspaceId}/conversations/${mount.id}`;
 
       case "pod":
         return `w/${this.workspaceId}/pods/${mount.id}/files`;
