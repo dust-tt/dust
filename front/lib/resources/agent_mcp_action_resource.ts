@@ -53,6 +53,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -89,7 +90,7 @@ import type {
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
 type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
@@ -100,8 +101,6 @@ type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
-
-const UPDATE_OUTPUT_ITEMS_GCS_PATH_CONCURRENCY = 8;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -1215,15 +1214,37 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return new Err(gcsResult.error);
     }
 
+    assert(
+      gcsResult.value.length === outputItems.length,
+      "GCS path not found for output item."
+    );
+
     try {
-      await concurrentExecutor(
-        outputItems,
-        async (item, index) => {
-          const contentGcsPath = gcsResult.value[index];
-          assert(contentGcsPath, "GCS path not found for output item.");
-          await item.update({ contentGcsPath });
-        },
-        { concurrency: UPDATE_OUTPUT_ITEMS_GCS_PATH_CONCURRENCY }
+      // `unnest` pairs both arrays by position into rows of item ID and GCS path.
+      // oxlint-disable-next-line dust/noRawSql -- Sequelize cannot bulk-update each row with a distinct value.
+      await frontSequelize.query(
+        `
+          UPDATE agent_mcp_action_output_items AS item
+          SET
+            "contentGcsPath" = output.content_gcs_path,
+            "updatedAt" = $updatedAt
+          FROM unnest(
+            $itemModelIds::bigint[],
+            $contentGcsPaths::text[]
+          ) AS output(item_model_id, content_gcs_path)
+          WHERE item.id = output.item_model_id
+            AND item."workspaceId" = $workspaceModelId
+        `,
+        {
+          bind: {
+            itemModelIds: outputItems.map((item) => item.id),
+            contentGcsPaths: gcsResult.value,
+            // Raw SQL bypasses Sequelize timestamping, so set it explicitly.
+            updatedAt: new Date(),
+            workspaceModelId: auth.getNonNullableWorkspace().id,
+          },
+          type: QueryTypes.UPDATE,
+        }
       );
     } catch (err) {
       // Keep the GCS objects rather than risk deleting content that may already be

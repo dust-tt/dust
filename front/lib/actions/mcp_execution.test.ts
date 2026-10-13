@@ -21,6 +21,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -608,6 +609,41 @@ describe("processToolResults", () => {
     if (stored.type === "text") {
       expect(stored.text).toBe(smallText);
     }
+  });
+
+  it("should record each output item's GCS path once the deferred persist completes", async () => {
+    const { auth, action, toolContext } = await setupTest();
+    fileStorageMock.reset();
+
+    const { awaitDurablePersist } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        { type: "text", text: "first block" },
+        { type: "text", text: "second block" },
+      ],
+    });
+    const persistResult = await awaitDurablePersist();
+    expect(persistResult.isOk()).toBe(true);
+
+    const outputItems =
+      (
+        await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+          actionIds: [action.id],
+          ignoreContent: false,
+        })
+      ).get(action.id) ?? [];
+    const savedPaths = fileStorageMock.saveFileCalls.map(
+      (call) => call.filePath
+    );
+
+    expect(outputItems).toHaveLength(2);
+    for (const item of outputItems) {
+      expect(savedPaths).toContain(item.contentGcsPath);
+    }
+    expect(new Set(outputItems.map((item) => item.contentGcsPath)).size).toBe(
+      2
+    );
   });
 
   it("should merge many text blocks into a single output item", async () => {
@@ -1245,9 +1281,11 @@ describe("mergeTextBlockRuns", () => {
     }));
 
   it("returns the content unchanged at or below the block threshold", () => {
-    const content = textBlocks(50, "row ");
+    const belowThreshold = textBlocks(2, "row ");
+    const atThreshold = textBlocks(50, "row ");
 
-    expect(mergeTextBlockRuns(content)).toBe(content);
+    expect(mergeTextBlockRuns(belowThreshold)).toBe(belowThreshold);
+    expect(mergeTextBlockRuns(atThreshold)).toBe(atThreshold);
   });
 
   it("merges each run of consecutive text blocks and keeps other blocks in order", () => {
@@ -1273,5 +1311,47 @@ describe("mergeTextBlockRuns", () => {
           .join("\n"),
       },
     ]);
+  });
+
+  it("keeps text blocks at or above the offload threshold unmerged", () => {
+    const largeBlock = {
+      type: "text" as const,
+      text: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
+    };
+    const content = [
+      ...textBlocks(30, "a"),
+      largeBlock,
+      ...textBlocks(30, "b"),
+    ];
+
+    const merged = mergeTextBlockRuns(content);
+
+    expect(merged).toHaveLength(3);
+    expect(merged[1]).toBe(largeBlock);
+  });
+
+  it("splits merged text so each merged block stays within 2MB", () => {
+    const blockText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES - 1);
+    const content = Array.from({ length: 200 }, () => ({
+      type: "text" as const,
+      text: blockText,
+    }));
+
+    const merged = mergeTextBlockRuns(content);
+
+    expect(merged.length).toBeGreaterThan(1);
+    for (const block of merged) {
+      expect(block.type).toBe("text");
+      if (block.type === "text") {
+        expect(Buffer.byteLength(block.text, "utf8")).toBeLessThanOrEqual(
+          2 * 1024 * 1024
+        );
+      }
+    }
+    expect(
+      merged
+        .map((block) => (block.type === "text" ? block.text : ""))
+        .join("\n")
+    ).toBe(content.map((block) => block.text).join("\n"));
   });
 });

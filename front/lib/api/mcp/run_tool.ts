@@ -29,35 +29,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { heartbeatWithoutCancelCheck } from "@app/lib/temporal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
-import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import {
-  TOOL_OUTPUT_PERSIST_HEARTBEAT_INTERVAL_MS,
-  TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-} from "@app/temporal/agent_loop/config";
-import type { Result } from "@app/types/shared/result";
+import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
-
-/**
- * @cc [owner:tdraier,label:performance;error-handling] heartbeat-while-awaiting-persist
- * MUST heartbeat once before awaiting `awaitDurablePersist`, then every
- * `TOOL_OUTPUT_PERSIST_HEARTBEAT_INTERVAL_MS` until it settles, and MUST return its result
- * unchanged.
- */
-async function awaitDurablePersistWithHeartbeat(
-  awaitDurablePersist: () => Promise<Result<void, Error>>,
-  localLogger: Logger
-): Promise<Result<void, Error>> {
-  heartbeatWithoutCancelCheck();
-  return withPeriodicHeartbeat(awaitDurablePersist, {
-    intervalMs: TOOL_OUTPUT_PERSIST_HEARTBEAT_INTERVAL_MS,
-    heartbeatFn: () => {
-      heartbeatWithoutCancelCheck();
-      localLogger.info("MCP tool output persist heartbeat");
-    },
-  });
-}
 
 /**
  * Runs a tool with streaming for the given tool context.
@@ -190,10 +165,7 @@ export async function* runToolWithStreaming(
 
   if (agentPauseEvents.length > 0) {
     // Durable GCS may still be in flight from createOutputItems; finish before exiting.
-    const persistResult = await awaitDurablePersistWithHeartbeat(
-      awaitDurablePersist,
-      localLogger
-    );
+    const persistResult = await awaitDurablePersist();
     if (persistResult.isErr()) {
       localLogger.error(
         { err: persistResult.error },
@@ -221,10 +193,7 @@ export async function* runToolWithStreaming(
   };
 
   // Write-behind GCS: poll/agent already unblocked via Redis stage + succeeded status.
-  const persistResult = await awaitDurablePersistWithHeartbeat(
-    awaitDurablePersist,
-    localLogger
-  );
+  const persistResult = await awaitDurablePersist();
   if (persistResult.isErr()) {
     localLogger.error(
       { err: persistResult.error },

@@ -113,11 +113,6 @@ export const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS -
   TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS;
 
-// Heartbeat cadence while the tool output's GCS write-behind is awaited after the action is marked
-// succeeded (one object per output item, so it scales with the item count). Aligned with the
-// worker's maxHeartbeatThrottleInterval.
-export const TOOL_OUTPUT_PERSIST_HEARTBEAT_INTERVAL_MS = 20 * 1000;
-
 // Heartbeat cadence while the tool activity's DB-bound setup (auth + conversation + action
 // fetches) runs. Setup normally completes in well under a second, so a firing means the fetch
 // phase is stalling (DB contention): the log emitted alongside each firing is monitored in

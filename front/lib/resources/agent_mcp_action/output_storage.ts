@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { heartbeatWithoutCancelCheck } from "@app/lib/temporal";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, warmCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -42,6 +43,11 @@ function getGcsPath(
   return `${getActionOutputGcsPrefix(auth, action.id)}${objectName}.json`;
 }
 
+/**
+ * @cc [owner:tdraier,label:performance] heartbeat-per-gcs-write
+ * MUST heartbeat the current Temporal activity, if any, after each object write attempt, so that
+ * writing many objects is not mistaken for a stalled activity.
+ */
 async function batchWriteContentsToGcsAtPaths(
   action: AgentMCPActionResource,
   itemsWithPaths: Array<{ content: OutputContent; gcsPath: string }>
@@ -61,6 +67,7 @@ async function batchWriteContentsToGcsAtPaths(
           contentType: "application/json",
         })
       );
+      heartbeatWithoutCancelCheck();
 
       if (writeResult.isErr()) {
         if (!firstError) {
