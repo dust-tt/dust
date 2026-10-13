@@ -210,9 +210,14 @@ pub(crate) async fn grant_update_retry_succeeds_without_changes() -> Result<()> 
     ];
     let update = || {
         fdb::with_transaction(|tx| {
-            let root = &root;
+            let tenant = &tenant;
             let changes = &changes;
-            async move { root.update_grants(&tx, changes) }
+            async move {
+                let root = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
+                    .await?
+                    .ok_or(object::Error::NotFound)?;
+                root.update_grants(&tx, changes)
+            }
         })
     };
     update().await?;

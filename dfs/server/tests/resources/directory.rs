@@ -120,6 +120,50 @@ pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -
     clear_tenant(&tenant).await
 }
 
+pub(crate) async fn child_creation_retry_returns_the_committed_child() -> Result<()> {
+    let tenant = create_tenant_root().await?;
+    let child_id = ObjectId::new_v7();
+    let xattrs = HashMap::from([("user/tag".to_owned(), b"value".to_vec())]);
+    let create = || {
+        fdb::with_transaction(|tx| {
+            let tenant = &tenant;
+            let xattrs = &xattrs;
+            async move {
+                let root = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
+                    .await?
+                    .ok_or(directory::Error::Object(object::Error::NotFound))?;
+                DirectoryResource::try_from(root)?
+                    .create_child(
+                        &tx,
+                        child_id,
+                        "notes.txt".to_owned(),
+                        ObjectKind::File,
+                        Some("text/plain".to_owned()),
+                        xattrs.clone(),
+                    )
+                    .await
+            }
+        })
+    };
+    create().await?;
+    let tx = fdb::database()?.create_trx()?;
+    let committed = tenant_records(&tx, &tenant).await?;
+
+    // A retry after an unknown commit result runs `create_child` again in a new transaction.
+    let retried = create().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    assert_eq!(tenant_records(&tx, &tenant).await?, committed);
+    assert_eq!(retried.object_id, child_id);
+    assert_eq!(retried.parent_id, Some(tenant.root_id));
+    assert_eq!(retried.name, "notes.txt");
+    assert_eq!(retried.kind, ObjectKind::File);
+    let metadata = retried.metadata.context("missing retried metadata")?;
+    assert_eq!(metadata.mime_type.as_deref(), Some("text/plain"));
+    assert_eq!(metadata.xattrs, xattrs);
+    clear_tenant(&tenant).await
+}
+
 pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Result<()> {
     let tenant = create_tenant_root().await?;
     let tx = fdb::database()?.create_trx()?;

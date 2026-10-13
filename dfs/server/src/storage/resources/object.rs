@@ -141,15 +141,23 @@ impl ObjectResource {
         tenant: &TenantResource,
         object_id: &ObjectId,
     ) -> Result<Option<Self>, storage::Error<Error>> {
+        Self::fetch_in_tenant(tx, &tenant.tenant_id, object_id).await
+    }
+
+    pub(crate) async fn fetch_in_tenant(
+        tx: &Transaction,
+        tenant_id: &str,
+        object_id: &ObjectId,
+    ) -> Result<Option<Self>, storage::Error<Error>> {
         object_id.validate().map_err(|_| Error::InvalidId)?;
         let Some(value) = tx
-            .get(&Self::object_key(&tenant.tenant_id, object_id), false)
+            .get(&Self::object_key(tenant_id, object_id), false)
             .await
             .map_err(FdbBindingError::from)?
         else {
             return Ok(None);
         };
-        Self::from_value(tenant, object_id, &value).map(Some)
+        Self::from_value(tenant_id, object_id, &value).map(Some)
     }
 
     /**
@@ -197,7 +205,7 @@ impl ObjectResource {
     }
 
     fn from_value(
-        tenant: &TenantResource,
+        tenant_id: &str,
         object_id: &ObjectId,
         value: &[u8],
     ) -> Result<Self, storage::Error<Error>> {
@@ -213,7 +221,7 @@ impl ObjectResource {
             content_version,
         ): StoredAttributes = unpack(value).map_err(FdbBindingError::PackError)?;
         Ok(Self {
-            tenant_id: tenant.tenant_id.clone(),
+            tenant_id: tenant_id.to_owned(),
             object_id: *object_id,
             parent_id: parent_id
                 .map(|bytes| ObjectId::try_from(bytes.as_slice()))

@@ -9,15 +9,15 @@ in storage::Error<Error>, and MUST NOT be reduced to strings or anyhow::Error. C
 variants instead of parsing error messages. Database and stored-data decoding failures MAY propagate
 as FdbBindingError.
 
-@cc [owner:pmilliotte,label:backend;error-handling] retry-safe-resource-writes
+@cc [owner:pmilliotte,label:backend;error-handling;testing] retry-safe-resource-writes
 Resource methods that write FDB MUST be safe to run again, with the same inputs, in a new transaction
 after an attempt that committed with an unknown result. The re-run MUST succeed and leave state
 equivalent to a single run, recognizing its own commit from IDs, keys or hashes created before the
-transaction. `SessionResource::refresh` MAY extend expiry again. Exceptions: `SessionResource::revoke`
-returns NotFound when it finds the session it revoked, and `SessionResource::revoke_expired` MAY
-clean up a further batch.
-
-@cc [owner:pmilliotte,label:testing] resource-write-retry-tests
-Each resource method that writes FDB, except the exceptions above, MUST have a test that commits it,
-runs it again in a new transaction, and checks that the re-run succeeds and leaves stored state
-unchanged, or equivalent where the method allows it.
+transaction. Version counters (`*_version`) and object timestamps (`*time_ms`, `created_at_ms`)
+MAY change again on retry. `SessionResource::refresh` MAY extend expiry again. Each such method
+MUST have a test that commits it, runs it again in a new transaction, and checks the re-run against
+this contract. Exceptions:
+- `SessionResource::revoke` returns NotFound when it finds the session it revoked.
+- `SessionResource::revoke_expired` MAY clean up a further batch.
+- `ObjectResource::record_content_change` is not covered.
+- `ObjectResource::record_attr_change` is not covered.

@@ -106,18 +106,20 @@ impl DirectoryResource {
         mime_type: Option<String>,
         xattrs: HashMap<String, Vec<u8>>,
     ) -> Result<ObjectResource, storage::Error<Error>> {
+        object_id
+            .validate()
+            .map_err(storage::Error::<Error>::InvalidObjectId)?;
         Self::validate_name(&name)?;
         if kind == ObjectKind::Symlink {
             return Err(Error::UnsupportedKind.into());
         }
         let entry_key = self.child_key(&name);
-        let name_taken = tx
+        let entry = tx
             .get(&entry_key, false)
             .await
-            .map_err(FdbBindingError::from)?
-            .is_some();
-        if name_taken {
-            return Err(Error::AlreadyExists.into());
+            .map_err(FdbBindingError::from)?;
+        if let Some(entry) = entry {
+            return self.committed_child(tx, &entry, &object_id).await;
         }
 
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
@@ -136,6 +138,23 @@ impl DirectoryResource {
         self.object
             .record_content_change(tx, now_ms)
             .map_err(Error::Object)?;
+        Ok(child)
+    }
+
+    async fn committed_child(
+        &self,
+        tx: &Transaction,
+        entry: &[u8],
+        object_id: &ObjectId,
+    ) -> Result<ObjectResource, storage::Error<Error>> {
+        // A retry after an unknown commit result finds the entry pointing at its own object.
+        if Self::decode_child_id(entry)? != *object_id {
+            return Err(Error::AlreadyExists.into());
+        }
+        let mut child = ObjectResource::fetch_in_tenant(tx, &self.object.tenant_id, object_id)
+            .await?
+            .ok_or(Error::Object(object::Error::NotFound))?;
+        child.load_metadata(tx).await?;
         Ok(child)
     }
 
