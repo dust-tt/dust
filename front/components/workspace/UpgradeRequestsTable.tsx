@@ -17,6 +17,7 @@ import {
   DataTableSkeleton,
   LoadingBlock,
   Spinner,
+  Tooltip,
   XClose,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -93,12 +94,21 @@ const reasonColumn: ColumnDef<RowData, string> = {
     const { reason } = info.row.original.request;
     return (
       <DataTable.CellContent>
-        <span
-          className="line-clamp-2 text-sm text-muted-foreground"
-          title={reason ?? undefined}
-        >
-          {reason || <Trans>Reached credit limit</Trans>}
-        </span>
+        {reason ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={
+              <span className="line-clamp-2 whitespace-normal text-sm text-muted-foreground">
+                {reason}
+              </span>
+            }
+            label={reason}
+          />
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            <Trans>Reached credit limit</Trans>
+          </span>
+        )}
       </DataTable.CellContent>
     );
   },
