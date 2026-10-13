@@ -66,7 +66,7 @@ impl fmt::Display for Error {
         match self {
             Self::TimestampGeneration => f.write_str("object timestamp generation failed"),
             Self::AlreadyExists => f.write_str("object already exists"),
-            Self::MissingMetadata => f.write_str("object creation requires metadata"),
+            Self::MissingMetadata => f.write_str("object metadata missing"),
             Self::InvalidXattrName => f.write_str("invalid xattr name"),
             Self::XattrsTooLarge => f.write_str("xattrs exceed the size limit"),
             Self::InvalidId => f.write_str("invalid object ID"),
@@ -147,6 +147,50 @@ impl ObjectResource {
             return Ok(None);
         };
         Self::from_value(tenant, object_id, &value).map(Some)
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend] object-load-metadata
+     * Callers MUST fetch or create this object in the same transaction. Loading MUST read its base
+     * metadata and all xattrs with conflict tracking, preserving exact names and values. Missing
+     * base metadata or decoding failures MUST fail. Metadata MUST be assigned only after all reads
+     * succeed.
+     */
+    pub async fn load_metadata(&mut self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
+        let value = tx
+            .get(&Self::metadata_key(&self.tenant_id, &self.object_id), false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .ok_or(Error::MissingMetadata)?;
+        let (created_at_ms, mime_type) = unpack(&value).map_err(FdbBindingError::PackError)?;
+        let prefix = tenant_subspace(&self.tenant_id).subspace(&(
+            METADATA_FAMILY,
+            self.object_id.as_bytes().as_slice(),
+            XATTR_FAMILY,
+        ));
+        let mut xattrs = HashMap::new();
+        let mut next_range = Some(RangeOption::from(prefix.range()));
+        let mut iteration = 1;
+        while let Some(range) = next_range {
+            let batch = tx
+                .get_range(&range, iteration, false)
+                .await
+                .map_err(FdbBindingError::from)?;
+            next_range = range.next_range(&batch);
+            for entry in &batch {
+                let (name,): (String,) = prefix
+                    .unpack(entry.key())
+                    .map_err(FdbBindingError::PackError)?;
+                xattrs.insert(name, entry.value().to_vec());
+            }
+            iteration += 1;
+        }
+        self.metadata = Some(Metadata {
+            created_at_ms,
+            mime_type,
+            xattrs,
+        });
+        Ok(())
     }
 
     fn from_value(

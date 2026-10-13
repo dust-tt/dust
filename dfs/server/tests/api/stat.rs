@@ -282,11 +282,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
             ErrorCode::InvalidInput,
         ),
         (vec![ObjectRef::Invalid], None, ErrorCode::InvalidInput),
-        (
-            vec![file.object_id.into()],
-            Some(true),
-            ErrorCode::Unsupported,
-        ),
+        (vec![file.object_id.into()], Some(true), ErrorCode::Internal),
     ] {
         let error = client
             .stat(with_authorization(
@@ -298,7 +294,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
             )?)
             .await
             .err()
-            .context("expected invalid or unsupported Stat to fail")?;
+            .context("expected invalid or corrupt Stat to fail")?;
         assert_eq!(error_code(&error)?, expected);
     }
     let response = client
@@ -335,6 +331,115 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         tx.clear_range(&begin, &end);
     }
     tx.clear(&namespace_subspace().pack(&("tenant-key", hash_key(&tenant.tenant_key).as_slice())));
+    tx.commit().await?;
+    Ok(())
+}
+
+pub(crate) async fn stat_returns_metadata_and_enforces_response_budget() -> Result<()> {
+    let (tenant, tenant_key) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (session, session_key) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    let mut root = ObjectResource::new_root(&tenant)?;
+    let metadata = root.metadata.as_mut().context("missing root metadata")?;
+    metadata.created_at_ms = 42;
+    // The name and value together reach the 32 KiB xattr limit.
+    metadata.xattrs.insert("tag".to_owned(), vec![0xff; 32_765]);
+    let tx = fdb::database()?.create_trx()?;
+    tenant.create(&tx).await?;
+    root.create(
+        &tx,
+        &[Grant {
+            kind: Some(grant::Kind::Allow(AllowGrant {
+                subject: "reader".to_owned(),
+                mode: 0o4,
+            })),
+        }],
+    )
+    .await?;
+    session.create(&tx).await?;
+    tx.commit().await?;
+    let mut client = DfsClient::new(serve().await?);
+    let authorization = format!("Bearer {session_key}");
+    let response = client
+        .stat(with_authorization(
+            StatRequest {
+                object_ids: vec![
+                    tenant.root_id.into(),
+                    ObjectRef::Root,
+                    ObjectRef::Shared,
+                    tenant.root_id.into(),
+                ],
+                include_metadata: Some(true),
+            },
+            &authorization,
+        )?)
+        .await?
+        .into_inner();
+    assert_eq!(response.results.len(), 4);
+    assert_eq!(response.results[0], response.results[3]);
+    let stored = response.results[0]
+        .object
+        .as_ref()
+        .context("missing stored root")?;
+    let metadata = stored
+        .metadata
+        .as_ref()
+        .context("missing stored metadata")?;
+    assert_eq!(metadata.created, 42);
+    assert_eq!(metadata.mime_type, None);
+    assert_eq!(metadata.xattrs.len(), 1);
+    assert_eq!(metadata.xattrs["tag"], vec![0xff; 32_765]);
+    for index in [1, 2] {
+        assert!(response.results[index].error.is_none());
+        let object = response.results[index]
+            .object
+            .as_ref()
+            .context("missing virtual object")?;
+        assert_eq!(object.store_version, stored.store_version);
+        let metadata = object
+            .metadata
+            .as_ref()
+            .context("missing synthetic metadata")?;
+        assert_eq!(metadata.created, 0);
+        assert_eq!(metadata.mime_type.as_deref(), Some("inode/directory"));
+        assert!(metadata.xattrs.is_empty());
+    }
+
+    // 128 copies exceed 4 MiB once protobuf and attribute overhead are included.
+    for (count, include_metadata, expected_error) in [
+        (127, true, None),
+        (128, true, Some(ErrorCode::Capacity)),
+        (256, false, None),
+    ] {
+        let result = client
+            .stat(with_authorization(
+                StatRequest {
+                    object_ids: vec![tenant.root_id.into(); count],
+                    include_metadata: Some(include_metadata),
+                },
+                &authorization,
+            )?)
+            .await;
+        if let Some(expected) = expected_error {
+            let error = result.err().context("expected response budget failure")?;
+            assert_eq!(error_code(&error)?, expected);
+        } else {
+            let response = result?.into_inner();
+            assert_eq!(response.results.len(), count);
+            for result in response.results {
+                assert!(result.error.is_none());
+                assert_eq!(
+                    result.object.context("missing root")?.metadata.is_some(),
+                    include_metadata
+                );
+            }
+        }
+    }
+
+    let tx = fdb::database()?.create_trx()?;
+    SessionResource::revoke(&tx, &tenant, &session.session_id).await?;
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.clear(&namespace_subspace().pack(&("tenant-key", hash_key(&tenant_key).as_slice())));
     tx.commit().await?;
     Ok(())
 }

@@ -10,6 +10,7 @@ use dfs_protocol::{
         dfs_server::Dfs,
     },
 };
+use prost::Message;
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 
@@ -198,7 +199,8 @@ impl Dfs for API {
      * Stat MUST accept 1-256 valid references and preserve their order and duplicates. Missing and
      * unreadable real objects MUST return per-result NOT_FOUND without dropping other results.
      * Each result MUST contain exactly one of object or error.
-     * Until implemented, metadata requests MUST fail with UNSUPPORTED.
+     * Requested metadata MUST be returned on every successful result. Responses larger than the
+     * encoded message budget MUST fail with CAPACITY instead of dropping metadata or results.
      */
     async fn stat(&self, request: Request<StatRequest>) -> Result<Response<AttrBatch>, Status> {
         let session = self.require_session(&request).await?;
@@ -209,13 +211,11 @@ impl Dfs for API {
         if object_ids.is_empty() || object_ids.len() > STAT_MAX_OBJECTS {
             return Err(status(ErrorCode::InvalidInput));
         }
-        if include_metadata.unwrap_or(false) {
-            return Err(status(ErrorCode::Unsupported));
-        }
+        let include_metadata = include_metadata.unwrap_or(false);
         let attributes = fdb::with_transaction(|tx| {
             let session = session.as_ref();
             let object_ids = &object_ids;
-            async move { ObjectResource::stat(&tx, session, object_ids).await }
+            async move { ObjectResource::stat(&tx, session, object_ids, include_metadata).await }
         })
         .await?;
         let results = attributes
@@ -231,7 +231,11 @@ impl Dfs for API {
                 },
             })
             .collect();
-        Ok(Response::new(AttrBatch { results }))
+        let response = AttrBatch { results };
+        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+            return Err(status(ErrorCode::Capacity));
+        }
+        Ok(Response::new(response))
     }
 
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {

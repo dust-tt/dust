@@ -30,6 +30,7 @@ pub(crate) use modes::{
     tree_hints_follow_moves_and_recheck_grants,
 };
 pub(crate) use stat::{
+    metadata_reads_preserve_snapshot_and_tenant_scope,
     stat_distinguishes_object_errors_and_preserves_transaction_failures,
     virtual_stat_projects_root_and_keeps_shared_versions_fixed,
 };

@@ -12,7 +12,7 @@ pub mod auth;
 pub mod storage;
 mod sweep;
 
-const MAX_MESSAGE_SIZE: usize = 4 * 1024 * 1024;
+const MAX_MESSAGE_SIZE_BYTES: usize = 4 * 1024 * 1024;
 const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
 
 /**
@@ -40,8 +40,8 @@ pub async fn serve(
     let (reporter, health) = tonic_health::server::health_reporter();
     reporter.set_serving::<DfsServer<api::API>>().await;
     let service = DfsServer::from_arc(Arc::clone(&api))
-        .max_decoding_message_size(MAX_MESSAGE_SIZE)
-        .max_encoding_message_size(MAX_MESSAGE_SIZE);
+        .max_decoding_message_size(MAX_MESSAGE_SIZE_BYTES)
+        .max_encoding_message_size(MAX_MESSAGE_SIZE_BYTES);
     let (stop, stopped) = oneshot::channel();
     let server = Server::builder()
         .add_service(health)
