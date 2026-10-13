@@ -31,10 +31,6 @@ msgid "Governance settings could not be loaded."
 msgstr ""
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
-msgid "Groups assigned here are managed in <0>Members → Groups</0>"
-msgstr ""
-
-#: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Agents & Skills"
 msgstr ""
 
