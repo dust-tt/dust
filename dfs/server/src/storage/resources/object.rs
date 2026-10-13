@@ -336,29 +336,21 @@ impl ObjectResource {
     }
 
     pub fn record_content_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
-        let content_version = self
+        self.content_version = self
             .content_version
             .checked_add(1)
             .ok_or(Error::VersionOverflow)?;
-        self.bump_attr_version(now_ms)?;
-        self.content_version = content_version;
         self.mtime_ms = Some(now_ms);
-        self.save_attributes(tx);
-        Ok(())
+        self.record_attr_change(tx, now_ms)
     }
 
     pub fn record_attr_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
-        self.bump_attr_version(now_ms)?;
-        self.save_attributes(tx);
-        Ok(())
-    }
-
-    fn bump_attr_version(&mut self, now_ms: u64) -> Result<(), Error> {
         self.attr_version = self
             .attr_version
             .checked_add(1)
             .ok_or(Error::VersionOverflow)?;
         self.ctime_ms = Some(now_ms);
+        self.save_attributes(tx);
         Ok(())
     }
 
