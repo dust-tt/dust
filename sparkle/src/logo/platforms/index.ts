@@ -1,4 +1,5 @@
 export { default as AdomikLogo } from "./Adomik";
+export { default as AhrefsLogo } from "./Ahrefs";
 export { default as Ai21Logo } from "./Ai21";
 export { default as AirbyteLogo } from "./Airbyte";
 export { default as AirtableLogo } from "./Airtable";
