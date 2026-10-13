@@ -12,6 +12,9 @@ import {
   TableCell,
   TableRow,
 } from "@tiptap/extension-table";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 const DOCUMENT_TABLE_NODE_NAME = "table";
 export const TABLE_CELL_NODE_NAME = "tableCell";
@@ -192,6 +195,44 @@ export const DocumentTableRow = TableRow.extend({
   content: `${TABLE_CELL_NODE_NAME}+`,
 });
 
+const HEADER_CELL_CLASS = "bg-muted-background font-semibold";
+
+const headerRowKey = new PluginKey<DecorationSet>("documentTableHeaderRow");
+
+const headerRowDecorations = (doc: ProseMirrorNode): DecorationSet => {
+  const decorations: Decoration[] = [];
+  doc.descendants((node, tablePos) => {
+    if (node.type.name !== DOCUMENT_TABLE_NODE_NAME) {
+      return node.isBlock && !node.isTextblock;
+    }
+    const rowContent = tablePos + 2;
+    node.firstChild?.forEach((cell, cellOffset) => {
+      const from = rowContent + cellOffset;
+      decorations.push(
+        Decoration.node(from, from + cell.nodeSize, {
+          role: "columnheader",
+          class: HEADER_CELL_CLASS,
+        })
+      );
+    });
+    return false;
+  });
+  return DecorationSet.create(doc, decorations);
+};
+
+const headerRowPlugin = () =>
+  new Plugin<DecorationSet>({
+    key: headerRowKey,
+    state: {
+      init: (_, state) => headerRowDecorations(state.doc),
+      apply: (tr, decorations) =>
+        tr.docChanged ? headerRowDecorations(tr.doc) : decorations,
+    },
+    props: {
+      decorations: (state) => headerRowKey.getState(state),
+    },
+  });
+
 const TABLE_COMMANDS = [
   "addColumnBefore",
   "addColumnAfter",
@@ -219,6 +260,10 @@ export const DocumentTable = Table.extend({
         commands.insertTable?.({ ...options, withHeaderRow: false })(props) ??
         false;
     return kept;
+  },
+
+  addProseMirrorPlugins() {
+    return [...(this.parent?.() ?? []), headerRowPlugin()];
   },
 
   parseMarkdown: parseTableMarkdown,

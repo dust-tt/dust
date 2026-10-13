@@ -1334,6 +1334,21 @@ describe("Document tables", () => {
     return { from, to: from + text.length };
   };
 
+  it("shows the first row of each table as its column headers, and only it", async () => {
+    const { dom } = await renderDocument(
+      `${TABLE}\n- item\n\n  | Kind | Total |\n  | --- | --- |\n  | fruit | 3 |\n`
+    );
+
+    const headers = dom.querySelectorAll('[role="columnheader"]');
+    expect([...headers].map((cell) => cell.textContent)).toEqual([
+      "Name",
+      "Count",
+      "Kind",
+      "Total",
+    ]);
+    expect(dom.querySelectorAll("td")).toHaveLength(8);
+  });
+
   it("writes a cell edit to the session as the table's Markdown", async () => {
     const { editor, doc } = await renderDocument(TABLE);
 
