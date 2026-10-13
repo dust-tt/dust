@@ -1,3 +1,5 @@
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- same image predicate as handleBase64Upload
+import { isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Thresholds for offloading MCP tool output items to files.
@@ -6,6 +8,26 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 export const FILE_OFFLOAD_TEXT_SIZE_BYTES = 20 * 1024; // 20KB.
 export const FILE_OFFLOAD_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 export const FILE_OFFLOAD_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB for non-image file uploads.
+
+export function getFileOffloadMaxBase64Length(mimeType: string): number {
+  return isSupportedImageContentType(mimeType)
+    ? FILE_OFFLOAD_IMAGE_SIZE_BYTES
+    : FILE_OFFLOAD_FILE_SIZE_BYTES;
+}
+
+// Tools can skip downloading or encoding a binary that would be dropped as too large once returned
+// as a resource block.
+export function isBinaryWithinFileOffloadLimit({
+  byteLength,
+  mimeType,
+}: {
+  byteLength: number;
+  mimeType: string;
+}): boolean {
+  return (
+    Math.ceil(byteLength / 3) * 4 <= getFileOffloadMaxBase64Length(mimeType)
+  );
+}
 
 export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 

@@ -158,7 +158,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = [
   {
     name: "get_file_content",
     description:
-      "Read, open, and retrieve the content of a file or document from Microsoft OneDrive or SharePoint (PowerPoint, Word, Excel, PDF, etc.). Uses driveId if provided, otherwise falls back to siteId.",
+      "Read, open, and retrieve the content of a file or document from Microsoft OneDrive or SharePoint (PowerPoint, Word, Excel, PDF, etc.). Uses driveId if provided, otherwise falls back to siteId. Text content is paginated with offset/limit; the file itself is attached to the conversation on the first page only.",
     schema: {
       itemId: z
         .string()
@@ -177,12 +177,16 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = [
         ),
       offset: z
         .number()
+        .int()
+        .min(0)
         .default(0)
         .describe(
           "Character offset to start reading from (for pagination). Defaults to 0."
         ),
       limit: z
         .number()
+        .int()
+        .min(1)
         .default(MAX_CONTENT_SIZE)
         .describe(
           `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`

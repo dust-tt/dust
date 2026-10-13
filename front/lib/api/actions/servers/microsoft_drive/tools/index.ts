@@ -1,7 +1,12 @@
+import { isBinaryWithinFileOffloadLimit } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import {
+  isTextReadableContentType,
+  paginateText,
+  readFileText,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
   sanitizeFilename,
@@ -18,10 +23,9 @@ import {
   validateZipFile,
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
-import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type AdmZip from "adm-zip";
 import assert from "assert";
 import { z } from "zod";
@@ -45,6 +49,8 @@ const driveChildItemSchema = z.object({
 });
 
 const MAX_FILE_SIZE_BYTES = 64 * 1024 * 1024;
+const FILE_TOO_LARGE_TO_ATTACH_ERROR =
+  "File is too large to be attached to the conversation and has no readable text content.";
 
 function buildFileContentBlock({
   itemId,
@@ -65,13 +71,6 @@ function buildFileContentBlock({
   offset: number;
   limit: number;
 }) {
-  const totalContentLength = content.length;
-  const startIndex = Math.max(0, offset);
-  const endIndex = Math.min(content.length, startIndex + limit);
-  const truncatedContent = content.slice(startIndex, endIndex);
-  const hasMore = endIndex < content.length;
-  const nextOffset = hasMore ? endIndex : undefined;
-
   return {
     type: "text" as const,
     text: JSON.stringify(
@@ -81,12 +80,7 @@ function buildFileContentBlock({
         siteId,
         fileName,
         mimeType,
-        content: truncatedContent,
-        returnedContentLength: truncatedContent.length,
-        totalContentLength,
-        offset: startIndex,
-        nextOffset,
-        hasMore,
+        ...paginateText({ text: content, offset, limit }),
       },
       null,
       2
@@ -97,12 +91,18 @@ function buildFileContentBlock({
 /**
  * @cc [owner:tdraier,label:mcp;performance] file-size-checked-before-download
  * `get_file_content` MUST return an error without downloading the file when its Graph `size`
- * exceeds `MAX_FILE_SIZE_BYTES`.
+ * exceeds `MAX_FILE_SIZE_BYTES`, or when the file has no readable text and its `size` exceeds the
+ * file offload limit.
  */
 /**
  * @cc [owner:tdraier,label:mcp;performance] content-paginated
  * The text block returned by `get_file_content` MUST hold at most `limit` characters of the file
  * content, starting at `offset`, whether or not `getAsXml` is set.
+ */
+/**
+ * @cc [owner:tdraier,label:mcp;performance] binary-attached-once-within-offload-limit
+ * `get_file_content` MUST only return the file's binary resource block when it fits the file
+ * offload limit, and, for files with readable text, only on the first page (`offset` 0).
  */
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
@@ -514,6 +514,16 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         ]);
       }
 
+      if (
+        !isTextReadableContentType(mimeType) &&
+        response.size &&
+        !isBinaryWithinFileOffloadLimit({ byteLength: response.size, mimeType })
+      ) {
+        return new Err(
+          new MCPError(FILE_TOO_LARGE_TO_ATTACH_ERROR, { tracked: false })
+        );
+      }
+
       // Download the file as a buffer and attach it to the conversation.
       // Falls back to authenticated Graph API download when pre-signed URL is unavailable.
       let buffer: Buffer;
@@ -527,54 +537,48 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         );
       }
 
-      let content: string | null = null;
-      if (isTextExtractionSupportedContentType(mimeType)) {
-        const textResult = await extractTextFromBuffer(buffer, mimeType);
-        if (textResult.isOk()) {
-          content = textResult.value;
-        } else {
-          logger.warn(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              itemId,
-              mimeType,
-              error: textResult.error,
-            },
-            "Text extraction failed for Microsoft Drive file"
-          );
-        }
+      const content = await readFileText({
+        buffer,
+        mimeType,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      });
+
+      const blocks: CallToolResult["content"] = [];
+      if (content !== null) {
+        blocks.push(
+          buildFileContentBlock({
+            itemId,
+            driveId,
+            siteId,
+            fileName,
+            mimeType,
+            content,
+            offset,
+            limit,
+          })
+        );
       }
-      if (content === null && mimeType.startsWith("text/")) {
-        content = buffer.toString("utf-8");
+      if (
+        (content === null || offset === 0) &&
+        isBinaryWithinFileOffloadLimit({ byteLength: buffer.length, mimeType })
+      ) {
+        blocks.push({
+          type: "resource" as const,
+          resource: {
+            blob: buffer.toString("base64"),
+            _meta: { text: `File: ${sanitizeFilename(fileName)}` },
+            mimeType,
+            uri: sanitizeFilename(fileName),
+          },
+        });
+      }
+      if (blocks.length === 0) {
+        return new Err(
+          new MCPError(FILE_TOO_LARGE_TO_ATTACH_ERROR, { tracked: false })
+        );
       }
 
-      const resourceBlock = {
-        type: "resource" as const,
-        resource: {
-          blob: buffer.toString("base64"),
-          _meta: { text: `File: ${sanitizeFilename(fileName)}` },
-          mimeType,
-          uri: sanitizeFilename(fileName),
-        },
-      };
-
-      if (content === null) {
-        return new Ok([resourceBlock]);
-      }
-
-      return new Ok([
-        buildFileContentBlock({
-          itemId,
-          driveId,
-          siteId,
-          fileName,
-          mimeType,
-          content,
-          offset,
-          limit,
-        }),
-        resourceBlock,
-      ]);
+      return new Ok(blocks);
     } catch (err) {
       return new Err(
         new MCPError(

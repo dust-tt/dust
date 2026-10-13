@@ -52,6 +52,66 @@ export async function extractTextFromBuffer(
   }
 }
 
+export function isTextReadableContentType(mimeType: string): boolean {
+  return (
+    isTextExtractionSupportedContentType(mimeType) ||
+    mimeType.startsWith("text/")
+  );
+}
+
+/**
+ * Returns the text of a file: extracted for supported document types, decoded as UTF-8 for
+ * `text/*` types, `null` when the type has no readable text or extraction failed.
+ */
+export async function readFileText({
+  buffer,
+  mimeType,
+  workspaceId,
+}: {
+  buffer: Buffer;
+  mimeType: string;
+  workspaceId: string;
+}): Promise<string | null> {
+  if (isTextExtractionSupportedContentType(mimeType)) {
+    const textResult = await extractTextFromBuffer(buffer, mimeType);
+    if (textResult.isOk()) {
+      return textResult.value;
+    }
+    logger.warn(
+      { workspaceId, mimeType, error: textResult.error },
+      "Text extraction failed for file"
+    );
+  }
+  if (mimeType.startsWith("text/")) {
+    return buffer.toString("utf-8");
+  }
+  return null;
+}
+
+export function paginateText({
+  text,
+  offset,
+  limit,
+}: {
+  text: string;
+  offset: number;
+  limit: number;
+}) {
+  const startIndex = Math.max(0, offset);
+  const endIndex = Math.min(text.length, startIndex + Math.max(0, limit));
+  const content = text.slice(startIndex, endIndex);
+  const hasMore = endIndex < text.length;
+
+  return {
+    content,
+    returnedContentLength: content.length,
+    totalContentLength: text.length,
+    offset: startIndex,
+    nextOffset: hasMore ? endIndex : undefined,
+    hasMore,
+  };
+}
+
 /**
  * This function implements a three-step decision tree for handling file attachments:
  * 1. Try text extraction for supported document types (PDF, Word, Excel, etc.)

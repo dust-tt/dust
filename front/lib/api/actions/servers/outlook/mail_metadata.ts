@@ -3,6 +3,8 @@ import { z } from "zod";
 
 export const OUTLOOK_TOOL_NAME = "outlook" as const;
 
+export const MAX_ATTACHMENT_CONTENT_SIZE = 32000;
+
 export const OUTLOOK_TOOLS_METADATA = [
   {
     name: "get_messages",
@@ -114,7 +116,7 @@ export const OUTLOOK_TOOLS_METADATA = [
   {
     name: "get_attachment",
     description:
-      "Retrieve a single attachment from an Outlook message by its attachment ID. Works for any file size — for large attachments (>4MB) where the list call returns no inline content, this tool fetches via a dedicated download endpoint. Call list_attachments first to get attachment IDs.",
+      "Retrieve a single attachment from an Outlook message by its attachment ID. Text content is paginated with offset/limit; the file itself is attached to the conversation on the first page only. Call list_attachments first to get attachment IDs.",
     schema: {
       messageId: z
         .string()
@@ -122,6 +124,22 @@ export const OUTLOOK_TOOLS_METADATA = [
       attachmentId: z
         .string()
         .describe("The ID of the attachment (from list_attachments)"),
+      offset: z
+        .number()
+        .int()
+        .min(0)
+        .default(0)
+        .describe(
+          "Character offset to start reading from (for pagination). Defaults to 0."
+        ),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .default(MAX_ATTACHMENT_CONTENT_SIZE)
+        .describe(
+          `Maximum number of characters to return. Defaults to ${MAX_ATTACHMENT_CONTENT_SIZE}.`
+        ),
       sharedMailboxAddress: z
         .string()
         .optional()
@@ -142,7 +160,7 @@ export const OUTLOOK_TOOLS_METADATA = [
   {
     name: "get_attachments",
     description:
-      "Get all attachments from an Outlook message at once. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
+      "Get all attachments from an Outlook message at once. Only the first page of each attachment's text content is returned; use get_attachment with offset to read the rest. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
     schema: {
       messageId: z
         .string()
