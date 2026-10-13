@@ -1,22 +1,23 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use dfs_protocol::{
     ObjectId,
     rpc::{AllowGrant, DenyGrant, Grant, GrantPage, GrantUpdate, ObjectKind, grant},
 };
 use foundationdb::{
-    FdbBindingError, KeySelector, RangeOption, Transaction,
+    FdbBindingError, Transaction,
     tuple::{Subspace, pack, unpack},
 };
 
-use crate::storage::{
-    self,
-    resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
+use crate::{
+    clock,
+    storage::{
+        self,
+        resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, page, tenant::TenantResource},
+    },
 };
 
 mod hints;
@@ -59,6 +60,7 @@ pub enum Error {
     InvalidStoredGrant,
     InvalidAncestry,
     UnsupportedKind,
+    VersionOverflow,
 }
 
 impl fmt::Display for Error {
@@ -80,6 +82,7 @@ impl fmt::Display for Error {
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
+            Self::VersionOverflow => f.write_str("object version overflow"),
         }
     }
 }
@@ -236,18 +239,36 @@ impl ObjectResource {
      * change times MUST be initialized to the same server timestamp.
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
-        let now_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| Error::TimestampGeneration)?
-            .as_millis()
-            .try_into()
-            .map_err(|_| Error::TimestampGeneration)?;
-        Ok(Self {
-            tenant_id: tenant.tenant_id.clone(),
-            object_id: tenant.root_id,
-            parent_id: None,
-            name: String::new(),
-            kind: ObjectKind::Directory,
+        let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
+        Ok(Self::new(
+            &tenant.tenant_id,
+            tenant.root_id,
+            None,
+            String::new(),
+            ObjectKind::Directory,
+            None,
+            HashMap::new(),
+            now_ms,
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        tenant_id: &str,
+        object_id: ObjectId,
+        parent_id: Option<ObjectId>,
+        name: String,
+        kind: ObjectKind,
+        mime_type: Option<String>,
+        xattrs: HashMap<String, Vec<u8>>,
+        now_ms: u64,
+    ) -> Self {
+        Self {
+            tenant_id: tenant_id.to_owned(),
+            object_id,
+            parent_id,
+            name,
+            kind,
             size: EMPTY_SIZE_BYTES,
             atime_ms: Some(now_ms),
             mtime_ms: Some(now_ms),
@@ -256,10 +277,10 @@ impl ObjectResource {
             content_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
-                mime_type: None,
-                xattrs: HashMap::new(),
+                mime_type,
+                xattrs,
             }),
-        })
+        }
     }
 
     /**
@@ -287,18 +308,7 @@ impl ObjectResource {
         tx: &Transaction,
         grants: &[Grant],
     ) -> Result<(), storage::Error<Error>> {
-        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
-        let attributes = pack(&(
-            parent_id,
-            self.name.as_str(),
-            i32::from(self.kind),
-            self.size,
-            self.atime_ms,
-            self.mtime_ms,
-            self.ctime_ms,
-            self.attr_version,
-            self.content_version,
-        ));
+        let attributes = self.packed_attributes();
         let key = Self::object_key(&self.tenant_id, &self.object_id);
         let existing = tx.get(&key, false).await.map_err(FdbBindingError::from)?;
         if let Some(existing) = existing {
@@ -347,6 +357,47 @@ impl ObjectResource {
         Ok(())
     }
 
+    fn save_attributes(&self, tx: &Transaction) {
+        tx.set(
+            &Self::object_key(&self.tenant_id, &self.object_id),
+            &self.packed_attributes(),
+        );
+    }
+
+    fn packed_attributes(&self) -> Vec<u8> {
+        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
+        pack(&(
+            parent_id,
+            self.name.as_str(),
+            i32::from(self.kind),
+            self.size,
+            self.atime_ms,
+            self.mtime_ms,
+            self.ctime_ms,
+            self.attr_version,
+            self.content_version,
+        ))
+    }
+
+    pub fn record_content_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
+        self.content_version = self
+            .content_version
+            .checked_add(1)
+            .ok_or(Error::VersionOverflow)?;
+        self.mtime_ms = Some(now_ms);
+        self.record_attr_change(tx, now_ms)
+    }
+
+    pub fn record_attr_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
+        self.attr_version = self
+            .attr_version
+            .checked_add(1)
+            .ok_or(Error::VersionOverflow)?;
+        self.ctime_ms = Some(now_ms);
+        self.save_attributes(tx);
+        Ok(())
+    }
+
     /**
      * @cc [owner:spolu,label:backend;security] object-grant-pagination
      * Callers MUST fetch or create this object in the same transaction. Listing MUST return only
@@ -364,43 +415,22 @@ impl ObjectResource {
         if limit == 0 || limit > GRANTS_MAX_COUNT {
             return Err(Error::InvalidGrantLimit.into());
         }
-        let mut range = RangeOption {
-            limit: Some(limit + 1),
-            ..RangeOption::from(self.grant_subspace().range())
-        };
-        if let Some(after) = after {
-            let key = URL_SAFE_NO_PAD
-                .decode(after)
-                .map_err(|_| Error::InvalidGrantCursor)?;
-            self.grant_from_key(&key)
-                .map_err(|_| Error::InvalidGrantCursor)?;
-            range.begin = KeySelector::first_greater_than(key);
-        }
-        let mut grants = Vec::new();
-        let mut last_key = None;
-        let mut next_range = Some(range);
-        let mut iteration = 1;
-        while let Some(range) = next_range {
-            let batch = tx
-                .get_range(&range, iteration, false)
-                .await
-                .map_err(FdbBindingError::from)?;
-            next_range = range.next_range(&batch);
-            for entry in &batch {
-                if grants.len() == limit {
-                    return Ok(GrantPage {
-                        grants,
-                        next_after: last_key,
-                    });
-                }
-                grants.push(self.grant_from_key(entry.key())?);
-                last_key = Some(URL_SAFE_NO_PAD.encode(entry.key()));
-            }
-            iteration += 1;
-        }
+        let subspace = self.grant_subspace();
+        let after = after
+            .map(|after| {
+                page::decode_cursor(&subspace, after, |key| self.grant_from_key(key).is_ok())
+                    .ok_or(Error::InvalidGrantCursor)
+            })
+            .transpose()?;
+        let page = page::read_page(tx, &subspace, after, limit).await?;
+        let grants = page
+            .entries
+            .iter()
+            .map(|(key, _)| self.grant_from_key(key))
+            .collect::<Result<_, _>>()?;
         Ok(GrantPage {
             grants,
-            next_after: None,
+            next_after: page.next_after,
         })
     }
 
