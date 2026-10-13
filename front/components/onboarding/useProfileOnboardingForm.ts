@@ -93,8 +93,7 @@ export function useProfileOnboardingForm({
 
     // Clear the pending profile onboarding marker from the user metadata
     // (set at the user's first login). With the `localisation` flag, the locale is saved even when
-    // left to the default, so that the welcome conversation (created right after) is in the
-    // language the user confirmed. Without it, no locale is saved.
+    // left to the default.
     const completed = await completeUserOnboarding({
       locale: hasLocalisation ? locale : undefined,
     });
