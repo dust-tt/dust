@@ -24,6 +24,14 @@ const outputSchema: JSONSchema = { type: "object" };
 export const TEST_FRAME_BUNDLE_CODE =
   "export default { fetch: async () => Response.json({}) };";
 
+export async function enablePublicFrameFunctions(
+  auth: Authenticator
+): Promise<void> {
+  await FeatureFlagFactory.basic(auth, "frames_v2");
+  await FeatureFlagFactory.basic(auth, "frames_v2_functions");
+  await FeatureFlagFactory.basic(auth, "frames_v2_public_functions");
+}
+
 /**
  * A Frames v2 file in `space`, with no publication stored. Deliberately not "ready": markAsReady
  * copies the file into its mount, which several suites' file-storage mocks do not implement, and
