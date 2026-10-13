@@ -48,6 +48,8 @@ export class InMemoryDfs implements DfsFileSystemClient {
     private readonly options: {
       // Runs before each `read` is served, e.g. to modify the file concurrently.
       beforeRead?: (callIndex: number) => void;
+      // Caps the bytes each `read` returns, as the API allows reads shorter than requested.
+      maxReadBytes?: number;
     } = {}
   ) {
     this.rootId = newDfsObjectId();
@@ -254,7 +256,10 @@ export class InMemoryDfs implements DfsFileSystemClient {
         throw new OperationError("is_directory");
       }
       return {
-        data: node.data.subarray(offset, offset + length),
+        data: node.data.subarray(
+          offset,
+          offset + Math.min(length, this.options.maxReadBytes ?? length)
+        ),
         object: this.attr(node),
       };
     });

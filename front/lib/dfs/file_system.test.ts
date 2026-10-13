@@ -107,6 +107,37 @@ describe("DfsFileSystem", () => {
     expect(dfs.readCalls.map((call) => call.offset)).toEqual([0, 3, 6]);
   });
 
+  it("keeps reading after reads shorter than requested", async () => {
+    const { dfs, fs, at } = setup({ maxReadBytes: 2 });
+    dfs.createFile(dfs.rootId, "f.txt", "abcdefg");
+
+    expect(await readText(fs, at("f.txt"))).toBe("abcdefg");
+    const stream = await fs.readStream(at("f.txt"));
+    expect(stream.isOk()).toBe(true);
+    if (!stream.isOk()) {
+      return;
+    }
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream.value) {
+      chunks.push(chunk);
+    }
+    expect(Buffer.concat(chunks).toString()).toBe("abcdefg");
+    // Both reads stop at the file's size: 2 + 2 + 2 + 1 bytes each.
+    expect(dfs.readCalls.map((call) => call.offset)).toEqual([
+      0, 2, 4, 6, 0, 2, 4, 6,
+    ]);
+  });
+
+  it("fails a read on an empty read before the end of the file", async () => {
+    const { dfs, fs, at } = setup({ maxReadBytes: 0 });
+    dfs.createFile(dfs.rootId, "f.txt", "abc");
+    dfs.createFile(dfs.rootId, "empty.txt", "");
+
+    expect(await readText(fs, at("f.txt"))).toBe("error:invalid_response");
+    // An empty file needs no read at all.
+    expect(await readText(fs, at("empty.txt"))).toBe("");
+  });
+
   it("fails a read when the file changes between chunks", async () => {
     let fileId: DfsObjectId | undefined;
     const { dfs, fs, at } = setup({

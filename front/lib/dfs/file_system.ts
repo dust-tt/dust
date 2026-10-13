@@ -66,7 +66,9 @@ function resolved(attr: DfsAttr): Result<DfsResolvedObject, DfsError> {
  * @cc [owner:fabiencelier,label:product] consistent-reads
  * Multi-chunk reads MUST check every chunk's returned `contentVersion` against the one observed when
  * resolving the file, so that a concurrent modification fails the read with `content_changed`
- * instead of mixing two versions.
+ * instead of mixing two versions. Since a read MAY return fewer bytes than requested, reads MUST
+ * continue until the file's `size` observed when resolving it, and fail with `invalid_response` on
+ * an empty read before that.
  */
 export class DfsFileSystem {
   private readonly readChunkBytes: number;
@@ -273,7 +275,10 @@ export class DfsFileSystem {
     return new Ok(entries);
   }
 
-  /** Reads the chunk at `offset`, failing with `content_changed` if `contentVersion` moved. */
+  /**
+   * Reads the chunk at `offset`, before the end of the file, failing with `content_changed` if
+   * `contentVersion` moved.
+   */
   private async readChunk(
     objectId: DfsObjectId,
     offset: number,
@@ -296,6 +301,15 @@ export class DfsFileSystem {
         )
       );
     }
+    if (data.length === 0) {
+      // Callers only read before the end of the file, at an unchanged version.
+      return new Err(
+        new DfsError(
+          "invalid_response",
+          "Empty read before the end of the file."
+        )
+      );
+    }
     return new Ok(Buffer.from(data));
   }
 
@@ -307,20 +321,14 @@ export class DfsFileSystem {
    */
   private async *readChunks(
     objectId: DfsObjectId,
-    contentVersion: bigint
+    { contentVersion, size }: DfsAttr
   ): AsyncGenerator<Buffer> {
-    let offset = 0;
-    while (true) {
+    for (let offset = 0; offset < size;) {
       const chunk = await this.readChunk(objectId, offset, contentVersion);
       if (chunk.isErr()) {
         throw chunk.error;
       }
-      if (chunk.value.length > 0) {
-        yield chunk.value;
-      }
-      if (chunk.value.length < this.readChunkBytes) {
-        return;
-      }
+      yield chunk.value;
       offset += chunk.value.length;
     }
   }
@@ -351,9 +359,7 @@ export class DfsFileSystem {
       return file;
     }
     const { objectId, attr } = file.value;
-    return new Ok(
-      Readable.from(this.readChunks(objectId, attr.contentVersion))
-    );
+    return new Ok(Readable.from(this.readChunks(objectId, attr)));
   }
 
   async readBuffer(uri: string): Promise<Result<Buffer, DfsError>> {
@@ -363,17 +369,14 @@ export class DfsFileSystem {
     }
     const { objectId, attr } = file.value;
     const chunks: Buffer[] = [];
-    let offset = 0;
-    while (true) {
+    for (let offset = 0; offset < attr.size;) {
       const chunk = await this.readChunk(objectId, offset, attr.contentVersion);
       if (chunk.isErr()) {
         return chunk;
       }
       chunks.push(chunk.value);
-      if (chunk.value.length < this.readChunkBytes) {
-        return new Ok(Buffer.concat(chunks));
-      }
       offset += chunk.value.length;
     }
+    return new Ok(Buffer.concat(chunks));
   }
 }
