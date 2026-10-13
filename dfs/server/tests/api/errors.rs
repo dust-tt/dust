@@ -7,10 +7,20 @@ use crate::auth::InvalidKeyHash;
 
 #[test]
 fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), prost::DecodeError> {
-    let error: storage::Error<tenant::Error> =
-        FdbBindingError::from(FdbError::from_code(1020)).into();
-    let error = FdbBindingError::from(storage::Error::<Status>::from(error));
-    assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+    for error in [
+        storage::Error::<Status>::from(storage::Error::<tenant::Error>::from(
+            FdbBindingError::from(FdbError::from_code(1020)),
+        )),
+        storage::Error::<Status>::from(storage::Error::<object::Error>::from(
+            FdbBindingError::from(FdbError::from_code(1020)),
+        )),
+        storage::Error::<Status>::from(storage::Error::<file::Error>::from(FdbBindingError::from(
+            FdbError::from_code(1020),
+        ))),
+    ] {
+        let error = FdbBindingError::from(error);
+        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+    }
 
     for (error, expected) in [
         (
@@ -30,6 +40,18 @@ fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), pro
         (
             storage::Error::<Status>::from(storage::Error::Resource(object::Error::XattrsTooLarge)),
             ErrorCode::InvalidInput,
+        ),
+        (
+            storage::Error::<Status>::from(storage::Error::Resource(file::Error::InvalidLength)),
+            ErrorCode::InvalidInput,
+        ),
+        (
+            storage::Error::<Status>::from(file::Error::IsDirectory),
+            ErrorCode::IsDirectory,
+        ),
+        (
+            storage::Error::<Status>::from(object::Error::NotAuthorized),
+            ErrorCode::NotFound,
         ),
     ] {
         // Follow the runner's boxing and unboxing before translating the final API response.
@@ -76,5 +98,12 @@ fn decoding_errors_return_generic_internal_details() -> Result<(), prost::Decode
             i32::from(ErrorCode::Internal)
         );
     }
+    let status: Status = file::Error::InvalidBlock.into();
+    assert_eq!(status.code(), tonic::Code::Internal);
+    assert_eq!(status.message(), "Internal error.");
+    assert_eq!(
+        ErrorDetails::decode(status.details())?.code(),
+        ErrorCode::Internal
+    );
     Ok(())
 }

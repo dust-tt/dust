@@ -295,8 +295,12 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     let modes =
         ObjectResource::modes_for_session(&old, &session, &[leaf.object_id, branch.object_id])
             .await?;
-    let (original, _) = modes[1].as_ref().context("missing original branch")?;
+    let (original, mode) = modes[1].as_ref().context("missing original branch")?;
     assert_eq!(original.parent_id, Some(root.object_id));
+    let attr = original.attr(&old, *mode).await?;
+    assert_eq!(attr.store_version, old_version);
+    assert_eq!(attr.mode, 0o700);
+    assert_eq!(attr.id, branch.object_id.into());
     assert_eq!(bits(modes), [Some(6), Some(6)]);
     assert_eq!(old.get_read_version().await?, old_version);
 

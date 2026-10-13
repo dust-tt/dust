@@ -98,20 +98,14 @@ impl ObjectResource {
         let Some((mut object, mode)) = object else {
             return Ok(Err(Error::NotFound));
         };
-        if !mode.can_read() {
-            return Ok(Err(Error::NotAuthorized));
-        }
-        let mode = match object.kind {
-            ObjectKind::File => mode.bits() << OWNER_MODE_SHIFT_BITS,
-            ObjectKind::Directory => {
-                (mode.bits() << OWNER_MODE_SHIFT_BITS) | DIRECTORY_EXECUTE_MODE
-            }
-            ObjectKind::Symlink => return Ok(Err(Error::UnsupportedKind)),
+        let mode = match object.attr_mode(mode) {
+            Ok(mode) => mode,
+            Err(error) => return Ok(Err(error)),
         };
         if include_metadata {
             object.load_metadata(tx).await?;
         }
-        Ok(Ok(object.into_attr(mode, version)))
+        Ok(Ok(object.to_attr(mode, version)))
     }
 
     /**
@@ -132,7 +126,7 @@ impl ObjectResource {
             } else {
                 0
             };
-        let mut attr = root.into_attr(mode, version);
+        let mut attr = root.to_attr(mode, version);
         attr.name.clear();
         attr.metadata = include_metadata.then(Self::virtual_metadata);
         Ok(attr)
@@ -170,10 +164,36 @@ impl ObjectResource {
         }
     }
 
-    fn into_attr(self, mode: u32, version: i64) -> Attr {
+    /**
+     * @cc [owner:spolu,label:backend;security] object-attr-snapshot
+     * The object MUST come from the caller's transaction, with mode evaluated for that object in
+     * that transaction. Attributes MUST use its read version without refetching or loading metadata.
+     * Unreadable objects MUST fail with NotAuthorized before checking kind. Owner read/write bits
+     * MUST match the mode, with owner execute only for directories and no other bits set.
+     */
+    pub async fn attr(&self, tx: &Transaction, mode: Mode) -> Result<Attr, storage::Error<Error>> {
+        let mode = self.attr_mode(mode)?;
+        let version = tx.get_read_version().await.map_err(FdbBindingError::from)?;
+        Ok(self.to_attr(mode, version))
+    }
+
+    fn attr_mode(&self, mode: Mode) -> Result<u32, Error> {
+        if !mode.can_read() {
+            return Err(Error::NotAuthorized);
+        }
+        match self.kind {
+            ObjectKind::File => Ok(mode.bits() << OWNER_MODE_SHIFT_BITS),
+            ObjectKind::Directory => {
+                Ok((mode.bits() << OWNER_MODE_SHIFT_BITS) | DIRECTORY_EXECUTE_MODE)
+            }
+            ObjectKind::Symlink => Err(Error::UnsupportedKind),
+        }
+    }
+
+    fn to_attr(&self, mode: u32, version: i64) -> Attr {
         Attr {
             id: self.object_id.into(),
-            name: self.name,
+            name: self.name.clone(),
             kind: self.kind.into(),
             size: self.size,
             mode,
@@ -184,10 +204,14 @@ impl ObjectResource {
             content_version: self.content_version,
             grants_version: self.grants_version,
             store_version: version,
-            metadata: self.metadata.map(|metadata| ExtendedMetadata {
+            metadata: self.metadata.as_ref().map(|metadata| ExtendedMetadata {
                 created: metadata.created_at_ms,
-                mime_type: metadata.mime_type,
-                xattrs: metadata.xattrs.into_iter().collect(),
+                mime_type: metadata.mime_type.clone(),
+                xattrs: metadata
+                    .xattrs
+                    .iter()
+                    .map(|(name, value)| (name.clone(), value.clone()))
+                    .collect(),
             }),
         }
     }

@@ -1,0 +1,217 @@
+use anyhow::{Context, Result};
+use dfs_api::storage::{
+    self, fdb,
+    resources::{
+        file::{self, BLOCK_SIZE_BYTES, FileResource, READ_MAX_BYTES},
+        keys::tenant_subspace,
+        object::ObjectResource,
+        tenant::TenantResource,
+    },
+};
+use dfs_protocol::{ObjectId, rpc::ObjectKind};
+use foundationdb::Transaction;
+
+fn object(tenant: &TenantResource, size: u64) -> Result<ObjectResource> {
+    let mut object = ObjectResource::new_root(tenant)?;
+    object.object_id = ObjectId::new_v7();
+    object.parent_id = Some(tenant.root_id);
+    object.name = "content.txt".to_owned();
+    object.kind = ObjectKind::File;
+    object.size = size;
+    Ok(object)
+}
+
+fn block_key(tenant: &TenantResource, id: ObjectId, index: u64) -> Vec<u8> {
+    tenant_subspace(&tenant.tenant_id).pack(&("block", id.as_bytes().as_slice(), index))
+}
+
+async fn fetch(tx: &Transaction, tenant: &TenantResource, id: ObjectId) -> Result<FileResource> {
+    Ok(FileResource::try_from(
+        ObjectResource::fetch(tx, tenant, &id)
+            .await?
+            .context("missing file")?,
+    )?)
+}
+
+pub(crate) async fn reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let object = object(&tenant, (3 * BLOCK_SIZE_BYTES + 7) as u64)?;
+    let tx = fdb::database()?.create_trx()?;
+    object.create(&tx, &[]).await?;
+    let first: Vec<_> = (0..BLOCK_SIZE_BYTES)
+        .map(|index| (index % 251) as u8)
+        .collect();
+    // There is no write resource yet; seed content blocks directly.
+    tx.set(&block_key(&tenant, object.object_id, 0), &first);
+    tx.set(&block_key(&tenant, object.object_id, 1), b"abc");
+    tx.set(
+        &block_key(&tenant, object.object_id, 3),
+        b"last bytes beyond EOF",
+    );
+    let file = FileResource::try_from(object)?;
+    let mut expected = vec![0; file.object().size as usize];
+    expected[..BLOCK_SIZE_BYTES].copy_from_slice(&first);
+    expected[BLOCK_SIZE_BYTES..BLOCK_SIZE_BYTES + 3].copy_from_slice(b"abc");
+    expected[3 * BLOCK_SIZE_BYTES..].copy_from_slice(b"last by");
+
+    for (offset, length) in [
+        (0, READ_MAX_BYTES),
+        ((BLOCK_SIZE_BYTES - 2) as u64, (BLOCK_SIZE_BYTES + 8) as u32),
+        ((BLOCK_SIZE_BYTES + 20) as u64, 30),
+        ((3 * BLOCK_SIZE_BYTES + 2) as u64, 20),
+        (file.object().size, 10),
+        (u64::MAX, 10),
+        (0, 0),
+    ] {
+        let start = offset.min(file.object().size) as usize;
+        let end = (start + length as usize).min(expected.len());
+        assert_eq!(file.read(&tx, offset, length).await?, expected[start..end]);
+    }
+    // Malformed blocks outside the requested range must not be read.
+    tx.set(
+        &block_key(&tenant, file.object().object_id, 2),
+        &vec![0; BLOCK_SIZE_BYTES + 1],
+    );
+    assert_eq!(file.read(&tx, 0, 3).await?, first[..3]);
+    assert!(file.read(&tx, 0, 0).await?.is_empty());
+    assert!(file.read(&tx, u64::MAX, 1).await?.is_empty());
+    Ok(())
+}
+
+pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (other, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let object = object(&tenant, 5)?;
+    let mut foreign = self::object(&other, 5)?;
+    foreign.object_id = object.object_id;
+    let tx = fdb::database()?.create_trx()?;
+    object.create(&tx, &[]).await?;
+    foreign.create(&tx, &[]).await?;
+    let key = block_key(&tenant, object.object_id, 0);
+    tx.set(&key, b"first");
+    tx.set(&block_key(&other, object.object_id, 0), b"other");
+    tx.commit().await?;
+
+    let old = fdb::database()?.create_trx()?;
+    let file = fetch(&old, &tenant, object.object_id).await?;
+    let foreign = fetch(&old, &other, object.object_id).await?;
+    let attrs_key = tenant_subspace(&tenant.tenant_id)
+        .pack(&("object", object.object_id.as_bytes().as_slice()));
+    let attrs = old
+        .get(&attrs_key, false)
+        .await?
+        .context("missing attributes")?
+        .to_vec();
+
+    let update = fdb::database()?.create_trx()?;
+    update.set(&key, b"new");
+    let mut updated = ObjectResource::fetch(&update, &tenant, &object.object_id)
+        .await?
+        .context("missing file")?;
+    updated.size = 3;
+    updated.record_content_change(&update, 123)?;
+    update.commit().await?;
+
+    assert_eq!(file.read(&old, 0, 10).await?, b"first");
+    assert_eq!(foreign.read(&old, 0, 10).await?, b"other");
+    assert_eq!(file.object().size, 5);
+    assert_eq!(file.object().content_version, 1);
+    assert_eq!(
+        old.get(&attrs_key, false)
+            .await?
+            .context("missing attributes")?
+            .as_ref(),
+        attrs
+    );
+
+    let fresh = fdb::database()?.create_trx()?;
+    let file = fetch(&fresh, &tenant, object.object_id).await?;
+    let before = fresh
+        .get(&attrs_key, false)
+        .await?
+        .context("missing attributes")?
+        .to_vec();
+    assert_eq!(file.read(&fresh, 0, 10).await?, b"new");
+    assert_eq!(file.object().content_version, 2);
+    assert_eq!(
+        fresh
+            .get(&attrs_key, false)
+            .await?
+            .context("missing attributes")?
+            .as_ref(),
+        before
+    );
+    for tenant in [&tenant, &other] {
+        let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+        fresh.clear_range(&begin, &end);
+    }
+    fresh.commit().await?;
+    Ok(())
+}
+
+pub(crate) async fn reads_validate_kind_length_blocks_and_handle_maximum_offsets() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    assert!(matches!(
+        FileResource::try_from(ObjectResource::new_root(&tenant)?),
+        Err(file::Error::IsDirectory)
+    ));
+    let mut symlink = ObjectResource::new_root(&tenant)?;
+    symlink.kind = ObjectKind::Symlink;
+    assert!(matches!(
+        FileResource::try_from(symlink),
+        Err(file::Error::UnsupportedKind)
+    ));
+
+    let object = object(&tenant, u64::MAX)?;
+    let tx = fdb::database()?.create_trx()?;
+    object.create(&tx, &[]).await?;
+    let last = u64::MAX / BLOCK_SIZE_BYTES as u64;
+    tx.set(
+        &block_key(&tenant, object.object_id, last),
+        &vec![7; BLOCK_SIZE_BYTES],
+    );
+    let file = FileResource::try_from(object)?;
+    assert_eq!(file.read(&tx, u64::MAX - 3, 10).await?, [7; 3]);
+    assert!(matches!(
+        file.read(&tx, 0, READ_MAX_BYTES + 1).await,
+        Err(storage::Error::Resource(file::Error::InvalidLength))
+    ));
+    tx.set(
+        &block_key(&tenant, file.object().object_id, 0),
+        &vec![0; BLOCK_SIZE_BYTES + 1],
+    );
+    assert!(matches!(
+        file.read(&tx, 0, 1).await,
+        Err(storage::Error::Resource(file::Error::InvalidBlock))
+    ));
+    Ok(())
+}
+
+pub(crate) async fn block_reads_conflict_with_concurrent_writes() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let object = object(&tenant, 1)?;
+    let tx = fdb::database()?.create_trx()?;
+    object.create(&tx, &[]).await?;
+    tx.commit().await?;
+
+    let reader = fdb::database()?.create_trx()?;
+    let file = fetch(&reader, &tenant, object.object_id).await?;
+    assert_eq!(file.read(&reader, 0, 1).await?, [0]);
+    let writer = fdb::database()?.create_trx()?;
+    writer.set(&block_key(&tenant, object.object_id, 0), b"x");
+    writer.commit().await?;
+    reader.set(
+        &tenant_subspace(&tenant.tenant_id).pack(&"read-test"),
+        b"must conflict",
+    );
+    let Err(error) = reader.commit().await else {
+        anyhow::bail!("expected block read conflict");
+    };
+    assert_eq!(foundationdb::FdbError::from(error).code(), 1020);
+
+    let tx = fdb::database()?.create_trx()?;
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.commit().await?;
+    Ok(())
+}
