@@ -3,6 +3,7 @@ import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { I18n } from "@lingui/core";
 import type { TurnContext } from "botbuilder";
 
 export interface TeamsUserInfo {
@@ -14,6 +15,7 @@ export interface TeamsUserInfo {
 export async function validateTeamsUser(
   context: TurnContext,
   connector: ConnectorResource,
+  i18n: I18n,
   localLogger: Logger
 ): Promise<TeamsUserInfo | null> {
   const {
@@ -24,7 +26,7 @@ export async function validateTeamsUser(
     localLogger.error("No user AAD object ID found in Teams context");
     await sendTextMessage(
       context,
-      "❌ Unable to identify user for this Teams message"
+      i18n._("❌ Unable to identify user for this Teams message")
     );
     return null;
   }
@@ -41,7 +43,10 @@ export async function validateTeamsUser(
       { error, userAadObjectId, connectorId: connector.id },
       "Failed to get user info from Microsoft Graph"
     );
-    await sendTextMessage(context, "❌ Unable to retrieve user information");
+    await sendTextMessage(
+      context,
+      i18n._("❌ Unable to retrieve user information")
+    );
     return null;
   }
 
@@ -55,7 +60,9 @@ export async function validateTeamsUser(
     );
     await sendTextMessage(
       context,
-      "❌ Unable to retrieve your email address. Please ensure your Microsoft profile has an email configured."
+      i18n._(
+        "❌ Unable to retrieve your email address. Please ensure your Microsoft profile has an email configured."
+      )
     );
     return null;
   }
@@ -75,7 +82,9 @@ export async function validateTeamsUser(
 
     await sendTextMessage(
       context,
-      "❌ You are not a member of this Dust workspace. Please contact your workspace administrator to get access."
+      i18n._(
+        "❌ You are not a member of this Dust workspace. Please contact your workspace administrator to get access."
+      )
     );
     return null;
   }

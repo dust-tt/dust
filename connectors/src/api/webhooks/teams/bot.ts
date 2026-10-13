@@ -21,6 +21,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { ChatMessage } from "@microsoft/microsoft-graph-types";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
@@ -39,6 +40,7 @@ export async function botAnswerMessage(
   message: string,
   connector: ConnectorResource,
   agentActivityId: string,
+  i18n: I18n,
   localLogger: Logger
 ): Promise<Result<undefined, Error>> {
   const {
@@ -55,6 +57,7 @@ export async function botAnswerMessage(
   const validatedUser = await validateTeamsUser(
     context,
     connector,
+    i18n,
     localLogger
   );
   if (!validatedUser) {
@@ -267,6 +270,7 @@ export async function botAnswerMessage(
     mention,
     connector,
     agentActivityId,
+    i18n,
     localLogger,
   });
 
@@ -282,6 +286,7 @@ export async function botAnswerMessage(
   });
 
   const finalCard = createResponseAdaptiveCard({
+    i18n,
     response: formattedContent,
     mentionedAgent: mention,
     conversationUrl: makeConversationUrl(
@@ -308,6 +313,7 @@ async function streamAgentResponse({
   mention,
   connector,
   agentActivityId,
+  i18n,
   localLogger,
 }: {
   context: TurnContext;
@@ -317,6 +323,7 @@ async function streamAgentResponse({
   mention: MentionMatch;
   connector: ConnectorResource;
   agentActivityId: string;
+  i18n: I18n;
   localLogger: Logger;
 }): Promise<
   Result<
@@ -410,7 +417,8 @@ async function streamAgentResponse({
       }
       case "tool_params": {
         const streamingCard = createStreamingAdaptiveCard({
-          response: event.action.displayLabels?.running ?? "Running a tool",
+          response:
+            event.action.displayLabels?.running ?? i18n._("Running a tool"),
           agentName: mention.agentName,
           conversationUrl: null,
           workspaceId: connector.workspaceId,
@@ -436,6 +444,7 @@ async function streamAgentResponse({
         await updateActivity(context, {
           id: agentActivityId,
           ...createPersonalAuthenticationAdaptiveCard({
+            i18n,
             conversationUrl,
             workspaceId: connector.workspaceId,
           }),
@@ -487,7 +496,7 @@ async function streamAgentResponse({
 
         // Send approval card in thread with user-specific view
         // The original user sees interactive buttons, others see a read-only message
-        const approvalCard = createBasicToolApprovalAdaptiveCard({
+        const approvalCard = createBasicToolApprovalAdaptiveCard(i18n, {
           toolName: event.metadata.toolName,
           conversationId: event.conversationId,
           messageId: event.messageId,
@@ -737,11 +746,13 @@ async function makeContentFragments(
 export async function sendFeedback({
   context,
   connector,
+  i18n,
   thumbDirection,
   localLogger,
 }: {
   context: TurnContext;
   connector: ConnectorResource;
+  i18n: I18n;
   thumbDirection: "up" | "down";
   localLogger: Logger;
 }) {
@@ -749,6 +760,7 @@ export async function sendFeedback({
   const validatedUser = await validateTeamsUser(
     context,
     connector,
+    i18n,
     localLogger
   );
   if (!validatedUser) {
@@ -836,6 +848,7 @@ export async function botValidateToolExecution({
   messageId,
   actionId,
   microsoftBotMessageId,
+  i18n,
   localLogger,
 }: {
   context: TurnContext;
@@ -845,12 +858,14 @@ export async function botValidateToolExecution({
   messageId: string;
   actionId: string;
   microsoftBotMessageId: number;
+  i18n: I18n;
   localLogger: Logger;
 }): Promise<Result<undefined, APIError | Error>> {
   // Validate user first
   const validatedUser = await validateTeamsUser(
     context,
     connector,
+    i18n,
     localLogger
   );
   if (!validatedUser) {
