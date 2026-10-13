@@ -10,7 +10,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Data Display/FlagIcon",
+  title: "Assets/Flags/FlagIcon",
   component: FlagIcon,
   tags: ["autodocs"],
   parameters: {
