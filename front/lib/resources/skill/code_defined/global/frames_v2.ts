@@ -442,7 +442,6 @@ its Frame ID, its share link and recipients, its conversation cards and, in a Po
    once no remaining legacy Frame imports it:
    \`grep\` the other legacy \`.tsx\` files of the folder before each \`rm\`. Migrating the last
    of them removes the shared file.
-8. Open the Frame with \`conversation_side_panel.open_frame\` on its manifest path.
 
 If you cannot get the replacement to publish, for example an error you cannot fix without
 rewriting the Frame, abandon the migration: delete the new folder, apply the requested change to
@@ -716,11 +715,9 @@ before publishing to check in-package file paths${hasFunctions ? " and function 
 publish also assigns the Frame identity; republishing the same path updates that Frame in place.
 
 Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
-Frame build context and report unrelated or noisy failures.
-
-After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
-set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
-the Frame card to the answer. Do not parse the Frame ID from the CLI output for this step.
+Frame build context and report unrelated or noisy failures. A successful publish adds the Frame
+card to the answer and opens it for the user; do not parse the Frame ID from the CLI output for
+that.
 
 ${
   hasFunctions

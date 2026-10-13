@@ -71,14 +71,11 @@ export const framesSkill = {
       isPod,
     });
   },
-  mcpServers: [
-    { name: "interactive_content" },
-    { name: "conversation_side_panel" },
-  ],
+  mcpServers: [{ name: "interactive_content" }],
   fetchFiles: fetchFrameSkillFiles,
   // Frames v2 authoring runs entirely through the Computer.
   warmsConversationSandbox: (auth: Authenticator) =>
     hasFeatureFlag(auth, "frames_v2"),
-  version: 15,
+  version: 16,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

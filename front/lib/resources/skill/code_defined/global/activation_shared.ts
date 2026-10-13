@@ -1,24 +1,7 @@
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import {
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  OPEN_FRAME_TOOL_NAME,
-  SET_FILES_SIDE_PANEL_TOOL_NAME,
-} from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
-
-export const OPEN_FRAME_TOOL = getPrefixedToolName(
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  OPEN_FRAME_TOOL_NAME
-);
-export const SET_FILES_SIDE_PANEL_TOOL = getPrefixedToolName(
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  SET_FILES_SIDE_PANEL_TOOL_NAME
-);
-
 export const SHARED_RECOMMENDATION_MCP_SERVERS = [
   { name: "files" },
   { name: "activation_recommendations" },
   { name: "pod_manager" },
-  { name: "conversation_side_panel" },
 ] as const;
 
 export const SHARED_HARD_RULES = `
@@ -77,9 +60,8 @@ This is a container directive: the opening \`:::action_card{...}\` line holds th
 export const SHARED_FRAME_DELIVERY = `
 ## Deliver the Frame
 
-You MUST open every Frame for the user. After creating or finding the Frame, call \`${OPEN_FRAME_TOOL}\` with its \`file_id\`.
+Publish or create the Frame so it appears as a card in the answer; the UI opens it for the user.
 Do not merely mention a Frame in chat or expect the user to find it.
-When referring to a Frame again later, call \`${OPEN_FRAME_TOOL}\` again first.
 
 ## When a required source is missing user authentication
 

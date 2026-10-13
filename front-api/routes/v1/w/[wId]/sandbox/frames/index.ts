@@ -1,5 +1,5 @@
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
-import { notifyPublishedFrameSidePanel } from "@app/lib/api/frames/notify_published_frame";
+import { attachPublishedFrameToParentAction } from "@app/lib/api/frames/attach_published_frame";
 import { recordFramePublishAction } from "@app/lib/api/frames/publish_billing";
 import { publishFrameFromSource } from "@app/lib/api/frames/publish_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
@@ -125,30 +125,24 @@ app.post(
       );
     }
 
-    // Soft-open the Frame panel (refresh if already open; don't steal file explorer).
-    // Best-effort — publish response must not wait on Redis / missing parent action.
-    void notifyPublishedFrameSidePanel(auth, {
+    // Attach the Frame to the parent action so the answer gets a Frame card once
+    // the message is rendered. Best-effort — publish already succeeded.
+    const attached = await attachPublishedFrameToParentAction(auth, {
       actionId: claims.actionId,
-      configurationId: claims.aId,
-      conversationId: claims.cId,
       frameId: publication.value.frameId,
-      messageId: claims.mId,
-      contentRevision:
-        publication.value.kind === "v2"
-          ? publication.value.publicationId
-          : undefined,
-    }).catch((err) => {
+    });
+    if (attached.isErr()) {
       logger.warn(
         {
-          err,
+          err: attached.error,
           actionId: claims.actionId,
           conversationId: claims.cId,
           messageId: claims.mId,
           frameId: publication.value.frameId,
         },
-        "Failed to emit Frame publish side-panel notification."
+        "Failed to attach published Frame to parent action generated files."
       );
-    });
+    }
 
     switch (publication.value.kind) {
       case "legacy":

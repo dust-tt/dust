@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import {
-  SET_FILES_SIDE_PANEL_TOOL,
   SHARED_ACTION_CARD_FORMAT,
   SHARED_FRAME_DELIVERY,
   SHARED_HARD_RULES,
@@ -68,9 +67,6 @@ next piece of work, and learn from whether it actually helped.
 6. Verify — check the resulting state against the success test, not that a tool ran or effort was expended.
 7. Update durable state — whatever the next pass needs to resume, plus source links gained this pass.
 8. Replan locally at checkpoints — repair the smallest valid scope. Do not regenerate everything.
-
-Call \`${SET_FILES_SIDE_PANEL_TOOL}\` with \`visible: false\` before finishing a first-turn response
-that presents a recommendation.
 
 # Ownership presentation
 Agent-owned cards name the concrete artifact Dust will produce and what happens on accept.
@@ -172,7 +168,7 @@ export const jobSkill = {
     { name: "skill_authoring" },
     { name: "triggers_management" },
   ],
-  version: 1,
+  version: 2,
   icon: "ActionFlagIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

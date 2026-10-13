@@ -147,7 +147,7 @@ your final message that it was not modified, and leave archiving to the user.
 
 ## 9. Before you call it done
 
-- Lint, publish, and open the Frame in the side panel, as the ${framesSkill.name} skill describes.
+- Lint and publish the Frame, as the ${framesSkill.name} skill describes.
 - Add one row through the form and confirm its calculated fields match what the sheet's formula
   produces for the same inputs.
 - Confirm the seeded row count matches the sheet.

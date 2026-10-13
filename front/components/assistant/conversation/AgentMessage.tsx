@@ -1502,7 +1502,7 @@ function AgentMessageContent({
     ]
   );
 
-  const { interactiveFiles } = useAutoOpenSidePanel({
+  useAutoOpenSidePanel({
     agentMessage,
     isLastMessage,
   });
@@ -1638,9 +1638,6 @@ function AgentMessageContent({
         />
         {blockedActionElement}
         {creditSpendCheckpointPausedElement}
-        <AgentMessageInteractiveContentGeneratedFiles
-          files={interactiveFiles}
-        />
         {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
         {answer && (
@@ -1680,6 +1677,9 @@ function AgentMessageContent({
             ))}
           </div>
         )}
+        <AgentMessageInteractiveContentGeneratedFiles
+          agentMessage={agentMessage}
+        />
         {/*
          * Cancelled messages render the standard message footer (feedback + full menu,
          * including Retry), so we only show the "Generation stopped." note here.
