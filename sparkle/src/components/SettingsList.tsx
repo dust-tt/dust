@@ -48,7 +48,7 @@ export function SettingsList({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-0.5">
         <div className="heading-base flex items-center gap-1 text-foreground">
           {title}
