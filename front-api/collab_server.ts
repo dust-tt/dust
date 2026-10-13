@@ -13,9 +13,11 @@ import crossws from "crossws/adapters/node";
 
 import {
   ACCESS_RECHECK_INTERVAL_MS,
+  recheckAllConnections,
+} from "./lib/collab/connection_access";
+import {
   checkpointAllDocuments,
   createCollabHocuspocus,
-  recheckAllConnections,
 } from "./lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "./lib/collab/internal_routes";
 import { createHono } from "./lib/hono";
