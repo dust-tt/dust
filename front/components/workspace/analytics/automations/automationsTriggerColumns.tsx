@@ -74,7 +74,7 @@ export function TypeCell({ trigger }: TypeCellProps) {
         return (
           <TypeLabel
             visual={getIcon("ActionLockIcon")}
-            label={t`This webhook lives in a space you don't have access to.`}
+            label={t`This webhook lives in a space you don’t have access to.`}
           />
         );
       }

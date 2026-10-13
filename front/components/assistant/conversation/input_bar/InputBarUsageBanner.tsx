@@ -79,7 +79,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
       return (
         <UsageBannerShell variant="warning" action={upgradeButton}>
           <span className="copy-sm grow truncate text-warning-900">
-            <Trans>You don&apos;t have a seat in this workspace.</Trans>
+            <Trans>You don’t have a seat in this workspace.</Trans>
           </span>
         </UsageBannerShell>
       );
@@ -93,7 +93,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
               !willAutoUpgrade ? "text-warning-500" : "text-foreground"
             )}
           >
-            {t`You've reached your usage limit`}
+            {t`You’ve reached your usage limit`}
           </span>
         </UsageBannerShell>
       );
@@ -122,8 +122,8 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
       }
 
       const message = willAutoUpgrade
-        ? t`You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit`
-        : t`You've used 80% of your usage limit`;
+        ? t`You’ve used 80% of your usage limit. You’ll be automatically upgraded when you reach the limit`
+        : t`You’ve used 80% of your usage limit`;
 
       return (
         <UsageBannerShell action={upgradeButton}>

@@ -496,7 +496,7 @@ function CatalogResults({
           ))}
           {hasError && (
             <p className="py-4 text-center copy-sm text-warning-500">
-              <Trans>Couldn't load more. Try again in a moment.</Trans>
+              <Trans>Couldn’t load more. Try again in a moment.</Trans>
             </p>
           )}
           {onLoadMore && (

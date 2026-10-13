@@ -329,8 +329,8 @@ msgid "Disclosure"
 msgstr "Disclosure"
 
 #: front/components/data_source/CreateConnectionOAuthModal.tsx
-msgid "Dust's use of information received from the Google APIs will adhere to <0>Google API Services User Data Policy</0>, including the Limited Use requirements."
-msgstr "Dust's use of information received from the Google APIs will adhere to <0>Google API Services User Data Policy</0>, including the Limited Use requirements."
+msgid "Dust’s use of information received from the Google APIs will adhere to <0>Google API Services User Data Policy</0>, including the Limited Use requirements."
+msgstr "Dust’s use of information received from the Google APIs will adhere to <0>Google API Services User Data Policy</0>, including the Limited Use requirements."
 
 #: front/components/data_source/CreateConnectionOAuthModal.tsx
 msgid "Notice on data processing"
@@ -579,8 +579,8 @@ msgid "We encountered a network error while trying to connect to your database. 
 msgstr "We encountered a network error while trying to connect to your database. Please check your network connection and try again."
 
 #: front/components/data_source/DataSourceSyncChip.tsx
-msgid "You've exceeded the total storage quota of {quota} for your workspace. Contact support@dust.tt to upgrade your plan."
-msgstr "You've exceeded the total storage quota of {quota} for your workspace. Contact support@dust.tt to upgrade your plan."
+msgid "You’ve exceeded the total storage quota of {quota} for your workspace. Contact support@dust.tt to upgrade your plan."
+msgstr "You’ve exceeded the total storage quota of {quota} for your workspace. Contact support@dust.tt to upgrade your plan."
 
 #: front/components/data_source/DataSourceSyncChip.tsx
 msgid "Quota exceeded"
@@ -595,8 +595,8 @@ msgid "This workspace has been moved to another region. Contact support@dust.tt 
 msgstr "This workspace has been moved to another region. Contact support@dust.tt if you still see this connection."
 
 #: front/components/data_source/DataSourceSyncChip.tsx
-msgid "Synchronization is paused. New content won't be synced until resumed."
-msgstr "Synchronization is paused. New content won't be synced until resumed."
+msgid "Synchronization is paused. New content won’t be synced until resumed."
+msgstr "Synchronization is paused. New content won’t be synced until resumed."
 
 #: front/components/data_source/DataSourceSyncChip.tsx
 msgid "Paused"
@@ -838,8 +838,8 @@ msgid "Sync Intercom notes from conversations"
 msgstr "Sync Intercom notes from conversations"
 
 #: front/components/data_source/IntercomConfigView.tsx
-msgid "If activated, Dust will also sync the notes from the conversations you've selected."
-msgstr "If activated, Dust will also sync the notes from the conversations you've selected."
+msgid "If activated, Dust will also sync the notes from the conversations you’ve selected."
+msgstr "If activated, Dust will also sync the notes from the conversations you’ve selected."
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
 msgid "Use a service principal"
@@ -858,8 +858,8 @@ msgid "Service account secret"
 msgstr "Service account secret"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
-msgid "Save this secret - you'll need to re-enter it each time you configure this connector"
-msgstr "Save this secret - you'll need to re-enter it each time you configure this connector"
+msgid "Save this secret - you’ll need to re-enter it each time you configure this connector"
+msgstr "Save this secret - you’ll need to re-enter it each time you configure this connector"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
 msgid "Selected SharePoint sites Dust will have access to (one per line)."
@@ -1015,24 +1015,24 @@ msgid "Slack app client ID"
 msgstr "Slack app client ID"
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
-msgid "The Client ID from your Slack app's, available on the Basic Information page."
-msgstr "The Client ID from your Slack app's, available on the Basic Information page."
+msgid "The Client ID from your Slack app’s, available on the Basic Information page."
+msgstr "The Client ID from your Slack app’s, available on the Basic Information page."
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "Slack app client secret"
 msgstr "Slack app client secret"
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
-msgid "The Client Secret from your Slack app's, available on the Basic Information page."
-msgstr "The Client Secret from your Slack app's, available on the Basic Information page."
+msgid "The Client Secret from your Slack app’s, available on the Basic Information page."
+msgstr "The Client Secret from your Slack app’s, available on the Basic Information page."
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "Slack app signing secret"
 msgstr "Slack app signing secret"
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
-msgid "The Signing Secret from your Slack app's, available on the Basic Information page."
-msgstr "The Signing Secret from your Slack app's, available on the Basic Information page."
+msgid "The Signing Secret from your Slack app’s, available on the Basic Information page."
+msgstr "The Signing Secret from your Slack app’s, available on the Basic Information page."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Error"
@@ -1335,8 +1335,8 @@ msgid "Include tags (sync only items with these tags):"
 msgstr "Include tags (sync only items with these tags):"
 
 #: front/components/data_source/ZendeskTagFilters.tsx
-msgid "Exclude tags (don't sync items with these tags):"
-msgstr "Exclude tags (don't sync items with these tags):"
+msgid "Exclude tags (don’t sync items with these tags):"
+msgstr "Exclude tags (don’t sync items with these tags):"
 
 #: front/components/data_source/ZendeskTicketTagFilters.tsx
 msgid "Ticket tag filters"

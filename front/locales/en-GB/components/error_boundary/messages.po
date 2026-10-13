@@ -18,7 +18,7 @@ msgid "Connection error"
 msgstr ""
 
 #: front/components/error_boundary/ConnectionErrorFallback.tsx
-msgid "We couldn't reach the server. Please check your connection and try again."
+msgid "We couldn’t reach the server. Please check your connection and try again."
 msgstr ""
 
 #: front/components/error_boundary/ConnectionErrorFallback.tsx

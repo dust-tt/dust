@@ -47,7 +47,7 @@ export function SsoEnforcedPage() {
             <p className="mt-16 text-4xl font-semibold tracking-tighter text-primary-50 md:text-6xl">
               <Trans>
                 <span className="text-warning">Secure AI agent</span> <br />
-                with your company's knowledge
+                with your company’s knowledge
               </Trans>
               <br />
             </p>

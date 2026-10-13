@@ -49,10 +49,10 @@ export function useUpdateGroupSharedUsageLimit({
         return false;
       }
 
-      let description = t`${groupName}'s budget has been removed.`;
+      let description = t`${groupName}’s budget has been removed.`;
       if (limit.kind === "limited") {
         const amount = formatNumber(limit.awuCredits);
-        description = t`${groupName}'s budget is now ${amount} credits per billing cycle.`;
+        description = t`${groupName}’s budget is now ${amount} credits per billing cycle.`;
       }
       sendNotification({
         type: "success",

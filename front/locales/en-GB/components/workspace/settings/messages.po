@@ -144,7 +144,7 @@ msgid "Inactivity threshold"
 msgstr ""
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
-msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
+msgid "How long an agent has to go unmentioned before it’s archived. Agents with a schedule or a pending wake-up are excluded."
 msgstr ""
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
@@ -360,15 +360,15 @@ msgid "Allow self-improving skills"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
-msgid "Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models."
-msgstr "Allow Dust to analyse conversations to improve your workspace's skills. Dust does not use conversations to train models."
+msgid "Allow Dust to analyze conversations to improve your workspace’s skills. Dust does not use conversations to train models."
+msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Enable batch processing"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
-msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing."
+msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan’s pricing."
 msgstr ""
 
 #: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx

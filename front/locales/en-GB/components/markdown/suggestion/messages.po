@@ -323,7 +323,7 @@ msgid "Allow"
 msgstr ""
 
 #: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
-msgid "The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it."
+msgid "The agent has made a suggestion to improve an agent or a skill but you don’t have the permissions to read it."
 msgstr ""
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx

@@ -124,7 +124,7 @@ export function MentionValidationRequired({
           </Trans>
         );
       } else {
-        description = t`They'll have access to all Pod conversations.`;
+        description = t`They’ll have access to all Pod conversations.`;
       }
       break;
     case "pending_conversation_access":
@@ -134,11 +134,11 @@ export function MentionValidationRequired({
           <Trans>
             <span className="font-semibold">{agentName}</span> mentioned{" "}
             <span className="font-semibold">{mentionLabel}</span>. Do you want
-            to invite them? They'll see the full history and be able to reply.
+            to invite them? They’ll see the full history and be able to reply.
           </Trans>
         );
       } else {
-        description = t`They'll see the full history and be able to reply.`;
+        description = t`They’ll see the full history and be able to reply.`;
       }
       break;
     default:

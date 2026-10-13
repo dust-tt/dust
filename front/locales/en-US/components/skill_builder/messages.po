@@ -90,8 +90,8 @@ msgid "This is a generated skill suggestion"
 msgstr "This is a generated skill suggestion"
 
 #: front/components/skill_builder/SkillBuilder.tsx
-msgid "This skill was automatically generated based on your workspace's configuration. We recommend reviewing and editing it to match your specific needs before saving."
-msgstr "This skill was automatically generated based on your workspace's configuration. We recommend reviewing and editing it to match your specific needs before saving."
+msgid "This skill was automatically generated based on your workspace’s configuration. We recommend reviewing and editing it to match your specific needs before saving."
+msgstr "This skill was automatically generated based on your workspace’s configuration. We recommend reviewing and editing it to match your specific needs before saving."
 
 #: front/components/skill_builder/SkillBuilder.tsx
 msgid "Some skill editors cannot access some of the restricted spaces"

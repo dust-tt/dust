@@ -1300,7 +1300,7 @@ function buildOffPaceColumn(t: Translate): ColumnDef<RowData, string> {
             usageTarget={overallUsageTarget}
             labels={{
               elevated: t(
-                msg`Consuming credits ahead of the billing cycle's pace`
+                msg`Consuming credits ahead of the billing cycle’s pace`
               ),
               critical: t(
                 msg`At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets.`

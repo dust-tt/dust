@@ -71,7 +71,7 @@ export function buildProgrammaticCapReachedEmailCopy(
         ),
         content: [
           i18n._(
-            msg`A programmatic trigger in your Dust workspace "${workspaceName}" could not run because the workspace's monthly programmatic usage limit is set to 0 credits.`
+            msg`A programmatic trigger in your Dust workspace "${workspaceName}" could not run because the workspace’s monthly programmatic usage limit is set to 0 credits.`
           ),
           i18n._(
             msg`Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings.`

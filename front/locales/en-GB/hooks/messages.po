@@ -22,7 +22,7 @@ msgid "Archive Pod?"
 msgstr ""
 
 #: front/hooks/useArchivePod.tsx
-msgid "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
+msgid "You’ll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
 msgstr ""
 
 #: front/hooks/useArchivePod.tsx
@@ -409,7 +409,7 @@ msgid "Discard your unsaved changes?"
 msgstr ""
 
 #: front/hooks/useNavigationLock.tsx
-msgid "If you leave now, your latest edits won't be kept."
+msgid "If you leave now, your latest edits won’t be kept."
 msgstr ""
 
 #: front/hooks/useNavigationLock.tsx
@@ -517,7 +517,7 @@ msgid "Could not update the published agents model access setting."
 msgstr ""
 
 #: front/hooks/useSearchMembersByEmails.ts
-msgid "We couldn't check which users are already members"
+msgid "We couldn’t check which users are already members"
 msgstr ""
 
 #: front/hooks/useSetupNotifications.ts
@@ -603,11 +603,11 @@ msgid "Failed to update the group budget"
 msgstr ""
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget has been removed."
+msgid "{groupName}’s budget has been removed."
 msgstr ""
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget is now {amount} credits per billing cycle."
+msgid "{groupName}’s budget is now {amount} credits per billing cycle."
 msgstr ""
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts

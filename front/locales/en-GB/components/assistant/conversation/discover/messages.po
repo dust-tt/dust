@@ -81,7 +81,7 @@ msgid "Clear filters"
 msgstr ""
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
-msgid "Couldn't load more. Try again in a moment."
+msgid "Couldn’t load more. Try again in a moment."
 msgstr ""
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
@@ -237,7 +237,7 @@ msgid "Hide this suggestion"
 msgstr ""
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
-msgid "Find important emails I haven't replied to"
+msgid "Find important emails I haven’t replied to"
 msgstr ""
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
@@ -245,7 +245,7 @@ msgid "Go through my inbox from the last 7 days and list the emails I have not r
 msgstr ""
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
-msgid "Find important DMs I haven't replied to"
+msgid "Find important DMs I haven’t replied to"
 msgstr ""
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
@@ -269,7 +269,7 @@ msgid "Catch me up on the AI news from the last 7 days that matters most: model 
 msgstr ""
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
-msgid "Show me what's new in Dust"
+msgid "Show me what’s new in Dust"
 msgstr ""
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts

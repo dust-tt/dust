@@ -30,7 +30,7 @@ msgid "Please deselect manually each node you want to unselect. This is due to n
 msgstr "Désélectionnez manuellement chaque élément à retirer. Certains éléments ne sont pas encore entièrement synchronisés"
 
 #: front/components/ContentNodeTree.tsx
-msgid "Connected service's API limit reached. Please retry shortly."
+msgid "Connected service’s API limit reached. Please retry shortly."
 msgstr "Limite d’API du service connecté atteinte. Réessayez dans un instant."
 
 #: front/components/ContentNodeTree.tsx
@@ -196,7 +196,7 @@ msgid "Dust plans already include monthly credits for programmatic usage, and mo
 msgstr "Les forfaits Dust incluent déjà des crédits mensuels pour l’utilisation via l’API, et vous pouvez en acheter davantage si besoin. Voir [Utilisation via l’API chez Dust]({PROGRAMMATIC_USAGE_URL})."
 
 #: front/components/FairUsageModal.tsx
-msgid "Dust's fair use policy"
+msgid "Dust’s fair use policy"
 msgstr "Politique d’usage raisonnable de Dust"
 
 #: front/components/NodePathTooltip.tsx
@@ -559,7 +559,7 @@ msgid "Sound alerts for items that need your attention"
 msgstr "Alertes sonores pour les éléments qui demandent votre attention"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "We couldn't load your notification settings. Please try again later."
+msgid "We couldn’t load your notification settings. Please try again later."
 msgstr "Impossible de charger vos paramètres de notification. Réessayez plus tard."
 
 #: front/components/UserSettingsPopover.tsx
@@ -575,7 +575,7 @@ msgid "Invitations"
 msgstr "Invitations"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Workspaces you've been invited to join"
+msgid "Workspaces you’ve been invited to join"
 msgstr "Les workspaces que vous êtes invité à rejoindre"
 
 #: front/components/UserSettingsPopover.tsx

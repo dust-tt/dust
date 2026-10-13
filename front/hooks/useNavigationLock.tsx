@@ -17,7 +17,7 @@ export function useNavigationLock(
     () =>
       warningData ?? {
         title: t`Discard your unsaved changes?`,
-        message: t`If you leave now, your latest edits won't be kept.`,
+        message: t`If you leave now, your latest edits won’t be kept.`,
         validateLabel: t`Discard`,
         cancelLabel: t`Keep editing`,
       },

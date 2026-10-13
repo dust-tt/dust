@@ -757,9 +757,9 @@ function AgentBuilderContent({
       const confirmed = await confirm({
         title: t`Pending suggestions`,
         message: t`${plural(pendingCount, {
-          one: "You have # pending instruction suggestion that won't be included in this save. You can review it later.",
+          one: "You have # pending instruction suggestion that won’t be included in this save. You can review it later.",
           other:
-            "You have # pending instruction suggestions that won't be included in this save. You can review them later.",
+            "You have # pending instruction suggestions that won’t be included in this save. You can review them later.",
         })}`,
         validateLabel: t`Save anyway`,
         validateVariant: "primary",

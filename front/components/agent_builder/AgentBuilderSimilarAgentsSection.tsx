@@ -172,7 +172,7 @@ export function AgentBuilderSimilarAgentsSection({
   if (hasError) {
     return (
       <div className="text-sm text-muted-foreground">
-        <Trans>Couldn't check for similar agents.</Trans>
+        <Trans>Couldn’t check for similar agents.</Trans>
       </div>
     );
   }

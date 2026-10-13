@@ -38,8 +38,8 @@ export function FreePlanSeatsSection({
 
   const heading = isAtCapacity
     ? t`${plural(maxLifetimeSeats, {
-        one: "You've used your # free seat",
-        other: "You've used all # free seats",
+        one: "You’ve used your # free seat",
+        other: "You’ve used all # free seats",
       })}`
     : t`${plural(maxLifetimeSeats, {
         one: `${lifetimeCount} of # free seat used`,

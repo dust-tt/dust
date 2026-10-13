@@ -108,12 +108,12 @@ msgid "Hello there!"
 msgstr "Hello there!"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
-msgid "Let's check a few things."
-msgstr "Let's check a few things."
+msgid "Let’s check a few things."
+msgstr "Let’s check a few things."
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
-msgid "You'll be joining the workspace: <0>{workspaceName}</0>."
-msgstr "You'll be joining the workspace: <0>{workspaceName}</0>."
+msgid "You’ll be joining the workspace: <0>{workspaceName}</0>."
+msgstr "You’ll be joining the workspace: <0>{workspaceName}</0>."
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Your name is:"

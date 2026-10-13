@@ -215,7 +215,7 @@ export function PodTabsCustomizationSection({
         </div>
         <p className="text-sm text-muted-foreground">
           <Trans>
-            Files pinned to this Pod&apos;s Tabs. Drag to reorder, or pick a
+            Files pinned to this Pod’s Tabs. Drag to reorder, or pick a
             custom icon.
           </Trans>
         </p>

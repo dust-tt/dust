@@ -96,7 +96,7 @@ msgid "This conversation reached its size limit"
 msgstr ""
 
 #: front/components/assistant/conversation/AgentMessage.tsx
-msgid "Dust had to trim part of the tool output used to generate this message to fit the model's context window. This usually happens when a search or other tool returns more data than the model can process at once."
+msgid "Dust had to trim part of the tool output used to generate this message to fit the model’s context window. This usually happens when a search or other tool returns more data than the model can process at once."
 msgstr ""
 
 #: front/components/assistant/conversation/AgentMessage.tsx
@@ -266,7 +266,7 @@ msgid "Attach files to the conversation"
 msgstr ""
 
 #: front/components/assistant/conversation/ConversationError.tsx
-msgid "You don't have access to this page"
+msgid "You don’t have access to this page"
 msgstr ""
 
 #: front/components/assistant/conversation/ConversationError.tsx
@@ -843,7 +843,7 @@ msgid "<0>{mentionLabel}</0> is not a member of this Pod and only Pod editors ca
 msgstr ""
 
 #: front/components/assistant/conversation/MentionInvalid.tsx
-msgid "<0>{mentionLabel}</0> doesn't have access to this conversation's spaces and won't be able to view it nor be invited."
+msgid "<0>{mentionLabel}</0> doesn’t have access to this conversation’s spaces and won’t be able to view it nor be invited."
 msgstr ""
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
@@ -867,15 +867,15 @@ msgid "<0>{agentName}</0> mentioned <1>{mentionLabel}</1>. Do you want to add th
 msgstr ""
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
-msgid "They'll have access to all Pod conversations."
+msgid "They’ll have access to all Pod conversations."
 msgstr ""
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
-msgid "<0>{agentName}</0> mentioned <1>{mentionLabel}</1>. Do you want to invite them? They'll see the full history and be able to reply."
+msgid "<0>{agentName}</0> mentioned <1>{mentionLabel}</1>. Do you want to invite them? They’ll see the full history and be able to reply."
 msgstr ""
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
-msgid "They'll see the full history and be able to reply."
+msgid "They’ll see the full history and be able to reply."
 msgstr ""
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
@@ -1098,15 +1098,15 @@ msgid "Unknown user"
 msgstr ""
 
 #: front/components/assistant/conversation/UserMessage.tsx
-msgid "Are you sure you want to delete this message? The agent's reply will also be removed. This action cannot be undone."
+msgid "Are you sure you want to delete this message? The agent’s reply will also be removed. This action cannot be undone."
 msgstr ""
 
 #: front/components/assistant/conversation/UserMessage.tsx
-msgid "Are you sure you want to delete this user's message? The agent's reply will also be removed. This will be reflected for all participants."
+msgid "Are you sure you want to delete this user’s message? The agent’s reply will also be removed. This will be reflected for all participants."
 msgstr ""
 
 #: front/components/assistant/conversation/UserMessage.tsx
-msgid "Are you sure you want to delete this user's message? This will be reflected for all participants."
+msgid "Are you sure you want to delete this user’s message? This will be reflected for all participants."
 msgstr ""
 
 #: front/components/assistant/conversation/UserMessage.tsx
@@ -1234,7 +1234,7 @@ msgid "{provider} blocked your request. Check your access rights."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "The requested resource wasn't found. Check your request and try again."
+msgid "The requested resource wasn’t found. Check your request and try again."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1254,19 +1254,19 @@ msgid "An unexpected error occurred. Try again or contact support if the issue p
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "Your workspace's {provider} credentials are invalid. Contact your workspace administrator to update them."
+msgid "Your workspace’s {provider} credentials are invalid. Contact your workspace administrator to update them."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "Your workspace's {provider} credentials don't have access to the requested model. Contact your workspace administrator."
+msgid "Your workspace’s {provider} credentials don’t have access to the requested model. Contact your workspace administrator."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "Your workspace's {provider} usage limits have been exceeded. Contact your workspace administrator."
+msgid "Your workspace’s {provider} usage limits have been exceeded. Contact your workspace administrator."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "The model couldn't complete the request. Try again."
+msgid "The model couldn’t complete the request. Try again."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1310,11 +1310,11 @@ msgid "Your workspace has run out of credits. Contact your administrator to purc
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "You've reached your personal usage cap. You can adjust user caps on the usage page."
+msgid "You’ve reached your personal usage cap. You can adjust user caps on the usage page."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "You've reached your personal usage cap. Contact your administrator to increase it."
+msgid "You’ve reached your personal usage cap. Contact your administrator to increase it."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1326,11 +1326,11 @@ msgid "Your group has reached its shared usage limit. Contact your group manager
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+msgid "You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "You don't have a seat assigned in this workspace. Contact your administrator to assign you one."
+msgid "You don’t have a seat assigned in this workspace. Contact your administrator to assign you one."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1358,7 +1358,7 @@ msgid "Model tier not enabled"
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "This agent uses a model tier that isn't enabled for you. Contact your workspace administrator or use another agent."
+msgid "This agent uses a model tier that isn’t enabled for you. Contact your workspace administrator or use another agent."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1378,7 +1378,7 @@ msgid "This agent is no longer available to you. Contact your workspace administ
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "The model this agent uses isn't available. Edit the agent to use another model (advanced settings in the Instructions panel)."
+msgid "The model this agent uses isn’t available. Edit the agent to use another model (advanced settings in the Instructions panel)."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1386,11 +1386,11 @@ msgid "Several tools have the same name. Each tool needs a unique name so the ag
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "You've reached the free usage cap for this 24-hour period. Try again later."
+msgid "You’ve reached the free usage cap for this 24-hour period. Try again later."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "The agent tried to run an action that doesn't exist. You can retry."
+msgid "The agent tried to run an action that doesn’t exist. You can retry."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
@@ -1398,11 +1398,11 @@ msgid "The agent sent invalid inputs to a tool."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "The tool call couldn't be parsed."
+msgid "The tool call couldn’t be parsed."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
-msgid "This tool isn't available to the agent."
+msgid "This tool isn’t available to the agent."
 msgstr ""
 
 #: front/components/assistant/conversation/agentErrorMessages.ts

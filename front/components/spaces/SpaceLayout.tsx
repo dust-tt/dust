@@ -139,12 +139,12 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
           <DialogContent size="md" isAlertDialog>
             <DialogHeader hideButton>
               <DialogTitle>
-                <Trans>You can't create more spaces.</Trans>
+                <Trans>You can’t create more spaces.</Trans>
               </DialogTitle>
             </DialogHeader>
             <DialogContainer>
               {isEnterprise
-                ? t`We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more.`
+                ? t`We’re going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more.`
                 : t`The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more.`}
             </DialogContainer>
             <DialogFooter

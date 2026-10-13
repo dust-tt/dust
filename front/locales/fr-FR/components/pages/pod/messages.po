@@ -42,7 +42,7 @@ msgid "Pod not found"
 msgstr "Pod introuvable"
 
 #: front/components/pages/pod/PodPage.tsx
-msgid "The Pod you're looking for doesn't exist or you don't have access to it."
+msgid "The Pod you’re looking for doesn’t exist or you don’t have access to it."
 msgstr "Le Pod que vous recherchez n’existe pas ou vous n’y avez pas accès."
 
 #: front/components/pages/pod/PodPage.tsx

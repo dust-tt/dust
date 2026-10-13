@@ -192,7 +192,7 @@ msgid "Upgrade a member"
 msgstr ""
 
 #: front/components/workspace/billing/FreePlanSeatsSection.tsx
-msgid "{maxLifetimeSeats, plural, one {You've used your # free seat} other {You've used all # free seats}}"
+msgid "{maxLifetimeSeats, plural, one {You’ve used your # free seat} other {You’ve used all # free seats}}"
 msgstr ""
 
 #: front/components/workspace/billing/FreePlanSeatsSection.tsx

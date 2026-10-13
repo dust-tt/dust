@@ -439,11 +439,11 @@ async function handleToolApproval(
     const resultText =
       approved === "approved"
         ? i18n._(
-            "Agent **@{agentName}**'s request to use tool **{toolName}** was ✅ approved",
+            "Agent **@{agentName}**’s request to use tool **{toolName}** was ✅ approved",
             { agentName, toolName }
           )
         : i18n._(
-            "Agent **@{agentName}**'s request to use tool **{toolName}** was ❌ rejected",
+            "Agent **@{agentName}**’s request to use tool **{toolName}** was ❌ rejected",
             { agentName, toolName }
           );
 

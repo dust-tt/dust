@@ -35,7 +35,7 @@ msgid "Add triggers"
 msgstr ""
 
 #: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
-msgid "Other members' triggers"
+msgid "Other members’ triggers"
 msgstr ""
 
 #: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
@@ -67,11 +67,11 @@ msgid "No payload available."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Triggered by {event} events on {sourceName}'s source."
+msgid "Triggered by {event} events on {sourceName}’s source."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Triggered on {sourceName}'s source."
+msgid "Triggered on {sourceName}’s source."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
@@ -168,15 +168,15 @@ msgid "Workspace credits"
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
+msgid "Automations on your plan must be charged to the workspace credit pool, which you don’t have permission to use. Ask a workspace admin for access."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Your plan doesn't support charging automations to personal credits."
+msgid "Your plan doesn’t support charging automations to personal credits."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "You don't have permission to charge automations to the workspace credit pool."
+msgid "You don’t have permission to charge automations to the workspace credit pool."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
@@ -184,7 +184,7 @@ msgid "Credits"
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Which pool this trigger's runs take credits from."
+msgid "Which pool this trigger’s runs take credits from."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
@@ -221,7 +221,7 @@ msgid "Status"
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
-msgid "This trigger's status is managed by Dust."
+msgid "This trigger’s status is managed by Dust."
 msgstr ""
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx

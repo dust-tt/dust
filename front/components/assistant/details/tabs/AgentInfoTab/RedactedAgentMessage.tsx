@@ -55,7 +55,7 @@ export function RedactedAgentMessage({
     }
     const confirmed = await confirm({
       title: t`Security notice`,
-      message: t`By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?`,
+      message: t`By becoming an editor you will have access to this agent’s private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?`,
       validateLabel: t`Proceed`,
       validateVariant: "warning",
     });

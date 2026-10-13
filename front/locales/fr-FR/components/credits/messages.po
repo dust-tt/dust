@@ -102,7 +102,7 @@ msgid "Help your admin decide"
 msgstr "Aidez votre administrateur à décider"
 
 #: front/components/credits/UsageUpgradeButton.tsx
-msgid "e.g. processing a large batch of documents for this quarter's audit"
+msgid "e.g. processing a large batch of documents for this quarter’s audit"
 msgstr "ex. : traitement d’un grand lot de documents pour l’audit de ce trimestre"
 
 #: front/components/credits/UsageUpgradeButton.tsx

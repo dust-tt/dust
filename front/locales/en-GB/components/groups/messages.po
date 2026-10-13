@@ -77,19 +77,19 @@ msgid "Membership stays managed by your directory."
 msgstr ""
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "Only workspace admins can change this group's members."
+msgid "Only workspace admins can change this group’s members."
 msgstr ""
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "Group managers can manage usage and credit limits for this group's members."
+msgid "Group managers can manage usage and credit limits for this group’s members."
 msgstr ""
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "{fullName} isn't a member of {groupName} but can manage it."
+msgid "{fullName} isn’t a member of {groupName} but can manage it."
 msgstr ""
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "They can grant themselves access to the group's permissions and data."
+msgid "They can grant themselves access to the group’s permissions and data."
 msgstr ""
 
 #: front/components/groups/GroupManagersField.tsx
@@ -172,19 +172,19 @@ msgid "You don’t have any groups yet."
 msgstr ""
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "{fullName} isn't a member of {groupName}"
+msgid "{fullName} isn’t a member of {groupName}"
 msgstr ""
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
+msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group’s permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
 msgstr ""
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "{managerCount, plural, one {# person you're appointing isn't a member of {groupName}} other {# people you're appointing aren't members of {groupName}}}"
+msgid "{managerCount, plural, one {# person you’re appointing isn’t a member of {groupName}} other {# people you’re appointing aren’t members of {groupName}}}"
 msgstr ""
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
+msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group’s permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
 msgstr ""
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx

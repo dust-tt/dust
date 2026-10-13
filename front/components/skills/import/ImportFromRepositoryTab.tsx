@@ -100,17 +100,17 @@ export function ImportFromRepositoryTab({
               variant="warning"
               size="lg"
               icon={InfoCircle}
-              title={t`GitHub connection can't access this repository`}
+              title={t`GitHub connection can’t access this repository`}
             >
               {isAdmin(owner) ? (
                 <Trans>
-                  The currently connected GitHub account can't access this
+                  The currently connected GitHub account can’t access this
                   repository. Check the URL or reconnect with an account that
                   has access.
                 </Trans>
               ) : (
                 <Trans>
-                  The currently connected GitHub account can't access this
+                  The currently connected GitHub account can’t access this
                   repository. Check the URL or ask an admin to reconnect with an
                   account that has access.
                 </Trans>

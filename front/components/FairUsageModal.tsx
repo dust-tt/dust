@@ -199,7 +199,7 @@ export function FairUsageModal({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>
-            <Trans>Dust's fair use policy</Trans>
+            <Trans>Dust’s fair use policy</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>

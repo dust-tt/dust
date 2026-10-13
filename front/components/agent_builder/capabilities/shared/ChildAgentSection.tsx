@@ -158,7 +158,7 @@ export function ChildAgentSection() {
     const agentId = field.value;
     messageProps = {
       title: t`The agent selected is not available to you`,
-      children: t`The agent (${agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent.`,
+      children: t`The agent (${agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you’re not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent.`,
     };
   }
 

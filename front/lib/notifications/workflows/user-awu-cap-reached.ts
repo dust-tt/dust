@@ -30,13 +30,13 @@ export function buildUserAwuCapReachedInAppCopy(
   const cap = i18n.number(capAwuCredits);
   return isBlocked
     ? {
-        subject: i18n._(msg`You've reached your usage limit`),
+        subject: i18n._(msg`You’ve reached your usage limit`),
         body: i18n._(
           msg`You have reached your ${cap} credits limit in workspace "${workspaceName}" and can no longer run agents. Contact your admin to increase your limit.`
         ),
       }
     : {
-        subject: i18n._(msg`You've used 80% of your usage limit`),
+        subject: i18n._(msg`You’ve used 80% of your usage limit`),
         body: i18n._(
           msg`You have used 80% of your ${cap} credits limit in workspace "${workspaceName}". Contact your admin to increase your limit before you are blocked.`
         ),
@@ -51,7 +51,7 @@ export function buildUserAwuCapReachedEmailCopy(
   return isBlocked
     ? {
         subject: i18n._(
-          msg`[Dust] You've reached your usage limit in ${workspaceName}`
+          msg`[Dust] You’ve reached your usage limit in ${workspaceName}`
         ),
         content: [
           i18n._(
@@ -64,14 +64,14 @@ export function buildUserAwuCapReachedEmailCopy(
       }
     : {
         subject: i18n._(
-          msg`[Dust] You've used 80% of your usage limit in ${workspaceName}`
+          msg`[Dust] You’ve used 80% of your usage limit in ${workspaceName}`
         ),
         content: [
           i18n._(
             msg`You have used 80% of your ${cap} credits usage limit in the Dust workspace ${workspaceName}.`
           ),
           i18n._(
-            msg`Once you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin.`
+            msg`Once you reach 100%, you won’t be able to run agents until your limit is increased. Please contact your workspace admin.`
           ),
         ].join("\n"),
       };

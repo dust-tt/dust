@@ -217,7 +217,7 @@ export function WebhookEditionFilters({
               This trigger uses a custom webhook without an integrated provider.
               As a result, Dust is unable to automatically generate a payload
               filter. You can manually write a filter expression using our
-              syntax to specify conditions on your webhook's payload.
+              syntax to specify conditions on your webhook’s payload.
             </Trans>
             <br />
             <Trans>

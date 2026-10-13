@@ -118,7 +118,7 @@ msgid "Mark all as read"
 msgstr "Tout marquer comme lu"
 
 #: front/components/pod/conversation/PodEmptyCallout.tsx
-msgid "It's quiet in here."
+msgid "It’s quiet in here."
 msgstr "C’est bien calme ici."
 
 #: front/components/pod/conversation/PodEmptyCallout.tsx
@@ -126,7 +126,7 @@ msgid "Your Pod is ready but empty! Let us help you invite people, add key data,
 msgstr "Votre Pod est prêt, mais vide ! Laissez-nous vous aider à inviter des personnes, ajouter des données clés et plus encore."
 
 #: front/components/pod/conversation/PodEmptyCallout.tsx
-msgid "Let's go"
+msgid "Let’s go"
 msgstr "C’est parti"
 
 #: front/components/pod/conversation/PodJoinCTA.tsx

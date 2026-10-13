@@ -71,12 +71,12 @@ export function InviteChoosePage() {
             <div className="body-sm text-muted-foreground">
               {email ? (
                 <Trans>
-                  We couldn't find any pending invitations for {email}. Please
+                  We couldn’t find any pending invitations for {email}. Please
                   contact your workspace admin or try another email address.
                 </Trans>
               ) : (
                 <Trans>
-                  We couldn't find any pending invitations for your account.
+                  We couldn’t find any pending invitations for your account.
                   Please contact your workspace admin or try another email
                   address.
                 </Trans>

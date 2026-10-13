@@ -625,8 +625,8 @@ export function UsagePage() {
       const memberName = member.name;
       const message =
         member.seatType === "free"
-          ? t`Are you sure you want to remove ${memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
-          : t`Are you sure you want to remove ${memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
+          ? t`Are you sure you want to remove ${memberName}’s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : t`Are you sure you want to remove ${memberName}’s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
       const confirmed = await confirm({
         title: t`Remove seat`,
         message,
@@ -1170,7 +1170,7 @@ export function UsagePage() {
                         ) : resetAt ? (
                           <span>
                             <Trans>
-                              At this rate, you're expected to consume your full
+                              At this rate, you’re expected to consume your full
                               credits by{" "}
                               <span className="font-semibold">
                                 {resetAtFormatted}

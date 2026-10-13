@@ -124,7 +124,7 @@ msgid "Enable Single Sign On Enforcement"
 msgstr "Activer l’obligation d’authentification unique"
 
 #: front/components/workspace/sso/Toggle.tsx
-msgid "By enforcing SSO, access through social media logins will be discontinued. Instead, you'll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
+msgid "By enforcing SSO, access through social media logins will be discontinued. Instead, you’ll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
 msgstr "En imposant le SSO, la connexion via les réseaux sociaux ne sera plus possible. Vous serez redirigé vers le portail SSO pour vous connecter. Notez que ce changement obligera tous les utilisateurs à se déconnecter puis à se reconnecter via le SSO."
 
 #: front/components/workspace/sso/Toggle.tsx
@@ -196,5 +196,5 @@ msgid "Disable {connectionType} Single Sign On"
 msgstr "Désactiver l’authentification unique {connectionType}"
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."
+msgid "Anyone with an {connectionType} account won’t be able to access your Dust workspace anymore."
 msgstr "Les personnes disposant d’un compte {connectionType} ne pourront plus accéder à votre workspace Dust."

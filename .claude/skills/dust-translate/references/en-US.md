@@ -20,6 +20,10 @@ American spelling, as listed first in Merriam-Webster.
 `cancellation` keeps both `l`s. `dialog` is the UI element; `dialogue` is a conversation between
 people.
 
+## Typography
+
+- Apostrophe: typographic `’` (U+2019), not `'`: "Don’t", "agent’s".
+
 ## Exceptions
 
 Keep the original spelling of:

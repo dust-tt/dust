@@ -49,7 +49,7 @@ export function TriggerStatusToggle({
           <Tooltip
             label={
               statusOwner === "system"
-                ? t`This trigger's status is managed by Dust.`
+                ? t`This trigger’s status is managed by Dust.`
                 : t`Only a manager or an admin can re-enable this trigger.`
             }
             trigger={<div>{toggle}</div>}

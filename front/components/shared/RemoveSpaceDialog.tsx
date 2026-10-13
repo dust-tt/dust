@@ -199,12 +199,12 @@ export function useBlockedSkillSpaceRemovalConfirm({
     const spaceName = getSpaceName(space);
 
     return confirm({
-      title: t`${spaceName} can't be removed`,
+      title: t`${spaceName} can’t be removed`,
       message: (
         <div className="space-y-3">
           <p className="text-sm">
             <Trans>
-              This space can't be removed from the skill because the skill uses
+              This space can’t be removed from the skill because the skill uses
               knowledge or capabilities that belong to it.
             </Trans>
           </p>

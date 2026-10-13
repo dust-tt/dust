@@ -86,7 +86,7 @@ export function CreateConnectionOAuthModal({
                     </div>
                     <div className="copy-sm font-normal text-muted-foreground">
                       <Trans>
-                        Dust's use of information received from the Google APIs
+                        Dust’s use of information received from the Google APIs
                         will adhere to{" "}
                         <Hoverable
                           variant="highlight"

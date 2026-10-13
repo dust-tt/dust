@@ -248,8 +248,8 @@ msgstr "Only when mentioned"
 
 #: front/components/pod/settings/PodNotificationMenu.tsx
 #: front/components/pod/settings/PodSettingsGeneralTab.tsx
-msgid "Don't notify me"
-msgstr "Don't notify me"
+msgid "Don’t notify me"
+msgstr "Don’t notify me"
 
 #: front/components/pod/settings/PodNotificationMenu.tsx
 #: front/components/pod/settings/PodSettingsGeneralTab.tsx
@@ -285,16 +285,16 @@ msgid "Workspace default"
 msgstr "Workspace default"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
-msgid "This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the Pod for more information."
-msgstr "This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the Pod for more information."
+msgid "This Pod’s default agent isn’t available to you, so @dust is used instead. Contact the editor of the Pod for more information."
+msgstr "This Pod’s default agent isn’t available to you, so @dust is used instead. Contact the editor of the Pod for more information."
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
 msgid "Pod instructions for agents"
 msgstr "Pod instructions for agents"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
-msgid "Seen by all agents in this Pod, stored as <0>{POD_AGENTS_MD_FILENAME}</0> in the Pod's files."
-msgstr "Seen by all agents in this Pod, stored as <0>{POD_AGENTS_MD_FILENAME}</0> in the Pod's files."
+msgid "Seen by all agents in this Pod, stored as <0>{POD_AGENTS_MD_FILENAME}</0> in the Pod’s files."
+msgstr "Seen by all agents in this Pod, stored as <0>{POD_AGENTS_MD_FILENAME}</0> in the Pod’s files."
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
 msgid "Enter instructions for agents"
@@ -512,8 +512,8 @@ msgid "Tabs"
 msgstr "Tabs"
 
 #: front/components/pod/settings/PodTabsCustomizationSection.tsx
-msgid "Files pinned to this Pod's Tabs. Drag to reorder, or pick a custom icon."
-msgstr "Files pinned to this Pod's Tabs. Drag to reorder, or pick a custom icon."
+msgid "Files pinned to this Pod’s Tabs. Drag to reorder, or pick a custom icon."
+msgstr "Files pinned to this Pod’s Tabs. Drag to reorder, or pick a custom icon."
 
 #: front/components/pod/settings/PodTabsCustomizationSection.tsx
 msgid "No files in the Tabs yet."

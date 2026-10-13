@@ -400,7 +400,7 @@ function MCPRunAgentActionDetailsDisplay({
                 <>
                   <div className="flex items-center justify-between py-2">
                     <span className="font-medium text-foreground">
-                      <Trans>{agentName}'s answer</Trans>
+                      <Trans>{agentName}’s answer</Trans>
                     </span>
                     {conversationUrl && (
                       <Button

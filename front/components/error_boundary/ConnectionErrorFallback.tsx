@@ -14,7 +14,7 @@ export function ConnectionErrorFallback() {
           </p>
           <p className="copy-sm text-muted-foreground">
             <Trans>
-              We couldn't reach the server. Please check your connection and try
+              We couldn’t reach the server. Please check your connection and try
               again.
             </Trans>
           </p>

@@ -54,8 +54,8 @@ msgid "Payload filtering syntax"
 msgstr "Payload filtering syntax"
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
-msgid "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook's payload."
-msgstr "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook's payload."
+msgid "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook’s payload."
+msgstr "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook’s payload."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
 msgid "See documentation on <0>filter expressions</0> to learn how to write them."
@@ -105,16 +105,16 @@ msgid "This will count toward your personal credit pool."
 msgstr "This will count toward your personal credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count toward your workspace's credit pool."
-msgstr "This will count toward your workspace's credit pool."
+msgid "This will count toward your workspace’s credit pool."
+msgstr "This will count toward your workspace’s credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "This will count toward your personal fair use limits."
 msgstr "This will count toward your personal fair use limits."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count toward your workspace's programmatic usage."
-msgstr "This will count toward your workspace's programmatic usage."
+msgid "This will count toward your workspace’s programmatic usage."
+msgstr "This will count toward your workspace’s programmatic usage."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "Rate limits"
@@ -162,8 +162,8 @@ msgid "Where to create this conversation? (optional)"
 msgstr "Where to create this conversation? (optional)"
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "Run this trigger's conversation inside a Pod instead."
-msgstr "Run this trigger's conversation inside a Pod instead."
+msgid "Run this trigger’s conversation inside a Pod instead."
+msgstr "Run this trigger’s conversation inside a Pod instead."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "another user"

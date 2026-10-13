@@ -394,8 +394,8 @@ msgid "Credit quota exceeded"
 msgstr "Credit quota exceeded"
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "We've paused messaging for your account due to our fair usage policy."
-msgstr "We've paused messaging for your account due to our fair usage policy."
+msgid "We’ve paused messaging for your account due to our fair usage policy."
+msgstr "We’ve paused messaging for your account due to our fair usage policy."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Check our <0>Fair Use policy</0> to learn more."
@@ -406,8 +406,8 @@ msgid "Message quota exceeded"
 msgstr "Message quota exceeded"
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "We've paused messaging for your workspace due to our fair usage policy."
-msgstr "We've paused messaging for your workspace due to our fair usage policy."
+msgid "We’ve paused messaging for your workspace due to our fair usage policy."
+msgstr "We’ve paused messaging for your workspace due to our fair usage policy."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "This total limit is collectively shared by all users in the workspace."
@@ -438,12 +438,12 @@ msgid "Go to usage page"
 msgstr "Go to usage page"
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
-msgstr "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+msgid "You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+msgstr "You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one."
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."
-msgstr "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."
+msgid "You don’t have a seat assigned in this workspace. Please contact your administrator to assign you one."
+msgstr "You don’t have a seat assigned in this workspace. Please contact your administrator to assign you one."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Usage cap reached"

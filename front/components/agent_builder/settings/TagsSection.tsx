@@ -140,7 +140,7 @@ export function TagsSection() {
         sendNotification({
           title: t`No tag suggestions available`,
           type: "info",
-          description: t`We couldn't find any relevant tags to suggest for this agent.`,
+          description: t`We couldn’t find any relevant tags to suggest for this agent.`,
         });
         return [];
       }

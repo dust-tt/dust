@@ -183,11 +183,11 @@ msgid "Workspace credit usage"
 msgstr "Consommation de crédits du workspace"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgid "Are you sure you want to remove {memberName}’s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
 msgstr "Voulez-vous vraiment retirer le siège de {memberName} ? Cette personne perdra immédiatement la possibilité d’envoyer des messages, et le siège Free ne pourra pas être réattribué."
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgid "Are you sure you want to remove {memberName}’s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
 msgstr "Voulez-vous vraiment retirer le siège de {memberName} ? Cette personne conservera l’accès jusqu’à la fin de la période de facturation en cours, puis perdra la possibilité d’envoyer des messages."
 
 #: front/components/pages/workspace/UsagePage.tsx
@@ -251,7 +251,7 @@ msgid "At your current rate, you have enough credits to finish the cycle."
 msgstr "À votre rythme actuel, vous avez assez de crédits pour terminer le cycle."
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgid "At this rate, you’re expected to consume your full credits by <0>{resetAtFormatted}</0>."
 msgstr "À ce rythme, vous devriez avoir consommé tous vos crédits d’ici le <0>{resetAtFormatted}</0>."
 
 #: front/components/pages/workspace/UsagePage.tsx

@@ -299,7 +299,7 @@ export function AgentBuilderCapabilitiesBlock({
       title={t`Capabilities and knowledge`}
       description={
         <Trans>
-          Add skills, tools, and knowledge to enhance your agent's abilities.
+          Add skills, tools, and knowledge to enhance your agent’s abilities.
           Need help? Check our{" "}
           <Hoverable
             variant="primary"

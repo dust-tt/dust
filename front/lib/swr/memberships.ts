@@ -660,19 +660,19 @@ function getSeatUpdateNotification({
     return {
       title: isDeferred ? msg`Seat removal scheduled` : msg`Seat removed`,
       description: isDeferred
-        ? msg`${memberName}'s seat will be removed at the next billing period. They keep full access until then.`
-        : msg`${memberName}'s seat has been removed.`,
+        ? msg`${memberName}’s seat will be removed at the next billing period. They keep full access until then.`
+        : msg`${memberName}’s seat has been removed.`,
     };
   }
   return {
     title: isDeferred ? msg`Seat change scheduled` : msg`Seat updated`,
     description: isDeferred
-      ? msg`${memberName}'s seat will change to ${seatName} at the next credit refresh.`
+      ? msg`${memberName}’s seat will change to ${seatName} at the next credit refresh.`
       : isCancellingScheduledChange
-        ? msg`${memberName}'s scheduled seat change has been canceled.`
+        ? msg`${memberName}’s scheduled seat change has been canceled.`
         : hasSeatPool
-          ? msg`${memberName}'s seat has been updated to ${seatName}. The seat pool will be provisioned shortly.`
-          : msg`${memberName}'s seat has been updated to ${seatName}.`,
+          ? msg`${memberName}’s seat has been updated to ${seatName}. The seat pool will be provisioned shortly.`
+          : msg`${memberName}’s seat has been updated to ${seatName}.`,
   };
 }
 
@@ -729,13 +729,13 @@ export function useUpdateUserSpendLimit({
       let description: string;
       switch (limit.kind) {
         case "unlimited":
-          description = t`${memberName}'s spend limit has been removed.`;
+          description = t`${memberName}’s spend limit has been removed.`;
           break;
         case "limited": {
           const awuCredits = formatNumber(limit.awuCredits);
           description = resetAtNextBillingCycle
-            ? t`${memberName}'s spend limit has been set to ${awuCredits} credits until the next billing cycle.`
-            : t`${memberName}'s spend limit has been set to ${awuCredits} credits.`;
+            ? t`${memberName}’s spend limit has been set to ${awuCredits} credits until the next billing cycle.`
+            : t`${memberName}’s spend limit has been set to ${awuCredits} credits.`;
           break;
         }
         default:

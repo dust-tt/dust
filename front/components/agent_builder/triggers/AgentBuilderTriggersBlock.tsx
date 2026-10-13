@@ -262,7 +262,7 @@ export function AgentBuilderTriggersBlock({
             {otherTriggers.length > 0 && (
               <Collapsible defaultOpen={false}>
                 <CollapsibleTrigger
-                  label={t`Other members' triggers`}
+                  label={t`Other members’ triggers`}
                   variant="secondary"
                 />
                 <CollapsibleContent>

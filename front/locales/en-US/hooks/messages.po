@@ -22,8 +22,8 @@ msgid "Archive Pod?"
 msgstr "Archive Pod?"
 
 #: front/hooks/useArchivePod.tsx
-msgid "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
-msgstr "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
+msgid "You’ll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
+msgstr "You’ll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
 
 #: front/hooks/useArchivePod.tsx
 msgctxt "button label"
@@ -409,8 +409,8 @@ msgid "Discard your unsaved changes?"
 msgstr "Discard your unsaved changes?"
 
 #: front/hooks/useNavigationLock.tsx
-msgid "If you leave now, your latest edits won't be kept."
-msgstr "If you leave now, your latest edits won't be kept."
+msgid "If you leave now, your latest edits won’t be kept."
+msgstr "If you leave now, your latest edits won’t be kept."
 
 #: front/hooks/useNavigationLock.tsx
 msgid "Discard"
@@ -517,8 +517,8 @@ msgid "Could not update the published agents model access setting."
 msgstr "Could not update the published agents model access setting."
 
 #: front/hooks/useSearchMembersByEmails.ts
-msgid "We couldn't check which users are already members"
-msgstr "We couldn't check which users are already members"
+msgid "We couldn’t check which users are already members"
+msgstr "We couldn’t check which users are already members"
 
 #: front/hooks/useSetupNotifications.ts
 msgid "New notification"
@@ -603,12 +603,12 @@ msgid "Failed to update the group budget"
 msgstr "Failed to update the group budget"
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget has been removed."
-msgstr "{groupName}'s budget has been removed."
+msgid "{groupName}’s budget has been removed."
+msgstr "{groupName}’s budget has been removed."
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget is now {amount} credits per billing cycle."
-msgstr "{groupName}'s budget is now {amount} credits per billing cycle."
+msgid "{groupName}’s budget is now {amount} credits per billing cycle."
+msgstr "{groupName}’s budget is now {amount} credits per billing cycle."
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
 msgid "Group budget updated"

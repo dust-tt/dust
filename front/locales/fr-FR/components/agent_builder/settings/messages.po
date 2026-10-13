@@ -155,7 +155,7 @@ msgid "Ignore credit spend threshold alert"
 msgstr "Ignorer l’alerte de seuil de dépenses de crédits"
 
 #: front/components/agent_builder/settings/CostManagementSection.tsx
-msgid "Conversations with this agent will not pause to ask for confirmation when they cross the workspace's credit spend checkpoint."
+msgid "Conversations with this agent will not pause to ask for confirmation when they cross the workspace’s credit spend checkpoint."
 msgstr "Les conversations avec cet agent ne seront pas mises en pause pour demander une confirmation lorsqu’elles franchiront le seuil de dépenses de crédits du workspace."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
@@ -215,7 +215,7 @@ msgid "Private channels only reply to @mentions. Auto-respond applies to public 
 msgstr "Dans les canaux privés, l’agent répond uniquement aux @mentions. La réponse automatique s’applique aux canaux publics."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
-msgid "Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned."
+msgid "Auto-respond isn’t available in private Slack channels. The agent will only reply when @Dust is mentioned."
 msgstr "La réponse automatique n’est pas disponible dans les canaux Slack privés. L’agent répondra uniquement lorsque @Dust sera mentionné."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
@@ -243,7 +243,7 @@ msgid "No tag suggestions available"
 msgstr "Aucune suggestion de tag disponible"
 
 #: front/components/agent_builder/settings/TagsSection.tsx
-msgid "We couldn't find any relevant tags to suggest for this agent."
+msgid "We couldn’t find any relevant tags to suggest for this agent."
 msgstr "Nous n’avons trouvé aucun tag pertinent à suggérer pour cet agent."
 
 #: front/components/agent_builder/settings/TagsSection.tsx

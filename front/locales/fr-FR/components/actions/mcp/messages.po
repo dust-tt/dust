@@ -184,7 +184,7 @@ msgid "Header values are hidden once saved: re-enter every header value to updat
 msgstr "Les valeurs des en-têtes sont masquées une fois enregistrées : saisissez à nouveau chaque valeur pour mettre à jour les en-têtes."
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
-msgid "This action will delete the tool's existing copies"
+msgid "This action will delete the tool’s existing copies"
 msgstr "Cette action supprimera les copies existantes de l’outil"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
@@ -192,7 +192,7 @@ msgid "Making the tool available to all will delete its copies in these spaces:"
 msgstr "Rendre l’outil disponible pour tous supprimera ses copies dans ces espaces :"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
-msgid "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you'll receive an email listing them."
+msgid "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you’ll receive an email listing them."
 msgstr "Les agents qui y utilisent l’outil n’y auront plus accès jusqu’à ce qu’un administrateur ajoute manuellement la version partagée à chacun d’eux. Si des agents sont concernés, vous recevrez un e-mail les listant."
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
@@ -419,7 +419,7 @@ msgid "Add meta field"
 msgstr "Ajouter un champ meta"
 
 #: front/components/actions/mcp/MCPServerSettings.tsx
-msgid "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected."
+msgid "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member’s personal authentication and are unaffected."
 msgstr "L’authentification utilisée pour configurer et synchroniser cet outil n’est plus valide et doit être actualisée. Les agents utilisent toujours l’authentification personnelle de chaque membre et ne sont pas affectés."
 
 #: front/components/actions/mcp/MCPServerSettings.tsx

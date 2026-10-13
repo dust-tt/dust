@@ -182,8 +182,8 @@ msgid "Sign in"
 msgstr "Sign in"
 
 #: extension/ui/pages/LoginPage.tsx
-msgid "By signing in, you agree to Dust's <0>Terms of Use</0> and <1>Privacy Policy</1>."
-msgstr "By signing in, you agree to Dust's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgid "By signing in, you agree to Dust’s <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgstr "By signing in, you agree to Dust’s <0>Terms of Use</0> and <1>Privacy Policy</1>."
 
 #: extension/ui/pages/LoginPage.tsx
 msgid "You are not a member of any workspace."
@@ -227,8 +227,8 @@ msgid "Pod not found"
 msgstr "Pod not found"
 
 #: extension/ui/pages/PodMainPage.tsx
-msgid "The Pod you're looking for doesn't exist or you don't have access to it."
-msgstr "The Pod you're looking for doesn't exist or you don't have access to it."
+msgid "The Pod you’re looking for doesn’t exist or you don’t have access to it."
+msgstr "The Pod you’re looking for doesn’t exist or you don’t have access to it."
 
 #: extension/ui/pages/PodMainPage.tsx
 msgid "Conversations"

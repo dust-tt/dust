@@ -34,7 +34,7 @@ msgid "Published agents"
 msgstr ""
 
 #: front/components/workspace/usage/ModelTiersSettingsCard.tsx
-msgid "Allow all members to run published agents even when the agent's model tier is above their own access."
+msgid "Allow all members to run published agents even when the agent’s model tier is above their own access."
 msgstr ""
 
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
@@ -119,7 +119,7 @@ msgid "Default per-user workspace credit pool monthly limit"
 msgstr ""
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
-msgid "Define the workspace credit pool credit limit for users per month in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
+msgid "Define the workspace credit pool credit limit for users per month in your workspace. This limit is added on top of each seat’s built-in allowance. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
 msgstr ""
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
@@ -159,7 +159,7 @@ msgid "When a member reaches their credit limit, automatically move them to the 
 msgstr ""
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
-msgid "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn't available on your current plan. Upgrade to a paid plan to enable it.</0>"
+msgid "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn’t available on your current plan. Upgrade to a paid plan to enable it.</0>"
 msgstr ""
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
@@ -167,5 +167,5 @@ msgid "Credit spend checkpoint"
 msgstr ""
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
-msgid "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
+msgid "Pause the agent and ask the user to confirm continuing once a single message’s LLM token spend reaches {thresholdCredits} credits."
 msgstr ""

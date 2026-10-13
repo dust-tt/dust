@@ -55,8 +55,8 @@ export function TriggerCard({
           webhookSourceView?.customName ??
           webhookSourceView?.webhookSource.name;
         return event
-          ? t`Triggered by ${event} events on ${sourceName}'s source.`
-          : t`Triggered on ${sourceName}'s source.`;
+          ? t`Triggered by ${event} events on ${sourceName}’s source.`
+          : t`Triggered on ${sourceName}’s source.`;
       }
     }
   }, [trigger, webhookSourceView, t]);

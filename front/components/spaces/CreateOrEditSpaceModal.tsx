@@ -170,7 +170,7 @@ export function CreateOrEditSpaceModal({
     if (space && spaceInfo && !spaceInfo.isMember) {
       const confirmed = await confirm({
         title: t`Security notice`,
-        message: t`You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?`,
+        message: t`You are modifying this space’s settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?`,
         validateLabel: t`Proceed`,
         validateVariant: "warning",
       });
@@ -418,7 +418,7 @@ function SpaceNameSection({ spaceName, onChange }: SpaceNameSectionProps) {
     <div className="flex w-full flex-col gap-y-4">
       <Page.SectionHeader title={t`Name`} />
       <Input
-        placeholder={t`Space's name`}
+        placeholder={t`Space’s name`}
         value={spaceName}
         name="spaceName"
         message={t`Space name must be unique`}

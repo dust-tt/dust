@@ -1148,7 +1148,7 @@ async function deleteAndRepostMessageWithFiles({
     await slackClient.chat.postMessage({
       channel: slackChannelId,
       text: `:warning: ${i18n._(
-        "Slack couldn't upload the generated files, so they aren't attached."
+        "Slack couldn’t upload the generated files, so they aren’t attached."
       )}`,
       thread_ts: slackMessageTs,
     });

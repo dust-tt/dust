@@ -200,7 +200,7 @@ export function PodTaskStartWorkingDropdown({
   const triggerButton = disabled ? (
     <Tooltip
       label={
-        disabledReason ?? t`Can't start work on this task in this state yet.`
+        disabledReason ?? t`Can’t start work on this task in this state yet.`
       }
       trigger={
         <Button
@@ -295,7 +295,7 @@ export function PodTaskStartWorkingDropdown({
                             <Icon visual={InfoCircle} size="xs" />
                           </span>
                         }
-                        label={t`This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error.`}
+                        label={t`This Pod’s default agent isn’t available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error.`}
                       />
                     )}
                     <Icon

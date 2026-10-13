@@ -7,11 +7,11 @@ export const HOMEPAGE_USE_CASE_MESSAGES: Record<
   { label: MessageDescriptor; prompt: MessageDescriptor }
 > = {
   "unanswered-messages": {
-    label: msg`Find important emails I haven't replied to`,
+    label: msg`Find important emails I haven’t replied to`,
     prompt: msg`Go through my inbox from the last 7 days and list the emails I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each.`,
   },
   "unanswered-dms": {
-    label: msg`Find important DMs I haven't replied to`,
+    label: msg`Find important DMs I haven’t replied to`,
     prompt: msg`Go through my direct messages from the last 7 days and list the ones I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each.`,
   },
   "industry-news": {
@@ -23,7 +23,7 @@ export const HOMEPAGE_USE_CASE_MESSAGES: Record<
     prompt: msg`Catch me up on the AI news from the last 7 days that matters most: model releases, product launches, funding and regulation. Keep the five stories with real impact, say in one line why each one matters for a company like ours, and link the sources.`,
   },
   "dust-news": {
-    label: msg`Show me what's new in Dust`,
+    label: msg`Show me what’s new in Dust`,
     prompt: msg`Read the Dust changelog at https://docs.dust.tt/docs/changelog and tell me what shipped over the last month. Keep the five changes most useful to me, say in one line what each one lets me do, and link each entry.`,
   },
   "build-agent": {

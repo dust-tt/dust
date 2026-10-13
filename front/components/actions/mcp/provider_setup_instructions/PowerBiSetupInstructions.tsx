@@ -94,7 +94,7 @@ export function PowerBiSetupInstructions() {
                     Under{" "}
                     <strong>Certificates & secrets → New client secret</strong>,
                     generate a secret and copy its <strong>Value</strong>{" "}
-                    immediately — it won't be visible again.
+                    immediately — it won’t be visible again.
                   </Trans>
                 </p>
               </div>
@@ -224,7 +224,7 @@ export function PowerBiSetupInstructions() {
                       offline_access
                     </code>{" "}
                     scope allows Dust to automatically refresh the
-                    authentication token in the background, so users don't have
+                    authentication token in the background, so users don’t have
                     to re-authenticate every time the token expires (typically
                     after one hour).
                   </Trans>

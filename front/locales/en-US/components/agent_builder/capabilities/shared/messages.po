@@ -78,8 +78,8 @@ msgid "The agent selected is not available to you"
 msgstr "The agent selected is not available to you"
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
-msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
-msgstr "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
+msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you’re not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
+msgstr "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you’re not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "Select an agent"
@@ -190,8 +190,8 @@ msgid "<0>{methodLabel}</0> will ignore text documents and files in your select
 msgstr "<0>{methodLabel}</0> will ignore text documents and files in your selection. Create separate knowledge tools if you need both."
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
-msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won't be automatically added."
-msgstr "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won't be automatically added."
+msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won’t be automatically added."
+msgstr "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won’t be automatically added."
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
 msgid "<0>{methodLabel}</0> will ignore tables in your selection. Switch processing method if you want to use your structured data."
@@ -274,12 +274,12 @@ msgid "No document detected"
 msgstr "No document detected"
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "We couldn't find any tables in your selection. Add tables to enable \"{serverName}\"."
-msgstr "We couldn't find any tables in your selection. Add tables to enable \"{serverName}\"."
+msgid "We couldn’t find any tables in your selection. Add tables to enable \"{serverName}\"."
+msgstr "We couldn’t find any tables in your selection. Add tables to enable \"{serverName}\"."
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "We couldn't find any documents in your selection. Add documents to enable \"{serverName}\"."
-msgstr "We couldn't find any documents in your selection. Add documents to enable \"{serverName}\"."
+msgid "We couldn’t find any documents in your selection. Add documents to enable \"{serverName}\"."
+msgstr "We couldn’t find any documents in your selection. Add documents to enable \"{serverName}\"."
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
 msgid "Select data sources"

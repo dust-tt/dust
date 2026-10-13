@@ -78,7 +78,7 @@ msgid "The agent selected is not available to you"
 msgstr "L’agent sélectionné ne vous est pas accessible"
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
-msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
+msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you’re not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
 msgstr "L’agent sélectionné ({agentId}) ne vous est pas accessible, soit parce qu’il a été archivé, soit parce que vous n’y avez plus accès (il appartient à un espace restreint dont vous ne faites pas partie). En tant qu’éditeur, vous pouvez toujours supprimer l’outil Run Agent pour en ajouter un nouveau pointant vers un autre agent."
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
@@ -190,7 +190,7 @@ msgid "<0>{methodLabel}</0> will ignore text documents and files in your select
 msgstr "<0>{methodLabel}</0> ignorera les documents texte et les fichiers de votre sélection. Créez des outils de connaissances distincts si vous avez besoin des deux."
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
-msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won't be automatically added."
+msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won’t be automatically added."
 msgstr "<0>Remarque :</0> lorsque vous sélectionnez un dossier, seules les tables qu’il contient directement sont incluses. Les tables des sous-dossiers ne sont pas ajoutées automatiquement."
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
@@ -274,11 +274,11 @@ msgid "No document detected"
 msgstr "Aucun document détecté"
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "We couldn't find any tables in your selection. Add tables to enable \"{serverName}\"."
+msgid "We couldn’t find any tables in your selection. Add tables to enable \"{serverName}\"."
 msgstr "Aucune table n’a été trouvée dans votre sélection. Ajoutez des tables pour activer « {serverName} »."
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "We couldn't find any documents in your selection. Add documents to enable \"{serverName}\"."
+msgid "We couldn’t find any documents in your selection. Add documents to enable \"{serverName}\"."
 msgstr "Aucun document n’a été trouvé dans votre sélection. Ajoutez des documents pour activer « {serverName} »."
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx

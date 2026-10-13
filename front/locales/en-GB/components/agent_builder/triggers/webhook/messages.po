@@ -54,7 +54,7 @@ msgid "Payload filtering syntax"
 msgstr ""
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
-msgid "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook's payload."
+msgid "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook’s payload."
 msgstr ""
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
@@ -103,16 +103,16 @@ msgid "This will count toward your personal credit pool."
 msgstr "This will count towards your personal credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count toward your workspace's credit pool."
-msgstr "This will count towards your workspace's credit pool."
+msgid "This will count toward your workspace’s credit pool."
+msgstr ""
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "This will count toward your personal fair use limits."
 msgstr "This will count towards your personal fair use limits."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count toward your workspace's programmatic usage."
-msgstr "This will count towards your workspace's programmatic usage."
+msgid "This will count toward your workspace’s programmatic usage."
+msgstr ""
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "Rate limits"
@@ -160,7 +160,7 @@ msgid "Where to create this conversation? (optional)"
 msgstr ""
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "Run this trigger's conversation inside a Pod instead."
+msgid "Run this trigger’s conversation inside a Pod instead."
 msgstr ""
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx

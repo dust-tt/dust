@@ -489,7 +489,7 @@ export function ChangeSeatModal({
             >
               <p>
                 <Trans>
-                  We couldn&apos;t load the seat plans for this workspace.
+                  We couldn’t load the seat plans for this workspace.
                 </Trans>
               </p>
             </ContentMessage>
@@ -503,7 +503,7 @@ export function ChangeSeatModal({
                 >
                   <p>
                     <Trans>
-                      This member&apos;s seat is set by their group membership.
+                      This member’s seat is set by their group membership.
                       Change it from the group-seat mapping in Usage settings.
                     </Trans>
                   </p>
@@ -548,8 +548,8 @@ export function ChangeSeatModal({
               {isSubscriptionCancelled ? (
                 <p className="mt-1 text-xs text-warning-600">
                   <Trans>
-                    Your subscription is scheduled to end and seats can&apos;t
-                    be changed until it&apos;s reactivated.
+                    Your subscription is scheduled to end and seats can’t
+                    be changed until it’s reactivated.
                   </Trans>
                 </p>
               ) : (

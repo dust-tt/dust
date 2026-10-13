@@ -30,8 +30,8 @@ msgid "Please deselect manually each node you want to unselect. This is due to n
 msgstr "Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet"
 
 #: front/components/ContentNodeTree.tsx
-msgid "Connected service's API limit reached. Please retry shortly."
-msgstr "Connected service's API limit reached. Please retry shortly."
+msgid "Connected service’s API limit reached. Please retry shortly."
+msgstr "Connected service’s API limit reached. Please retry shortly."
 
 #: front/components/ContentNodeTree.tsx
 msgid "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection."
@@ -196,8 +196,8 @@ msgid "Dust plans already include monthly credits for programmatic usage, and mo
 msgstr "Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust]({PROGRAMMATIC_USAGE_URL})."
 
 #: front/components/FairUsageModal.tsx
-msgid "Dust's fair use policy"
-msgstr "Dust's fair use policy"
+msgid "Dust’s fair use policy"
+msgstr "Dust’s fair use policy"
 
 #: front/components/NodePathTooltip.tsx
 msgid "Folders"
@@ -559,8 +559,8 @@ msgid "Sound alerts for items that need your attention"
 msgstr "Sound alerts for items that need your attention"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "We couldn't load your notification settings. Please try again later."
-msgstr "We couldn't load your notification settings. Please try again later."
+msgid "We couldn’t load your notification settings. Please try again later."
+msgstr "We couldn’t load your notification settings. Please try again later."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
@@ -575,8 +575,8 @@ msgid "Invitations"
 msgstr "Invitations"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Workspaces you've been invited to join"
-msgstr "Workspaces you've been invited to join"
+msgid "Workspaces you’ve been invited to join"
+msgstr "Workspaces you’ve been invited to join"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Memory"

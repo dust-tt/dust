@@ -117,7 +117,7 @@ export function AllowSlackWorkflowDialog({
               />
               <span className="text-xs text-muted-foreground">
                 <Trans>
-                  The sender name shown in Slack on the workflow's messages. It
+                  The sender name shown in Slack on the workflow’s messages. It
                   has to match exactly, spelling and capitalization included.
                 </Trans>
               </span>

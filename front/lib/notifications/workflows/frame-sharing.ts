@@ -34,7 +34,7 @@ export function buildFrameLoginCodeEmailCopy(
         msg`${plural(expiresInMinutes, {
           one: "The code expires in # minute.",
           other: "The code expires in # minutes.",
-        })} Didn't request it? Ignore this email.`
+        })} Didn’t request it? Ignore this email.`
       ),
       i18n._(msg`Your login code:`),
     ].join("\n"),

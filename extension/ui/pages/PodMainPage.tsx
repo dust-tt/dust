@@ -81,7 +81,7 @@ export const PodMainPage = () => {
             </h2>
             <p className="text-muted-foreground">
               <Trans>
-                The Pod you're looking for doesn't exist or you don't have
+                The Pod you’re looking for doesn’t exist or you don’t have
                 access to it.
               </Trans>
             </p>

@@ -81,7 +81,7 @@ msgid "Clear filters"
 msgstr "Effacer les filtres"
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
-msgid "Couldn't load more. Try again in a moment."
+msgid "Couldn’t load more. Try again in a moment."
 msgstr "Impossible d’en charger davantage. Réessayez dans un instant."
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
@@ -226,18 +226,18 @@ msgstr "Position {positionNumber}"
 
 #: front/components/assistant/conversation/discover/DiscoveryHomepageOptInLine.tsx
 msgid "Switch back to the original homepage."
-msgstr "Revenir à la page d'accueil d'origine."
+msgstr "Revenir à la page d’accueil d’origine."
 
 #: front/components/assistant/conversation/discover/DiscoveryHomepageOptInLine.tsx
 msgid "Your homepage is getting a refresh. <0>Get a sneak peek!</0>"
-msgstr "Votre page d'accueil fait peau neuve. <0>Découvrez-la en avant-première !</0>"
+msgstr "Votre page d’accueil fait peau neuve. <0>Découvrez-la en avant-première !</0>"
 
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Masquer cette suggestion"
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
-msgid "Find important emails I haven't replied to"
+msgid "Find important emails I haven’t replied to"
 msgstr "Trouve les e-mails importants auxquels je n’ai pas répondu"
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
@@ -245,7 +245,7 @@ msgid "Go through my inbox from the last 7 days and list the emails I have not r
 msgstr "Parcours ma boîte de réception des 7 derniers jours et liste les e-mails auxquels je n’ai pas répondu et qui attendent une réponse de ma part. Regroupe-les par urgence, indique qui attend et depuis quand, et propose une réponse d’une ligne pour chacun."
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
-msgid "Find important DMs I haven't replied to"
+msgid "Find important DMs I haven’t replied to"
 msgstr "Trouve les messages privés importants auxquels je n’ai pas répondu"
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
@@ -269,7 +269,7 @@ msgid "Catch me up on the AI news from the last 7 days that matters most: model 
 msgstr "Résume-moi l’actualité de l’IA des 7 derniers jours qui compte le plus : sorties de modèles, lancements de produits, levées de fonds et réglementation. Garde les cinq sujets qui ont un réel impact, dis en une ligne pourquoi chacun compte pour une entreprise comme la nôtre, et donne les liens des sources."
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
-msgid "Show me what's new in Dust"
+msgid "Show me what’s new in Dust"
 msgstr "Montre-moi les nouveautés de Dust"
 
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts

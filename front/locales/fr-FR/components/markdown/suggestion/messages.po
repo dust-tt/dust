@@ -323,7 +323,7 @@ msgid "Allow"
 msgstr "Autoriser"
 
 #: front/components/markdown/suggestion/ConversationalSuggestionCard.tsx
-msgid "The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it."
+msgid "The agent has made a suggestion to improve an agent or a skill but you don’t have the permissions to read it."
 msgstr "L’agent a suggéré une amélioration pour un agent ou une compétence, mais vous n’avez pas les droits nécessaires pour la consulter."
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx

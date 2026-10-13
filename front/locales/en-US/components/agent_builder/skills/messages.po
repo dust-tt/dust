@@ -46,5 +46,5 @@ msgid "Capabilities and knowledge"
 msgstr "Capabilities and knowledge"
 
 #: front/components/agent_builder/skills/AgentBuilderCapabilitiesBlock.tsx
-msgid "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
-msgstr "Add skills, tools, and knowledge to enhance your agent's abilities. Need help? Check our <0>guide</0>."
+msgid "Add skills, tools, and knowledge to enhance your agent’s abilities. Need help? Check our <0>guide</0>."
+msgstr "Add skills, tools, and knowledge to enhance your agent’s abilities. Need help? Check our <0>guide</0>."

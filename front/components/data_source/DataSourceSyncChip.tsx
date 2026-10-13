@@ -147,7 +147,7 @@ export default function ConnectorSyncingChip({
         });
         return (
           <Tooltip
-            label={t`You've exceeded the total storage quota of ${quota} for your workspace. Contact support@dust.tt to upgrade your plan.`}
+            label={t`You’ve exceeded the total storage quota of ${quota} for your workspace. Contact support@dust.tt to upgrade your plan.`}
             trigger={
               <Chip color="warning">
                 <Trans>Quota exceeded</Trans>
@@ -184,7 +184,7 @@ export default function ConnectorSyncingChip({
   } else if (connector.pausedAt) {
     return (
       <Tooltip
-        label={t`Synchronization is paused. New content won't be synced until resumed.`}
+        label={t`Synchronization is paused. New content won’t be synced until resumed.`}
         trigger={
           <Chip>
             <Trans>Paused</Trans>

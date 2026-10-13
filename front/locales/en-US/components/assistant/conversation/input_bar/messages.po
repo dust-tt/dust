@@ -75,12 +75,12 @@ msgid "No results found"
 msgstr "No results found"
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
-msgstr "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgid "This Pod’s default agent isn’t available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgstr "This Pod’s default agent isn’t available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
-msgstr "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
+msgid "This conversation’s default agent isn’t available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
+msgstr "This conversation’s default agent isn’t available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
 msgid "Selected agent: {selectedAgentName}"
@@ -204,8 +204,8 @@ msgid "Search Spaces"
 msgstr "Search Spaces"
 
 #: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
-msgid "Agent's Spaces"
-msgstr "Agent's Spaces"
+msgid "Agent’s Spaces"
+msgstr "Agent’s Spaces"
 
 #: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
 msgid "Additional Spaces"
@@ -224,12 +224,12 @@ msgid "No matching Spaces"
 msgstr "No matching Spaces"
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You don't have a seat in this workspace."
-msgstr "You don't have a seat in this workspace."
+msgid "You don’t have a seat in this workspace."
+msgstr "You don’t have a seat in this workspace."
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You've reached your usage limit"
-msgstr "You've reached your usage limit"
+msgid "You’ve reached your usage limit"
+msgstr "You’ve reached your usage limit"
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
 msgid "Your workspace has run out of credits."
@@ -240,12 +240,12 @@ msgid "Your group has reached its shared usage limit."
 msgstr "Your group has reached its shared usage limit."
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit"
-msgstr "You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit"
+msgid "You’ve used 80% of your usage limit. You’ll be automatically upgraded when you reach the limit"
+msgstr "You’ve used 80% of your usage limit. You’ll be automatically upgraded when you reach the limit"
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You've used 80% of your usage limit"
-msgstr "You've used 80% of your usage limit"
+msgid "You’ve used 80% of your usage limit"
+msgstr "You’ve used 80% of your usage limit"
 
 #: front/components/assistant/conversation/input_bar/pasted_utils.ts
 msgid "Pasted ({count})"

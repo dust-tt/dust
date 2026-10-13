@@ -62,7 +62,7 @@ msgid "Where to create this conversation? (optional)"
 msgstr "Où créer cette conversation ? (facultatif)"
 
 #: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
-msgid "Run this trigger's conversation inside a Pod instead."
+msgid "Run this trigger’s conversation inside a Pod instead."
 msgstr "Exécuter plutôt la conversation de ce déclencheur dans un Pod."
 
 #: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx

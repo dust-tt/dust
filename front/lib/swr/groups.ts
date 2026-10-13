@@ -671,11 +671,11 @@ export function useUpdateGroupSpendLimit({
       let description: string;
       switch (limit.kind) {
         case "unlimited":
-          description = t`${groupName}'s spend limit has been removed.`;
+          description = t`${groupName}’s spend limit has been removed.`;
           break;
         case "limited": {
           const awuCredits = formatNumber(limit.awuCredits);
-          description = t`${groupName}'s spend limit has been set to ${awuCredits} credits.`;
+          description = t`${groupName}’s spend limit has been set to ${awuCredits} credits.`;
           break;
         }
         default:

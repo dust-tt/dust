@@ -157,7 +157,7 @@ export function InputBarSpacesPicker({
           </>
         }
       >
-        <DropdownMenuCheckboxItem label={t`Agent's Spaces`} checked disabled />
+        <DropdownMenuCheckboxItem label={t`Agent’s Spaces`} checked disabled />
         <DropdownMenuSeparator />
         <DropdownMenuLabel label={t`Additional Spaces`} />
         {isLoading ? (

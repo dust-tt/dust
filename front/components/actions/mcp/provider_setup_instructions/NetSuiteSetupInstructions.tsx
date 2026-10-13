@@ -124,7 +124,7 @@ export function NetSuiteSetupInstructions() {
                     Save the record and copy the{" "}
                     <strong>Consumer Key (Client ID)</strong> and{" "}
                     <strong>Consumer Secret (Client Secret)</strong> — they
-                    won't be visible again.
+                    won’t be visible again.
                   </Trans>
                 </p>
               </div>

@@ -21,7 +21,7 @@ export function SlackOAuthExtraConfig({
     <div className="flex flex-col gap-4">
       <Input
         label={t`Slack app client ID`}
-        message={t`The Client ID from your Slack app's, available on the Basic Information page.`}
+        message={t`The Client ID from your Slack app’s, available on the Basic Information page.`}
         messageStatus="info"
         name="client_id"
         placeholder="1234567890.1234567890123"
@@ -35,7 +35,7 @@ export function SlackOAuthExtraConfig({
       />
       <Input
         label={t`Slack app client secret`}
-        message={t`The Client Secret from your Slack app's, available on the Basic Information page.`}
+        message={t`The Client Secret from your Slack app’s, available on the Basic Information page.`}
         messageStatus="info"
         name="client_secret"
         placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -49,7 +49,7 @@ export function SlackOAuthExtraConfig({
       />
       <Input
         label={t`Slack app signing secret`}
-        message={t`The Signing Secret from your Slack app's, available on the Basic Information page.`}
+        message={t`The Signing Secret from your Slack app’s, available on the Basic Information page.`}
         messageStatus="info"
         name="signing_secret"
         placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

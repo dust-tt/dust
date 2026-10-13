@@ -117,7 +117,7 @@ export function UpgradeRequestLimitModal({
             {isMembersUsageLoading ? (
               <Spinner />
             ) : (
-              t`Could not load this member's current limits. Refresh the page to try again.`
+              t`Could not load this member’s current limits. Refresh the page to try again.`
             )}
           </DialogContainer>
           <DialogFooter

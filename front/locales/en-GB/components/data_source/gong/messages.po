@@ -46,7 +46,7 @@ msgid "Filter calls by Gong permission profile."
 msgstr ""
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
-msgid "Only calls involving users listed in the selected profile's \"Specific Teams\" section will be synced."
+msgid "Only calls involving users listed in the selected profile’s \"Specific Teams\" section will be synced."
 msgstr ""
 
 #: front/components/data_source/gong/GongOptionComponent.tsx

@@ -78,7 +78,7 @@ msgid "The agent selected is not available to you"
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
-msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
+msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you’re not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
@@ -190,7 +190,7 @@ msgid "<0>{methodLabel}</0> will ignore text documents and files in your select
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
-msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won't be automatically added."
+msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won’t be automatically added."
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
@@ -274,11 +274,11 @@ msgid "No document detected"
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "We couldn't find any tables in your selection. Add tables to enable \"{serverName}\"."
+msgid "We couldn’t find any tables in your selection. Add tables to enable \"{serverName}\"."
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
-msgid "We couldn't find any documents in your selection. Add documents to enable \"{serverName}\"."
+msgid "We couldn’t find any documents in your selection. Add documents to enable \"{serverName}\"."
 msgstr ""
 
 #: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx

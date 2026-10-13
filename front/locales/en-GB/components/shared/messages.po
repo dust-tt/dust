@@ -118,11 +118,11 @@ msgid "OK"
 msgstr ""
 
 #: front/components/shared/RemoveSpaceDialog.tsx
-msgid "{spaceName} can't be removed"
+msgid "{spaceName} can’t be removed"
 msgstr ""
 
 #: front/components/shared/RemoveSpaceDialog.tsx
-msgid "This space can't be removed from the skill because the skill uses knowledge or capabilities that belong to it."
+msgid "This space can’t be removed from the skill because the skill uses knowledge or capabilities that belong to it."
 msgstr ""
 
 #: front/components/shared/RemoveSpaceDialog.tsx

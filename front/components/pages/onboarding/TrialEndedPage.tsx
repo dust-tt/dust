@@ -87,7 +87,7 @@ export function TrialEndedPage() {
             Without a subscription, your agents and connections will be paused.
           </Trans>{" "}
           <span className="font-semibold">
-            <Trans>We'll keep your data safe for 30 days.</Trans>
+            <Trans>We’ll keep your data safe for 30 days.</Trans>
           </span>
         </ContentMessage>
       </div>

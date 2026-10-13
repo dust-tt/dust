@@ -107,7 +107,7 @@ function makeSlackErrorText(i18n: I18n): string {
 
 function makeSlackPostingPermissionErrorMarkdown(i18n: I18n): string {
   return i18n._(
-    "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
+    "Dust doesn’t have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
   );
 }
 
@@ -478,12 +478,12 @@ function makeToolValidationConfirmationText(
   switch (approved) {
     case "approved":
       return i18n._(
-        "The agent's request to use tool `{toolName}` was ✅ approved",
+        "The agent’s request to use tool `{toolName}` was ✅ approved",
         { toolName }
       );
     case "rejected":
       return i18n._(
-        "The agent's request to use tool `{toolName}` was ❌ rejected",
+        "The agent’s request to use tool `{toolName}` was ❌ rejected",
         { toolName }
       );
     default:

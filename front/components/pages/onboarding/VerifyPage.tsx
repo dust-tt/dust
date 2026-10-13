@@ -492,7 +492,7 @@ function PhoneInputStep({
                 <p className="text-muted-foreground">
                   <Trans>
                     We verify your number once to keep free credits fair. We
-                    won't text you otherwise.
+                    won’t text you otherwise.
                   </Trans>
                 </p>
               </div>
@@ -664,7 +664,7 @@ function CaptchaStep({
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <DustLogoSquare className="-ml-11 h-10 w-32" />
-            <Page.Header title={t`Verify you're human`} />
+            <Page.Header title={t`Verify you’re human`} />
             <p className="-mt-4 text-muted-foreground">
               <Trans>
                 A quick check before we send your verification code.
@@ -740,15 +740,15 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
         <div className="flex max-w-xl flex-col items-center gap-6 text-center">
           <Icon visual={Stars02} size="lg" className="text-highlight-500" />
           <h1 className="text-4xl font-bold text-foreground">
-            <Trans>You're in. Welcome to Dust.</Trans>
+            <Trans>You’re in. Welcome to Dust.</Trans>
           </h1>
           <p className="text-lg text-muted-foreground">
             <Trans>
-              You've got{" "}
+              You’ve got{" "}
               <span className="font-bold text-foreground">
                 {formattedCredits} credits
               </span>{" "}
-              to explore, they never expire, so take your time. Let's put them
+              to explore, they never expire, so take your time. Let’s put them
               to work.
             </Trans>
           </p>

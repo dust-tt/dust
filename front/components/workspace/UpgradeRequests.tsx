@@ -114,7 +114,7 @@ export function UpgradeRequests({
       status === "denied" &&
       !(await confirm({
         title: t`Deny upgrade request`,
-        message: t`Deny ${requesterName}'s request to increase their spend limit?`,
+        message: t`Deny ${requesterName}’s request to increase their spend limit?`,
         validateLabel: t`Deny`,
         validateVariant: "warning",
         cancelLabel: t`Cancel`,

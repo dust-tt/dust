@@ -184,16 +184,16 @@ msgid "Header values are hidden once saved: re-enter every header value to updat
 msgstr "Header values are hidden once saved: re-enter every header value to update headers."
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
-msgid "This action will delete the tool's existing copies"
-msgstr "This action will delete the tool's existing copies"
+msgid "This action will delete the tool’s existing copies"
+msgstr "This action will delete the tool’s existing copies"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Making the tool available to all will delete its copies in these spaces:"
 msgstr "Making the tool available to all will delete its copies in these spaces:"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
-msgid "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you'll receive an email listing them."
-msgstr "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you'll receive an email listing them."
+msgid "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you’ll receive an email listing them."
+msgstr "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you’ll receive an email listing them."
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Continue anyway"
@@ -419,8 +419,8 @@ msgid "Add meta field"
 msgstr "Add meta field"
 
 #: front/components/actions/mcp/MCPServerSettings.tsx
-msgid "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected."
-msgstr "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected."
+msgid "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member’s personal authentication and are unaffected."
+msgstr "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member’s personal authentication and are unaffected."
 
 #: front/components/actions/mcp/MCPServerSettings.tsx
 msgid "Shared authentication is no longer valid and must be refreshed. Until then, agents cannot use these tools."

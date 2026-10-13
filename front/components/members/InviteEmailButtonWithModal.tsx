@@ -557,7 +557,7 @@ function ProPlanBillingNotice({
       <br />
       <p>
         <Trans>
-          Next bill will be adjusted proportionally based on the members'
+          Next bill will be adjusted proportionally based on the members’
           sign-up date.
         </Trans>
       </p>

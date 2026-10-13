@@ -39,7 +39,7 @@ export function SelfImprovingSkillsTogglesSection({
       <SettingsList>
         <SettingsList.Row
           title={t`Allow self-improving skills`}
-          description={t`Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models.`}
+          description={t`Allow Dust to analyze conversations to improve your workspace’s skills. Dust does not use conversations to train models.`}
           action={
             <SliderToggle
               selected={isEnabled}
@@ -50,7 +50,7 @@ export function SelfImprovingSkillsTogglesSection({
         />
         <SettingsList.Row
           title={t`Enable batch processing`}
-          description={t`Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing.`}
+          description={t`Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan’s pricing.`}
 
           action={
             <SliderToggle

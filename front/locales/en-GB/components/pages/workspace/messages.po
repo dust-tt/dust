@@ -183,11 +183,11 @@ msgid "Workspace credit usage"
 msgstr ""
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgid "Are you sure you want to remove {memberName}’s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
 msgstr ""
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgid "Are you sure you want to remove {memberName}’s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
 msgstr ""
 
 #: front/components/pages/workspace/UsagePage.tsx
@@ -251,7 +251,7 @@ msgid "At your current rate, you have enough credits to finish the cycle."
 msgstr ""
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgid "At this rate, you’re expected to consume your full credits by <0>{resetAtFormatted}</0>."
 msgstr ""
 
 #: front/components/pages/workspace/UsagePage.tsx

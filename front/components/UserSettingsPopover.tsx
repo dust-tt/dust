@@ -836,7 +836,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
           {showNotificationPreferences && notif.status === "error" && (
             <ContentMessageInline variant="warning" icon={InfoCircle}>
               <Trans>
-                We couldn't load your notification settings. Please try again
+                We couldn’t load your notification settings. Please try again
                 later.
               </Trans>
             </ContentMessageInline>
@@ -878,7 +878,7 @@ function InvitationsSection({
   return (
     <SectionContent
       title={t`Invitations`}
-      description={t`Workspaces you've been invited to join`}
+      description={t`Workspaces you’ve been invited to join`}
     >
       {isLoading ? (
         <div className="flex justify-center py-6">

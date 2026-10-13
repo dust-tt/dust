@@ -144,7 +144,7 @@ msgid "Inactivity threshold"
 msgstr "Seuil d’inactivité"
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
-msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
+msgid "How long an agent has to go unmentioned before it’s archived. Agents with a schedule or a pending wake-up are excluded."
 msgstr "Durée pendant laquelle un agent doit rester sans mention avant d’être archivé. Les agents planifiés ou avec un réveil en attente sont exclus."
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
@@ -360,7 +360,7 @@ msgid "Allow self-improving skills"
 msgstr "Autoriser les compétences auto-améliorantes"
 
 #: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
-msgid "Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models."
+msgid "Allow Dust to analyze conversations to improve your workspace’s skills. Dust does not use conversations to train models."
 msgstr "Autoriser Dust à analyser les conversations pour améliorer les compétences de votre workspace. Dust n’utilise pas les conversations pour entraîner des modèles."
 
 #: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
@@ -368,7 +368,7 @@ msgid "Enable batch processing"
 msgstr "Activer le traitement par lots"
 
 #: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
-msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing."
+msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan’s pricing."
 msgstr "Les conversations sont envoyées par lots pour réduire les coûts. Les données peuvent rester sur les serveurs du fournisseur de LLM jusqu’à plusieurs heures avant leur traitement. Désactivez cette option pour garantir la suppression immédiate des données (compatible ZDR). Cela augmentera le tarif de votre forfait."
 
 #: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx

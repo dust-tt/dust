@@ -403,8 +403,8 @@ export function LegacyProgrammaticUsagePanel({
           <ContentMessage
             title={
               totalConsumed < totalCredits
-                ? t`You're almost out of credits.`
-                : t`You're out of credits.`
+                ? t`You’re almost out of credits.`
+                : t`You’re out of credits.`
             }
             variant="warning"
             size="lg"

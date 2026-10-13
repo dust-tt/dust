@@ -91,7 +91,7 @@ function ScheduleEditionPodSelector({
         <Trans>Where to create this conversation? (optional)</Trans>
       </Label>
       <p className="text-sm text-muted-foreground">
-        <Trans>Run this trigger's conversation inside a Pod instead.</Trans>
+        <Trans>Run this trigger’s conversation inside a Pod instead.</Trans>
       </p>
       <TriggerPodSelector
         owner={owner}

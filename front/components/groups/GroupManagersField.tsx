@@ -39,9 +39,9 @@ export function GroupManagersField({
     group.kind === "provisioned"
       ? t`Membership stays managed by your directory.`
       : group.grantedRole === "admin"
-        ? t`Only workspace admins can change this group's members.`
+        ? t`Only workspace admins can change this group’s members.`
         : null;
-  const limitsMessage = t`Group managers can manage usage and credit limits for this group's members.`;
+  const limitsMessage = t`Group managers can manage usage and credit limits for this group’s members.`;
   const managerIds = new Set(managers.map((manager) => manager.sId));
   const membershipColumns: ColumnDef<MemberRowData>[] = [
     {
@@ -52,10 +52,10 @@ export function GroupManagersField({
         if (groupMemberIds.has(sId)) {
           return null;
         }
-        const notMemberMessage = t`${fullName} isn't a member of ${groupName} but can manage it.`;
+        const notMemberMessage = t`${fullName} isn’t a member of ${groupName} but can manage it.`;
         const accessMessage =
           membershipRestriction ??
-          t`They can grant themselves access to the group's permissions and data.`;
+          t`They can grant themselves access to the group’s permissions and data.`;
         return (
           <Tooltip
             tooltipTriggerAsChild

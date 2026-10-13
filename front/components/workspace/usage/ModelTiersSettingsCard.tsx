@@ -58,7 +58,7 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
         />
         <SettingsList.Row
           title={t`Published agents`}
-          description={t`Allow all members to run published agents even when the agent's model tier is above their own access.`}
+          description={t`Allow all members to run published agents even when the agent’s model tier is above their own access.`}
           action={
             <SliderToggle
               selected={isRestrictedModelsForPublishedAgentsEnabled}

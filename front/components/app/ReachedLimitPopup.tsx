@@ -254,7 +254,7 @@ function getLimitPromptForCode(
             children: (
               <p className="text-sm font-normal text-muted-foreground">
                 <Trans>
-                  We've paused messaging for your account due to our fair usage
+                  We’ve paused messaging for your account due to our fair usage
                   policy.
                 </Trans>{" "}
                 {getAwuCreditsLimitSentence(
@@ -282,7 +282,7 @@ function getLimitPromptForCode(
             children: (
               <p className="text-sm font-normal text-muted-foreground">
                 <Trans>
-                  We've paused messaging for your workspace due to our fair
+                  We’ve paused messaging for your workspace due to our fair
                   usage policy.
                 </Trans>{" "}
                 {getMessagesLimitSentence(
@@ -354,10 +354,10 @@ function getLimitPromptForCode(
             <Page.P>
               {isAdmin
                 ? t(
-                    msg`You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one.`
+                    msg`You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one.`
                   )
                 : t(
-                    msg`You don't have a seat assigned in this workspace. Please contact your administrator to assign you one.`
+                    msg`You don’t have a seat assigned in this workspace. Please contact your administrator to assign you one.`
                   )}
             </Page.P>
           </>

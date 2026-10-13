@@ -35,7 +35,7 @@ msgid "Add triggers"
 msgstr "Ajouter des déclencheurs"
 
 #: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
-msgid "Other members' triggers"
+msgid "Other members’ triggers"
 msgstr "Déclencheurs des autres membres"
 
 #: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
@@ -67,11 +67,11 @@ msgid "No payload available."
 msgstr "Aucun payload disponible."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Triggered by {event} events on {sourceName}'s source."
+msgid "Triggered by {event} events on {sourceName}’s source."
 msgstr "Déclenché par les événements {event} de la source {sourceName}."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Triggered on {sourceName}'s source."
+msgid "Triggered on {sourceName}’s source."
 msgstr "Déclenché sur la source {sourceName}."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
@@ -168,15 +168,15 @@ msgid "Workspace credits"
 msgstr "Crédits du workspace"
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
+msgid "Automations on your plan must be charged to the workspace credit pool, which you don’t have permission to use. Ask a workspace admin for access."
 msgstr "Avec votre forfait, les automatisations doivent être facturées sur la réserve de crédits du workspace, que vous n’êtes pas autorisé à utiliser. Demandez l’accès à un administrateur du workspace."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Your plan doesn't support charging automations to personal credits."
+msgid "Your plan doesn’t support charging automations to personal credits."
 msgstr "Votre forfait ne permet pas de facturer les automatisations sur les crédits personnels."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "You don't have permission to charge automations to the workspace credit pool."
+msgid "You don’t have permission to charge automations to the workspace credit pool."
 msgstr "Vous n’êtes pas autorisé à facturer les automatisations sur la réserve de crédits du workspace."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
@@ -184,7 +184,7 @@ msgid "Credits"
 msgstr "Crédits"
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Which pool this trigger's runs take credits from."
+msgid "Which pool this trigger’s runs take credits from."
 msgstr "Réserve sur laquelle les exécutions de ce déclencheur consomment des crédits."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
@@ -221,7 +221,7 @@ msgid "Status"
 msgstr "Statut"
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
-msgid "This trigger's status is managed by Dust."
+msgid "This trigger’s status is managed by Dust."
 msgstr "Le statut de ce déclencheur est géré par Dust."
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx

@@ -82,13 +82,13 @@ export function DontLoseSection({ owner }: DontLoseSectionProps) {
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold text-foreground">
-        <Trans>Don't lose:</Trans>
+        <Trans>Don’t lose:</Trans>
       </h2>
       <div className="flex flex-col gap-5">
         <DontLoseItem
           icon={Robot}
           title={agentTitle}
-          description={t`All the AI agents you've configured with your workflows`}
+          description={t`All the AI agents you’ve configured with your workflows`}
           isLoading={isLoading}
         />
         <DontLoseItem

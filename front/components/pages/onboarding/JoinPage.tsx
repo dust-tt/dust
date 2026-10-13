@@ -61,7 +61,7 @@ export function JoinPage() {
               </p>
               <p className="copy-sm leading-tight text-muted-foreground">
                 <Trans>
-                  We couldn't load the invitation. Please try again.
+                  We couldn’t load the invitation. Please try again.
                 </Trans>
               </p>
               <p className="copy-xs font-mono text-muted-foreground">
@@ -111,8 +111,8 @@ export function JoinPage() {
             ) : (
               <p>
                 <Trans>
-                  You've been invited to join{" "}
-                  <strong>{workspaceName}'s workspace on Dust</strong>.
+                  You’ve been invited to join{" "}
+                  <strong>{workspaceName}’s workspace on Dust</strong>.
                 </Trans>
               </p>
             )}
@@ -120,8 +120,8 @@ export function JoinPage() {
 
           <p>
             <Trans>
-              Dust is a platform giving you access to the best AI agents. It's
-              easy to use and it's a great place for teams to collaborate. Learn
+              Dust is a platform giving you access to the best AI agents. It’s
+              easy to use and it’s a great place for teams to collaborate. Learn
               more about Dust on{" "}
               <Hoverable
                 href="https://dust.tt"
@@ -147,7 +147,7 @@ export function JoinPage() {
         <div className="flex flex-col gap-3 pb-20">
           <p>
             <Trans>
-              By signing up, you accept Dust's{" "}
+              By signing up, you accept Dust’s{" "}
               <Hoverable
                 href="https://dust.tt/terms"
                 variant="highlight"

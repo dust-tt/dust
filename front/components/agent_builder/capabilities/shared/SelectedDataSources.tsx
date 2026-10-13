@@ -254,12 +254,12 @@ export function SelectedDataSources() {
           <span>
             {isTableOrWarehouseServer ? (
               <Trans>
-                We couldn't find any tables in your selection. Add tables to
+                We couldn’t find any tables in your selection. Add tables to
                 enable "{serverName}".
               </Trans>
             ) : (
               <Trans>
-                We couldn't find any documents in your selection. Add documents
+                We couldn’t find any documents in your selection. Add documents
                 to enable "{serverName}".
               </Trans>
             )}

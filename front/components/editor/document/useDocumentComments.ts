@@ -81,14 +81,14 @@ const EMPTY_STATE: EditorCommentsState = {
 
 const UNAVAILABLE_MESSAGE = msg`Commenting is unavailable.`;
 const UNANCHORED_MESSAGE = msg`The selected text can no longer take a comment. Select other text to comment.`;
-const UNSAVABLE_MESSAGE = msg`This comment can't be saved in this document. Try shortening or simplifying it.`;
+const UNSAVABLE_MESSAGE = msg`This comment can’t be saved in this document. Try shortening or simplifying it.`;
 
 /** The draft's text, shown as its quote and sent as the one agents get. */
 const getDraftQuote = (doc: Node, draft: DocumentCommentDraft) =>
   doc.textBetween(draft.from, draft.to, " ");
 
 const UNSUGGESTABLE_MESSAGE = msg`Suggestions can only replace text within one paragraph.`;
-const UNAPPLICABLE_MESSAGE = msg`This suggestion can't replace the commented text. Another comment may cover part of it.`;
+const UNAPPLICABLE_MESSAGE = msg`This suggestion can’t replace the commented text. Another comment may cover part of it.`;
 const DELETED_MESSAGE = msg`This comment was deleted.`;
 const THREAD_CHANGED_MESSAGE = msg`This thread changed while sending. Send again.`;
 
@@ -745,7 +745,7 @@ export const useDocumentComments = ({
         );
       }
       if (!wouldSave(next)) {
-        return new Err(t`This suggestion can't be saved in this document.`);
+        return new Err(t`This suggestion can’t be saved in this document.`);
       }
       // Two transactions: the text change is undoable, the resolution stays out of history.
       const before = editor.state.doc;
@@ -762,7 +762,7 @@ export const useDocumentComments = ({
       if (resolved.isErr()) {
         const reason = resolved.error;
         return new Err(
-          t`The suggestion was applied, but the comment couldn't be resolved. ${reason}`
+          t`The suggestion was applied, but the comment couldn’t be resolved. ${reason}`
         );
       }
       requestFocus(focusNext);

@@ -87,7 +87,7 @@ function BulkTriggerPoolForm({
         </DialogTitle>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           <Trans>
-            Runs are billed to the workspace's credits, or to the credits of the
+            Runs are billed to the workspace’s credits, or to the credits of the
             member who owns each automation.
           </Trans>
         </p>

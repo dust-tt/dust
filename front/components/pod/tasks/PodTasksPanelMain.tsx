@@ -45,7 +45,7 @@ export function PodTasksPanelMain() {
               ) : isTasksError ? (
                 <Trans>Error loading tasks.</Trans>
               ) : (
-                <Trans>You're all caught up!</Trans>
+                <Trans>You’re all caught up!</Trans>
               )}
             </p>
           )}

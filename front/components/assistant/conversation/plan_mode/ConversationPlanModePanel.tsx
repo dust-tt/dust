@@ -37,7 +37,7 @@ export function ConversationPlanModePanel({
   const archivePlan = async () => {
     const confirmed = await confirm({
       title: t`Archive this plan?`,
-      message: t`This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one.`,
+      message: t`This will hide the current plan from the side panel, but keep it in the conversation’s files. The agent can create a new one.`,
       validateLabel: t`Archive plan`,
       validateVariant: "primary",
     });
