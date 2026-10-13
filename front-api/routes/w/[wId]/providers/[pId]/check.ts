@@ -1,5 +1,7 @@
 import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
+import { untrustedFetch } from "@app/lib/egress/server";
 import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
+import { AzureOpenAIErrorResponseSchema } from "@app/types/provider";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -67,7 +69,7 @@ app.post(
           });
         }
         try {
-          const deploymentsRes = await fetch(
+          const deploymentsRes = await untrustedFetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
               method: "GET",
@@ -77,7 +79,9 @@ app.post(
             }
           );
           if (!deploymentsRes.ok) {
-            const err = await deploymentsRes.json();
+            const err = AzureOpenAIErrorResponseSchema.parse(
+              await deploymentsRes.json()
+            );
             return ctx.json({ ok: false, error: err.error.message }, 400);
           }
           await deploymentsRes.json();

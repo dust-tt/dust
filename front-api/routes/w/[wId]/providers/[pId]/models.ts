@@ -1,6 +1,8 @@
 import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { AzureOpenAIErrorResponseSchema } from "@app/types/provider";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -9,6 +11,10 @@ import { z } from "zod";
 
 const ParamsSchema = z.object({
   pId: z.string(),
+});
+
+const AzureDeploymentsResponseSchema = z.object({
+  data: z.array(z.object({ id: z.string(), model: z.string() })),
 });
 
 export type GetProviderModelsResponseBody = {
@@ -119,7 +125,7 @@ app.get(
 
         let mList: Array<{ id: string; model: string }>;
         try {
-          const deploymentsRes = await fetch(
+          const deploymentsRes = await untrustedFetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
               method: "GET",
@@ -129,14 +135,14 @@ app.get(
             }
           );
           if (!deploymentsRes.ok) {
-            const err = await deploymentsRes.json();
-            return ctx.json({ error: err.error }, 400);
+            const err = AzureOpenAIErrorResponseSchema.parse(
+              await deploymentsRes.json()
+            );
+            return ctx.json({ error: err.error.message }, 400);
           }
-          const deployments = await deploymentsRes.json();
-          mList = deployments.data.map((m: any) => ({
-            id: m.id,
-            model: m.model,
-          }));
+          mList = AzureDeploymentsResponseSchema.parse(
+            await deploymentsRes.json()
+          ).data;
         } catch (err) {
           return apiError(
             ctx,
