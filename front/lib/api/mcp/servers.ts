@@ -52,7 +52,9 @@ export async function listMCPServersWithViews(
         "sharedSecret",
       ],
     }),
-    InternalMCPServerInMemoryResource.listByWorkspace(auth),
+    InternalMCPServerInMemoryResource.listByWorkspace(auth, {
+      includeCredentials: true,
+    }),
   ]);
 
   const servers = [...remoteMCPs, ...internalMCPs]

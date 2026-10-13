@@ -55,7 +55,7 @@ app.get(
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
           serverId,
-          { includeRestricted: true }
+          { includeCredentials: true, includeRestricted: true }
         );
 
         if (!server) {
@@ -140,7 +140,7 @@ app.patch(
     const internalServer = await InternalMCPServerInMemoryResource.fetchById(
       auth,
       serverId,
-      { includeRestricted: true }
+      { includeCredentials: true, includeRestricted: true }
     );
     if (!internalServer) {
       return apiError(ctx, {
