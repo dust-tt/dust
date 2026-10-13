@@ -97,10 +97,8 @@ export function useProfileOnboardingForm({
     const completed = await completeUserOnboarding({
       locale: hasLocalisation ? locale : undefined,
     });
-    if (!completed) {
-      return;
-    }
-    if (hasLocalisation && locale !== defaultLocale) {
+    
+    if (completed && hasLocalisation && locale !== defaultLocale) {
       // Switches the UI to the saved locale.
       await mutateAuthContext();
     }

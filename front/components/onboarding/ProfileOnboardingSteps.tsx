@@ -36,7 +36,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   gmail: GmailLogo,
@@ -137,6 +137,8 @@ export function UserProfileStep({
 }: UserProfileStepProps) {
   const { t } = useLingui();
   const pronounsInputRef = useRef<HTMLInputElement>(null);
+  const localeLabelId = useId();
+  const localeButtonId = useId();
   const firstName = formData.firstName;
   const workspaceName = owner.name;
 
@@ -199,12 +201,14 @@ export function UserProfileStep({
       </div>
       {locale && (
         <div>
-          <p className="pb-2 text-muted-foreground">
+          <p id={localeLabelId} className="pb-2 text-muted-foreground">
             <Trans>Your preferred language:</Trans>
           </p>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
+                id={localeButtonId}
+                aria-labelledby={`${localeLabelId} ${localeButtonId}`}
                 variant="outline"
                 size="sm"
                 label={LOCALE_LABELS[locale]}

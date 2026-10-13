@@ -1514,7 +1514,7 @@ msgstr "Réessayez."
 
 #: front/lib/swr/user.ts
 msgid "Error completing onboarding"
-msgstr "Erreur lors de la finalisation de l’inscription"
+msgstr "Erreur lors de la finalisation de la prise en main"
 
 #: front/lib/swr/user.ts
 msgid "Profile updated"
