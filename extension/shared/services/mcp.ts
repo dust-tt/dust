@@ -31,7 +31,9 @@ export abstract class McpService {
         return { server: this.server, serverId: this.serverId };
       }
 
-      await this.connectServer(this.createServer(), owner, onServerIdReceived);
+      const server = this.createServer();
+
+      await this.connectServer(server, owner, onServerIdReceived);
       return { server: this.server, serverId: this.serverId };
     } catch (error) {
       logger.error({ err: error }, "Error getting or creating MCP server.");
@@ -76,14 +78,6 @@ export abstract class McpService {
       logger.error({ err: error }, "Failed to connect MCP server.");
       throw error;
     }
-  }
-
-  /**
-   * Get the current server ID
-   * This is useful for including in message payloads
-   */
-  getServerId(): string | undefined {
-    return this.serverId;
   }
 
   /**
