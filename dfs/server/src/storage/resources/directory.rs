@@ -155,7 +155,7 @@ impl DirectoryResource {
         Ok(Some(Self::decode_child_id(&entry)?))
     }
 
-    pub async fn list_children(
+    pub async fn list(
         &self,
         tx: &Transaction,
         after: Option<&str>,

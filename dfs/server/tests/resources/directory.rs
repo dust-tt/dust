@@ -250,27 +250,22 @@ pub(crate) async fn child_listing_pages_through_entries_in_name_order() -> Resul
 
     let tx = fdb::database()?.create_trx()?;
     let root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
-    let first = root.list_children(&tx, None, 4).await?;
+    let first = root.list(&tx, None, 4).await?;
     assert_eq!(page_names(&first), ["B.txt", "a.txt", "b.txt", "c.txt"]);
-    let second = root
-        .list_children(&tx, first.next_after.as_deref(), 4)
-        .await?;
+    let second = root.list(&tx, first.next_after.as_deref(), 4).await?;
     assert_eq!(page_names(&second), ["docs", "é.txt"]);
     assert_eq!(second.next_after, None);
     let docs_entry = second.entries.first().context("missing docs entry")?;
     assert_eq!(docs_entry.object_id, docs_id);
 
-    let exact = root.list_children(&tx, None, 6).await?;
+    let exact = root.list(&tx, None, 6).await?;
     assert_eq!(exact.entries.len(), 6);
     assert_eq!(exact.next_after, None);
 
     let docs = fetch_directory(&tx, &tenant, &docs_id).await?;
-    assert_eq!(
-        page_names(&docs.list_children(&tx, None, 4_096).await?),
-        ["empty"]
-    );
+    assert_eq!(page_names(&docs.list(&tx, None, 4_096).await?), ["empty"]);
     let empty = fetch_directory(&tx, &tenant, &empty_id).await?;
-    let empty_page = empty.list_children(&tx, None, 1).await?;
+    let empty_page = empty.list(&tx, None, 1).await?;
     assert!(empty_page.entries.is_empty());
     assert_eq!(empty_page.next_after, None);
     clear_tenant(&tenant).await
@@ -294,12 +289,12 @@ pub(crate) async fn child_listing_rejects_invalid_limits_and_cursors() -> Result
     let docs = fetch_directory(&tx, &tenant, &docs_id).await?;
     for limit in [0, 4_097] {
         assert!(matches!(
-            root.list_children(&tx, None, limit).await,
+            root.list(&tx, None, limit).await,
             Err(storage::Error::Resource(directory::Error::InvalidPageLimit))
         ));
     }
     let docs_cursor = docs
-        .list_children(&tx, None, 1)
+        .list(&tx, None, 1)
         .await?
         .next_after
         .context("missing docs cursor")?;
@@ -316,7 +311,7 @@ pub(crate) async fn child_listing_rejects_invalid_limits_and_cursors() -> Result
         "AAAA",
     ] {
         assert!(matches!(
-            root.list_children(&tx, Some(cursor), 1).await,
+            root.list(&tx, Some(cursor), 1).await,
             Err(storage::Error::Resource(directory::Error::InvalidCursor))
         ));
     }
