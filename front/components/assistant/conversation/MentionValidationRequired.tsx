@@ -1,9 +1,8 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
-import { useUserMemory } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
   RichMentionRequiringValidation,
@@ -14,7 +13,6 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
-  InfoCircle,
   MessageChatSquare,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -38,12 +36,6 @@ export function MentionValidationRequired({
 }: MentionValidationRequiredProps) {
   const { t } = useLingui();
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasUserMemory = hasFeature("user_memory");
-  const { isMemoryEnabled } = useUserMemory({
-    owner,
-    disabled: !hasUserMemory,
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { validateMention } = useMentionValidation({
@@ -145,15 +137,6 @@ export function MentionValidationRequired({
       assertNever(status);
   }
 
-  // Inviting someone to a conversation or adding them to a Pod shows the
-  // conversation to other people, so we warn the inviter (if they have memory)
-  // before they confirm
-  const showMemoryWarning =
-    hasUserMemory &&
-    isMemoryEnabled &&
-    (status === "pending_conversation_access" ||
-      status === "pending_project_membership");
-
   let approveLabel: string;
   switch (status) {
     case "agent_restricted_by_space_usage":
@@ -181,22 +164,7 @@ export function MentionValidationRequired({
       <ActionCardBlock
         title={title}
         visual={visual}
-        description={
-          <>
-            {description}
-            {showMemoryWarning && (
-              <span className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground">
-                <InfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  <Trans>
-                    Agents stop using your memory in this conversation once they
-                    join. Earlier answers may still reflect it.
-                  </Trans>
-                </span>
-              </span>
-            )}
-          </>
-        }
+        description={description}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <Button

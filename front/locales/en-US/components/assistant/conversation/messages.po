@@ -321,14 +321,6 @@ msgstr "Try refreshing the page to continue your conversation."
 msgid "Still having trouble? Reach out at support@dust.tt"
 msgstr "Still having trouble? Reach out at support@dust.tt"
 
-#: front/components/assistant/conversation/ConversationMemoryNotice.tsx
-msgid "Agents won't rely on your memory in this conversation, since other people are in it."
-msgstr "Agents won't rely on your memory in this conversation, since other people are in it."
-
-#: front/components/assistant/conversation/ConversationMemoryNotice.tsx
-msgid "Memory off"
-msgstr "Memory off"
-
 #: front/components/assistant/conversation/ConversationMenu.tsx
 msgid "Link copied!"
 msgstr "Link copied!"
@@ -898,10 +890,6 @@ msgstr "Add to Pod"
 msgctxt "button label"
 msgid "Invite"
 msgstr "Invite"
-
-#: front/components/assistant/conversation/MentionValidationRequired.tsx
-msgid "Agents stop using your memory in this conversation once they join. Earlier answers may still reflect it."
-msgstr "Agents stop using your memory in this conversation once they join. Earlier answers may still reflect it."
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
 msgid "Decline"

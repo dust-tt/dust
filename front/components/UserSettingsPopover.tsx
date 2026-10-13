@@ -970,6 +970,10 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
               <Trans>
                 Agents use your memory when answering, so their responses,
                 including in Slack, can reflect what it contains.
+              </Trans>{" "}
+              <Trans>
+                They won't rely on it in conversations with other people, so it
+                isn't exposed to them by accident.
               </Trans>
             </ContentMessageInline>
           )}
