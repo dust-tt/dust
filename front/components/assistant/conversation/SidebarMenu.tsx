@@ -1155,6 +1155,9 @@ const ConversationListItem = memo(
     }, []);
 
     const conversationLabel = getConversationDisplayTitle(conversation);
+    const dotStatus = showStatusDot
+      ? getConversationDotStatus(conversation)
+      : "idle";
 
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
@@ -1199,11 +1202,9 @@ const ConversationListItem = memo(
         key={conversation.sId}
         selected={activeConversationId === conversation.sId}
         status={
-          isAgentLoopStreaming
+          dotStatus === "idle" && isAgentLoopStreaming
             ? "generating"
-            : showStatusDot
-              ? getConversationDotStatus(conversation)
-              : "idle"
+            : dotStatus
         }
         label={conversationLabel}
         labelAnimation={showTypingAnimation ? "typing" : "none"}
