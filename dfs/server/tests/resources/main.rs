@@ -17,6 +17,7 @@ fn resources() -> Result<()> {
 
     runtime.block_on(async {
         directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
+        directory::child_creation_retry_returns_the_committed_child().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;
         directory::child_lookup_resolves_names_within_each_directory().await?;
         directory::child_listing_pages_through_entries_in_name_order().await?;
