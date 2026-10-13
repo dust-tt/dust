@@ -10,7 +10,7 @@ import {
   useSkill,
   useUpdateSkillFavorite,
 } from "@app/lib/swr/skill_configurations";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
+import type { GetSkillWithRelationsResponseBody } from "@app/types/api/skills";
 import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -92,7 +92,7 @@ export function SkillDetailsSheet({
 
   const handleFavoriteChange = useCallback(
     async (
-      skill: GetSkillsWithRelationsResponseBody["skills"][number],
+      skill: GetSkillWithRelationsResponseBody["skill"],
       isFavorite: boolean
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);

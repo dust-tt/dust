@@ -63,7 +63,7 @@ export function useSkill(options: {
   disabled?: boolean;
   shouldRetryOnError?: boolean;
 }): {
-  skill: SkillWithRelationsType | null;
+  skill: GetSkillWithRelationsResponseBody["skill"] | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   isSkillNotFound: boolean;
