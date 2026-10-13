@@ -69,7 +69,9 @@ the factory directly with `(descriptor) => i18n._(descriptor)`.
 ## Never translate
 
 - Text sent to models: `front/lib/actions/**`, MCP tool and server descriptions, skill and agent
-  definitions, zod `.describe()`.
+  definitions, zod `.describe()`. The UI shows the descriptions of global agents, code-defined
+  skills and internal MCP servers translated through `front/lib/dust_provided_descriptions.ts`:
+  render them with its functions, and add the `msg` of a new one there.
 - Server code (`front-api/**`, `front/lib/api/**`, `front/temporal/**`): Lingui imports there fail
   lint (`noClientImportsInServer`). Servers return error codes; the UI translates them.
 - Poke (`front/components/poke/**`), logs, analytics event names, keyboard symbols (`⌘`, `↵`),

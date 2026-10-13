@@ -5,6 +5,7 @@ import {
   SkillLastEditedCell,
 } from "@app/components/skills/SkillTableCells";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
+import { getSkillDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
@@ -185,7 +186,7 @@ export function SkillSearchTable({
                       <EntityTooltipCard
                         avatar={<SkillAvatar name={skill.name} size="xs" />}
                         name={skill.name}
-                        description={skill.userFacingDescription}
+                        description={getSkillDisplayDescription(t, skill)}
                       />
                     </div>
                   }

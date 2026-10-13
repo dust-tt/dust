@@ -6,13 +6,15 @@ import {
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
+import {
+  getMCPServerDisplayDescription,
+  getMcpServerViewDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
@@ -340,7 +342,7 @@ export function CapabilitiesPicker({
 
     if (isSkillsDataReady && isToolsDataReady) {
       for (const skill of skills) {
-        const description = skill.userFacingDescription;
+        const description = getSkillDisplayDescription(t, skill);
 
         items.push({
           kind: "skill",
@@ -358,7 +360,7 @@ export function CapabilitiesPicker({
       // conversation, no further filtering needed here.
       for (const serverView of serverViews) {
         const label = getMcpServerViewDisplayName(serverView);
-        const description = getMcpServerViewDescription(serverView);
+        const description = getMcpServerViewDisplayDescription(t, serverView);
 
         items.push({
           kind: "tool",
@@ -379,7 +381,7 @@ export function CapabilitiesPicker({
 
       for (const server of availableMCPServers) {
         const label = asDisplayName(server.name);
-        const description = server.description;
+        const description = getMCPServerDisplayDescription(t, server);
 
         if (
           installedServerNames.has(server.name) ||
@@ -409,6 +411,7 @@ export function CapabilitiesPicker({
     isToolsDataReady,
     serverViews,
     skills,
+    t,
   ]);
 
   const capabilityPickerSearchResults = useMemo(

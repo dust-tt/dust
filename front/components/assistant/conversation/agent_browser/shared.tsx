@@ -1,4 +1,5 @@
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import type { TrackingAction, TrackingExtra } from "@app/lib/tracking";
 import {
   TRACKING_ACTIONS,
@@ -157,6 +158,7 @@ export const AgentGrid = ({
   trackAgentBrowserEvents,
   canGetMore = true,
 }: AgentGridProps) => {
+  const { t } = useLingui();
   // Context menu state
   const [contextMenuAgent, setContextMenuAgent] =
     useState<LightAgentConfigurationType | null>(null);
@@ -218,7 +220,7 @@ export const AgentGrid = ({
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
-              description={agent.description}
+              description={getAgentDisplayDescription(t, agent)}
               onClick={() => {
                 trackAgentBrowserEvent({
                   enabled: trackAgentBrowserEvents,
@@ -341,7 +343,7 @@ function SearchDropdownContent({
           }}
           truncateText
           label={agent.name}
-          description={agent.description}
+          description={getAgentDisplayDescription(t, agent)}
           icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
           endComponent={
             onAgentMoreClick ? (

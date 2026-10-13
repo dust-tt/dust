@@ -3,12 +3,10 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { compareStrings } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -200,11 +198,11 @@ export const SpaceActionsList = ({
         .map((serverView) => ({
           id: serverView.sId,
           name: getMcpServerViewDisplayName(serverView),
-          description: getMcpServerViewDescription(serverView),
+          description: getMcpServerViewDisplayDescription(t, serverView),
           avatar: getAvatar(serverView.server),
         }))
         .sort((a, b) => compareStrings(a.name, b.name)) || [],
-    [serverViews]
+    [serverViews, t]
   );
 
   const { portalToHeader } = useActionButtonsPortal({

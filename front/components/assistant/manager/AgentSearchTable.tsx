@@ -11,6 +11,7 @@ import {
 } from "@app/components/skills/SkillTableCells";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { formatNumber } from "@app/lib/i18n/format";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
@@ -294,7 +295,7 @@ export function AgentSearchTable({
                         />
                       }
                       name={agent.name}
-                      description={agent.description}
+                      description={getAgentDisplayDescription(t, agent)}
                     />
                   </div>
                 }

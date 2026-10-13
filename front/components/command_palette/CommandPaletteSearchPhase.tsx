@@ -6,6 +6,10 @@ import {
 } from "@app/components/command_palette/CommandPaletteItems";
 import { MIN_COMMAND_PALETTE_SEARCH_LENGTH } from "@app/components/command_palette/useCommandPaletteSearch";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
+import {
+  getAgentDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
@@ -280,7 +284,7 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
             <span className="shrink-0 font-medium">{item.agent.name}</span>
             <span className="shrink-0 text-muted-foreground">-</span>
             <span className="min-w-0 truncate text-muted-foreground">
-              {item.agent.description}
+              {getAgentDisplayDescription(t, item.agent)}
             </span>
           </div>
         </>
@@ -316,7 +320,7 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
             <span className="shrink-0 font-medium">{item.skill.name}</span>
             <span className="shrink-0 text-muted-foreground">-</span>
             <span className="min-w-0 truncate text-muted-foreground">
-              {item.skill.userFacingDescription}
+              {getSkillDisplayDescription(t, item.skill)}
             </span>
           </div>
         </>

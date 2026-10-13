@@ -3,6 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBu
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import {
   useAgentConfigurations,
   useSimilarAgents,
@@ -10,7 +11,7 @@ import {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, cn, Spinner } from "@dust-tt/sparkle";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -72,6 +73,7 @@ interface AgentBuilderSimilarAgentsSectionProps {
 export function AgentBuilderSimilarAgentsSection({
   agentConfigurationId,
 }: AgentBuilderSimilarAgentsSectionProps) {
+  const { t } = useLingui();
   const { owner, user } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags();
   const isCreatingNew = !agentConfigurationId;
@@ -216,7 +218,7 @@ export function AgentBuilderSimilarAgentsSection({
                 {agent.name}
               </span>
               <span className="line-clamp-1 text-xs text-muted-foreground">
-                {agent.description}
+                {getAgentDisplayDescription(t, agent)}
               </span>
             </div>
           </button>

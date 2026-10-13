@@ -15,6 +15,7 @@ import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preproce
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { RequestedSpacesSection } from "@app/components/spaces/RequestedSpacesSection";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -88,7 +89,7 @@ export function AgentInfoTab({
         <div className="relative text-sm text-foreground">
           {editedSections.has("description") && <EditedSectionBar />}
           <Markdown
-            content={agentConfiguration.description}
+            content={getAgentDisplayDescription(t, agentConfiguration)}
             forcedTextSize="text-sm"
           />
         </div>
