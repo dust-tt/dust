@@ -56,6 +56,11 @@ describe("getFunctionSchema", () => {
     expect(s.userIdentity).toBe("frame_author_required");
   });
 
+  test("accepts the public user identity policy", async () => {
+    const s = await getFunctionSchema(fx("public.ts"));
+    expect(s.userIdentity).toBe("public");
+  });
+
   test("rejects an unknown user identity policy", async () => {
     await expect(
       getFunctionSchema(fx("invalid-user-identity.ts"))

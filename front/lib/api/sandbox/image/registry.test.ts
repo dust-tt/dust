@@ -501,10 +501,10 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.67/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.68/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
-          'echo "477b99e0660301bff644368e53bc3e00be4f57a1ed5c11d46a8f67e33f88b940  /tmp/dsbx" | sha256sum -c -'
+          'echo "75fdf424b9ab9a623dd67b9f347adc538593544209cf907fcfe7b7b5fc55d7c8  /tmp/dsbx" | sha256sum -c -'
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -720,7 +720,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.6.0" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.7.0" }),
       ])
     );
   });
