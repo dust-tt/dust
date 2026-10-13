@@ -237,35 +237,43 @@ export function AnalyticsConsumptionPage() {
         <Page.Vertical align="stretch" gap="md">
           <Page.Header
             title={
-              <div className="flex w-full items-center justify-between gap-4">
+              <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <Page.H variant="h3">{t`Analytics`}</Page.H>
-                {isManager && (
-                  <Button
-                    label={t`Manage in Credits`}
-                    variant="highlight-ghost"
-                    size="xs"
-                    iconRight={LinkExternal01}
-                    href={`/w/${owner.sId}/credits`}
-                  />
-                )}
+                <AnalyticsConsumptionSelectors
+                  owner={owner}
+                  state={state}
+                  headerActions={
+                    analyticsAssistantEnabled &&
+                    !isOpen && (
+                      <Button
+                        variant="primary"
+                        icon={Robot}
+                        label={t`Ask @analyst`}
+                        onClick={() => setIsOpen(true)}
+                      />
+                    )
+                  }
+                />
               </div>
             }
           />
-          <AnalyticsConsumptionHeader
-            owner={owner}
-            state={state}
-            headerActions={
-              analyticsAssistantEnabled &&
-              !isOpen && (
-                <Button
-                  variant="primary"
-                  icon={Robot}
-                  label={t`Ask @analyst`}
-                  onClick={() => setIsOpen(true)}
-                />
-              )
-            }
-          />
+          <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-row flex-wrap items-center gap-2">
+              <ConsumptionOverview
+                workspaceId={owner.sId}
+                period={state.period}
+              />
+            </div>
+            {isManager && (
+              <Button
+                label={t`Manage in Credits`}
+                variant="highlight-ghost"
+                size="xs"
+                iconRight={LinkExternal01}
+                href={`/w/${owner.sId}/credits`}
+              />
+            )}
+          </div>
         </Page.Vertical>
         <Tabs
           value={tab}
@@ -362,25 +370,20 @@ interface AnalyticsConsumptionContentProps {
   usageLinkLabel?: string;
 }
 
-interface AnalyticsConsumptionHeaderProps {
-  components?: AnalyticsConsumptionComponents;
+interface AnalyticsConsumptionSelectorsProps {
   embedded?: boolean;
   headerActions?: ReactNode;
   owner: LightWorkspaceType;
-  showOverviewError?: boolean;
   state: AnalyticsConsumptionState;
 }
 
-function AnalyticsConsumptionHeader({
-  components = WORKSPACE_CONSUMPTION_COMPONENTS,
+function AnalyticsConsumptionSelectors({
   embedded = false,
   headerActions,
   owner,
-  showOverviewError = false,
   state,
-}: AnalyticsConsumptionHeaderProps) {
+}: AnalyticsConsumptionSelectorsProps) {
   const { period, granularity, setPeriod, setGranularity } = state;
-  const { Overview: OverviewComponent } = components;
   const trackingWorkspaceId = embedded ? null : owner.sId;
 
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
@@ -398,25 +401,54 @@ function AnalyticsConsumptionHeader({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-wrap items-center gap-2">
+      <ConsumptionPeriodSelector
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
+      <ConsumptionGranularitySelector
+        granularity={granularity}
+        onGranularityChange={handleGranularityChange}
+      />
+      {headerActions}
+    </div>
+  );
+}
+
+interface AnalyticsConsumptionHeaderProps {
+  components?: AnalyticsConsumptionComponents;
+  embedded?: boolean;
+  headerActions?: ReactNode;
+  owner: LightWorkspaceType;
+  showOverviewError?: boolean;
+  state: AnalyticsConsumptionState;
+}
+
+function AnalyticsConsumptionHeader({
+  components = WORKSPACE_CONSUMPTION_COMPONENTS,
+  embedded = false,
+  headerActions,
+  owner,
+  showOverviewError = false,
+  state,
+}: AnalyticsConsumptionHeaderProps) {
+  const { Overview: OverviewComponent } = components;
+
+  return (
+    <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
       <div className="flex flex-row flex-wrap items-center gap-2">
         <OverviewComponent
           workspaceId={owner.sId}
-          period={period}
+          period={state.period}
           showError={showOverviewError}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <ConsumptionPeriodSelector
-          period={period}
-          onPeriodChange={handlePeriodChange}
-        />
-        <ConsumptionGranularitySelector
-          granularity={granularity}
-          onGranularityChange={handleGranularityChange}
-        />
-        {headerActions}
-      </div>
+      <AnalyticsConsumptionSelectors
+        embedded={embedded}
+        headerActions={headerActions}
+        owner={owner}
+        state={state}
+      />
     </div>
   );
 }
