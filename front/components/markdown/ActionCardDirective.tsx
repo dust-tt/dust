@@ -181,20 +181,23 @@ export function getActionCardPlugin(
       return null;
     }
     return (
-      <ActionCard
-        title={title}
-        subtitle={subtitle}
-        description={description}
-        icon={icon}
-        cta={cta}
-        dismiss={dismiss}
-        actionMessage={actionMessage}
-        dismissMessage={dismissMessage}
-        collapsibleContent={children}
-        collapsibleLabel={collapsibleLabel}
-        isLastMessage={isLastMessage}
-        onSend={onSend}
-      />
+      // Rendered inside the agent's answer: keep the app font over the user's conversation font.
+      <div className="font-sans">
+        <ActionCard
+          title={title}
+          subtitle={subtitle}
+          description={description}
+          icon={icon}
+          cta={cta}
+          dismiss={dismiss}
+          actionMessage={actionMessage}
+          dismissMessage={dismissMessage}
+          collapsibleContent={children}
+          collapsibleLabel={collapsibleLabel}
+          isLastMessage={isLastMessage}
+          onSend={onSend}
+        />
+      </div>
     );
   };
 

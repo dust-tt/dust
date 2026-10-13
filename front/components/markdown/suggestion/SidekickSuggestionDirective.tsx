@@ -81,7 +81,7 @@ export function getSidekickSuggestionPlugin() {
     }
 
     return (
-      <div data-suggestion-s-id={suggestionId}>
+      <div data-suggestion-s-id={suggestionId} className="font-sans">
         <SidekickSuggestionCard agentSuggestion={suggestion} />
       </div>
     );
