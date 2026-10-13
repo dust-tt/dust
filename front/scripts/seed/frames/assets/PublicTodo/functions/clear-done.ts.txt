@@ -1,0 +1,20 @@
+import { db } from "@dust/pod";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { todos } from "../databases/todos.db.ts";
+import { listTodos, TodoListSchema } from "./lib/todos.ts";
+
+export const schema = {
+  description: "Delete every done todo. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: TodoListSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    db("todos").delete(todos).where(eq(todos.done, true)).run();
+    return Response.json(listTodos());
+  },
+};

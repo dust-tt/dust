@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Status dashboard: a durable author refresh calls a Dust tool, public visitors read the snapshot.",
+  "uiEntryPoint": "index.tsx",
+  "databases": [
+    {
+      "name": "snapshots",
+      "schema": "databases/snapshots.db.ts"
+    }
+  ],
+  "functions": [
+    {
+      "name": "get-dashboard",
+      "description": "Read the latest status snapshot.",
+      "entryPoint": "functions/get-dashboard.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "probe-tools",
+      "description": "Try a Dust tool call from a public function.",
+      "entryPoint": "functions/probe-tools.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "refresh-dashboard",
+      "description": "Refresh the status snapshot through a Dust tool. Author only.",
+      "entryPoint": "functions/refresh-dashboard.ts",
+      "executionMode": "durable",
+      "defaultStake": "low"
+    },
+    {
+      "name": "reset-demo-data",
+      "description": "Replace every snapshot with a sample one. Author only.",
+      "entryPoint": "functions/reset-demo-data.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    }
+  ]
+}

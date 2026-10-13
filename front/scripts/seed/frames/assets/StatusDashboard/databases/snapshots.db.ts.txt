@@ -1,0 +1,9 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const snapshots = sqliteTable("snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  status: text("status").notNull(),
+  serverTime: text("server_time").notNull(),
+  refreshedBy: text("refreshed_by").notNull(),
+  refreshedAt: integer("refreshed_at", { mode: "timestamp" }).notNull(),
+});

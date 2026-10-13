@@ -1,0 +1,32 @@
+import { db } from "@dust/pod";
+import { z } from "zod";
+
+import { responses } from "../databases/responses.db.ts";
+
+const SAMPLE_RESPONSES = [
+  { rating: 5, comment: "The onboarding call was really helpful." },
+  { rating: 3, comment: "Docs could use more examples." },
+];
+
+export const schema = {
+  description: "Replace every response with sample rows. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: z.object({ ok: z.boolean() }),
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    db("responses").delete(responses).run();
+    db("responses")
+      .insert(responses)
+      .values(
+        SAMPLE_RESPONSES.map((response, index) => ({
+          ...response,
+          createdAt: new Date(Date.now() - index * 60_000),
+        }))
+      )
+      .run();
+    return Response.json({ ok: true });
+  },
+};

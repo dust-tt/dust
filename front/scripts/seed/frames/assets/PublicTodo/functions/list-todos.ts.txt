@@ -1,0 +1,16 @@
+import { z } from "zod";
+
+import { listTodos, TodoListSchema } from "./lib/todos.ts";
+
+export const schema = {
+  description: "List every todo.",
+  userIdentity: "public",
+  input: z.object({}),
+  output: TodoListSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    return Response.json(listTodos());
+  },
+};

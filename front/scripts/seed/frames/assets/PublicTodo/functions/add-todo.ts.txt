@@ -1,0 +1,23 @@
+import { db } from "@dust/pod";
+import { z } from "zod";
+
+import { todos } from "../databases/todos.db.ts";
+import { listTodos, TodoListSchema } from "./lib/todos.ts";
+
+export const schema = {
+  description: "Add a todo.",
+  userIdentity: "public",
+  input: z.object({ title: z.string().min(1).max(200) }),
+  output: TodoListSchema,
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { title } = await request.json();
+    db("todos")
+      .insert(todos)
+      .values({ title, done: false, createdAt: new Date() })
+      .run();
+    return Response.json(listTodos());
+  },
+};

@@ -1,0 +1,16 @@
+import { z } from "zod";
+
+import { DashboardSchema, readDashboard } from "./lib/snapshots.ts";
+
+export const schema = {
+  description: "Read the latest status snapshot.",
+  userIdentity: "public",
+  input: z.object({}),
+  output: DashboardSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    return Response.json(readDashboard());
+  },
+};

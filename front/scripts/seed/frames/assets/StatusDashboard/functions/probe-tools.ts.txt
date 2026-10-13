@@ -1,0 +1,23 @@
+import { ToolCallError, tools } from "@dust/pod";
+import { z } from "zod";
+
+export const schema = {
+  description: "Try a Dust tool call from a public function.",
+  userIdentity: "public",
+  input: z.object({}),
+  output: z.object({ ok: z.boolean(), code: z.string().nullable() }),
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    try {
+      await tools.call("common_utilities", "get_current_time", {});
+      return Response.json({ ok: true, code: null });
+    } catch (err) {
+      return Response.json({
+        ok: false,
+        code: err instanceof ToolCallError ? err.code : "unknown",
+      });
+    }
+  },
+};

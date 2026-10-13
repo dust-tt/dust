@@ -12,7 +12,11 @@ import * as path from "path";
 import type { FrameAsset, SeedContext } from "./types";
 
 export function getFrameManifestPath(frame: FrameAsset): string {
-  return `conversation-${frame.conversationId}/${frame.name}/${FRAME_MANIFEST_FILE}`;
+  const scopedRoot = frame.podId
+    ? `pod-${frame.podId}`
+    : `conversation-${frame.conversationId}`;
+
+  return `${scopedRoot}/${frame.name}/${FRAME_MANIFEST_FILE}`;
 }
 
 function listSourceFiles(dir: string): string[] {

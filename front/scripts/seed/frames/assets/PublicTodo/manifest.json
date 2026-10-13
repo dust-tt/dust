@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "description": "Todo list anyone with the public link can read and edit.",
+  "uiEntryPoint": "index.tsx",
+  "databases": [
+    {
+      "name": "todos",
+      "schema": "databases/todos.db.ts"
+    }
+  ],
+  "functions": [
+    {
+      "name": "list-todos",
+      "description": "List every todo.",
+      "entryPoint": "functions/list-todos.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "add-todo",
+      "description": "Add a todo.",
+      "entryPoint": "functions/add-todo.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "toggle-todo",
+      "description": "Mark a todo done or not done.",
+      "entryPoint": "functions/toggle-todo.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "clear-done",
+      "description": "Delete every done todo. Author only.",
+      "entryPoint": "functions/clear-done.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "reset-demo-data",
+      "description": "Replace every todo with sample rows. Author only.",
+      "entryPoint": "functions/reset-demo-data.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    }
+  ]
+}

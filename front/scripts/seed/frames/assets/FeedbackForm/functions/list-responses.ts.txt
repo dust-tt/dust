@@ -1,0 +1,39 @@
+import { db } from "@dust/pod";
+import { desc } from "drizzle-orm";
+import { z } from "zod";
+
+import { responses } from "../databases/responses.db.ts";
+
+export const schema = {
+  description: "List every feedback response. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: z.object({
+    responses: z.array(
+      z.object({
+        id: z.number(),
+        rating: z.number(),
+        comment: z.string(),
+        createdAt: z.string(),
+      })
+    ),
+  }),
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    const rows = db("responses")
+      .select()
+      .from(responses)
+      .orderBy(desc(responses.createdAt))
+      .all();
+    return Response.json({
+      responses: rows.map(({ id, rating, comment, createdAt }) => ({
+        id,
+        rating,
+        comment,
+        createdAt: createdAt.toISOString(),
+      })),
+    });
+  },
+};

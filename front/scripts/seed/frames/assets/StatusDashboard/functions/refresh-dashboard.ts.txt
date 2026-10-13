@@ -1,0 +1,33 @@
+import { currentUser, db, tools } from "@dust/pod";
+import { z } from "zod";
+
+import { snapshots } from "../databases/snapshots.db.ts";
+import { DashboardSchema, readDashboard } from "./lib/snapshots.ts";
+
+export const schema = {
+  description: "Refresh the status snapshot through a Dust tool. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({}),
+  output: DashboardSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    const result = await tools.call("common_utilities", "get_current_time", {
+      include_formats: ["iso"],
+    });
+    if (result.isError) {
+      throw new Error(result.text() || "The time tool failed.");
+    }
+    db("snapshots")
+      .insert(snapshots)
+      .values({
+        status: "operational",
+        serverTime: result.text(),
+        refreshedBy: currentUser()?.fullName ?? "unknown",
+        refreshedAt: new Date(),
+      })
+      .run();
+    return Response.json(readDashboard());
+  },
+};

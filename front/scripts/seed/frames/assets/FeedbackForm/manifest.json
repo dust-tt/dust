@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "description": "Feedback form anyone with the public link can submit, read by the author only.",
+  "uiEntryPoint": "index.tsx",
+  "databases": [
+    {
+      "name": "responses",
+      "schema": "databases/responses.db.ts"
+    }
+  ],
+  "functions": [
+    {
+      "name": "submit-response",
+      "description": "Submit a feedback response.",
+      "entryPoint": "functions/submit-response.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "list-responses",
+      "description": "List every feedback response. Author only.",
+      "entryPoint": "functions/list-responses.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "reset-demo-data",
+      "description": "Replace every response with sample rows. Author only.",
+      "entryPoint": "functions/reset-demo-data.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    }
+  ]
+}

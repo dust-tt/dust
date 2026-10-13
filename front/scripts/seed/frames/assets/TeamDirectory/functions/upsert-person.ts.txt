@@ -1,0 +1,33 @@
+import { db } from "@dust/pod";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { people } from "../databases/people.db.ts";
+import { DirectorySchema, listDirectory } from "./lib/people.ts";
+
+export const schema = {
+  description: "Create or update a person. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({
+    id: z.number().optional(),
+    name: z.string().min(1).max(200),
+    role: z.string().max(200),
+    team: z.string().max(200),
+    email: z.string().max(200),
+    notes: z.string().max(1000),
+    isPublic: z.boolean(),
+  }),
+  output: DirectorySchema,
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { id, ...person } = await request.json();
+    if (id === undefined) {
+      db("people").insert(people).values(person).run();
+    } else {
+      db("people").update(people).set(person).where(eq(people.id, id)).run();
+    }
+    return Response.json(listDirectory());
+  },
+};

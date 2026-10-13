@@ -1,5 +1,7 @@
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
@@ -18,15 +20,19 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { FileShareScope } from "@app/types/files";
 import { frameV2ContentType } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import * as path from "path";
 
 const ASSETS_DIR = path.join(__dirname, "assets");
+const POD_NAME = "Frames v2 playground";
+const VIEWER_POD_ACCESS = ["none", "member"] as const;
 
 interface FrameSeed {
   assetFolder: string;
   conversationSId: string;
   conversationTitle: string;
-  shareScope: FileShareScope;
+  inPod?: boolean;
+  shareScope?: FileShareScope;
   userMessage: string;
   agentMessage: string;
 }
@@ -57,13 +63,110 @@ const FRAMES: FrameSeed[] = [
       "(`frame_author_required`, which follows access to this conversation). Open it below: " +
       "the first call wakes the sandbox and takes a few seconds.",
   },
+  {
+    assetFolder: "PublicTodo",
+    conversationSId: "SeedFrameConv03",
+    inPod: true,
+    conversationTitle: "Frames v2: public todo list",
+    userMessage: "Build a todo list anyone with the link can edit.",
+    agentMessage:
+      "I published the **PublicTodo** Frame in this Pod. Listing, adding and ticking todos are " +
+      "`public` fast functions. Clearing done todos and resetting the sample data are " +
+      "`frame_author_required`.",
+  },
+  {
+    assetFolder: "FeedbackForm",
+    conversationSId: "SeedFrameConv04",
+    inPod: true,
+    conversationTitle: "Frames v2: public feedback form",
+    userMessage: "Build a feedback form for our customers.",
+    agentMessage:
+      "I published the **FeedbackForm** Frame in this Pod. Submitting is a `public` fast " +
+      "function that only returns `{ ok }`. Reading the responses is `frame_author_required`.",
+  },
+  {
+    assetFolder: "TeamDirectory",
+    conversationSId: "SeedFrameConv05",
+    inPod: true,
+    conversationTitle: "Frames v2: public team directory",
+    userMessage: "Build a team directory with private details for me only.",
+    agentMessage:
+      "I published the **TeamDirectory** Frame in this Pod. `list-people` and `whoami` are " +
+      "`public`: private people and fields are returned only when `isFrameAuthor` is true. " +
+      "Editing is `frame_author_required`.",
+  },
+  {
+    assetFolder: "StatusDashboard",
+    conversationSId: "SeedFrameConv06",
+    inPod: true,
+    conversationTitle: "Frames v2: public status dashboard",
+    userMessage: "Build a status dashboard refreshed from a Dust tool.",
+    agentMessage:
+      "I published the **StatusDashboard** Frame in this Pod. `get-dashboard` is a `public` " +
+      "fast read of the stored snapshot, and `probe-tools` shows a public function cannot call " +
+      "Dust tools. `refresh-dashboard` is durable, calls a Dust tool and is " +
+      "`frame_author_required`.",
+  },
 ];
+
+async function getOrCreatePod({ auth, logger }: SeedContext) {
+  const existing = await SpaceResource.fetchByName(auth, POD_NAME);
+  if (existing) {
+    logger.info({ podId: existing.sId }, "Pod already exists");
+    return existing;
+  }
+
+  const created = await createSpaceAndGroup(auth, {
+    name: POD_NAME,
+    isRestricted: false,
+    spaceKind: "project",
+  });
+  if (created.isErr()) {
+    throw created.error;
+  }
+  logger.info({ podId: created.value.sId }, "Pod created");
+
+  return created.value;
+}
+
+type ViewerPodAccess = (typeof VIEWER_POD_ACCESS)[number];
+
+function isViewerPodAccess(value: unknown): value is ViewerPodAccess {
+  return VIEWER_POD_ACCESS.some((access) => access === value);
+}
+
+async function setViewerPodAccess(
+  { auth, logger }: SeedContext,
+  pod: SpaceResource,
+  viewer: UserResource,
+  viewerPodAccess: ViewerPodAccess
+) {
+  switch (viewerPodAccess) {
+    case "member": {
+      const added = await pod.addMembers(auth, { userIds: [viewer.sId] });
+      if (added.isErr() && added.error.code !== "user_already_member") {
+        throw added.error;
+      }
+      break;
+    }
+    case "none": {
+      const removed = await pod.removeMembers(auth, { userIds: [viewer.sId] });
+      if (removed.isErr() && removed.error.code !== "user_not_member") {
+        throw removed.error;
+      }
+      break;
+    }
+    default:
+      assertNever(viewerPodAccess);
+  }
+  logger.info({ viewerPodAccess }, "Viewer Pod access set");
+}
 
 // Login matches users by WorkOS id, so the viewer must sign in once before this runs.
 async function addViewer(
   { workspace, logger }: SeedContext,
   viewerEmail: string
-) {
+): Promise<UserResource> {
   const viewer = await UserResource.fetchByEmail(viewerEmail);
   if (!viewer) {
     throw new Error(
@@ -84,6 +187,8 @@ async function addViewer(
     });
   }
   logger.info({ viewerEmail }, "Viewer added to the workspace");
+
+  return viewer;
 }
 
 makeScript(
@@ -92,8 +197,19 @@ makeScript(
       type: "string",
       description: "Email of a second user to add as a workspace member.",
     },
+    viewerPodAccess: {
+      type: "string",
+      choices: [...VIEWER_POD_ACCESS],
+      description:
+        "Pod access of the viewer: `member` gives them write access to the Pod Frames, `none` " +
+        "removes it. Requires --viewerEmail.",
+    },
   },
-  async ({ execute, viewerEmail }, logger) => {
+  async ({ execute, viewerEmail, viewerPodAccess }, logger) => {
+    if (viewerPodAccess !== undefined && !viewerEmail) {
+      throw new Error("--viewerPodAccess requires --viewerEmail.");
+    }
+
     if (!execute) {
       logger.info(
         { frames: FRAMES.map((frame) => frame.assetFolder) },
@@ -113,12 +229,15 @@ makeScript(
     await FeatureFlagResource.enableMany(ctx.workspace, [
       "frames_v2",
       "frames_v2_functions",
+      "frames_v2_public_functions",
     ]);
 
+    const pod = await getOrCreatePod(ctx);
     const frameAssets: FrameAsset[] = FRAMES.map((frame) => ({
       name: frame.assetFolder,
       sourceDir: path.join(ASSETS_DIR, frame.assetFolder),
       conversationId: frame.conversationSId,
+      podId: frame.inPod ? pod.sId : undefined,
       shareScope: frame.shareScope,
     }));
 
@@ -130,6 +249,7 @@ makeScript(
         sId: frame.conversationSId,
         title: frame.conversationTitle,
         userId: ctx.user.sId,
+        spaceId: frame.inPod ? pod.sId : undefined,
         exchanges: [
           {
             user: { sId: `SeedFrameUMsg0${i + 1}`, content: frame.userMessage },
@@ -149,7 +269,10 @@ makeScript(
     await seedFrames(ctx, frameAssets);
 
     if (viewerEmail) {
-      await addViewer(ctx, viewerEmail);
+      const viewer = await addViewer(ctx, viewerEmail);
+      if (isViewerPodAccess(viewerPodAccess)) {
+        await setViewerPodAccess(ctx, pod, viewer, viewerPodAccess);
+      }
     }
   }
 );

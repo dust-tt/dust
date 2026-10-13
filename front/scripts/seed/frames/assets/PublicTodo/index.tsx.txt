@@ -1,0 +1,111 @@
+import {
+  useFrameFunction,
+  useFrameFunctionMutation,
+  useUserIdentity,
+} from "@dust/react-hooks";
+import { useState } from "react";
+
+type TodoList = {
+  todos: { id: number; title: string; done: boolean }[];
+};
+
+function describeError(err: unknown): string {
+  if (
+    err instanceof Error &&
+    "code" in err &&
+    err.code === "user_authentication_required"
+  ) {
+    return "Only the Frame author can do this. Sign in with a Dust account that can edit this Frame.";
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
+export default function App() {
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const identity = useUserIdentity();
+  const list = useFrameFunction("list-todos", {});
+  const addTodo = useFrameFunctionMutation("add-todo");
+  const toggleTodo = useFrameFunctionMutation("toggle-todo");
+  const clearDone = useFrameFunctionMutation("clear-done");
+  const resetDemoData = useFrameFunctionMutation("reset-demo-data");
+  const payload = list.data as TodoList | undefined;
+  const items = payload?.todos ?? [];
+
+  async function run(call: () => Promise<unknown>) {
+    setError(null);
+    try {
+      const updated = (await call()) as TodoList;
+      await list.mutate(updated, { revalidate: false });
+    } catch (err) {
+      setError(describeError(err));
+    }
+  }
+
+  async function handleAdd() {
+    if (!title.trim() || addTodo.isMutating) {
+      return;
+    }
+    await run(() => addTodo.trigger({ title: title.trim() }));
+    setTitle("");
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-8 text-foreground">
+      <h1 className="mb-2 text-3xl font-bold">Public todo list</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Anyone with the link can list, add and tick todos. Clearing done todos
+        and resetting the sample data are for the Frame author only (you are
+        {identity.isFrameAuthor ? "" : " not"} the author).
+      </p>
+      <div className="mb-6 flex gap-2">
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="New todo"
+          className="flex-1 rounded-md border border-border px-3 py-2"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={addTodo.isMutating}
+          className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+        >
+          Add
+        </button>
+      </div>
+      {error && <p className="mb-4 text-red-600">{error}</p>}
+      {list.isLoading && <p className="text-muted-foreground">Loading...</p>}
+      {list.error && <p className="text-red-600">{describeError(list.error)}</p>}
+      <ul className="mb-6 space-y-2">
+        {items.map((todo) => (
+          <li key={todo.id} className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() =>
+                run(() => toggleTodo.trigger({ id: todo.id, done: !todo.done }))
+              }
+            />
+            <span className={todo.done ? "line-through text-muted-foreground" : ""}>
+              {todo.title}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-4">
+        <button
+          onClick={() => run(() => clearDone.trigger({}))}
+          className="text-sm text-muted-foreground underline"
+        >
+          Clear done (author only)
+        </button>
+        <button
+          onClick={() => run(() => resetDemoData.trigger({}))}
+          className="text-sm text-muted-foreground underline"
+        >
+          Reset sample data (author only)
+        </button>
+      </div>
+    </div>
+  );
+}

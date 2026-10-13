@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Team directory: public profiles for everyone, private details for the author.",
+  "uiEntryPoint": "index.tsx",
+  "databases": [
+    {
+      "name": "people",
+      "schema": "databases/people.db.ts"
+    }
+  ],
+  "functions": [
+    {
+      "name": "list-people",
+      "description": "List the directory. Private people and fields only for the author.",
+      "entryPoint": "functions/list-people.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "whoami",
+      "description": "Describe the caller.",
+      "entryPoint": "functions/whoami.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "upsert-person",
+      "description": "Create or update a person. Author only.",
+      "entryPoint": "functions/upsert-person.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "reset-demo-data",
+      "description": "Replace every person with sample rows. Author only.",
+      "entryPoint": "functions/reset-demo-data.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    }
+  ]
+}
