@@ -237,7 +237,7 @@ export function AnalyticsConsumptionPage() {
         <Page.Vertical align="stretch" gap="md">
           <Page.Header
             title={
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex w-full items-center justify-between gap-4">
                 <Page.H variant="h3">{t`Analytics`}</Page.H>
                 {isManager && (
                   <Button
@@ -487,7 +487,7 @@ export function AnalyticsConsumptionContent({
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex w-full items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-foreground">
                 <Trans>Explore</Trans>
               </h2>
