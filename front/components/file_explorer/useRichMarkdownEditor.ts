@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
 export interface MarkdownRichEditor {
@@ -61,13 +61,10 @@ export function useRichMarkdownEditor({
   }
 
   const opens = enabled && (opened !== null || !isTruncated);
-  const source = rawContent ?? undefined;
-
-  useEffect(() => {
-    if (opens && opened === null && source !== undefined && liveUrl) {
-      setOpened({ content: source, liveUrl });
-    }
-  }, [opens, opened, source, liveUrl]);
+  // Latched while rendering, not in an effect, so the editor shows in the same commit.
+  if (opens && opened === null && rawContent !== null && liveUrl) {
+    setOpened({ content: rawContent, liveUrl });
+  }
 
   return {
     richEditor:
