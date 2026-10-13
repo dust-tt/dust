@@ -22,6 +22,7 @@ import {
   resolveSpilledResult,
 } from "@app/lib/api/sandbox_functions/result_delivery";
 import {
+  authorizeAnonymousSandboxFunctionCaller,
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
 } from "@app/lib/api/sandbox_functions/workspace_user";
@@ -632,6 +633,20 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.lastSettledOutcome = { status: "succeeded", result };
     return true;
   }
+
+  /**
+   * @cc [owner:achilleburah,label:security;performance] public-calls-checked-before-wakeup
+   * For an `anonymous` caller, `execute()` MUST run `authorizeAnonymousSandboxFunctionCaller` on
+   * the persisted function and return its denial before any call that can create, wake or recreate
+   * the sandbox. Only the inline path, whose readiness check never wakes a sandbox, may run that
+   * check alongside it.
+   */
+  /**
+   * @cc [owner:achilleburah,label:security] userless-invocations-run-without-token
+   * An anonymous caller's invocation MUST run with an empty sandbox token and an empty user
+   * identity, and MUST NOT register an exec token: a token without a user would act with role `user`
+   * and the workspace global group.
+   */
   /**
    * Run the invocation on its owner's sandbox and record its outcome.
    *
@@ -697,7 +712,26 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!persistedFunction) {
           return null;
         }
-        // Frame invocations always require a workspace member. This scope-independent check
+        if (auth.authMethod() === "anonymous") {
+          const authorization = await authorizeAnonymousSandboxFunctionCaller(
+            auth,
+            {
+              userIdentity: persistedFunction.userIdentity,
+              origin: this.origin ?? "delegated",
+              frame,
+            }
+          );
+          return {
+            persistedFunction,
+            error: authorization.authorized
+              ? null
+              : {
+                  code: authorization.errorCode,
+                  message: authorization.errorMessage,
+                },
+          };
+        }
+        // Other Frame invocations always require a workspace member. This scope-independent check
         // gates the paid wakeup; Pod membership and token scope are evaluated below from the
         // lifecycle-locked scope, after a concurrent move can no longer change it.
         const user = await getAuthenticatedWorkspaceUser(auth);
@@ -763,6 +797,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return new Err(new Error("The Frame runtime scope is missing."));
       }
       const authorizeStartedAtMs = Date.now();
+      // Anonymous callers were already checked before the wakeup. They are checked again on
+      // purpose, so a share revoked while the sandbox woke up refuses the call.
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         userIdentity: persistedFunction.userIdentity,
         origin: this.origin ?? "delegated",
@@ -795,18 +831,21 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // version behind the outcome.
       this.executedBundleSha256 = persistedFunction.bundleSha256 ?? undefined;
       const mintStartedAtMs = Date.now();
-      const token = await generateSandboxFunctionInvocationToken(auth, {
-        sandbox,
-        sandboxFunction,
-        owner: {
-          kind: "frame",
-          frameId: frame.sId,
-          spaceId: authorization.runtimeSpaceId,
-        },
-        invocationId: this.sId,
-        execId,
-        noTools,
-      });
+      const token =
+        authorization.kind === "anonymous"
+          ? ""
+          : await generateSandboxFunctionInvocationToken(auth, {
+              sandbox,
+              sandboxFunction,
+              owner: {
+                kind: "frame",
+                frameId: frame.sId,
+                spaceId: authorization.runtimeSpaceId,
+              },
+              invocationId: this.sId,
+              execId,
+              noTools,
+            });
       mintTokenMs = Date.now() - mintStartedAtMs;
 
       const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);

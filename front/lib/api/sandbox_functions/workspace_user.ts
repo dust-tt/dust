@@ -1,4 +1,5 @@
 import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
+import { canServePublicFrameFunctions } from "@app/lib/api/frames/public_frame_functions_policy";
 import type { SandboxFunctionInvocationErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -15,9 +16,16 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 export type SandboxFunctionAuthorization =
   | {
       authorized: true;
-      user: UserResource | null;
+      kind: "workspace_user";
+      user: UserResource;
       runtimeSpaceId: string;
       pod: SpaceResource | null;
+    }
+  | {
+      authorized: true;
+      kind: "anonymous";
+      user: null;
+      pod: null;
     }
   | {
       authorized: false;
@@ -48,6 +56,45 @@ export async function getAuthenticatedWorkspaceUser(
   return Authenticator.isMember(role) ? user : null;
 }
 
+type AuthorizeAnonymousSandboxFunctionCallerInput = {
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  origin: SandboxFunctionInvocationOrigin;
+  frame: FileResource;
+};
+
+/**
+ * @cc [owner:achilleburah,label:security;product] caller-check-is-scope-independent
+ * The result MUST NOT depend on the Frame's runtime scope, so `execute()` can run it before any
+ * sandbox wakeup.
+ */
+export async function authorizeAnonymousSandboxFunctionCaller(
+  auth: Authenticator,
+  { userIdentity, origin, frame }: AuthorizeAnonymousSandboxFunctionCallerInput
+): Promise<SandboxFunctionAuthorization> {
+  if (origin !== "anonymous" || userIdentity !== "public") {
+    return authorizationError(
+      "This Frame function requires a logged-in user from its workspace."
+    );
+  }
+
+  const shareInfo = await frame.getShareInfo();
+  if (
+    !shareInfo ||
+    !(await canServePublicFrameFunctions(auth, shareInfo.scope))
+  ) {
+    return authorizationError("This Frame does not serve public functions.");
+  }
+
+  return { authorized: true, kind: "anonymous", user: null, pod: null };
+}
+
+/**
+ * @cc [owner:achilleburah,label:security;product] anonymous-is-the-only-userless-invoker
+ * A caller without a workspace membership MUST be denied unless its Authenticator has the
+ * `anonymous` auth method. Such a caller MUST be denied unless the invocation origin is
+ * `anonymous`, the function is `public` and `canServePublicFrameFunctions` holds for the Frame's
+ * current share scope, read when called so a revoked share refuses the next call.
+ */
 export async function authorizeSandboxFunctionInvocation(
   auth: Authenticator,
   {
@@ -64,14 +111,21 @@ export async function authorizeSandboxFunctionInvocation(
     };
   }
 ): Promise<SandboxFunctionAuthorization> {
+  if (auth.authMethod() === "anonymous") {
+    return authorizeAnonymousSandboxFunctionCaller(auth, {
+      userIdentity,
+      origin,
+      frame: owner.frame,
+    });
+  }
+
   const user = await getAuthenticatedWorkspaceUser(auth);
   const { frame } = owner;
   let runtimeSpaceId: string;
   let pod: SpaceResource | null;
 
-  // Frames are always workspace-member execution, even when a declaration's identity policy is
-  // optional or public. Public share and guest rendering may still work, but invocation fails
-  // before wakeup.
+  // Any other Frame caller must be a workspace member, even when a declaration's identity policy
+  // is optional. Guest rendering may still work, but invocation fails before wakeup.
   if (!user) {
     return authorizationError(
       "This Frame function requires a logged-in user from its workspace."
@@ -104,19 +158,37 @@ export async function authorizeSandboxFunctionInvocation(
     case "public":
     case "optional":
     case "workspace_user_required":
-      return { authorized: true, user, runtimeSpaceId, pod };
+      return {
+        authorized: true,
+        kind: "workspace_user",
+        user,
+        runtimeSpaceId,
+        pod,
+      };
     case "interactive_workspace_user_required": {
       const authorized =
         origin === "interactive_session" && auth.authMethod() === "session";
       return authorized
-        ? { authorized: true, user, runtimeSpaceId, pod }
+        ? {
+            authorized: true,
+            kind: "workspace_user",
+            user,
+            runtimeSpaceId,
+            pod,
+          }
         : authorizationError(
             "This Frame function requires a logged-in workspace member in a live Dust session."
           );
     }
     case "frame_author_required": {
       return (await canWriteFrameV2Source(auth, frame))
-        ? { authorized: true, user, runtimeSpaceId, pod }
+        ? {
+            authorized: true,
+            kind: "workspace_user",
+            user,
+            runtimeSpaceId,
+            pod,
+          }
         : authorizationError(
             "This Frame function requires permission to modify its source files."
           );

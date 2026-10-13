@@ -239,6 +239,27 @@ describe("Authenticator.fromJSON", () => {
     expect(Array.isArray(auth.toJSON().groupIds)).toBe(true);
   });
 
+  it("keeps an anonymous Authenticator without user, role or groups across a refreshed round-trip", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+
+    const visitor = await Authenticator.anonymousForWorkspace(workspace.sId);
+    const refreshed = await Authenticator.fromJsonWithRefrehedGroups(
+      visitor.toJSON()
+    );
+
+    expect(refreshed.authMethod()).toBe("anonymous");
+    expect(refreshed.user()).toBeNull();
+    expect(refreshed.role()).toBe("none");
+    await expect(refreshed.getGlobalGroupModelId()).resolves.toBeNull();
+    expect(refreshed.can("read", globalSpace)).toBe(false);
+  });
+
   it("keeps a user-less poke super-user's workspace-wide groups across refresh", async () => {
     const workspace = await WorkspaceFactory.basic();
     const adminAuth = await Authenticator.internalAdminForWorkspace(

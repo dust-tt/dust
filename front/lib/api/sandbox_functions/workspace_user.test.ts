@@ -4,6 +4,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { enablePublicFrameFunctions } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -325,6 +326,120 @@ describe("authorizeSandboxFunctionInvocation for public Frame functions", () => 
       authorized: false,
       errorCode: "user_authentication_required",
     });
+  });
+});
+
+describe("authorizeSandboxFunctionInvocation for anonymous callers", () => {
+  it("authorizes an anonymous caller on a public function of a public share", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    await frame.setShareScope(adminAuth, "public");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+    await enablePublicFrameFunctions(adminAuth);
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      visitorAuth,
+      {
+        userIdentity: "public",
+        origin: "anonymous",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization).toEqual({
+      authorized: true,
+      kind: "anonymous",
+      user: null,
+      pod: null,
+    });
+  });
+
+  it("denies an anonymous caller on a function that is not public", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    await frame.setShareScope(adminAuth, "public");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+    await enablePublicFrameFunctions(adminAuth);
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      visitorAuth,
+      {
+        userIdentity: "workspace_user_required",
+        origin: "anonymous",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization).toMatchObject({
+      authorized: false,
+      errorCode: "user_authentication_required",
+    });
+  });
+
+  it("denies an anonymous caller on a Frame not shared publicly", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    await frame.setShareScope(adminAuth, "workspace_and_emails");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+    await enablePublicFrameFunctions(adminAuth);
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      visitorAuth,
+      {
+        userIdentity: "public",
+        origin: "anonymous",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization.authorized).toBe(false);
+  });
+
+  it("denies an anonymous caller when public functions are disabled", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    await frame.setShareScope(adminAuth, "public");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      visitorAuth,
+      {
+        userIdentity: "public",
+        origin: "anonymous",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization.authorized).toBe(false);
+  });
+
+  it("denies an anonymous caller outside the anonymous origin", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    await frame.setShareScope(adminAuth, "public");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+    await enablePublicFrameFunctions(adminAuth);
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      visitorAuth,
+      {
+        userIdentity: "public",
+        origin: "delegated",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization.authorized).toBe(false);
   });
 });
 

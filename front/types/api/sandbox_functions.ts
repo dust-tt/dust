@@ -73,6 +73,7 @@ export const DEFAULT_SANDBOX_FUNCTION_STAKE: SandboxFunctionStake = "low";
 export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
   "interactive_session",
   "delegated",
+  "anonymous",
 ] as const;
 
 export type SandboxFunctionInvocationOrigin =

@@ -23,7 +23,10 @@ import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import {
+  createTestFrameFunction,
+  enablePublicFrameFunctions,
+} from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -957,6 +960,61 @@ describe("SandboxFunctionInvocationResource", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("logged-in user");
     }
+    expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
+  });
+
+  it("runs an anonymous invocation without a token or a user identity", async () => {
+    const { authenticator, frame, sandbox, sandboxFunction, workspace } =
+      await setupFrameExecutionTest({
+        userIdentity: "public",
+        executionMode: "fast",
+      });
+    await enablePublicFrameFunctions(authenticator);
+    await frame.setShareScope(authenticator, "public");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      visitorAuth,
+      { sandboxFunction, input: { message: "hello" }, origin: "anonymous" }
+    );
+    const execSpy = vi
+      .spyOn(sandbox, "exec")
+      .mockResolvedValue(
+        new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+      );
+
+    const result = await invocation.execute(visitorAuth);
+
+    expect(result.isOk()).toBe(true);
+    expect(invocation.userId).toBeNull();
+    expect(invocation.origin).toBe("anonymous");
+    expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
+    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
+      DUST_SANDBOX_TOKEN: "",
+      DUST_POD_USER_IDENTITY: "",
+    });
+  });
+
+  it("denies an anonymous invocation of a private function before sandbox wakeup", async () => {
+    const { authenticator, frame, sandboxFunction, workspace } =
+      await setupFrameExecutionTest({
+        userIdentity: "workspace_user_required",
+        executionMode: "fast",
+      });
+    await enablePublicFrameFunctions(authenticator);
+    await frame.setShareScope(authenticator, "public");
+    const visitorAuth = await Authenticator.anonymousForWorkspace(
+      workspace.sId
+    );
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      visitorAuth,
+      { sandboxFunction, input: { message: "hello" }, origin: "anonymous" }
+    );
+
+    const result = await invocation.execute(visitorAuth);
+
+    expect(result.isErr()).toBe(true);
     expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
   });
 

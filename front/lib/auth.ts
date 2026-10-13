@@ -105,7 +105,8 @@ export type AuthMethodType =
   | "oauth"
   | "session"
   | "sandbox_token"
-  | "internal";
+  | "internal"
+  | "anonymous";
 
 /** Principal used by poke when there is no provisioned Dust user (e.g. Cloudflare Access). */
 export type PokePrincipal = {
@@ -1190,6 +1191,37 @@ export class Authenticator {
       permissions: await this.resolvePermissions({
         workspace,
         groupModelIds,
+      }),
+    });
+  }
+
+  /**
+   * @cc [owner:achilleburah,label:security] anonymous-auth-holds-nothing
+   * The returned Authenticator MUST carry the `anonymous` auth method, no user, no key, role
+   * `none`, an explicit empty group scope and no global group, so no space, group or capability
+   * check can pass on it, including after a Temporal round-trip through `toJSON` and `fromJSON`.
+   */
+  static async anonymousForWorkspace(
+    workspaceId: string
+  ): Promise<Authenticator> {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
+
+    const subscription =
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+
+    return new Authenticator({
+      authMethod: "anonymous",
+      workspace,
+      role: "none",
+      requestedGroupModelIds: [],
+      globalGroupModelId: null,
+      subscription,
+      permissions: await this.resolvePermissions({
+        workspace,
+        groupModelIds: [],
       }),
     });
   }
