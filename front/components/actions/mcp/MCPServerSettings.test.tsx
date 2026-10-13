@@ -174,7 +174,7 @@ describe("MCPServerSettings sync auth status", () => {
     });
 
     expect(screen.getByTestId("tooltip-label")).toHaveTextContent(
-      "Agents still use each member's personal authentication and are unaffected"
+      "Agents still use each member’s personal authentication and are unaffected"
     );
   });
 

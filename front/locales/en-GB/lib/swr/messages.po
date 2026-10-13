@@ -723,7 +723,7 @@ msgstr ""
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}’s scheduled seat change has been canceled."
-msgstr ""
+msgstr "{memberName}’s scheduled seat change has been cancelled."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}’s seat has been updated to {seatName}. The seat pool will be provisioned shortly."

@@ -62,7 +62,7 @@ describe("formatAgentError", () => {
         WITH_LOCALISATION
       ).description
     ).toBe(
-      "Your workspace's Anthropic credentials are invalid. Contact your workspace administrator to update them."
+      "Your workspace’s Anthropic credentials are invalid. Contact your workspace administrator to update them."
     );
   });
 
@@ -92,7 +92,7 @@ describe("formatAgentError", () => {
     expect(formatAgentError(noSeatError, WITH_LOCALISATION)).toMatchObject({
       title: "No seat assigned",
       description:
-        "You don't have a seat assigned in this workspace. Contact your administrator to assign you one.",
+        "You don’t have a seat assigned in this workspace. Contact your administrator to assign you one.",
     });
     expect(
       formatAgentError(noSeatError, {
@@ -100,7 +100,7 @@ describe("formatAgentError", () => {
         viewerIsAdmin: true,
       }).description
     ).toBe(
-      "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+      "You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one."
     );
   });
 
@@ -116,7 +116,7 @@ describe("formatAgentError", () => {
       )
     ).toMatchObject({
       title: "Plan message limit exceeded",
-      description: "You've reached the message limit of your plan.",
+      description: "You’ve reached the message limit of your plan.",
     });
   });
 

@@ -197,4 +197,4 @@ msgstr ""
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
 msgid "Anyone with an {connectionType} account won’t be able to access your Dust workspace anymore."
-msgstr ""
+msgstr "Anyone with an {connectionType} account won’t be able to access your Dust workspace any more."

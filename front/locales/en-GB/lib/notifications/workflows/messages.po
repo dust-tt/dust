@@ -429,7 +429,7 @@ msgstr ""
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
 msgid "It won’t be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual."
-msgstr ""
+msgstr "It won’t be cancelled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
 msgid "Thank you for renewing your trust in us."
@@ -473,7 +473,7 @@ msgstr ""
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
 msgid "You’re receiving this as an admin of the Dust workspace {workspaceName}. You recently canceled your Dust subscription."
-msgstr ""
+msgstr "You’re receiving this as an admin of the Dust workspace {workspaceName}. You recently cancelled your Dust subscription."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
 msgid "{remainingDays, plural, one {To protect your privacy and maintain the highest security standards, your data will be permanently deleted in # day.} other {To protect your privacy and maintain the highest security standards, your data will be permanently deleted in # days.}}"

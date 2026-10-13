@@ -104,7 +104,7 @@ msgstr "This will count towards your personal credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "This will count toward your workspace’s credit pool."
-msgstr ""
+msgstr "This will count towards your workspace’s credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "This will count toward your personal fair use limits."
@@ -112,7 +112,7 @@ msgstr "This will count towards your personal fair use limits."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "This will count toward your workspace’s programmatic usage."
-msgstr ""
+msgstr "This will count towards your workspace’s programmatic usage."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "Rate limits"
