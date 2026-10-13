@@ -19,7 +19,6 @@ export type OAuthAuthorizeResponse = {
   accessToken: string;
   refreshToken: string;
   expirationDate: number;
-  authentication_method?: string;
 };
 
 type AuthErrorCode =
@@ -48,7 +47,6 @@ const WorkOSTokensResponseSchema = z.object({
   accessToken: z.string().min(1),
   refreshToken: z.string().min(1),
   expirationDate: z.number(),
-  authenticationMethod: z.string().optional(),
 });
 
 const WorkOSErrorResponseSchema = z.object({
@@ -177,7 +175,6 @@ export async function postWorkOSAuthenticate(
     | { grant_type: "refresh_token"; refresh_token: string }
 ): Promise<Result<OAuthAuthorizeResponse, WorkOSAuthenticateError>> {
   let response: Response;
-  let body: unknown;
   try {
     response = await fetch(`${baseUrl}/api/workos/authenticate`, {
       method: "POST",
@@ -185,7 +182,6 @@ export async function postWorkOSAuthenticate(
       credentials: "omit",
       body: new URLSearchParams(params),
     });
-    body = await response.json().catch(() => null);
   } catch (error) {
     return new Err({
       status: null,
@@ -195,7 +191,9 @@ export async function postWorkOSAuthenticate(
   }
 
   if (!response.ok) {
-    const parsed = WorkOSErrorResponseSchema.safeParse(body);
+    const parsed = WorkOSErrorResponseSchema.safeParse(
+      await response.json().catch(() => null)
+    );
     const detail = parsed.success ? parsed.data.error : undefined;
     return new Err({
       status: response.status,
@@ -204,7 +202,9 @@ export async function postWorkOSAuthenticate(
     });
   }
 
-  const parsed = WorkOSTokensResponseSchema.safeParse(body);
+  const parsed = WorkOSTokensResponseSchema.safeParse(
+    await response.json().catch(() => null)
+  );
   if (!parsed.success) {
     return new Err({
       status: response.status,
@@ -218,7 +218,6 @@ export async function postWorkOSAuthenticate(
     accessToken: parsed.data.accessToken,
     refreshToken: parsed.data.refreshToken,
     expirationDate: parsed.data.expirationDate,
-    authentication_method: parsed.data.authenticationMethod,
   });
 }
 
