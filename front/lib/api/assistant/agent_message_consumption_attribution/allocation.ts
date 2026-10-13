@@ -696,11 +696,6 @@ function buildMessageConsumptionAllocationForVersion<
  * status MUST NOT make the attribution incomplete: that completion happened in an execution that
  * was never billed. Without `hasUnbilledExecution`, it MUST make the attribution incomplete.
  */
-/**
- * @cc [owner:sfriquet,label:backend;error-handling] newest-version-skip-reason
- * When no stored attribution version allocates, the returned skip reason MUST be the one of the
- * newest stored attribution version, not of an older one.
- */
 export function buildLatestMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
 >({
