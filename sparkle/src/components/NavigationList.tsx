@@ -8,6 +8,7 @@ import {
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
 import { Counter } from "@sparkle/components/Counter";
+import { HoverScrollText } from "@sparkle/components/HoverScrollText";
 import { Icon } from "@sparkle/components/Icon";
 import {
   LinkWrapper,
@@ -76,6 +77,8 @@ interface NavigationListItemProps
   labelAnimation?: "none" | "typing" | "streaming";
   /** Called when the `typing` label animation finishes. */
   onTypingAnimationComplete?: () => void;
+  /** Scroll a truncated, non-animated label horizontally while the row is hovered. */
+  scrollLabelOnHover?: boolean;
   icon?: React.ComponentType;
   /** Avatar element rendered before the label, as an alternative to `icon`. */
   avatar?: React.ReactNode;
@@ -110,6 +113,7 @@ const NavigationListItem = React.forwardRef<
       label,
       labelAnimation = "none",
       onTypingAnimationComplete,
+      scrollLabelOnHover,
       icon,
       avatar,
       href,
@@ -145,7 +149,12 @@ const NavigationListItem = React.forwardRef<
 
     return (
       <div
-        className={cn("group/menu-item relative", className)}
+        className={cn(
+          "group/menu-item relative",
+          // HoverScrollText scrolls while an ancestor `group` is hovered.
+          scrollLabelOnHover && "group",
+          className
+        )}
         ref={ref}
         data-nav="menu-button"
         data-selected={selected}
@@ -202,6 +211,8 @@ const NavigationListItem = React.forwardRef<
                   />
                 ) : labelAnimation === "streaming" ? (
                   <AnimatedText variant="muted">{label}</AnimatedText>
+                ) : scrollLabelOnHover ? (
+                  <HoverScrollText text={label} />
                 ) : (
                   label
                 )}

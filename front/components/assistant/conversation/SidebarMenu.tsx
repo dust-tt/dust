@@ -1208,6 +1208,7 @@ const ConversationListItem = memo(
               : "none"
         }
         onTypingAnimationComplete={handleTypingAnimationComplete}
+        scrollLabelOnHover
         href={getConversationRoute(owner.sId, conversation.sId)}
         shallow
         draggable={!conversation.spaceId}
