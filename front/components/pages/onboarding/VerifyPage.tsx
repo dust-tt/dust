@@ -153,16 +153,16 @@ export function VerifyPage() {
         setCaptchaToken(null);
         setCaptchaKey((k) => k + 1);
         setStep("captcha");
-        setPhoneError(
-          data.error?.message ??
-            t`Captcha verification failed. Please try again.`
-        );
+        setPhoneError(formatErrorDescription(data));
         return;
       }
-      if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
+      if (
+        data.error?.type === "rate_limit_error" &&
+        data.error?.retryAfterSeconds
+      ) {
         const waitSeconds = Math.max(
           0,
-          data.error.retryAfter - Math.floor(Date.now() / 1000)
+          data.error.retryAfterSeconds - Math.floor(Date.now() / 1000)
         );
         setResendCooldown(waitSeconds);
         const waitMinutes = Math.ceil(waitSeconds / 60);
@@ -174,7 +174,7 @@ export function VerifyPage() {
         );
         return;
       }
-      setPhoneError(data.error?.message ?? t`Failed to send code`);
+      setPhoneError(formatErrorDescription(data));
       return;
     }
 
@@ -247,7 +247,7 @@ export function VerifyPage() {
 
         if (!verifyResponse.ok) {
           const data = await verifyResponse.json();
-          setPhoneError(data.error?.message ?? t`Invalid code`);
+          setPhoneError(formatErrorDescription(data));
           return;
         }
 
@@ -258,7 +258,7 @@ export function VerifyPage() {
         setIsLoading(false);
       }
     },
-    [phoneNumber, workspace.sId, activateTrial, t]
+    [phoneNumber, workspace.sId, activateTrial, formatErrorDescription, t]
   );
 
   const handleVerifyCode = useCallback(() => {

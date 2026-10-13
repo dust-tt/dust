@@ -1374,6 +1374,22 @@ msgid "Verify your workspace's phone number before starting a trial."
 msgstr "Verify your workspace's phone number before starting a trial."
 
 #: front/lib/api_error_messages.ts
+msgid "This phone number can't be used for verification."
+msgstr "This phone number can't be used for verification."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is already used by another workspace."
+msgstr "This phone number is already used by another workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "The phone number couldn't be verified. Try again or request a new code."
+msgstr "The phone number couldn't be verified. Try again or request a new code."
+
+#: front/lib/api_error_messages.ts
+msgid "The captcha check failed. Try again."
+msgstr "The captcha check failed. Try again."
+
+#: front/lib/api_error_messages.ts
 msgid "This memory is too long. Shorten it and try again."
 msgstr "This memory is too long. Shorten it and try again."
 

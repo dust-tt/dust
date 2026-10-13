@@ -383,6 +383,10 @@ const API_ERROR_TYPES = [
   "credit_purchase_pending",
   "credit_purchase_amount_out_of_range",
   "workspace_phone_not_verified",
+  "phone_number_not_accepted",
+  "phone_already_used_error",
+  "verification_error",
+  "invalid_captcha",
   "user_memory_too_long",
   "tag_already_exists",
   "verified_domain_not_found",
@@ -411,6 +415,8 @@ export type APIError = {
   connectors_error?: ConnectorsAPIError;
   redirect?: CellInfo;
   unverifiableRefs?: string[];
+  // Unix timestamp (seconds) after which a rate-limited verification can be retried.
+  retryAfterSeconds?: number;
 };
 
 export function isAPIError(obj: unknown): obj is APIError {
