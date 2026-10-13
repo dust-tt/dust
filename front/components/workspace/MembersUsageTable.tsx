@@ -7,6 +7,7 @@ import {
   buildMemberNameColumn,
   MemberNameSkeleton,
 } from "@app/components/workspace/member_name_column";
+import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import {
   AT_POOL_LIMIT_BAR_CLASSES,
@@ -30,6 +31,7 @@ import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
   getUserModelTierMenuItemsWithSelection,
+  getUserModelTierOptions,
   INHERIT_MODEL_TIER,
   toUserModelTierSelection,
 } from "@app/lib/client/model_tier_options";
@@ -86,7 +88,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
@@ -148,6 +150,9 @@ type RowData = {
   fairUse: MemberFairUseUsage | null;
   modelTiersSummary: string;
   hasUserLevelModelTiersOverride: boolean;
+  modelTierSelection: UserModelTierSelection;
+  modelTierInheritLabel: string;
+  onSetModelTier: (selection: UserModelTierSelection) => Promise<void>;
   menuItems: MenuItem[];
 };
 
@@ -1354,6 +1359,57 @@ function buildModelTiersColumn(
   };
 }
 
+function UserModelTierPickerCell({ row }: { row: RowData }) {
+  const { t } = useLingui();
+  const [isMutating, setIsMutating] = useState(false);
+
+  return (
+    <ModelTierPickerDropdown
+      selectedValue={row.modelTierSelection}
+      options={getUserModelTierOptions({
+        inheritLabel: row.modelTierInheritLabel,
+        t,
+      })}
+      onSelect={async (value) => {
+        setIsMutating(true);
+        try {
+          await row.onSetModelTier(toUserModelTierSelection(value));
+        } finally {
+          setIsMutating(false);
+        }
+      }}
+      isMutating={isMutating}
+      variant="ghost"
+    />
+  );
+}
+
+function buildModelTierPickerColumn(): ColumnDef<RowData, string> {
+  return {
+    id: "modelTiers" as const,
+    header: () => (
+      <span className="flex items-center gap-1">
+        <Trans>Models tier</Trans>
+        <ModelTiersInfoButton />
+      </span>
+    ),
+    enableSorting: false,
+    accessorFn: (row) => row.modelTierSelection,
+    cell: (info: Info) => (
+      <div
+        className="-ml-3"
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <UserModelTierPickerCell row={info.row.original} />
+      </div>
+    ),
+    meta: {
+      className: "table-cell w-64",
+    },
+  };
+}
+
 const actionsColumn: ColumnDef<RowData, string> = {
   id: "actions" as const,
   header: "",
@@ -1427,6 +1483,7 @@ function buildColumns({
   showGroupsColumn,
   showSharedUsageLimitGroupColumn,
   showModelTiersColumn,
+  showModelTierPicker,
   showSeatAndCredits,
   hasPool,
   showPremiumMessageUsage,
@@ -1439,6 +1496,7 @@ function buildColumns({
   showGroupsColumn: boolean;
   showSharedUsageLimitGroupColumn: boolean;
   showModelTiersColumn: boolean;
+  showModelTierPicker: boolean;
   showSeatAndCredits: boolean;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
@@ -1454,9 +1512,11 @@ function buildColumns({
     ...(showSharedUsageLimitGroupColumn
       ? [buildSharedUsageLimitGroupColumn(t)]
       : []),
-    ...(showModelTiersColumn
-      ? [buildModelTiersColumn(t, !showSeatAndCredits)]
-      : []),
+    ...(showModelTierPicker
+      ? [buildModelTierPickerColumn()]
+      : showModelTiersColumn
+        ? [buildModelTiersColumn(t, !showSeatAndCredits)]
+        : []),
     ...(showSeatAndCredits
       ? buildCreditPlanColumns({
           hasPool,
@@ -1468,7 +1528,9 @@ function buildColumns({
         })
       : []),
     // Every row action belongs to one of these two groups.
-    ...(showSeatAndCredits || showModelTiersColumn ? [actionsColumn] : []),
+    ...(showSeatAndCredits || (showModelTiersColumn && !showModelTierPicker)
+      ? [actionsColumn]
+      : []),
   ];
 }
 
@@ -1500,7 +1562,7 @@ interface MembersUsageTableProps {
   onSetUserModelTier?: (
     member: MemberUsageType,
     selection: UserModelTierSelection
-  ) => void;
+  ) => void | Promise<void>;
   showModelTiersColumn?: boolean;
   // Whether the workspace has an active credit pool. Only affects the credit
   // column header.
@@ -1572,12 +1634,27 @@ export function MembersUsageTable({
   onRowSelectionChange,
 }: MembersUsageTableProps) {
   const { t } = useLingui();
+  // The inline picker only replaces the row menu entry where the column is always visible: with
+  // seat and credit columns, it hides on narrow containers and the row menu stays the way in.
+  const showModelTierPicker =
+    showModelTiersColumn &&
+    !showSeatAndCredits &&
+    onSetUserModelTier !== undefined;
   const rows: RowData[] = useMemo(
     () =>
       members.map((m) => {
         const hasSeat = m.seatType !== null && m.seatType !== "none";
         const canEditSeat =
           showSeatActions && showSeatAndCredits && isSeatBased && hasSeat;
+        const modelTierSelection =
+          userModelTierSelectionByUserId[m.sId] ?? INHERIT_MODEL_TIER;
+        const modelTierInheritLabel = formatUserModelTierInheritLabel({
+          groupNames: m.groups,
+          groupNameToId,
+          groupTierNamesByGroupId: groupModelTiersByGroupId,
+          workspaceAllowedTierNames: workspaceAllowedModelTiers,
+          t,
+        });
         const resolvedModelTiers = showModelTiersColumn
           ? resolveModelTiersForUser({
               userId: m.sId,
@@ -1650,6 +1727,11 @@ export function MembersUsageTable({
               : "--";
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
+          modelTierSelection,
+          modelTierInheritLabel,
+          onSetModelTier: async (selection: UserModelTierSelection) => {
+            await onSetUserModelTier?.(m, selection);
+          },
           menuItems: [
             ...(showSeatActions &&
             showSeatAndCredits &&
@@ -1686,23 +1768,17 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showModelTiersColumn && onSetUserModelTier
+            ...(showModelTiersColumn &&
+            onSetUserModelTier &&
+            !showModelTierPicker
               ? [
                   {
                     kind: "submenu" as const,
                     label: t`Models tier`,
                     selectionMode: "checkbox" as const,
                     items: getUserModelTierMenuItemsWithSelection({
-                      selectedValue:
-                        userModelTierSelectionByUserId[m.sId] ??
-                        INHERIT_MODEL_TIER,
-                      inheritLabel: formatUserModelTierInheritLabel({
-                        groupNames: m.groups,
-                        groupNameToId,
-                        groupTierNamesByGroupId: groupModelTiersByGroupId,
-                        workspaceAllowedTierNames: workspaceAllowedModelTiers,
-                        t,
-                      }),
+                      selectedValue: modelTierSelection,
+                      inheritLabel: modelTierInheritLabel,
                       t,
                     }).map((tierItem) => ({
                       id: tierItem.id,
@@ -1740,6 +1816,7 @@ export function MembersUsageTable({
       showSpendLimit,
       canEditSpendLimit,
       showModelTiersColumn,
+      showModelTierPicker,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
       groupModelTiersByGroupId,
@@ -1785,6 +1862,7 @@ export function MembersUsageTable({
         showGroupsColumn,
         showSharedUsageLimitGroupColumn,
         showModelTiersColumn,
+        showModelTierPicker,
         showSeatAndCredits,
         hasPool,
         showPremiumMessageUsage,
@@ -1798,6 +1876,7 @@ export function MembersUsageTable({
       showGroupsColumn,
       showSharedUsageLimitGroupColumn,
       showModelTiersColumn,
+      showModelTierPicker,
       showSeatAndCredits,
       hasPool,
       premiumMessageWindowDays,

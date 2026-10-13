@@ -64,6 +64,19 @@ export function getGroupModelTierOptions(
   ];
 }
 
+export function getUserModelTierOptions({
+  inheritLabel,
+  t,
+}: {
+  inheritLabel: string;
+  t: Translate;
+}): ModelTierPickerOption[] {
+  return [
+    { value: INHERIT_MODEL_TIER, label: inheritLabel },
+    ...getWorkspaceModelTierOptions(t),
+  ];
+}
+
 export function getUserModelTierMenuItemsWithSelection({
   selectedValue,
   inheritLabel,

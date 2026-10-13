@@ -150,13 +150,13 @@ export function ModelsPage() {
   const { setUserAllowedModelTier, clearUserAllowedModelTier } =
     useUserAllowedModelTierMutations({ owner });
   const handleSetUserModelTiers = useCallback(
-    (member: MemberUsageType, selection: UserModelTierSelection) => {
+    async (member: MemberUsageType, selection: UserModelTierSelection) => {
       if (selection === INHERIT_MODEL_TIER) {
-        void clearUserAllowedModelTier({ userId: member.sId });
+        await clearUserAllowedModelTier({ userId: member.sId });
         return;
       }
 
-      void setUserAllowedModelTier({
+      await setUserAllowedModelTier({
         userId: member.sId,
         tierName: selection,
       });
