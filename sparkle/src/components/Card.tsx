@@ -43,7 +43,8 @@ const cardVariants = cva(
   cn(
     "flex text-left group",
     "border border-border overflow-hidden",
-    "text-foreground"
+    // Cards can render inside agent answers: keep the app font over the user's conversation font.
+    "text-foreground font-sans"
   ),
   {
     variants: {

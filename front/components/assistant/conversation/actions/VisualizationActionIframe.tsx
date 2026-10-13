@@ -435,10 +435,8 @@ function SandboxFunctionBlockedAction({
       blockedActionCard = null;
   }
 
-  // Frames render inside the agent's answer: reset the user's conversation font so the cards keep
-  // the app font.
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4 font-sans">
+    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4">
       <div className="flex w-full max-w-xl justify-center">
         {blockedActionCard}
       </div>

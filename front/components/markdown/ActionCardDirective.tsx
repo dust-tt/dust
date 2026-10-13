@@ -92,10 +92,9 @@ function ActionCard({
     [icon]
   );
 
-  let card: ReactNode;
   switch (status) {
     case "actioned":
-      card = (
+      return (
         <ActionCardBlock
           title={title}
           applyLabel={applyLabel}
@@ -104,9 +103,8 @@ function ActionCard({
           state="accepted"
         />
       );
-      break;
     case "dismissed":
-      card = (
+      return (
         <ActionCardBlock
           title={title}
           applyLabel={applyLabel}
@@ -115,9 +113,8 @@ function ActionCard({
           state="rejected"
         />
       );
-      break;
     case "active":
-      card = (
+      return (
         <ActionCardBlock
           title={title}
           subtitle={subtitle}
@@ -145,14 +142,10 @@ function ActionCard({
           }}
         />
       );
-      break;
     default:
       assertNeverAndIgnore(status);
       return null;
   }
-
-  // Rendered inside the agent's answer: keep the app font over the user's conversation font.
-  return <div className="font-sans">{card}</div>;
 }
 
 interface ActionCardPluginProps {

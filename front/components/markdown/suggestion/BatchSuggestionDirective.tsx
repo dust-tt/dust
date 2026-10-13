@@ -256,12 +256,7 @@ interface BatchSuggestionPluginProps {
 
 export function getBatchSuggestionPlugin(owner: LightWorkspaceType) {
   const BatchSuggestionPlugin = ({ batchId }: BatchSuggestionPluginProps) =>
-    batchId ? (
-      // Rendered inside the agent's answer: keep the app font over the user's conversation font.
-      <div className="font-sans">
-        <BatchSuggestion owner={owner} batchId={batchId} />
-      </div>
-    ) : null;
+    batchId ? <BatchSuggestion owner={owner} batchId={batchId} /> : null;
 
   return BatchSuggestionPlugin;
 }

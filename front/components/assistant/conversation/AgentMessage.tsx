@@ -1643,20 +1643,18 @@ function AgentMessageContent({
         {answer && (
           // The agent's answer is the only surface that follows the user's
           // conversation font (Settings > Customization); thinking, user
-          // messages, the input bar and the suggestion cards stay in the app font.
-          <div>
-            <div className="font-conversation">
-              <AgentMessageMarkdown
-                content={answer.content}
-                owner={owner}
-                streamingState={
-                  agentMessage.status === "cancelled" ? "cancelled" : "none"
-                }
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
-            </div>
+          // messages and the input bar stay in the app font.
+          <div className="font-conversation">
+            <AgentMessageMarkdown
+              content={answer.content}
+              owner={owner}
+              streamingState={
+                agentMessage.status === "cancelled" ? "cancelled" : "none"
+              }
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
             {answer.pileBatchIds.length > 0 && (
               <ConversationSuggestionPile
                 owner={owner}
