@@ -39,7 +39,7 @@ import type {
 import { Op } from "sequelize";
 
 // Sources that are never listed unless explicitly requested: `synthetic` rows are reinforcement
-// intermediates, and `conversational` rows have no reviewing UI yet.
+// intermediates.
 const HIDDEN_BY_DEFAULT_SOURCES: SkillSuggestionSource[] = [
   "synthetic",
   "conversational",
