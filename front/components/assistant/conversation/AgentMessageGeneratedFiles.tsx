@@ -88,6 +88,11 @@ export function AgentMessageInteractiveContentGeneratedFiles({
           openPanel({
             type: "interactive_content",
             fileId,
+            // Match auto-open's `fileId@updatedAt` hash so a click on an
+            // already-open Frame does not remount with a bare `fileId`.
+            ...(file.updatedAt !== undefined
+              ? { timestamp: String(file.updatedAt) }
+              : {}),
           });
         };
 

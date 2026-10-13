@@ -6,7 +6,7 @@ import { frameV2ContentType } from "@app/types/files";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { openPanel, surface, panelState } = vi.hoisted(() => {
+const { openPanel, surface, panelState, dismissedFileIds } = vi.hoisted(() => {
   const surface: { clientType: ClientType; isMobile: boolean } = {
     clientType: "web",
     isMobile: false,
@@ -15,7 +15,8 @@ const { openPanel, surface, panelState } = vi.hoisted(() => {
     currentPanel: null,
     data: null,
   };
-  return { openPanel: vi.fn(), surface, panelState };
+  const dismissedFileIds = new Set<string>();
+  return { openPanel: vi.fn(), surface, panelState, dismissedFileIds };
 });
 
 vi.mock(
@@ -25,6 +26,8 @@ vi.mock(
       currentPanel: panelState.currentPanel,
       data: panelState.data,
       openPanel,
+      wasAutoOpenDismissedForFileId: (fileId: string) =>
+        dismissedFileIds.has(fileId),
     }),
   })
 );
@@ -63,6 +66,7 @@ describe("useAutoOpenSidePanel", () => {
     surface.isMobile = false;
     panelState.currentPanel = null;
     panelState.data = null;
+    dismissedFileIds.clear();
   });
 
   it("opens the files panel for a generated file on the desktop web app", async () => {
@@ -121,6 +125,62 @@ describe("useAutoOpenSidePanel", () => {
   });
 
   it("refreshes an already-open Frame when completed files carry a newer updatedAt", async () => {
+    panelState.currentPanel = "interactive_content";
+    panelState.data = "fil_frame_v2@1710000000000";
+
+    const frame = {
+      contentType: frameV2ContentType,
+      fileId: "fil_frame_v2",
+      title: "Hello Frame",
+      hidden: false,
+      updatedAt: 1_710_000_000_999,
+    };
+    const agentMessage = makeInitialMessageStreamState({
+      ...mockAgentMessage({ content: "Updated." }),
+      sId: "agent-message-2",
+      generatedFiles: [frame],
+    });
+
+    renderHook(() =>
+      useAutoOpenSidePanel({ agentMessage, isLastMessage: true })
+    );
+
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({
+        type: "interactive_content",
+        fileId: frame.fileId,
+        timestamp: "1710000000999",
+      });
+    });
+  });
+
+  it("does not auto-open a Frame the user previously closed, even after an update", async () => {
+    dismissedFileIds.add("fil_frame_v2");
+
+    const frame = {
+      contentType: frameV2ContentType,
+      fileId: "fil_frame_v2",
+      title: "Hello Frame",
+      hidden: false,
+      updatedAt: 1_710_000_000_999,
+    };
+    const agentMessage = makeInitialMessageStreamState({
+      ...mockAgentMessage({ content: "Updated." }),
+      sId: "agent-message-2",
+      generatedFiles: [frame],
+    });
+
+    renderHook(() =>
+      useAutoOpenSidePanel({ agentMessage, isLastMessage: true })
+    );
+
+    await waitFor(() => {
+      expect(openPanel).not.toHaveBeenCalled();
+    });
+  });
+
+  it("still refreshes a dismissed Frame when its panel is already open", async () => {
+    dismissedFileIds.add("fil_frame_v2");
     panelState.currentPanel = "interactive_content";
     panelState.data = "fil_frame_v2@1710000000000";
 
