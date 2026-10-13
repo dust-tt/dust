@@ -156,9 +156,9 @@ describe("dfmToYDoc and yDocToDfm", () => {
   });
 
   it("refuse a file the editor refuses, with the same reason", () => {
-    const table = "| a | b |\n|---|---|\n| 1 | 2 |\n";
-    const editor = loadDfm(table);
-    const live = dfmToYDoc(table);
+    const taskList = "Intro.\n\n- [ ] todo\n";
+    const editor = loadDfm(taskList);
+    const live = dfmToYDoc(taskList);
 
     expect(editor.isErr()).toBe(true);
     expect(live.isErr()).toBe(true);
@@ -241,11 +241,11 @@ describe("replaceYDocContent", () => {
   });
 
   it("refuse a file the editor refuses, with the same reason, changing nothing", () => {
-    const table = "| a | b |\n|---|---|\n| 1 | 2 |\n";
-    const editor = loadDfm(table);
+    const taskList = "Intro.\n\n- [ ] todo\n";
+    const editor = loadDfm(taskList);
     const { doc, comments } = loadLive(BEFORE);
 
-    const replaced = replaceYDocContent(doc, table, ORIGIN);
+    const replaced = replaceYDocContent(doc, taskList, ORIGIN);
 
     expect(editor.isErr() && replaced.isErr()).toBe(true);
     if (editor.isErr() && replaced.isErr()) {

@@ -26,10 +26,19 @@ an element in the host's header bar, to show the comments button there instead.
 
 `loadDfm` in `dfm_persistence.ts` decides. Hosts mount the editor for every Markdown file
 they hand it; a file opens for editing when it is valid DFM, its body is Markdown the editor
-reproduces, and every comment anchor the codec reads is one the editor can highlight. Tables, task lists, HTML, reference links
+reproduces, and every comment anchor the codec reads is one the editor can highlight. Task lists, HTML, reference links
 and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
 them. A refused file is shown as read-only source with the reason. Line endings are not
 preserved: a CRLF file opens and is written back with LF.
+
+## Tables
+
+A GFM table opens as a table whose first row is its header, at the top level, in a list item or
+in a quote. Each cell holds one paragraph of text, so Enter does nothing in a cell. Saving
+writes compact rows, `| a | b |` with `---`, `:--`, `:-:` or `--:` per column as the table
+aligns it, and every `|` in a cell escaped, a `|` inside code included. Comments may sit in a
+cell, span cells in reading order, or surround a table. A table is refused when a row has more
+cells than its header, since marked would drop them.
 
 Front matter is kept in an envelope and written back unchanged on save. The editor rewrites
 the body and the comment threads, and only when the codec confirms the result reads back
@@ -131,6 +140,7 @@ picked.
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
+| `DocumentTable.ts` | The `table` node, its rows and cells, and its GFM Markdown. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the live status and the agent at work. |

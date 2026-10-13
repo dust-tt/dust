@@ -168,8 +168,8 @@ msgid "All comments"
 msgstr "Tous les commentaires"
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a table."
-msgstr "Ce document ne peut pas encore être modifié ici, car il contient un tableau."
+msgid "This document can't be edited here because a table row has more cells than its header."
+msgstr "Ce document ne peut pas être modifié ici, car une ligne de tableau a plus de cellules que son en-tête."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
 msgid "This document can't be edited here yet because it has HTML."
