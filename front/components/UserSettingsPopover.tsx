@@ -957,6 +957,10 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
                   it to tailor future responses.
                 </Trans>{" "}
                 <Trans>
+                  Agents use your memory when answering, so their responses,
+                  including in Slack, can reflect what it contains.
+                </Trans>{" "}
+                <Trans>
                   To keep your memory private, agents won't rely on it in
                   conversations with other participants.
                 </Trans>
@@ -964,19 +968,6 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
             </div>
             <SliderToggle selected={enabledValue} onClick={handleToggle} />
           </div>
-
-          {enabledValue && (
-            <ContentMessageInline
-              variant="info"
-              icon={InfoCircle}
-              className="rounded-2xl p-4"
-            >
-              <Trans>
-                Agents use your memory when answering, so their responses,
-                including in Slack, can reflect what it contains.
-              </Trans>
-            </ContentMessageInline>
-          )}
 
           {enabledValue && (
             <div className="flex flex-col gap-2">
