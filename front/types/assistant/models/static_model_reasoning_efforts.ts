@@ -634,6 +634,15 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     xhigh: false,
     maximal: false,
   },
+  "gemini-4-argon": {
+    none: false,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: false,
+    maximal: false,
+  },
   "deepseek-chat": {
     none: true,
     minimal: false,
