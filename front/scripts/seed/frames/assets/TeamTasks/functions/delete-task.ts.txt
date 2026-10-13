@@ -1,0 +1,21 @@
+import { db } from "@dust/pod";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { tasks } from "../databases/tasks.db.ts";
+import { listTasks, TaskListSchema } from "./lib/tasks.ts";
+
+export const schema = {
+  description: "Delete a task. Author only.",
+  userIdentity: "frame_author_required",
+  input: z.object({ id: z.number() }),
+  output: TaskListSchema,
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { id } = await request.json();
+    db("tasks").delete(tasks).where(eq(tasks.id, id)).run();
+    return Response.json(listTasks());
+  },
+};

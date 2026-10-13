@@ -7,6 +7,7 @@ export * from "./seedContext";
 export * from "./seedConversations";
 export * from "./seedDataSources";
 export * from "./seedFeedbacks";
+export * from "./seedFrames";
 export * from "./seedGroup";
 export * from "./seedMCPTools";
 export * from "./seedMention";

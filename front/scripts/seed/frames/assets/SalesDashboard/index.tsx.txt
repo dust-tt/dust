@@ -1,0 +1,66 @@
+import { useState } from "react";
+
+const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
+type Quarter = (typeof QUARTERS)[number];
+
+const SALES: Record<Quarter, { region: string; revenue: number }[]> = {
+  Q1: [
+    { region: "EMEA", revenue: 420 },
+    { region: "AMER", revenue: 610 },
+    { region: "APAC", revenue: 180 },
+  ],
+  Q2: [
+    { region: "EMEA", revenue: 480 },
+    { region: "AMER", revenue: 650 },
+    { region: "APAC", revenue: 240 },
+  ],
+  Q3: [
+    { region: "EMEA", revenue: 530 },
+    { region: "AMER", revenue: 700 },
+    { region: "APAC", revenue: 310 },
+  ],
+  Q4: [
+    { region: "EMEA", revenue: 590 },
+    { region: "AMER", revenue: 780 },
+    { region: "APAC", revenue: 360 },
+  ],
+};
+
+export default function App() {
+  const [quarter, setQuarter] = useState<Quarter>("Q4");
+  const rows = SALES[quarter];
+  const max = Math.max(...rows.map((row) => row.revenue));
+
+  return (
+    <div className="min-h-screen bg-background p-8 text-foreground">
+      <h1 className="mb-6 text-3xl font-bold">Sales by region (k$)</h1>
+      <div className="mb-8 flex gap-2">
+        {QUARTERS.map((q) => (
+          <button
+            key={q}
+            onClick={() => setQuarter(q)}
+            className={`rounded-md px-4 py-2 ${
+              q === quarter
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-4">
+        {rows.map((row) => (
+          <div key={row.region} className="flex items-center gap-4">
+            <span className="w-16 font-medium">{row.region}</span>
+            <div
+              className="h-6 rounded bg-primary"
+              style={{ width: `${(row.revenue / max) * 70}%` }}
+            />
+            <span className="text-muted-foreground">{row.revenue}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
