@@ -32,6 +32,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { PaginationState } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 import React, { useState } from "react";
 
 import { GroupsList } from "../groups/GroupsList";
@@ -78,6 +79,7 @@ function useDirectorySyncStatus({
 }
 
 interface DirectorySyncStatusProps {
+  title: ReactNode;
   owner: WorkspaceType;
   dsyncStatus: WorkOSConnectionSyncStatus | undefined;
   isLoadingDSync: boolean;
@@ -86,6 +88,7 @@ interface DirectorySyncStatusProps {
 }
 
 function DirectorySyncStatus({
+  title,
   owner,
   dsyncStatus,
   isLoadingDSync,
@@ -94,7 +97,11 @@ function DirectorySyncStatus({
 }: DirectorySyncStatusProps) {
   const { t } = useLingui();
   if (isLoadingDSync || !dsyncStatus) {
-    return <LoadingBlock className="h-16 w-full rounded-xl" />;
+    return (
+      <SettingsList title={title}>
+        <LoadingBlock className="h-16 w-full rounded-none" />
+      </SettingsList>
+    );
   }
 
   switch (dsyncStatus.status) {
@@ -102,7 +109,7 @@ function DirectorySyncStatus({
       const connectionType = dsyncStatus.connection?.type;
       return (
         <>
-          <SettingsList>
+          <SettingsList title={title}>
             <SettingsList.Row
               title={
                 <>
@@ -140,50 +147,46 @@ function DirectorySyncStatus({
 
     case "not_configured":
       return (
-        <>
-          <SettingsList>
-            <SettingsList.Row
-              title={<Trans>Directory sync</Trans>}
-              description={
-                <Trans>
-                  Sync your organization's users and groups from your identity
-                  provider
-                </Trans>
-              }
-              action={
-                <Button
-                  label={t`Set up Directory sync`}
-                  size="sm"
-                  variant="primary"
-                  onClick={onSetupClick}
-                />
-              }
-            />
-          </SettingsList>
-        </>
+        <SettingsList title={title}>
+          <SettingsList.Row
+            title={<Trans>Directory sync</Trans>}
+            description={
+              <Trans>
+                Sync your organization's users and groups from your identity
+                provider
+              </Trans>
+            }
+            action={
+              <Button
+                label={t`Set up Directory sync`}
+                size="sm"
+                variant="primary"
+                onClick={onSetupClick}
+              />
+            }
+          />
+        </SettingsList>
       );
 
     case "configuring": {
       const connectionType = dsyncStatus.connection?.type;
       return (
-        <>
-          <SettingsList>
-            <SettingsList.Row
-              title={<Trans>User provisioning</Trans>}
-              description={
-                <Trans>Configuring {connectionType} directory sync</Trans>
-              }
-              action={
-                <Button
-                  label={t`Continue setting up Directory Sync`}
-                  size="sm"
-                  variant="primary"
-                  onClick={onSetupClick}
-                />
-              }
-            />
-          </SettingsList>
-        </>
+        <SettingsList title={title}>
+          <SettingsList.Row
+            title={<Trans>User provisioning</Trans>}
+            description={
+              <Trans>Configuring {connectionType} directory sync</Trans>
+            }
+            action={
+              <Button
+                label={t`Continue setting up Directory Sync`}
+                size="sm"
+                variant="primary"
+                onClick={onSetupClick}
+              />
+            }
+          />
+        </SettingsList>
       );
     }
 
@@ -281,11 +284,8 @@ export default function UserProvisioning({
   return (
     <>
       <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.provisioning}>
-        <span className="heading-base text-foreground">
-          <Trans>User provisioning</Trans>
-        </span>
-
         <DirectorySyncStatus
+          title={<Trans>User provisioning</Trans>}
           owner={owner}
           dsyncStatus={dsyncStatus}
           isLoadingDSync={isLoadingDSync}
