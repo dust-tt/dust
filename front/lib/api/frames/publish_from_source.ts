@@ -6,6 +6,7 @@ import {
   buildAndPublishFramePublication,
   buildFramePublication,
 } from "@app/lib/api/frames/build_and_publish";
+import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import {
@@ -482,10 +483,18 @@ async function replaceLegacyFrameFromSource(
       return sharingCheck;
     }
 
+    // Build on the conversation sandbox: ensureFrameSandboxReady requires Frames v2, and
+    // conversion must wait until build + contracts succeed (legacy-frame-replacement-is-atomic).
+    // DB reconcile runs after conversion on the Frame sandbox.
     const build = await buildFramePublication(auth, {
-      conversation: params.conversation,
+      frame: legacyFrame,
       manifest,
       sourceFiles,
+      reconcileDatabases: false,
+      functionSandbox: {
+        kind: "conversation",
+        conversation: params.conversation,
+      },
     });
     if (build.isErr()) {
       return build;
@@ -521,6 +530,20 @@ async function replaceLegacyFrameFromSource(
       manifestMountFilePath: target.manifestMountFilePath,
     };
     try {
+      const reconciliation = await reconcileFramePublicationDatabases(auth, {
+        frame: legacyFrame,
+        manifest,
+        sourceFiles,
+      });
+      if (reconciliation.isErr()) {
+        logger.warn(
+          { ...logContext, error: reconciliation.error },
+          "Legacy Frame v2 database reconcile failed, restoring legacy Frame"
+        );
+        await legacyFrame.restoreLegacyFrame(legacyFields);
+        return reconciliation;
+      }
+
       const published = await publishFramePublication(auth, {
         frame: legacyFrame,
         functionArtifacts,
@@ -857,7 +880,6 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   }
 
   return buildAndPublishFramePublication(auth, {
-    conversation,
     frame,
     manifest: source.value.manifest,
     sourceFiles: source.value.sourceFiles,

@@ -1,4 +1,3 @@
-import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
 import {
   buildFrameFunctionsTarArchive,
   parseFrameFunctionsTarArchive,
@@ -13,7 +12,6 @@ import {
 } from "@app/lib/api/frames/publication_storage";
 import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
 import { LockAcquisitionTimeoutError } from "@app/lib/lock";
@@ -43,12 +41,8 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/frames/database_reconciliation", () => ({
-  reconcileFramePublicationDatabases: vi.fn(),
-}));
 
 vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
   seedFramePublicationFunctionsArchive: vi.fn().mockResolvedValue(undefined),
@@ -162,9 +156,6 @@ function createDeferred() {
 }
 
 beforeEach(() => {
-  vi.mocked(reconcileFramePublicationDatabases).mockResolvedValue(
-    new Ok(undefined)
-  );
   vi.mocked(seedFramePublicationFunctionsArchive).mockClear();
   vi.mocked(seedFramePublicationFunctionsArchive).mockResolvedValue(undefined);
   fileStorageMock.reset();
@@ -941,8 +932,9 @@ describe("publishFramePublication", () => {
 
   it("does not relabel a nested lock timeout as a publication conflict", async () => {
     const { auth, frame } = await setupFrame();
-    vi.mocked(reconcileFramePublicationDatabases).mockRejectedValueOnce(
-      new LockAcquisitionTimeoutError(`sandbox:lifecycle:frame:${frame.sId}`)
+    const lockName = `sandbox:lifecycle:frame:${frame.sId}`;
+    vi.spyOn(FramePublicationModel, "create").mockRejectedValueOnce(
+      new LockAcquisitionTimeoutError(lockName)
     );
 
     await expect(
@@ -955,7 +947,7 @@ describe("publishFramePublication", () => {
       })
     ).rejects.toMatchObject({
       name: "LockAcquisitionTimeoutError",
-      lockName: `sandbox:lifecycle:frame:${frame.sId}`,
+      lockName,
     });
   });
 
@@ -1002,68 +994,6 @@ describe("publishFramePublication", () => {
       frame,
       publicationId: published.value.publicationId,
     });
-  });
-
-  it("reconciles declared databases before activation", async () => {
-    const { auth, frame } = await setupFrame();
-    const databaseSchema = {
-      relativePath: "databases/tasks.db.ts",
-      content: Buffer.from("export const tasks = {};"),
-      contentType: "text/typescript" as const,
-    };
-
-    const published = await publishFramePublication(auth, {
-      frame,
-      functionArtifacts: [],
-      manifest: manifestWithDatabase,
-      sourceFiles: [...sourceFiles, databaseSchema],
-      uiBundleCode,
-    });
-
-    expect(published.isOk()).toBe(true);
-    expect(reconcileFramePublicationDatabases).toHaveBeenCalledWith(auth, {
-      frame,
-      manifest: manifestWithDatabase,
-      sourceFiles: [...sourceFiles, databaseSchema],
-    });
-  });
-
-  it("keeps the previous publication active when database reconciliation fails", async () => {
-    const { auth, frame } = await setupFrame();
-    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication({
-      publicationId: activePublicationId,
-      description: "Track tasks.",
-    });
-    vi.mocked(reconcileFramePublicationDatabases).mockResolvedValueOnce(
-      new Err(
-        new SandboxFunctionError(
-          "reconcile_blocked",
-          'Database "tasks": destructive change.'
-        )
-      )
-    );
-
-    const published = await publishFramePublication(auth, {
-      frame,
-      functionArtifacts: [],
-      manifest: manifestWithDatabase,
-      sourceFiles: [
-        ...sourceFiles,
-        {
-          relativePath: "databases/tasks.db.ts",
-          content: Buffer.from("export const tasks = {};"),
-          contentType: "text/typescript",
-        },
-      ],
-      uiBundleCode,
-    });
-
-    expect(published.isErr() && published.error.code).toBe("reconcile_blocked");
-    const reloaded = await FileResource.fetchById(auth, frame.sId);
-    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
-      activePublicationId
-    );
   });
 
   it("keeps the active publication when function artifact storage fails", async () => {
