@@ -1,3 +1,5 @@
+import { PUBLIC_FRAME_INVOCATION_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
+
 const STATIC_ALLOWED_ORIGINS = [
   // Front edge.
   "https://front-edge.dust.tt",
@@ -55,6 +57,7 @@ export const ALLOWED_HEADERS = [
   "x-commit-hash",
   "x-dust-extension-version",
   "x-dust-if-revision-match",
+  PUBLIC_FRAME_INVOCATION_TOKEN_HEADER,
   "x-build-date",
   "x-hackerone-research",
   "x-request-origin",

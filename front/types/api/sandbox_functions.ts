@@ -226,3 +226,16 @@ export type PostSandboxFunctionInvocationResponseBody = {
   // everything published so far.
   outcome?: SandboxFunctionInvocationOutcome;
 };
+
+export const PUBLIC_FRAME_INVOCATION_TOKEN_HEADER =
+  "x-dust-frame-invocation-token";
+
+export type PostPublicFrameFunctionInvocationResponseBody =
+  | {
+      invocation: SandboxFunctionInvocationType;
+      outcome: SandboxFunctionInvocationOutcome;
+    }
+  | {
+      invocation: SandboxFunctionInvocationType;
+      resultToken: string;
+    };

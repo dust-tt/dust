@@ -61,6 +61,25 @@ describe("cors middleware", () => {
     ).toContain("PUT");
   });
 
+  it("allows the public Frame invocation token on the public event stream", async () => {
+    const response = await createApp().request(
+      "/api/sse/v1/public/frames/token/invocations/inv/events",
+      {
+        method: "OPTIONS",
+        headers: {
+          Origin: APP_ORIGIN,
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "x-dust-frame-invocation-token",
+        },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(
+      response.headers.get("Access-Control-Allow-Headers")?.split(", ")
+    ).toContain("x-dust-frame-invocation-token");
+  });
+
   it("still rejects unallowlisted headers on regular endpoints", async () => {
     const response = await createApp().request("/", {
       method: "OPTIONS",
