@@ -1130,15 +1130,29 @@ describe("SandboxFunctionInvocationResource", () => {
   });
 
   it("tells the function that a caller who cannot write the Frame source is not its author", async () => {
-    const { authenticator, sandbox, invocation } =
+    const { authenticator, sandbox, space, workspace } =
       await setupFrameExecutionTest();
+    const { sandboxFunction } = await createTestFrameFunction(authenticator, {
+      space,
+      slug: "list-people",
+    });
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      memberAuth,
+      { sandboxFunction, input: { message: "hello" } }
+    );
     const execSpy = vi
       .spyOn(sandbox, "exec")
       .mockResolvedValue(
         new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
       );
 
-    const result = await invocation.execute(authenticator);
+    const result = await invocation.execute(memberAuth);
 
     expect(result.isOk()).toBe(true);
     const identity = JSON.parse(
