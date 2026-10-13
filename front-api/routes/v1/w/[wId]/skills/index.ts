@@ -137,7 +137,7 @@ app.route("/:skillId", skill);
  *               onConflict:
  *                 type: string
  *                 enum: [error, skip, override]
- *                 description: Conflict handling strategy. Defaults to error.
+ *                 description: Strategy applied when a skill with the same name already exists in the workspace. error rejects the whole import, skip skips the skill and reports it in skipped, override updates the existing skill. Defaults to error.
  *               editors:
  *                 type: array
  *                 items:
