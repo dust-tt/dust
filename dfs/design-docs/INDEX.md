@@ -43,6 +43,11 @@ and message schemas.
 The [storage proposal](STORAGE.md) defines the FDB key layout, resource records, transaction
 boundaries, and planned search indexing.
 
+## Versions
+
+The [versions proposal](VERSIONS.md) lists which versions and timestamps each file and directory
+operation updates.
+
 ## URI
 
 The [URI proposal](URI.md) defines stable object references, relative path resolution, and how

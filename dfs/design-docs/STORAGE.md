@@ -133,6 +133,8 @@ using checked increments that fail before commit on overflow. Directory entry ch
 update the parent record's timestamps and versions in the same transaction. Concurrent sibling
 changes may conflict and retry.
 
+[VERSIONS.md](VERSIONS.md) lists which versions and timestamps each operation updates.
+
 ## Grants
 
 Store ALLOW subjects directly as strings. Sessions may contain subjects with no attachments.
