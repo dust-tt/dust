@@ -208,9 +208,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  standard_stream_gpt_6_luna_medium: {
+  standard_stream_gpt_6_luna_high: {
     description:
-      "Route the Standard model tier to GPT 6 Luna at medium reasoning first, to test it as the Standard baseline",
+      "Route the Standard model tier to GPT 6 Luna at high reasoning first, to test it as the Standard baseline",
     stage: "dust_only",
     owner: "Nils-Fedrigo",
   },
