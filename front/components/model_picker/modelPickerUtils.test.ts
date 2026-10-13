@@ -3,8 +3,6 @@ import {
   getEffortStops,
   getEffortStopTooltip,
   getInitialEffort,
-  getModelDisplayDescription,
-  getModelDisplayName,
   getModelTier,
   getPinnedModelRetryTier,
   getTierLockReason,
@@ -29,9 +27,7 @@ import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_COMPLEX_MODEL_ID,
-  AUTO_FAST_MODEL_CONFIG,
   AUTO_FAST_MODEL_ID,
-  AUTO_MODEL_CONFIG,
   AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
@@ -45,22 +41,7 @@ import type {
   ModelConfigurationType,
   ModelIdType,
 } from "@app/types/assistant/models/types";
-import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
-
-describe("english-matches-source", () => {
-  it("renders the source name and description of every meta-model in en-US", () => {
-    const t = (descriptor: MessageDescriptor) => i18n._(descriptor);
-    for (const config of [
-      AUTO_FAST_MODEL_CONFIG,
-      AUTO_MODEL_CONFIG,
-      AUTO_COMPLEX_MODEL_CONFIG,
-    ]) {
-      expect(getModelDisplayName(t, config)).toBe(config.displayName);
-      expect(getModelDisplayDescription(t, config)).toBe(config.description);
-    }
-  });
-});
 
 const GATED = { lockPremiumEfforts: true };
 const UNGATED = { lockPremiumEfforts: false };

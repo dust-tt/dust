@@ -191,33 +191,23 @@ export interface ModelTierDefinition {
   id: ModelTierId;
   metaModelId: ModelStreamIdType;
   name: MessageDescriptor;
-  description: MessageDescriptor;
 }
 
-/**
- * @cc [owner:sfriquet,label:product] english-matches-source
- * The English `name` and `description` of every tier MUST equal the `displayName` and
- * `description` of its meta-model config (checked by `modelPickerUtils.test.ts`), so that `en-US`
- * renders the source text and no locale renders a translation of a stale label.
- */
 export const MODEL_TIERS: ModelTierDefinition[] = [
   {
     id: "fast",
     metaModelId: AUTO_FAST_MODEL_ID,
     name: MODELS_TIER_DISPLAY_NAMES.cost_efficient,
-    description: msg`Quick, low cost`,
   },
   {
     id: "standard",
     metaModelId: AUTO_MODEL_ID,
     name: MODELS_TIER_DISPLAY_NAMES.balanced,
-    description: msg`Best for most`,
   },
   {
     id: "complex",
     metaModelId: AUTO_COMPLEX_MODEL_ID,
     name: MODELS_TIER_DISPLAY_NAMES.premium,
-    description: msg`Slower, most capable`,
   },
 ];
 
@@ -274,24 +264,6 @@ export function getTierLockReason(
 
 export function getTierIdForMetaModelId(modelId: string): ModelTierId | null {
   return isModelStreamId(modelId) ? TIER_BY_META_MODEL_ID[modelId] : null;
-}
-
-export function getModelDisplayName(
-  t: Translate,
-  model: Pick<ModelConfigurationType, "modelId" | "displayName">
-): string {
-  const tierId = getTierIdForMetaModelId(model.modelId);
-
-  return tierId ? t(getModelTier(tierId).name) : model.displayName;
-}
-
-export function getModelDisplayDescription(
-  t: Translate,
-  model: Pick<ModelConfigurationType, "modelId" | "description">
-): string {
-  const tierId = getTierIdForMetaModelId(model.modelId);
-
-  return tierId ? t(getModelTier(tierId).description) : model.description;
 }
 
 export function getDefaultTierId(
