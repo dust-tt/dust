@@ -1,10 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  extractTextFromBuffer,
-  processAttachment,
-} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
   sanitizeFilename,
@@ -21,7 +18,9 @@ import {
   validateZipFile,
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
 import assert from "assert";
@@ -45,6 +44,66 @@ const driveChildItemSchema = z.object({
   lastModifiedDateTime: z.string().optional(),
 });
 
+const MAX_FILE_SIZE_BYTES = 64 * 1024 * 1024;
+
+function buildFileContentBlock({
+  itemId,
+  driveId,
+  siteId,
+  fileName,
+  mimeType,
+  content,
+  offset,
+  limit,
+}: {
+  itemId: string;
+  driveId: string | undefined;
+  siteId: string | undefined;
+  fileName: string;
+  mimeType: string;
+  content: string;
+  offset: number;
+  limit: number;
+}) {
+  const totalContentLength = content.length;
+  const startIndex = Math.max(0, offset);
+  const endIndex = Math.min(content.length, startIndex + limit);
+  const truncatedContent = content.slice(startIndex, endIndex);
+  const hasMore = endIndex < content.length;
+  const nextOffset = hasMore ? endIndex : undefined;
+
+  return {
+    type: "text" as const,
+    text: JSON.stringify(
+      {
+        itemId,
+        driveId,
+        siteId,
+        fileName,
+        mimeType,
+        content: truncatedContent,
+        returnedContentLength: truncatedContent.length,
+        totalContentLength,
+        offset: startIndex,
+        nextOffset,
+        hasMore,
+      },
+      null,
+      2
+    ),
+  };
+}
+
+/**
+ * @cc [owner:tdraier,label:mcp;performance] file-size-checked-before-download
+ * `get_file_content` MUST return an error without downloading the file when its Graph `size`
+ * exceeds `MAX_FILE_SIZE_BYTES`.
+ */
+/**
+ * @cc [owner:tdraier,label:mcp;performance] content-paginated
+ * The text block returned by `get_file_content` MUST hold at most `limit` characters of the file
+ * content, starting at `offset`, whether or not `getAsXml` is set.
+ */
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
     { query, dataSource, maximumResults },
@@ -387,7 +446,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       const response = await client
         .api(endpoint)
-        .select("sensitivityLabel,name,file,@microsoft.graph.downloadUrl")
+        .select("sensitivityLabel,name,size,file,@microsoft.graph.downloadUrl")
         .get();
 
       if (allowedLabels.length > 0) {
@@ -406,6 +465,14 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         return new Err(
           new MCPError(
             "The specified item is not a file (it may be a folder or other non-file resource)."
+          )
+        );
+      }
+      if (response.size && response.size > MAX_FILE_SIZE_BYTES) {
+        return new Err(
+          new MCPError(
+            `File size exceeds the maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`,
+            { tracked: false }
           )
         );
       }
@@ -433,34 +500,17 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
           );
         }
 
-        const totalContentLength = content.length;
-        const startIndex = Math.max(0, offset);
-        const endIndex = Math.min(content.length, startIndex + limit);
-        const truncatedContent = content.slice(startIndex, endIndex);
-        const hasMore = endIndex < content.length;
-        const nextOffset = hasMore ? endIndex : undefined;
-
         return new Ok([
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                itemId,
-                driveId,
-                siteId,
-                fileName,
-                mimeType,
-                content: truncatedContent,
-                returnedContentLength: truncatedContent.length,
-                totalContentLength,
-                offset: startIndex,
-                nextOffset,
-                hasMore,
-              },
-              null,
-              2
-            ),
-          },
+          buildFileContentBlock({
+            itemId,
+            driveId,
+            siteId,
+            fileName,
+            mimeType,
+            content,
+            offset,
+            limit,
+          }),
         ]);
       }
 
@@ -477,32 +527,54 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         );
       }
 
-      const result = await processAttachment({
-        mimeType,
-        filename: fileName,
-        extractText: async () => extractTextFromBuffer(buffer, mimeType),
-        downloadContent: async () => new Ok(buffer),
-      });
-
-      if (result.isErr()) {
-        return new Err(result.error);
+      let content: string | null = null;
+      if (isTextExtractionSupportedContentType(mimeType)) {
+        const textResult = await extractTextFromBuffer(buffer, mimeType);
+        if (textResult.isOk()) {
+          content = textResult.value;
+        } else {
+          logger.warn(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              itemId,
+              mimeType,
+              error: textResult.error,
+            },
+            "Text extraction failed for Microsoft Drive file"
+          );
+        }
+      }
+      if (content === null && mimeType.startsWith("text/")) {
+        content = buffer.toString("utf-8");
       }
 
-      // Ensure a resource block is included so the file can be used by other tools.
-      const hasResource = result.value.some((c) => c.type === "resource");
-      if (!hasResource) {
-        result.value.push({
-          type: "resource" as const,
-          resource: {
-            blob: buffer.toString("base64"),
-            _meta: { text: `File: ${sanitizeFilename(fileName)}` },
-            mimeType,
-            uri: sanitizeFilename(fileName),
-          },
-        });
+      const resourceBlock = {
+        type: "resource" as const,
+        resource: {
+          blob: buffer.toString("base64"),
+          _meta: { text: `File: ${sanitizeFilename(fileName)}` },
+          mimeType,
+          uri: sanitizeFilename(fileName),
+        },
+      };
+
+      if (content === null) {
+        return new Ok([resourceBlock]);
       }
 
-      return new Ok(result.value);
+      return new Ok([
+        buildFileContentBlock({
+          itemId,
+          driveId,
+          siteId,
+          fileName,
+          mimeType,
+          content,
+          offset,
+          limit,
+        }),
+        resourceBlock,
+      ]);
     } catch (err) {
       return new Err(
         new MCPError(

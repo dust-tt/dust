@@ -27,6 +27,7 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline attachment limit
+const MAX_ATTACHMENT_READ_SIZE_BYTES = 64 * 1024 * 1024;
 
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
@@ -805,6 +806,11 @@ function validateMailParams({
   return null;
 }
 
+/**
+ * @cc [owner:tdraier,label:mcp;performance] attachment-size-checked-before-download
+ * `get_attachment` MUST return an error before downloading the attachment's `$value` content when
+ * its Graph `size` exceeds `MAX_ATTACHMENT_READ_SIZE_BYTES`.
+ */
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
@@ -1205,6 +1211,15 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Attachment ${attachmentId} is not a file attachment (type: ${attachment["@odata.type"]})`
+        )
+      );
+    }
+
+    if (attachment.size > MAX_ATTACHMENT_READ_SIZE_BYTES) {
+      return new Err(
+        new MCPError(
+          `Attachment size exceeds the maximum limit of ${MAX_ATTACHMENT_READ_SIZE_BYTES / (1024 * 1024)} MB.`,
+          { tracked: false }
         )
       );
     }
