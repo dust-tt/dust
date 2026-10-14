@@ -94,7 +94,10 @@ function resolveTarget(
 ): Result<ReadTarget, string> {
   let current: unknown = workbook;
   for (const step of steps) {
-    // `Reflect.get` needs an object. After the allowlist check, this check does not fail.
+    // Each step must start from an Office.js object. `checkSteps` already refuses `constructor`,
+    // so `workbook.constructor.constructor('code')` cannot reach `Function`. This check is a
+    // second protection: a step cannot run on a JavaScript function or another value that a
+    // property gives, such as `workbook.context`. Also, `Reflect.get` needs an object.
     if (!(current instanceof OfficeExtension.ClientObject)) {
       return new Err(
         `cannot get "${step.name}" on a value that is not an Office.js object.`
@@ -139,6 +142,18 @@ function queueReads(
     const target = resolveTarget(workbook, steps);
     if (target.isErr()) {
       return new Err(`Read ${index}: ${target.error}`);
+    }
+    // An Office.js object is empty until it is loaded. A `ClientResult`, as from `getCount()`,
+    // has nothing to load. `checkSteps` makes sure that `load` can only be the last step.
+    // Example: `workbook.getSelectedRange()` gives this error.
+    const lastStep = steps[steps.length - 1];
+    if (
+      target.value instanceof OfficeExtension.ClientObject &&
+      lastStep?.name !== "load"
+    ) {
+      return new Err(
+        `Read ${index}: end the expression with load(...), for example load(['address', 'values']).`
+      );
     }
     queued.push(target.value);
   }
