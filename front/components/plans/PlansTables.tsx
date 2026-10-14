@@ -50,7 +50,7 @@ function getSeatBasedPlanItems(
       plans: ["business"],
     },
     {
-      label: <Trans>Flexible payment options (SEPA, Credit Card)</Trans>,
+      label: <Trans>Flexible payment options (SEPA, credit card)</Trans>,
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["business"],
@@ -83,7 +83,7 @@ function getSeatBasedPlanItems(
     },
     {
       label: (
-        <Trans>Native integrations (Zendesk, Slack, Chrome Extension)</Trans>
+        <Trans>Native integrations (Zendesk, Slack, Chrome extension)</Trans>
       ),
       variant: "check",
       display: ["landing", "subscribe"],
@@ -91,7 +91,7 @@ function getSeatBasedPlanItems(
     },
     {
       label: (
-        <Trans>Privacy and Data Security (SOC2, Zero Data Retention)</Trans>
+        <Trans>Privacy and data security (SOC2, Zero Data Retention)</Trans>
       ),
       variant: "check",
       display: ["landing"],
@@ -295,7 +295,7 @@ export function BusinessPriceTable({
   return (
     <SeatBasedPriceTable
       plan="business"
-      title={t`Enterprise (Seat-based)`}
+      title={t`Enterprise (seat-based)`}
       color="blue"
       price={price}
       showButton={!plan || !isProPlan(plan)}

@@ -1084,7 +1084,7 @@ export function UsagePage() {
                     variant="warning"
                   >
                     <Trans>
-                      An error occurred while loading your Workspace Credit Pool
+                      An error occurred while loading your workspace credit pool
                       data. Please refresh the page or contact support if the
                       issue persists.
                     </Trans>

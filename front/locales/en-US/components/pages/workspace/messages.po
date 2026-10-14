@@ -99,8 +99,8 @@ msgid "Email"
 msgstr "Email"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
-msgid "Clients & Tools"
-msgstr "Clients & Tools"
+msgid "Clients & tools"
+msgstr "Clients & tools"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
 msgid "Messaging apps"
@@ -220,8 +220,8 @@ msgid "Failed to load workspace credit pool"
 msgstr "Failed to load workspace credit pool"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
-msgstr "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+msgid "An error occurred while loading your workspace credit pool data. Please refresh the page or contact support if the issue persists."
+msgstr "An error occurred while loading your workspace credit pool data. Please refresh the page or contact support if the issue persists."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "{initialTotalCreditCount, plural, one {/{initialTotalCreditsFormatted} credit} other {/{initialTotalCreditsFormatted} credits}}"
@@ -454,16 +454,16 @@ msgid "emit audit events workos"
 msgstr "emit audit events workos"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Slack Bot"
-msgstr "Slack Bot"
+msgid "Slack bot"
+msgstr "Slack bot"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "slack reconnect"
 msgstr "slack reconnect"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Microsoft Teams Bot"
-msgstr "Microsoft Teams Bot"
+msgid "Microsoft Teams bot"
+msgstr "Microsoft Teams bot"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "teams"

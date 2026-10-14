@@ -99,7 +99,7 @@ msgid "Email"
 msgstr "E-mail"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
-msgid "Clients & Tools"
+msgid "Clients & tools"
 msgstr "Clients et outils"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
@@ -220,7 +220,7 @@ msgid "Failed to load workspace credit pool"
 msgstr "Impossible de charger la réserve de crédits du workspace"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+msgid "An error occurred while loading your workspace credit pool data. Please refresh the page or contact support if the issue persists."
 msgstr "Une erreur s’est produite lors du chargement des données de la réserve de crédits de votre workspace. Actualisez la page ou contactez le support si le problème persiste."
 
 #: front/components/pages/workspace/UsagePage.tsx
@@ -454,7 +454,7 @@ msgid "emit audit events workos"
 msgstr "émettre événements d’audit workos"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Slack Bot"
+msgid "Slack bot"
 msgstr "Bot Slack"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
@@ -462,7 +462,7 @@ msgid "slack reconnect"
 msgstr "slack reconnecter"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Microsoft Teams Bot"
+msgid "Microsoft Teams bot"
 msgstr "Bot Microsoft Teams"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts

@@ -48,12 +48,12 @@ function DomainAutoJoinModal({
     .map((d) => `"@${d.domain}"`)
     .join(", ");
   const description = domainAutoJoinEnabled ? (
-    t`New members will need to be invited in order to gain access to your Dust Workspace.`
+    t`New members will need to be invited in order to gain access to your Dust workspace.`
   ) : (
     <span>
       <Trans>
         Anyone with a <span className="font-bold">{domainList}</span> email will
-        have access to your Dust Workspace.
+        have access to your Dust workspace.
       </Trans>
     </span>
   );

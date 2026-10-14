@@ -212,19 +212,19 @@ msgid "Restrict sharing"
 msgstr "Restreindre le partage"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Slack Bot"
+msgid "Slack bot"
 msgstr "Bot Slack"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Whether the Dust Bot can be used in Slack"
+msgid "Whether the Dust bot can be used in Slack"
 msgstr "Détermine si le bot Dust peut être utilisé dans Slack"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Microsoft Teams Bot"
+msgid "Microsoft Teams bot"
 msgstr "Bot Microsoft Teams"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Whether the Dust Bot can be used in Microsoft Teams"
+msgid "Whether the Dust bot can be used in Microsoft Teams"
 msgstr "Détermine si le bot Dust peut être utilisé dans Microsoft Teams"
 
 #: front/components/workspace/settings/OpenPodsPolicy.tsx

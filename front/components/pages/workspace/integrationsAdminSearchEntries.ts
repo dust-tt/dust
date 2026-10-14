@@ -12,8 +12,8 @@ const MESSAGING_APP_SEARCH_ITEMS: Record<
   keyof typeof MESSAGING_APP_METADATA,
   [MessageDescriptor, MessageDescriptor]
 > = {
-  slack_bot: [msg`Slack Bot`, msg`slack reconnect`],
-  microsoft_bot: [msg`Microsoft Teams Bot`, msg`teams`],
+  slack_bot: [msg`Slack bot`, msg`slack reconnect`],
+  microsoft_bot: [msg`Microsoft Teams bot`, msg`teams`],
 };
 
 /** Search entries for Integrations (messaging, email, clients & tools). */

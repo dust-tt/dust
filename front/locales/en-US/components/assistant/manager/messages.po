@@ -51,8 +51,8 @@ msgid "More info"
 msgstr "More info"
 
 #: front/components/assistant/manager/AgentSearchActionsMenu.tsx
-msgid "Duplicate (New)"
-msgstr "Duplicate (New)"
+msgid "Duplicate (new)"
+msgstr "Duplicate (new)"
 
 #: front/components/assistant/manager/AgentSearchActionsMenu.tsx
 msgctxt "verb, menu item"

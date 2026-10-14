@@ -30,11 +30,11 @@ msgid "Activate"
 msgstr ""
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
-msgid "New members will need to be invited in order to gain access to your Dust Workspace."
+msgid "New members will need to be invited in order to gain access to your Dust workspace."
 msgstr ""
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
-msgid "Anyone with a <0>{domainList}</0> email will have access to your Dust Workspace."
+msgid "Anyone with a <0>{domainList}</0> email will have access to your Dust workspace."
 msgstr ""
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
@@ -156,7 +156,7 @@ msgid "Enabled"
 msgstr ""
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Manage your enterprise Identity Provider (IdP) settings and user provisioning via WorkOS."
+msgid "Manage your enterprise identity provider (IdP) settings and user provisioning via WorkOS."
 msgstr ""
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx

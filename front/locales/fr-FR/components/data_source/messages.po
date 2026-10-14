@@ -46,7 +46,7 @@ msgid "Use descriptions"
 msgstr "Utiliser les descriptions"
 
 #: front/components/data_source/BigQueryOptionsView.tsx
-msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to Agents."
+msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to agents."
 msgstr "Les descriptions de vos tables et colonnes définies dans BigQuery serviront à décrire les schémas aux agents."
 
 #: front/components/data_source/BigQueryOptionsView.tsx
@@ -151,7 +151,7 @@ msgid "Important"
 msgstr "Important"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "<0>Editing</0> can break the existing data structure in Dust and Agents using them."
+msgid "<0>Editing</0> can break the existing data structure in Dust and agents using them."
 msgstr "<0>Toute modification</0> peut endommager la structure de données existante dans Dust et les agents qui l’utilisent."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
@@ -175,7 +175,7 @@ msgid "You are not the owner of this connection."
 msgstr "Vous n’êtes pas propriétaire de cette connexion."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and Agents using them."
+msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and agents using them."
 msgstr "Modifier les autorisations avec un autre compte risque d’endommager la structure de données existante dans Dust et les agents qui l’utilisent."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
@@ -230,7 +230,7 @@ msgid "Deleting {connectorName} connection"
 msgstr "Supprimer la connexion {connectorName} ?"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "<0>Deleting</0> will break Agents using this data."
+msgid "<0>Deleting</0> will break agents using this data."
 msgstr "<0>La suppression</0> rendra inutilisables les agents qui utilisent ces données."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx

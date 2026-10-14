@@ -220,12 +220,12 @@ msgid "Loading models..."
 msgstr "Loading models..."
 
 #: front/components/app/NewBlock.tsx
-msgid "Interact with a Large Language Model (LLM)"
-msgstr "Interact with a Large Language Model (LLM)"
+msgid "Interact with a large language model (LLM)"
+msgstr "Interact with a large language model (LLM)"
 
 #: front/components/app/NewBlock.tsx
-msgid "Query a Large Language Model using a message-based interface."
-msgstr "Query a Large Language Model using a message-based interface."
+msgid "Query a large language model using a message-based interface."
+msgstr "Query a large language model using a message-based interface."
 
 #: front/components/app/NewBlock.tsx
 msgid "Data array"

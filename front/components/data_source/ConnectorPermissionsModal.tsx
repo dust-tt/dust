@@ -478,7 +478,7 @@ function UpdateConnectionOAuthModal({
               <div className="copy-sm p-4 text-info-900">
                 <Trans>
                   <b>Editing</b> can break the existing data structure in Dust
-                  and Agents using them.
+                  and agents using them.
                 </Trans>
               </div>
 
@@ -541,7 +541,7 @@ function UpdateConnectionOAuthModal({
             >
               <Trans>
                 Editing permission rights with a different account will likely
-                break the existing data structure in Dust and Agents using them.
+                break the existing data structure in Dust and agents using them.
               </Trans>
               {connectorUIConfiguration.guideLink && (
                 <div>
@@ -718,7 +718,7 @@ function DataSourceDeletionModal({
               </div>
               <div className="p-4 text-sm text-info-900">
                 <Trans>
-                  <b>Deleting</b> will break Agents using this data.
+                  <b>Deleting</b> will break agents using this data.
                 </Trans>
               </div>
             </div>

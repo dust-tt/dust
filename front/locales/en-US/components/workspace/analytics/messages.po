@@ -269,5 +269,5 @@ msgid "Analytics panel"
 msgstr "Analytics panel"
 
 #: front/components/workspace/analytics/sourceOriginLabels.ts
-msgid "Pod Kickoff"
-msgstr "Pod Kickoff"
+msgid "Pod kickoff"
+msgstr "Pod kickoff"

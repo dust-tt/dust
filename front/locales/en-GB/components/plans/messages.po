@@ -23,7 +23,7 @@ msgid "Multiple private spaces"
 msgstr ""
 
 #: front/components/plans/PlansTables.tsx
-msgid "Flexible payment options (SEPA, Credit Card)"
+msgid "Flexible payment options (SEPA, credit card)"
 msgstr ""
 
 #: front/components/plans/PlansTables.tsx
@@ -45,11 +45,11 @@ msgstr ""
 
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgid "Native integrations (Zendesk, Slack, Chrome extension)"
 msgstr ""
 
 #: front/components/plans/PlansTables.tsx
-msgid "Privacy and Data Security (SOC2, Zero Data Retention)"
+msgid "Privacy and data security (SOC2, Zero Data Retention)"
 msgstr ""
 
 #: front/components/plans/PlansTables.tsx
@@ -86,7 +86,7 @@ msgstr ""
 
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Enterprise (Seat-based)"
+msgid "Enterprise (seat-based)"
 msgstr ""
 
 #: front/components/plans/ProPlansTable.tsx
@@ -142,7 +142,7 @@ msgid "User provisioning (SCIM)"
 msgstr ""
 
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Flexible billing options (SEPA, Credit Card)"
+msgid "Flexible billing options (SEPA, credit card)"
 msgstr ""
 
 #: front/components/plans/SubscriptionPlanCards.tsx
@@ -162,7 +162,7 @@ msgid "per user"
 msgstr ""
 
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Subscribe to Enterprise (Seat-based)"
+msgid "Subscribe to Enterprise (seat-based)"
 msgstr ""
 
 #: front/components/plans/SubscriptionPlanCards.tsx

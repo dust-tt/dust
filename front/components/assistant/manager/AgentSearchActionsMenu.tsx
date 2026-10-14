@@ -130,7 +130,7 @@ export function AgentSearchActionsMenu({
   ) {
     menuItems.push({
       kind: "item",
-      label: t`Duplicate (New)`,
+      label: t`Duplicate (new)`,
       icon: Clipboard,
       onClick: withoutPropagation(() => {
         trackManageItemAction(tracking, "duplicate", agentId);

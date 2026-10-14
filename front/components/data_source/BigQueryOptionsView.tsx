@@ -170,7 +170,7 @@ export function BigQueryOptionsView({
           <div className="text-muted-foreground">
             <Trans>
               Your tables and columns description set in BigQuery will be used
-              to describe the schemas to Agents.
+              to describe the schemas to agents.
             </Trans>
           </div>
         </ContextItem.Description>

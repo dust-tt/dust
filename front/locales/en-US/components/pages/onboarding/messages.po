@@ -583,8 +583,8 @@ msgid "Connections (GitHub, Google Drive, Notion, Slack...)"
 msgstr "Connections (GitHub, Google Drive, Notion, Slack...)"
 
 #: front/components/pages/onboarding/TrialPage.tsx
-msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
-msgstr "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgid "Native integrations (Zendesk, Slack, Chrome extension)"
+msgstr "Native integrations (Zendesk, Slack, Chrome extension)"
 
 #: front/components/pages/onboarding/TrialPage.tsx
 msgid "100 free messages"

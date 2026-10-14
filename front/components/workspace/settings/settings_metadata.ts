@@ -19,13 +19,13 @@ export const INACTIVE_AGENT_ARCHIVAL_DESCRIPTION =
 // Name and description of each messaging app bot, shared with the read-only Poke governance view.
 export const MESSAGING_APP_METADATA = {
   slack_bot: {
-    name: "Slack Bot",
-    description: "Whether the Dust Bot can be used in Slack",
+    name: "Slack bot",
+    description: "Whether the Dust bot can be used in Slack",
     documentationUrl: "https://docs.dust.tt/docs/slack",
   },
   microsoft_bot: {
-    name: "Microsoft Teams Bot",
-    description: "Whether the Dust Bot can be used in Microsoft Teams",
+    name: "Microsoft Teams bot",
+    description: "Whether the Dust bot can be used in Microsoft Teams",
     documentationUrl: "https://docs.dust.tt/docs/dust-in-teams",
   },
 } as const;

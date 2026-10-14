@@ -51,7 +51,7 @@ msgid "More info"
 msgstr "Plus d’infos"
 
 #: front/components/assistant/manager/AgentSearchActionsMenu.tsx
-msgid "Duplicate (New)"
+msgid "Duplicate (new)"
 msgstr "Dupliquer (nouveau)"
 
 #: front/components/assistant/manager/AgentSearchActionsMenu.tsx

@@ -313,40 +313,40 @@ msgid "Sign out"
 msgstr "Sign out"
 
 #: front/components/UserMenu.tsx
-msgid "Dev Tools"
-msgstr "Dev Tools"
+msgid "Dev tools"
+msgstr "Dev tools"
 
 #: front/components/UserMenu.tsx
 msgid "Debug conversation"
 msgstr "Debug conversation"
 
 #: front/components/UserMenu.tsx
-msgid "Become Admin"
-msgstr "Become Admin"
+msgid "Become admin"
+msgstr "Become admin"
 
 #: front/components/UserMenu.tsx
-msgid "Become Manager"
-msgstr "Become Manager"
+msgid "Become manager"
+msgstr "Become manager"
 
 #: front/components/UserMenu.tsx
-msgid "Become User"
-msgstr "Become User"
+msgid "Become user"
+msgstr "Become user"
 
 #: front/components/UserMenu.tsx
-msgid "Disable Privacy Mask"
-msgstr "Disable Privacy Mask"
+msgid "Disable privacy mask"
+msgstr "Disable privacy mask"
 
 #: front/components/UserMenu.tsx
-msgid "Enable Privacy Mask"
-msgstr "Enable Privacy Mask"
+msgid "Enable privacy mask"
+msgstr "Enable privacy mask"
 
 #: front/components/UserMenu.tsx
-msgid "Disable Dev Console"
-msgstr "Disable Dev Console"
+msgid "Disable dev console"
+msgstr "Disable dev console"
 
 #: front/components/UserMenu.tsx
-msgid "Enable Dev Console"
-msgstr "Enable Dev Console"
+msgid "Enable dev console"
+msgstr "Enable dev console"
 
 #: front/components/UserMenu.tsx
 msgid "Send onboarding conversation"
@@ -579,8 +579,8 @@ msgid "Memory"
 msgstr "Memory"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Enable Memory"
-msgstr "Enable Memory"
+msgid "Enable memory"
+msgstr "Enable memory"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Dust builds a personal memory from your conversations and uses it to tailor future responses."

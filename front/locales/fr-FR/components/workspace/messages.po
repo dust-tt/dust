@@ -263,7 +263,7 @@ msgid "Try again"
 msgstr "Réessayer"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Have a coupon code? Enter it below to add free credits to your Workspace Credits Pool."
+msgid "Have a coupon code? Enter it below to add free credits to your workspace credits pool."
 msgstr "Vous avez un code de coupon ? Saisissez-le ci-dessous pour ajouter des crédits gratuits à la réserve de crédits de votre workspace."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx

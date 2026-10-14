@@ -32,7 +32,7 @@ export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
   onboarding_conversation: "Onboarding",
   agent_sidekick: "Sidekick",
   analytics_panel: "Analytics panel",
-  project_kickoff: "Pod Kickoff",
+  project_kickoff: "Pod kickoff",
 };
 
 // Analytics reports on the surface a message came from, not on how it was sent,

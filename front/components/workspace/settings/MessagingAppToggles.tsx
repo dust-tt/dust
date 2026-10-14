@@ -37,8 +37,8 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         systemSpace={systemSpace}
         oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
         connectorProvider="slack_bot"
-        name={t`Slack Bot`}
-        description={t`Whether the Dust Bot can be used in Slack`}
+        name={t`Slack bot`}
+        description={t`Whether the Dust bot can be used in Slack`}
         documentationUrl={MESSAGING_APP_METADATA.slack_bot.documentationUrl}
       />
       <BotToggle
@@ -51,8 +51,8 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
           extraConfig: {},
         }}
         connectorProvider="microsoft_bot"
-        name={t`Microsoft Teams Bot`}
-        description={t`Whether the Dust Bot can be used in Microsoft Teams`}
+        name={t`Microsoft Teams bot`}
+        description={t`Whether the Dust bot can be used in Microsoft Teams`}
         documentationUrl={MESSAGING_APP_METADATA.microsoft_bot.documentationUrl}
       />
     </>

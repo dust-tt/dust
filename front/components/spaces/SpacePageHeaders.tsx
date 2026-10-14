@@ -55,7 +55,7 @@ export function SpacePageHeader({
           <Trans>
             Here you can add new trigger sources to your workspace. Once
             created, those sources can be used in the Agent Builder to trigger
-            Agents.
+            agents.
           </Trans>
         );
       } else {

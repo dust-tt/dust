@@ -62,16 +62,16 @@ function StatusCell({ status, origin }: StatusCellProps) {
       break;
     case "provisioned":
       label = isActive
-        ? t`Active (Provisioned)`
-        : t`Unregistered (Provisioned)`;
+        ? t`Active (provisioned)`
+        : t`Unregistered (provisioned)`;
       break;
     case "invited":
-      label = isActive ? t`Active (Invited)` : t`Unregistered (Invited)`;
+      label = isActive ? t`Active (invited)` : t`Unregistered (invited)`;
       break;
     case "auto-joined":
       label = isActive
-        ? t`Active (Auto-joined)`
-        : t`Unregistered (Auto-joined)`;
+        ? t`Active (auto-joined)`
+        : t`Unregistered (auto-joined)`;
       break;
     default:
       assertNeverAndIgnore(origin);

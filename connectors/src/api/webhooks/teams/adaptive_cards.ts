@@ -548,7 +548,7 @@ export function createWelcomeAdaptiveCard(i18n: I18n): Partial<Activity> {
         items: [
           {
             type: "TextBlock",
-            text: i18n._("**Getting Started**"),
+            text: i18n._("**Getting started**"),
             weight: "Bolder",
             spacing: "Medium",
           },
@@ -560,7 +560,7 @@ export function createWelcomeAdaptiveCard(i18n: I18n): Partial<Activity> {
           },
           {
             type: "TextBlock",
-            text: i18n._("• Enable the integration in your Workspace settings"),
+            text: i18n._("• Enable the integration in your workspace settings"),
             wrap: true,
             spacing: "Small",
           },

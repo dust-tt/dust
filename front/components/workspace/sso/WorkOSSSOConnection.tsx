@@ -74,7 +74,7 @@ export default function WorkOSSSOConnection({
           }
           description={
             <Trans>
-              Manage your enterprise Identity Provider (IdP) settings and user
+              Manage your enterprise identity provider (IdP) settings and user
               provisioning via WorkOS.
             </Trans>
           }

@@ -63,7 +63,7 @@ msgid "Get work done"
 msgstr ""
 
 #: src/components/ConversationListItem.tsx
-msgid "{mentionCount, plural, one {{mentions} Mention} other {{mentions} Mentions}}"
+msgid "{mentionCount, plural, one {{mentions} mention} other {{mentions} mentions}}"
 msgstr ""
 
 #: src/components/ConversationListItem.tsx
@@ -76,11 +76,11 @@ msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})"
 msgstr ""
 
 #: src/components/ConversationListItem.tsx
-msgid "{replyCount, plural, one {{replies} Reply} other {{replies} Replies}}"
+msgid "{replyCount, plural, one {{replies} reply} other {{replies} replies}}"
 msgstr ""
 
 #: src/components/ConversationListItem.tsx
-msgid "{unreadCount, plural, one {{unreads} Unread} other {{unreads} Unread}}"
+msgid "{unreadCount, plural, one {{unreads} unread} other {{unreads} unread}}"
 msgstr ""
 
 #: src/components/ConversationListItem.tsx

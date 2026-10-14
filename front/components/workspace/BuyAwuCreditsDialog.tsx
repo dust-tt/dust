@@ -308,7 +308,7 @@ function UseCouponTab({
               <p className="text-sm text-muted-foreground">
                 <Trans>
                   Have a coupon code? Enter it below to add free credits to your
-                  Workspace Credits Pool.
+                  workspace credits pool.
                 </Trans>
               </p>
               <div className="flex flex-col gap-2">

@@ -197,27 +197,27 @@ msgid "Unregistered"
 msgstr ""
 
 #: front/components/members/MembersList.tsx
-msgid "Active (Provisioned)"
+msgid "Active (provisioned)"
 msgstr ""
 
 #: front/components/members/MembersList.tsx
-msgid "Unregistered (Provisioned)"
+msgid "Unregistered (provisioned)"
 msgstr ""
 
 #: front/components/members/MembersList.tsx
-msgid "Active (Invited)"
+msgid "Active (invited)"
 msgstr ""
 
 #: front/components/members/MembersList.tsx
-msgid "Unregistered (Invited)"
+msgid "Unregistered (invited)"
 msgstr ""
 
 #: front/components/members/MembersList.tsx
-msgid "Active (Auto-joined)"
+msgid "Active (auto-joined)"
 msgstr ""
 
 #: front/components/members/MembersList.tsx
-msgid "Unregistered (Auto-joined)"
+msgid "Unregistered (auto-joined)"
 msgstr ""
 
 #: front/components/members/MembersList.tsx

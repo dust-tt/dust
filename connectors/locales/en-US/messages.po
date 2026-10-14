@@ -89,8 +89,8 @@ msgstr "Thank you for installing Dust in Microsoft Teams!"
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/teams/adaptive_cards.ts
-msgid "**Getting Started**"
-msgstr "**Getting Started**"
+msgid "**Getting started**"
+msgstr "**Getting started**"
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/teams/adaptive_cards.ts
@@ -99,8 +99,8 @@ msgstr "To start using Dust in Teams, make sure to:"
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/teams/adaptive_cards.ts
-msgid "• Enable the integration in your Workspace settings"
-msgstr "• Enable the integration in your Workspace settings"
+msgid "• Enable the integration in your workspace settings"
+msgstr "• Enable the integration in your workspace settings"
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/teams/adaptive_cards.ts

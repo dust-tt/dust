@@ -585,7 +585,7 @@ export function UserMenu({
             <>
               <Separator className="my-1" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label={t`Dev Tools`} icon={Shapes} />
+                <DropdownMenuSubTrigger label={t`Dev tools`} icon={Shapes} />
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
                     {(router.pathname === "/w/[wId]/conversation/[cId]" ||
@@ -613,21 +613,21 @@ export function UserMenu({
                       <>
                         {!isAdmin(owner) && (
                           <DropdownMenuItem
-                            label={t`Become Admin`}
+                            label={t`Become admin`}
                             onClick={() => forceRoleUpdate("admin")}
                             icon={ShieldTick}
                           />
                         )}
                         {!isOnlyManager(owner) && (
                           <DropdownMenuItem
-                            label={t`Become Manager`}
+                            label={t`Become manager`}
                             onClick={() => forceRoleUpdate("manager")}
                             icon={UsersCheck}
                           />
                         )}
                         {!isOnlyUser(owner) && (
                           <DropdownMenuItem
-                            label={t`Become User`}
+                            label={t`Become user`}
                             onClick={() => forceRoleUpdate("user")}
                             icon={User01}
                           />
@@ -637,8 +637,8 @@ export function UserMenu({
                     <DropdownMenuItem
                       label={
                         privacyMask.isEnabled
-                          ? t`Disable Privacy Mask`
-                          : t`Enable Privacy Mask`
+                          ? t`Disable privacy mask`
+                          : t`Enable privacy mask`
                       }
                       onClick={privacyMask.toggle}
                       icon={privacyMask.isEnabled ? EyeOff : Eye}
@@ -646,8 +646,8 @@ export function UserMenu({
                     <DropdownMenuItem
                       label={
                         devMode.isEnabled
-                          ? t`Disable Dev Console`
-                          : t`Enable Dev Console`
+                          ? t`Disable dev console`
+                          : t`Enable dev console`
                       }
                       onClick={devMode.toggle}
                       icon={Terminal}

@@ -79,7 +79,7 @@ msgid "This Pod's default agent isn't available to you, so @Dust is used instead
 msgstr "L’agent par défaut de ce Pod ne vous est pas accessible, @Dust est donc utilisé à la place. Contactez les éditeurs de votre Pod si vous pensez qu’il s’agit d’une erreur."
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This conversation's default agent isn't available to you, so @Dust is used instead. Discuss with your Workspace admin if you think this is an error."
+msgid "This conversation's default agent isn't available to you, so @Dust is used instead. Discuss with your workspace admin if you think this is an error."
 msgstr "L’agent par défaut de cette conversation ne vous est pas accessible, @Dust est donc utilisé à la place. Contactez l’administrateur de votre workspace si vous pensez qu’il s’agit d’une erreur."
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx

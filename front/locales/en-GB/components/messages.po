@@ -313,7 +313,7 @@ msgid "Sign out"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Dev Tools"
+msgid "Dev tools"
 msgstr ""
 
 #: front/components/UserMenu.tsx
@@ -321,31 +321,31 @@ msgid "Debug conversation"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Become Admin"
+msgid "Become admin"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Become Manager"
+msgid "Become manager"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Become User"
+msgid "Become user"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Disable Privacy Mask"
+msgid "Disable privacy mask"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Enable Privacy Mask"
+msgid "Enable privacy mask"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Disable Dev Console"
+msgid "Disable dev console"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Enable Dev Console"
+msgid "Enable dev console"
 msgstr ""
 
 #: front/components/UserMenu.tsx
@@ -579,7 +579,7 @@ msgid "Memory"
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Enable Memory"
+msgid "Enable memory"
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
