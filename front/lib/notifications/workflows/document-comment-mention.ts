@@ -6,7 +6,7 @@ import {
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
-import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { renderEmail } from "@app/lib/notifications/email-templates/document-comment-mentions";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
 import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/triggers/conversation-unread";
@@ -29,15 +29,20 @@ import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 import z from "zod";
 
-const MentionDetailsSchema = z.object({
+const MentionSchema = z.object({
   authorName: z.string(),
   fileName: z.string(),
-  locationName: z.string(),
-  workspaceName: z.string(),
   route: z.string(),
 });
 
-type MentionDetailsType = z.infer<typeof MentionDetailsSchema>;
+type MentionType = z.infer<typeof MentionSchema>;
+
+const ReadableMentionsSchema = z.object({
+  workspaceName: z.string(),
+  mentions: z.array(MentionSchema),
+});
+
+type ReadableMentionsType = z.infer<typeof ReadableMentionsSchema>;
 
 const ChannelsSchema = z.object({
   inApp: z.boolean(),
@@ -47,14 +52,18 @@ const ChannelsSchema = z.object({
 
 type ChannelsType = z.infer<typeof ChannelsSchema>;
 
-const MentionDetailsResultSchema = z.discriminatedUnion("success", [
+const MentionResultSchema = z.discriminatedUnion("success", [
   z.object({
     success: z.literal(true),
-    data: MentionDetailsSchema,
+    mention: MentionSchema,
     channels: ChannelsSchema,
   }),
   z.object({ success: z.literal(false) }),
 ]);
+
+const DigestResultSchema = z.object({
+  digest: ReadableMentionsSchema.nullable(),
+});
 
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
@@ -80,32 +89,62 @@ async function getConversationChannels(
   };
 }
 
-async function getMentionDetails(
+/**
+ * @cc [owner:adrien,label:security] document-comment-mention-readable
+ * MUST return only the mentions whose document the subscriber can read when called, and `null`
+ * when the subscriber is no longer an active member of the workspace.
+ */
+export async function getReadableMentions(
   subscriberId: string,
-  payload: DocumentCommentMentionPayloadType
-): Promise<MentionDetailsType | null> {
-  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  workspaceId: string,
+  payloads: DocumentCommentMentionPayloadType[]
+): Promise<ReadableMentionsType | null> {
+  const auth = await getActiveSubscriberAuth(subscriberId, workspaceId);
   if (!auth) {
     return null;
   }
-  const document = await getReadableDocument(auth, payload.documentPath);
-  if (!document) {
-    return null;
-  }
-  const author = await UserResource.fetchById(payload.authorId);
+
+  const documentPaths = [...new Set(payloads.map((p) => p.documentPath))];
+  const documents = new Map(
+    removeNulls(
+      await concurrentExecutor(
+        documentPaths,
+        async (documentPath) => {
+          const document = await getReadableDocument(auth, documentPath);
+          return document ? ([documentPath, document] as const) : null;
+        },
+        { concurrency: 4 }
+      )
+    )
+  );
+  const authors = new Map(
+    (
+      await UserResource.fetchByIds([
+        ...new Set(payloads.map((p) => p.authorId)),
+      ])
+    ).map((author) => [author.sId, author.fullName()])
+  );
 
   return {
-    authorName: author?.fullName() ?? "",
-    fileName: getFileNameFromScopedPath(payload.documentPath),
-    locationName: document.locationName,
     workspaceName: auth.getNonNullableWorkspace().name,
-    route: document.route,
+    mentions: removeNulls(
+      payloads.map(({ documentPath, authorId }) => {
+        const document = documents.get(documentPath);
+        return document
+          ? {
+              authorName: authors.get(authorId) ?? "",
+              fileName: getFileNameFromScopedPath(documentPath),
+              route: document.route,
+            }
+          : null;
+      })
+    ),
   };
 }
 
 export function buildDocumentCommentMentionCopy(
   i18n: I18n,
-  { authorName, fileName }: Pick<MentionDetailsType, "authorName" | "fileName">
+  { authorName, fileName }: Pick<MentionType, "authorName" | "fileName">
 ): {
   subject: string;
   content: string;
@@ -124,25 +163,28 @@ export function buildDocumentCommentMentionCopy(
 export const documentCommentMentionWorkflow = workflow(
   DOCUMENT_COMMENT_MENTION_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
-    const detailsResult = await step.custom(
+    const mentionResult = await step.custom(
       "get-mention-details",
       async () => {
         const { subscriberId } = subscriber;
-        const details = subscriberId
-          ? await getMentionDetails(subscriberId, payload)
+        const readable = subscriberId
+          ? await getReadableMentions(subscriberId, payload.workspaceId, [
+              payload,
+            ])
           : null;
-        return subscriberId && details
+        const mention = readable?.mentions[0];
+        return subscriberId && mention
           ? {
               success: true as const,
-              data: details,
+              mention,
               channels: await getConversationChannels(subscriberId),
             }
           : { success: false as const };
       },
-      { outputSchema: MentionDetailsResultSchema }
+      { outputSchema: MentionResultSchema }
     );
-    const details = detailsResult.success ? detailsResult.data : null;
-    const channels = detailsResult.success ? detailsResult.channels : null;
+    const mention = mentionResult.success ? mentionResult.mention : null;
+    const channels = mentionResult.success ? mentionResult.channels : null;
 
     const getI18n = async () =>
       getNotificationI18n(
@@ -155,15 +197,15 @@ export const documentCommentMentionWorkflow = workflow(
     await step.inApp(
       "send-in-app",
       async () => {
-        const d = details!;
+        const m = mention!;
         const { subject, content, actionLabel } =
-          buildDocumentCommentMentionCopy(await getI18n(), d);
+          buildDocumentCommentMentionCopy(await getI18n(), m);
         return {
           subject,
           body: content,
           primaryAction: {
             label: actionLabel,
-            redirect: { url: d.route },
+            redirect: { url: m.route },
           },
           data: { autoDelete: true },
         };
@@ -174,17 +216,13 @@ export const documentCommentMentionWorkflow = workflow(
     await step.chat(
       "slack-notification",
       async () => {
-        const d = details!;
+        const m = mention!;
         const { content, actionLabel } = buildDocumentCommentMentionCopy(
           await getI18n(),
-          d
+          m
         );
-        const preview = payload.messagePreview
-          .split("\n")
-          .map((line) => `> ${line}`)
-          .join("\n");
         return {
-          body: `${content}\n${preview}\n<${config.getAppUrl()}${d.route}|${actionLabel}>`,
+          body: `${content}\n<${config.getAppUrl()}${m.route}|${actionLabel}>`,
         };
       },
       {
@@ -231,67 +269,57 @@ export const documentCommentMentionWorkflow = workflow(
       { skip: skipEmail }
     );
 
+    const digestResult = await step.custom(
+      "get-readable-digest",
+      async () => {
+        const { subscriberId } = subscriber;
+        if (!subscriberId) {
+          return { digest: null };
+        }
+        const { email } = await getConversationChannels(subscriberId);
+        const digest = email
+          ? await getReadableMentions(
+              subscriberId,
+              payload.workspaceId,
+              events.map((event) =>
+                DocumentCommentMentionPayloadSchema.parse(event.payload)
+              )
+            )
+          : null;
+        return { digest: digest?.mentions.length ? digest : null };
+      },
+      { outputSchema: DigestResultSchema, skip: skipEmail }
+    );
+
     await step.email(
       "send-email",
       async () => {
         const i18n = await getI18n();
-        const readableMentions = removeNulls(
-          await concurrentExecutor(
-            events,
-            async (event) => {
-              const eventPayload = DocumentCommentMentionPayloadSchema.parse(
-                event.payload
-              );
-              const eventDetails = subscriber.subscriberId
-                ? await getMentionDetails(subscriber.subscriberId, eventPayload)
-                : null;
-              return eventDetails
-                ? { details: eventDetails, payload: eventPayload }
-                : null;
-            },
-            { concurrency: 8 }
-          )
-        );
-        const mentions =
-          readableMentions.length > 0
-            ? readableMentions
-            : [{ details: details!, payload }];
+        const { workspaceName, mentions } = digestResult.digest!;
         const [first] = mentions;
-        const content = mentions
-          .map(
-            ({ details, payload }) =>
-              `${buildDocumentCommentMentionCopy(i18n, details).content}\n${payload.messagePreview}`
-          )
-          .join("\n\n");
-        const { subject, actionLabel } = buildDocumentCommentMentionCopy(
-          i18n,
-          first.details
-        );
+        const count = mentions.length;
         const body = await renderEmail({
           i18n,
           name: subscriber.firstName ?? undefined,
-          workspace: {
-            id: payload.workspaceId,
-            name: first.details.workspaceName,
-          },
-          content,
-          action: {
-            label: actionLabel,
-            url: config.getAppUrl() + first.details.route,
-          },
+          workspace: { id: payload.workspaceId, name: workspaceName },
+          mentions: mentions.map((m) => ({
+            text: buildDocumentCommentMentionCopy(i18n, m).content,
+            url: config.getAppUrl() + m.route,
+          })),
         });
-        const count = mentions.length;
         return {
           subject:
             count === 1
-              ? `[Dust] ${subject}`
+              ? `[Dust] ${buildDocumentCommentMentionCopy(i18n, first).subject}`
               : i18n._(
                   msg`[Dust] You were mentioned ${plural(count, { one: "once", other: "# times" })}`
                 ),
           body,
         };
       },
-      { skip: skipEmail }
+      {
+        skip: async () => (await skipEmail()) || !digestResult.digest,
+      }
     );
   },
   {

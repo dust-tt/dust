@@ -118,6 +118,25 @@ describe("document comment mention notifications", () => {
     });
   });
 
+  it("keys each recipient's notification to the comment message", async () => {
+    const message = newMessage(mention(member));
+
+    await triggerDocumentCommentMentionNotifications(authorAuth, {
+      documentPath,
+      newMessage: message,
+    });
+    await triggerDocumentCommentMentionNotifications(authorAuth, {
+      documentPath,
+      newMessage: message,
+    });
+
+    const [first, second] = triggerBulk.mock.calls.map(
+      ([{ events }]) => events[0].transactionId
+    );
+    expect(first).toContain(member.sId);
+    expect(second).toBe(first);
+  });
+
   it("skips users who never want conversation notifications", async () => {
     await member.setMetadata(
       CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,

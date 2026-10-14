@@ -242,11 +242,11 @@ msgstr "Acheter des crédits"
 
 #: front/lib/notifications/workflows/document-comment-mention.ts
 msgid "{author} mentioned you in \"{fileName}\""
-msgstr "{author} vous a mentionné dans « {fileName} »"
+msgstr "{author} vous a mentionné dans « {fileName} »"
 
 #: front/lib/notifications/workflows/document-comment-mention.ts
 msgid "{author} mentioned you in a comment on \"{fileName}\"."
-msgstr "{author} vous a mentionné dans un commentaire sur « {fileName} »."
+msgstr "{author} vous a mentionné dans un commentaire sur « {fileName} »."
 
 #: front/lib/notifications/workflows/document-comment-mention.ts
 msgid "View document"

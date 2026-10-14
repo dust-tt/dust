@@ -23,7 +23,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { UserType } from "@app/types/user";
 import { areConversationExternalNotificationsEnabled } from "@app/types/user";
 
 // The unread workflow operates on the shared conversation-details payload.
@@ -227,7 +226,9 @@ export const shouldSkipConversation = async ({
  * Note: If a user is the only human participant in the conversation, they are
  * always notified regardless of their preference.
  */
-export const filterParticipantsByNotifyCondition = async <T extends UserType>({
+export const filterParticipantsByNotifyCondition = async <
+  T extends { id: ModelId; sId: string },
+>({
   auth,
   participants,
   mentionedUserIds,

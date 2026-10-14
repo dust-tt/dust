@@ -2,10 +2,7 @@ import type { NewCommentMessage } from "@app/lib/api/documents/comment_signature
 import { parseScopedPrefix } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import {
-  extractFromString,
-  replaceMentionsWithAt,
-} from "@app/lib/mentions/format";
+import { extractFromString } from "@app/lib/mentions/format";
 import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
 import { filterParticipantsByNotifyCondition } from "@app/lib/notifications/triggers/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -13,6 +10,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
+import { makeDocumentCommentMentionWorkflowId } from "@app/temporal/mentions_queue/helpers";
 import { isUserMention } from "@app/types/assistant/mentions";
 import {
   FILE_PREVIEW_SIDE_PANEL_TYPE,
@@ -27,17 +25,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import z from "zod";
-
-const MESSAGE_PREVIEW_LENGTH = 300;
 
 export const DocumentCommentMentionPayloadSchema = z.object({
   workspaceId: z.string(),
   documentPath: z.string(),
   commentId: z.string(),
   authorId: z.string(),
-  messagePreview: z.string(),
 });
 
 export type DocumentCommentMentionPayloadType = z.infer<
@@ -45,7 +39,6 @@ export type DocumentCommentMentionPayloadType = z.infer<
 >;
 
 interface ReadableDocument {
-  locationName: string;
   route: string;
   spaceModelId: ModelId | null;
 }
@@ -75,7 +68,6 @@ export async function getReadableDocument(
       const relPath = parseCanonicalScopedPath(documentPath)?.relPath ?? "";
       const folder = relPath.slice(0, Math.max(relPath.lastIndexOf("/"), 0));
       return {
-        locationName: pod.name,
         route: getPodRoute(
           workspaceId,
           pod.sId,
@@ -100,7 +92,6 @@ export async function getReadableDocument(
         [SIDE_PANEL_HASH_PARAM]: documentPath,
       });
       return {
-        locationName: conversation.title ?? "",
         route: `${getConversationRoute(workspaceId, conversation.sId)}#?${hash}`,
         spaceModelId: conversation.spaceId,
       };
@@ -113,18 +104,17 @@ export async function getReadableDocument(
   }
 }
 
-function messagePreview(body: string): string {
-  const text = stripMarkdown(replaceMentionsWithAt(body)).trim();
-  return text.length > MESSAGE_PREVIEW_LENGTH
-    ? `${text.substring(0, MESSAGE_PREVIEW_LENGTH)}...`
-    : text;
-}
-
 /**
  * @cc [owner:adrien,label:product;security] document-comment-mention-notification
  * Each user mentioned in a new comment message MUST be notified once, except its author, users
  * who are not active members of the workspace, users who cannot read the document, and users whose
  * notify condition for the document's space is `never`.
+ */
+/**
+ * @cc [owner:adrien,label:product;performance] document-comment-mention-idempotent
+ * Each recipient's event MUST carry a `transactionId` that depends only on the workspace, the
+ * document, the comment message and the recipient, so a retried trigger never notifies a
+ * recipient twice.
  */
 export async function triggerDocumentCommentMentionNotifications(
   auth: Authenticator,
@@ -157,7 +147,7 @@ export async function triggerDocumentCommentMentionNotifications(
         const document = userAuth
           ? await getReadableDocument(userAuth, documentPath)
           : null;
-        return document ? { user: user.toJSON(), document } : null;
+        return document ? { user, document } : null;
       },
       { concurrency: 4 }
     )
@@ -183,8 +173,12 @@ export async function triggerDocumentCommentMentionNotifications(
     documentPath,
     commentId: newMessage.commentId,
     authorId: author.sId,
-    messagePreview: messagePreview(newMessage.message.body),
   };
+  const transactionIdPrefix = makeDocumentCommentMentionWorkflowId({
+    workspaceId,
+    documentPath,
+    newMessage,
+  });
 
   try {
     const novuClient = await getNovuClient();
@@ -198,6 +192,7 @@ export async function triggerDocumentCommentMentionNotifications(
           lastName: user.lastName ?? undefined,
         },
         payload,
+        transactionId: `${transactionIdPrefix}-${user.sId}`,
       })),
     });
 
