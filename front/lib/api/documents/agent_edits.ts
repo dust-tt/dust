@@ -193,7 +193,7 @@ export async function editAgentDocument(
       if (
         anchorsAfter === null ||
         anchorsBefore === null ||
-        [...anchorsAfter].some((id) => !anchorsBefore.has(id))
+        !anchorsAfter.isSubsetOf(anchorsBefore)
       ) {
         return new Err(
           new DfmAgentDocumentError(
@@ -203,7 +203,7 @@ export async function editAgentDocument(
           )
         );
       }
-      if (anchorsAfter.size !== anchorsBefore.size) {
+      if (!anchorsBefore.isSubsetOf(anchorsAfter)) {
         return new Err(
           new DfmAgentDocumentError(
             "anchors_removed",
