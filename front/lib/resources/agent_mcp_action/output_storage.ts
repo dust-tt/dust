@@ -16,6 +16,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
+const GCS_WRITE_REQUEST_TIMEOUT_MS = 15_000;
 
 export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -48,6 +49,12 @@ function getGcsPath(
  * MUST heartbeat the current Temporal activity, if any, after each object write attempt, so that
  * writing many objects is not mistaken for a stalled activity.
  */
+/**
+ * @cc [owner:tdraier,label:performance] bounded-gcs-write-attempt
+ * Each object write attempt MUST be bounded by `GCS_WRITE_REQUEST_TIMEOUT_MS`, so that a request
+ * stuck on a dead connection fails and is retried instead of stalling past the activity heartbeat
+ * timeout.
+ */
 async function batchWriteContentsToGcsAtPaths(
   action: AgentMCPActionResource,
   itemsWithPaths: Array<{ content: OutputContent; gcsPath: string }>
@@ -62,9 +69,12 @@ async function batchWriteContentsToGcsAtPaths(
       const file = bucket.file(gcsPath);
       const json = JSON.stringify(content);
 
+      // Resumable uploads (the SDK default) ignore `timeout`.
       const writeResult = await withRetry(() =>
         file.save(Buffer.from(json, "utf-8"), {
           contentType: "application/json",
+          resumable: false,
+          timeout: GCS_WRITE_REQUEST_TIMEOUT_MS,
         })
       );
       heartbeatWithoutCancelCheck();
