@@ -1,4 +1,4 @@
-import { LocaleSync } from "@app/components/app/LocaleSync";
+import { LocaleGate } from "@app/components/app/LocaleGate";
 import Custom404 from "@app/components/pages/Custom404";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
@@ -44,7 +44,7 @@ export function JoinPage() {
   }, [redirectUrl]);
 
   return (
-    <LocaleSync
+    <LocaleGate
       locale={joinData?.workspaceLocale ?? DEFAULT_LOCALE}
       fallback={<Loader />}
     >
@@ -54,7 +54,7 @@ export function JoinPage() {
         error={joinDataError}
         onRetry={() => void mutateJoinData()}
       />
-    </LocaleSync>
+    </LocaleGate>
   );
 }
 

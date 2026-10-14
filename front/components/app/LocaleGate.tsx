@@ -6,7 +6,7 @@ import { DEFAULT_LOCALE, PSEUDO_LOCALE } from "@app/types/locale";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
-interface LocaleSyncProps {
+interface LocaleGateProps {
   locale: SupportedLocale;
   // Rendered until the resolved locale is active.
   fallback: ReactNode;
@@ -16,11 +16,6 @@ interface LocaleSyncProps {
 /**
  * Activates a locale resolved by the caller, for pages rendered outside of the auth context such
  * as the join page. Pages under `WorkspacePage` get `UserLocaleSync` instead.
- *
- * TODO(ykmsd): once the `localisation` feature flag ships, move the locale-override resolution into
- * `useLocaleSync` so that this component and `UserLocaleSync` only pass the locale they resolve.
- * They stay separate: this one holds back its children until the locale is active, while
- * `UserLocaleSync` reports ready to the app-wide startup loader.
  */
 /**
  * @cc [owner:ykmsd,label:product;react] children-after-resolved-locale-ready
@@ -29,7 +24,7 @@ interface LocaleSyncProps {
  * locale changes. Once the load settles, `children` MUST be rendered, even when it failed and the
  * previous locale stays active.
  */
-export function LocaleSync({ locale, fallback, children }: LocaleSyncProps) {
+export function LocaleGate({ locale, fallback, children }: LocaleGateProps) {
   const localeOverride = useLocaleOverride();
   const resolvedLocale = localeOverride ?? locale;
   const formatLocale =
