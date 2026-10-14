@@ -24,7 +24,9 @@ mod tests;
 // This replaces the original resource or decoding error variant with its API status inside the
 // transaction closure. Resource modules still return typed errors and remain independent of tonic.
 
-// Share each resource's mapping between RPC statuses and individual batch errors.
+// Each resource follows the same order: ErrorCode, ErrorDetails, Status, then the mixed-transaction
+// wrapper. ErrorCode is the single mapping shared by all paths; wrapped resource errors delegate
+// to their originating resource's mapping.
 impl From<file::Error> for ErrorCode {
     fn from(error: file::Error) -> Self {
         match error {
@@ -34,7 +36,7 @@ impl From<file::Error> for ErrorCode {
             file::Error::Capacity => ErrorCode::Capacity,
             file::Error::Object(error) => error.into(),
             file::Error::InvalidBlock => {
-                tracing::error!(%error, "file read failed");
+                tracing::error!(%error, "file operation failed");
                 ErrorCode::Internal
             }
         }
@@ -52,6 +54,15 @@ impl From<file::Error> for ErrorDetails {
 impl From<file::Error> for Status {
     fn from(error: file::Error) -> Self {
         status(error.into())
+    }
+}
+
+impl From<storage::Error<file::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<file::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
     }
 }
 
@@ -105,41 +116,74 @@ impl From<storage::Error<object::Error>> for storage::Error<Status> {
     }
 }
 
-impl From<session::Error> for Status {
+impl From<session::Error> for ErrorCode {
     fn from(error: session::Error) -> Self {
         match error {
             session::Error::InvalidId
             | session::Error::InvalidSubject
-            | session::Error::TooManySubjects => status(ErrorCode::InvalidInput),
-            session::Error::InvalidKey => status(ErrorCode::Unauthenticated),
-            session::Error::NotFound => status(ErrorCode::NotFound),
-            session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            | session::Error::TooManySubjects => ErrorCode::InvalidInput,
+            session::Error::InvalidKey => ErrorCode::Unauthenticated,
+            session::Error::NotFound => ErrorCode::NotFound,
+            session::Error::AlreadyExists => ErrorCode::AlreadyExists,
             session::Error::Tenant(error) => error.into(),
             session::Error::KeyGeneration
             | session::Error::ExpiryGeneration
             | session::Error::KeyCollision => {
-                tracing::error!(%error, "session creation failed");
-                status(ErrorCode::Internal)
+                tracing::error!(%error, "session operation failed");
+                ErrorCode::Internal
             }
+        }
+    }
+}
+
+impl From<session::Error> for ErrorDetails {
+    fn from(error: session::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<session::Error> for Status {
+    fn from(error: session::Error) -> Self {
+        status(error.into())
+    }
+}
+
+impl From<storage::Error<session::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<session::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
+    }
+}
+
+impl From<tenant::Error> for ErrorCode {
+    fn from(error: tenant::Error) -> Self {
+        match error {
+            tenant::Error::InvalidId => ErrorCode::InvalidInput,
+            tenant::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            tenant::Error::InvalidKey => ErrorCode::Unauthenticated,
+            tenant::Error::KeyGeneration | tenant::Error::KeyCollision => {
+                tracing::error!(%error, "tenant operation failed");
+                ErrorCode::Internal
+            }
+        }
+    }
+}
+
+impl From<tenant::Error> for ErrorDetails {
+    fn from(error: tenant::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
         }
     }
 }
 
 impl From<tenant::Error> for Status {
     fn from(error: tenant::Error) -> Self {
-        match error {
-            tenant::Error::InvalidId => status(ErrorCode::InvalidInput),
-            tenant::Error::KeyGeneration => {
-                tracing::error!("tenant key generation failed");
-                status(ErrorCode::Internal)
-            }
-            tenant::Error::KeyCollision => {
-                tracing::error!("tenant key hash already exists");
-                status(ErrorCode::Internal)
-            }
-            tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            tenant::Error::InvalidKey => status(ErrorCode::Unauthenticated),
-        }
+        status(error.into())
     }
 }
 
