@@ -33,7 +33,7 @@ impl DirectoryResource {
      * Under virtual root, `shared` MUST resolve to virtual shared. A virtual shared parent MUST
      * return SharedUnsupported.
      */
-    pub async fn lookup_attrs(
+    pub async fn lookup_for_session(
         tx: &Transaction,
         session: &SessionResource,
         targets: &[LookupTarget],

@@ -88,7 +88,7 @@ pub(crate) async fn lookup_attrs_require_readable_parents_and_children() -> Resu
     let tx = fdb::database()?.create_trx()?;
     let version = tx.get_read_version().await?;
     let missing = ObjectId::new_v7();
-    let results = DirectoryResource::lookup_attrs(
+    let results = DirectoryResource::lookup_for_session(
         &tx,
         &reader,
         &[
@@ -145,7 +145,7 @@ pub(crate) async fn lookup_attrs_require_readable_parents_and_children() -> Resu
     assert!(matches!(results[10], Err(directory::Error::InvalidName)));
 
     let (guest, _) = SessionResource::new(&tenant, vec!["guest".to_owned()])?;
-    let results = DirectoryResource::lookup_attrs(
+    let results = DirectoryResource::lookup_for_session(
         &tx,
         &guest,
         &[
@@ -169,7 +169,7 @@ pub(crate) async fn lookup_attrs_require_readable_parents_and_children() -> Resu
     ));
 
     assert!(matches!(
-        DirectoryResource::lookup_attrs(
+        DirectoryResource::lookup_for_session(
             &tx,
             &reader,
             &[

@@ -245,15 +245,14 @@ impl Dfs for API {
             return Err(status(ErrorCode::InvalidInput));
         }
         let include_metadata = include_metadata.unwrap_or(false);
-        let attributes =
-            fdb::with_transaction(|tx| {
-                let session = session.as_ref();
-                let targets = &targets;
-                async move {
-                    DirectoryResource::lookup_attrs(&tx, session, targets, include_metadata).await
-                }
-            })
-            .await?;
+        let attributes = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let targets = &targets;
+            async move {
+                DirectoryResource::lookup_for_session(&tx, session, targets, include_metadata).await
+            }
+        })
+        .await?;
         Ok(Response::new(attr_batch(attributes)?))
     }
 
