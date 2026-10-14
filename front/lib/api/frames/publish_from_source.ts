@@ -6,7 +6,7 @@ import {
   buildAndPublishFramePublication,
   buildFramePublication,
 } from "@app/lib/api/frames/build_and_publish";
-import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { reconcileFramePublicationDatabasesOnStagedSource } from "@app/lib/api/frames/database_reconciliation";
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import {
@@ -15,6 +15,8 @@ import {
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
+import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
+import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { getFrameFunctionSharingConflict } from "@app/lib/api/share/frame_sharing";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -430,6 +432,49 @@ async function resolveLegacyFrameReplacement(
 }
 
 /**
+ * Reconcile declared databases on the Frame sandbox after legacy→v2 conversion.
+ * Staging + reconcile only; callers own convert/restore. No-op when no databases.
+ */
+async function reconcileConvertedLegacyFrameDatabases(
+  auth: Authenticator,
+  {
+    frame,
+    manifest,
+    sourceFiles,
+  }: {
+    frame: FileResource;
+    manifest: FrameManifest;
+    sourceFiles: FramePublicationSourceFile[];
+  }
+): Promise<Result<void, SandboxFunctionError>> {
+  if (manifest.databases.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const ensureResult = await ensureFrameSandboxReady(auth, frame);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+  const { sandbox } = ensureResult.value;
+  return withStagedFrameSource(
+    auth,
+    { sandbox, sourceFiles },
+    async (stagingDirectory) =>
+      reconcileFramePublicationDatabasesOnStagedSource(auth, {
+        frame,
+        sandbox,
+        stagingDirectory,
+        manifest,
+      })
+  );
+}
+
+/**
  * @cc [owner:pierremilliotte,label:product;backend] legacy-frame-replacement-is-atomic
  * Replacing a legacy Frame MUST leave it untouched unless the v2 replacement builds, passes its
  * publication contracts, and activates. A build or contract failure MUST NOT convert the legacy
@@ -538,11 +583,14 @@ async function replaceLegacyFrameFromSource(
       manifestMountFilePath: target.manifestMountFilePath,
     };
     try {
-      const reconciliation = await reconcileFramePublicationDatabases(auth, {
-        frame: legacyFrame,
-        manifest,
-        sourceFiles,
-      });
+      const reconciliation = await reconcileConvertedLegacyFrameDatabases(
+        auth,
+        {
+          frame: legacyFrame,
+          manifest,
+          sourceFiles,
+        }
+      );
       if (reconciliation.isErr()) {
         logger.warn(
           { ...logContext, error: reconciliation.error },
@@ -844,10 +892,53 @@ async function readFrameV2SourceTree(
   });
 }
 
+/**
+ * Publish from an already-captured source tree. Callers that hold the source lock and have the
+ * package bytes in memory (e.g. after applying live edits) skip a second mount download.
+ */
+async function publishFrameV2FromCapturedSourceWithSourceLockHeld(
+  auth: Authenticator,
+  {
+    frame,
+    manifest,
+    sourceFiles,
+    publishedByAgentConfigurationId,
+  }: {
+    frame: FileResource;
+    manifest: FrameManifest;
+    sourceFiles: FramePublicationSourceFile[];
+    publishedByAgentConfigurationId?: string;
+  }
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  const featureCheck = await checkFrameFunctionsFeature(auth, manifest);
+  if (featureCheck.isErr()) {
+    return featureCheck;
+  }
+
+  const sharingCheck = await checkFrameFunctionSharing(auth, {
+    frame,
+    manifest,
+  });
+  if (sharingCheck.isErr()) {
+    return sharingCheck;
+  }
+
+  return buildAndPublishFramePublication(auth, {
+    frame,
+    manifest,
+    sourceFiles,
+    publishedByAgentConfigurationId,
+  });
+}
+
 async function publishFrameV2FromSourceWithSourceLockHeld(
   auth: Authenticator,
   {
-    conversation,
     frame,
     manifestPath,
     publishedByAgentConfigurationId,
@@ -871,23 +962,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     return source;
   }
 
-  const featureCheck = await checkFrameFunctionsFeature(
-    auth,
-    source.value.manifest
-  );
-  if (featureCheck.isErr()) {
-    return featureCheck;
-  }
-
-  const sharingCheck = await checkFrameFunctionSharing(auth, {
-    frame,
-    manifest: source.value.manifest,
-  });
-  if (sharingCheck.isErr()) {
-    return sharingCheck;
-  }
-
-  return buildAndPublishFramePublication(auth, {
+  return publishFrameV2FromCapturedSourceWithSourceLockHeld(auth, {
     frame,
     manifest: source.value.manifest,
     sourceFiles: source.value.sourceFiles,
@@ -962,13 +1037,14 @@ export const MAX_FRAME_TEXT_EDITS = 50;
  *
  * Each edit is a small diff (`oldText` → `newText`) anchored at `data-source`. Edits are applied
  * against the **current** source on disk (not a client snapshot), so concurrent agent edits to
- * other spans still succeed as long as each `oldText` remains findable. All writes and the
- * publish run under the Frame source lock; on publish failure every touched file is rolled back.
+ * other spans still succeed as long as each `oldText` remains findable. The package is captured
+ * once, patched in memory, written, then published from those bytes (no second mount download).
+ * All writes and the publish run under the Frame source lock; on publish failure every touched
+ * file is rolled back.
  */
 export async function editFrameV2TextsAtSource(
   auth: Authenticator,
   {
-    conversation,
     frame,
     edits,
   }: {
@@ -1012,10 +1088,33 @@ export async function editFrameV2TextsAtSource(
     });
   }
 
+  const editTimingContext = {
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    frameId: frame.sId,
+  };
+  const logEditStep = (
+    step: string,
+    startedAt: number,
+    extra?: { fileCount?: number }
+  ) => {
+    logger.info(
+      {
+        ...editTimingContext,
+        step,
+        durationMs: Date.now() - startedAt,
+        ...extra,
+      },
+      "Frame edit-text step timing"
+    );
+  };
+
+  const editTotalStartedAt = Date.now();
   const publication = await withFrameSourceLock<
     { publicationId: string },
     PublishFrameFromSourceError
   >(frame.sId, async () => {
+    let stepStartedAt = Date.now();
+
     const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (!freshFrame) {
       return frameError(
@@ -1030,46 +1129,64 @@ export async function editFrameV2TextsAtSource(
     }
     const { canonicalManifestPath: manifestPath, dustFs } = resolved.value;
     const packageDir = path.posix.dirname(manifestPath);
+    logEditStep("resolve", stepStartedAt);
 
-    const editsByPath = new Map<
+    stepStartedAt = Date.now();
+    const source = await readFrameV2SourceTree(dustFs, manifestPath);
+    if (source.isErr()) {
+      return source;
+    }
+    logEditStep("source_capture", stepStartedAt, {
+      fileCount: source.value.sourceFiles.length,
+    });
+
+    stepStartedAt = Date.now();
+    const editsByRelPath = new Map<
       string,
       Array<{ line: number; col: number; oldText: string; newText: string }>
     >();
     for (const edit of parsedEdits) {
-      const sourcePath = path.posix.join(packageDir, edit.relPath);
-      const list = editsByPath.get(sourcePath) ?? [];
+      const list = editsByRelPath.get(edit.relPath) ?? [];
       list.push({
         line: edit.line,
         col: edit.col,
         oldText: edit.oldText,
         newText: edit.newText,
       });
-      editsByPath.set(sourcePath, list);
+      editsByRelPath.set(edit.relPath, list);
     }
 
-    // Resolve every file's edited content before writing anything, so an edit that fails on a
-    // later file cannot leave earlier files written but unpublished.
+    for (const relPath of editsByRelPath.keys()) {
+      if (
+        !source.value.sourceFiles.some(
+          (sourceFile) => sourceFile.relativePath === relPath
+        )
+      ) {
+        return frameError(
+          "invalid_source",
+          `Frame source file not found: ${relPath}`
+        );
+      }
+    }
+
+    // Patch every target in memory before writing, so a failed later edit cannot leave earlier
+    // files written but unpublished.
     const plannedWrites: Array<{
       sourcePath: string;
       originalSource: Buffer;
-      content: string;
-      contentType: string;
+      content: Buffer;
+      contentType: FramePublicationSourceFile["contentType"];
     }> = [];
-    for (const [sourcePath, fileEdits] of editsByPath) {
-      const sourceBuffer = await dustFs.readBuffer(sourcePath);
-      if (sourceBuffer.isErr()) {
-        return new Err(sourceBuffer.error);
+    const patchedSourceFiles: FramePublicationSourceFile[] = [];
+    for (const sourceFile of source.value.sourceFiles) {
+      const fileEdits = editsByRelPath.get(sourceFile.relativePath);
+      if (!fileEdits) {
+        patchedSourceFiles.push(sourceFile);
+        continue;
       }
-      if (sourceBuffer.value === null) {
-        return frameError(
-          "invalid_source",
-          `Frame source file not found: ${path.posix.relative(packageDir, sourcePath)}`
-        );
-      }
-      const originalSource = sourceBuffer.value;
 
       // Each edit re-parses the file: O(edits × file size), bounded by MAX_FRAME_TEXT_EDITS.
-      let content = originalSource.toString("utf8");
+      let content = sourceFile.content.toString("utf8");
       for (const fileEdit of fileEdits) {
         const edited = replaceJsxTextAtSourceLocation(content, fileEdit);
         if (edited.isErr()) {
@@ -1078,20 +1195,35 @@ export async function editFrameV2TextsAtSource(
         content = edited.value;
       }
 
-      const stat = await dustFs.stat(sourcePath);
-      if (stat.isErr()) {
-        return new Err(stat.error);
-      }
+      const patchedContent = Buffer.from(content, "utf8");
       plannedWrites.push({
-        sourcePath,
-        originalSource,
-        content,
-        contentType:
-          stat.value?.contentType ??
-          contentTypeFromFileName(path.posix.basename(sourcePath)) ??
-          "text/plain",
+        sourcePath: path.posix.join(packageDir, sourceFile.relativePath),
+        originalSource: sourceFile.content,
+        content: patchedContent,
+        contentType: sourceFile.contentType,
+      });
+      patchedSourceFiles.push({
+        ...sourceFile,
+        content: patchedContent,
       });
     }
+
+    const manifestFile = patchedSourceFiles.find(
+      (sourceFile) => sourceFile.relativePath === FRAME_MANIFEST_FILE
+    );
+    if (!manifestFile) {
+      return frameError(
+        "invalid_source",
+        `Frame manifest not found: ${manifestPath}`
+      );
+    }
+    const manifestResult = parseFrameManifest(manifestFile.content);
+    if (manifestResult.isErr()) {
+      return frameError("invalid_manifest", manifestResult.error);
+    }
+    logEditStep("apply_edits", stepStartedAt, {
+      fileCount: plannedWrites.length,
+    });
 
     const rollbacks: Array<
       () => Promise<Result<unknown, DustFileSystemError>>
@@ -1106,6 +1238,7 @@ export async function editFrameV2TextsAtSource(
       return new Ok(undefined);
     };
 
+    stepStartedAt = Date.now();
     for (const {
       sourcePath,
       originalSource,
@@ -1123,16 +1256,17 @@ export async function editFrameV2TextsAtSource(
         dustFs.write(sourcePath, originalSource, contentType)
       );
     }
+    logEditStep("source_write", stepStartedAt);
 
     try {
-      const publishResult = await publishFrameV2FromSourceWithSourceLockHeld(
-        auth,
-        {
-          conversation,
+      stepStartedAt = Date.now();
+      const publishResult =
+        await publishFrameV2FromCapturedSourceWithSourceLockHeld(auth, {
           frame: freshFrame,
-          manifestPath,
-        }
-      );
+          manifest: manifestResult.value,
+          sourceFiles: patchedSourceFiles,
+        });
+      logEditStep("publish", stepStartedAt);
       if (publishResult.isErr()) {
         const rollbackResult = await rollbackAll();
         if (rollbackResult.isErr()) {
@@ -1149,6 +1283,7 @@ export async function editFrameV2TextsAtSource(
       throw error;
     }
   });
+  logEditStep("total", editTotalStartedAt);
   if (publication.isErr()) {
     if (isLockAcquisitionTimeoutError(publication.error)) {
       return new Err(frameSourceConflictError());

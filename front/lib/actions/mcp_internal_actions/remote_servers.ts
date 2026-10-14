@@ -697,6 +697,430 @@ const PANDADOC_SHARED_CONFIG: Omit<
   },
 };
 
+const CONTENTFUL_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url" | "connectionInstructions"
+> = {
+  icon: "ContentfulLogo",
+  documentationUrl:
+    "https://www.contentful.com/developers/docs/tools/mcp-server/",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    get_initial_context: "never_ask",
+    search_entries: "never_ask",
+    semantic_search: "never_ask",
+    get_entry: "never_ask",
+    create_entry: "low",
+    update_entry: "low",
+    publish_entry: "high",
+    unpublish_entry: "high",
+    archive_entry: "low",
+    unarchive_entry: "low",
+    delete_entry: "high",
+    get_entry_snapshot: "never_ask",
+    resolve_entry_references: "never_ask",
+    list_content_types: "never_ask",
+    get_content_type: "never_ask",
+    create_content_type: "low",
+    update_content_type: "low",
+    publish_content_type: "high",
+    unpublish_content_type: "high",
+    delete_content_type: "high",
+    delete_content_type_field: "high",
+    disable_content_type_field: "low",
+    omit_content_type_field: "high",
+    upload_asset: "low",
+    create_upload_session: "low",
+    list_assets: "never_ask",
+    get_asset: "never_ask",
+    update_asset: "low",
+    publish_asset: "high",
+    unpublish_asset: "high",
+    archive_asset: "low",
+    unarchive_asset: "low",
+    delete_asset: "high",
+    list_releases: "never_ask",
+    get_release: "never_ask",
+    create_release: "low",
+    update_release: "low",
+    publish_release: "high",
+    unpublish_release: "high",
+    validate_release: "never_ask",
+    get_release_action: "never_ask",
+    list_release_actions: "never_ask",
+    schedule_publish_release: "high",
+    schedule_unpublish_release: "high",
+    cancel_scheduled_release: "low",
+    list_scheduled_actions: "never_ask",
+    list_spaces: "never_ask",
+    get_space: "never_ask",
+    list_environments: "never_ask",
+    create_environment: "low",
+    delete_environment: "high",
+    list_orgs: "never_ask",
+    get_org: "never_ask",
+    list_locales: "never_ask",
+    get_locale: "never_ask",
+    create_locale: "low",
+    update_locale: "low",
+    delete_locale: "high",
+    list_tags: "never_ask",
+    create_tag: "low",
+    create_ai_action: "low",
+    invoke_ai_action: "high",
+    get_ai_action: "never_ask",
+    get_ai_action_invocation: "never_ask",
+    list_ai_actions: "never_ask",
+    update_ai_action: "low",
+    publish_ai_action: "low",
+    unpublish_ai_action: "low",
+    delete_ai_action: "high",
+    list_concepts: "never_ask",
+    get_concept: "never_ask",
+    create_concept: "low",
+    update_concept: "low",
+    delete_concept: "high",
+    list_concept_schemes: "never_ask",
+    get_concept_scheme: "never_ask",
+    create_concept_scheme: "low",
+    update_concept_scheme: "low",
+    delete_concept_scheme: "high",
+    get_editor_interface: "never_ask",
+    list_editor_interfaces: "never_ask",
+    update_editor_interface: "low",
+  },
+  toolDisplayLabels: {
+    get_initial_context: {
+      running: "Loading workspace context on Contentful",
+      done: "Loaded workspace context on Contentful",
+    },
+    search_entries: {
+      running: "Searching entries on Contentful",
+      done: "Searched entries on Contentful",
+    },
+    semantic_search: {
+      running: "Running a semantic search on Contentful",
+      done: "Ran a semantic search on Contentful",
+    },
+    get_entry: {
+      running: "Getting an entry on Contentful",
+      done: "Got an entry on Contentful",
+    },
+    create_entry: {
+      running: "Creating an entry on Contentful",
+      done: "Created an entry on Contentful",
+    },
+    update_entry: {
+      running: "Updating an entry on Contentful",
+      done: "Updated an entry on Contentful",
+    },
+    publish_entry: {
+      running: "Publishing an entry on Contentful",
+      done: "Published an entry on Contentful",
+    },
+    unpublish_entry: {
+      running: "Unpublishing an entry on Contentful",
+      done: "Unpublished an entry on Contentful",
+    },
+    archive_entry: {
+      running: "Archiving an entry on Contentful",
+      done: "Archived an entry on Contentful",
+    },
+    unarchive_entry: {
+      running: "Unarchiving an entry on Contentful",
+      done: "Unarchived an entry on Contentful",
+    },
+    delete_entry: {
+      running: "Deleting an entry on Contentful",
+      done: "Deleted an entry on Contentful",
+    },
+    get_entry_snapshot: {
+      running: "Getting an entry snapshot on Contentful",
+      done: "Got an entry snapshot on Contentful",
+    },
+    resolve_entry_references: {
+      running: "Resolving entry references on Contentful",
+      done: "Resolved entry references on Contentful",
+    },
+    list_content_types: {
+      running: "Listing content types on Contentful",
+      done: "Listed content types on Contentful",
+    },
+    get_content_type: {
+      running: "Getting a content type on Contentful",
+      done: "Got a content type on Contentful",
+    },
+    create_content_type: {
+      running: "Creating a content type on Contentful",
+      done: "Created a content type on Contentful",
+    },
+    update_content_type: {
+      running: "Updating a content type on Contentful",
+      done: "Updated a content type on Contentful",
+    },
+    publish_content_type: {
+      running: "Publishing a content type on Contentful",
+      done: "Published a content type on Contentful",
+    },
+    unpublish_content_type: {
+      running: "Unpublishing a content type on Contentful",
+      done: "Unpublished a content type on Contentful",
+    },
+    delete_content_type: {
+      running: "Deleting a content type on Contentful",
+      done: "Deleted a content type on Contentful",
+    },
+    delete_content_type_field: {
+      running: "Deleting a content type field on Contentful",
+      done: "Deleted a content type field on Contentful",
+    },
+    disable_content_type_field: {
+      running: "Disabling a content type field on Contentful",
+      done: "Disabled a content type field on Contentful",
+    },
+    omit_content_type_field: {
+      running: "Omitting a content type field on Contentful",
+      done: "Omitted a content type field on Contentful",
+    },
+    upload_asset: {
+      running: "Uploading an asset on Contentful",
+      done: "Uploaded an asset on Contentful",
+    },
+    create_upload_session: {
+      running: "Starting an upload session on Contentful",
+      done: "Started an upload session on Contentful",
+    },
+    list_assets: {
+      running: "Listing assets on Contentful",
+      done: "Listed assets on Contentful",
+    },
+    get_asset: {
+      running: "Getting an asset on Contentful",
+      done: "Got an asset on Contentful",
+    },
+    update_asset: {
+      running: "Updating an asset on Contentful",
+      done: "Updated an asset on Contentful",
+    },
+    publish_asset: {
+      running: "Publishing an asset on Contentful",
+      done: "Published an asset on Contentful",
+    },
+    unpublish_asset: {
+      running: "Unpublishing an asset on Contentful",
+      done: "Unpublished an asset on Contentful",
+    },
+    archive_asset: {
+      running: "Archiving an asset on Contentful",
+      done: "Archived an asset on Contentful",
+    },
+    unarchive_asset: {
+      running: "Unarchiving an asset on Contentful",
+      done: "Unarchived an asset on Contentful",
+    },
+    delete_asset: {
+      running: "Deleting an asset on Contentful",
+      done: "Deleted an asset on Contentful",
+    },
+    list_releases: {
+      running: "Listing releases on Contentful",
+      done: "Listed releases on Contentful",
+    },
+    get_release: {
+      running: "Getting a release on Contentful",
+      done: "Got a release on Contentful",
+    },
+    create_release: {
+      running: "Creating a release on Contentful",
+      done: "Created a release on Contentful",
+    },
+    update_release: {
+      running: "Updating a release on Contentful",
+      done: "Updated a release on Contentful",
+    },
+    publish_release: {
+      running: "Publishing a release on Contentful",
+      done: "Published a release on Contentful",
+    },
+    unpublish_release: {
+      running: "Unpublishing a release on Contentful",
+      done: "Unpublished a release on Contentful",
+    },
+    validate_release: {
+      running: "Validating a release on Contentful",
+      done: "Validated a release on Contentful",
+    },
+    get_release_action: {
+      running: "Getting a release action on Contentful",
+      done: "Got a release action on Contentful",
+    },
+    list_release_actions: {
+      running: "Listing release actions on Contentful",
+      done: "Listed release actions on Contentful",
+    },
+    schedule_publish_release: {
+      running: "Scheduling the publishing of a release on Contentful",
+      done: "Scheduled the publishing of a release on Contentful",
+    },
+    schedule_unpublish_release: {
+      running: "Scheduling the unpublishing of a release on Contentful",
+      done: "Scheduled the unpublishing of a release on Contentful",
+    },
+    cancel_scheduled_release: {
+      running: "Canceling a scheduled release on Contentful",
+      done: "Canceled a scheduled release on Contentful",
+    },
+    list_scheduled_actions: {
+      running: "Listing scheduled actions on Contentful",
+      done: "Listed scheduled actions on Contentful",
+    },
+    list_spaces: {
+      running: "Listing spaces on Contentful",
+      done: "Listed spaces on Contentful",
+    },
+    get_space: {
+      running: "Getting a space on Contentful",
+      done: "Got a space on Contentful",
+    },
+    list_environments: {
+      running: "Listing environments on Contentful",
+      done: "Listed environments on Contentful",
+    },
+    create_environment: {
+      running: "Creating an environment on Contentful",
+      done: "Created an environment on Contentful",
+    },
+    delete_environment: {
+      running: "Deleting an environment on Contentful",
+      done: "Deleted an environment on Contentful",
+    },
+    list_orgs: {
+      running: "Listing organizations on Contentful",
+      done: "Listed organizations on Contentful",
+    },
+    get_org: {
+      running: "Getting an organization on Contentful",
+      done: "Got an organization on Contentful",
+    },
+    list_locales: {
+      running: "Listing locales on Contentful",
+      done: "Listed locales on Contentful",
+    },
+    get_locale: {
+      running: "Getting a locale on Contentful",
+      done: "Got a locale on Contentful",
+    },
+    create_locale: {
+      running: "Creating a locale on Contentful",
+      done: "Created a locale on Contentful",
+    },
+    update_locale: {
+      running: "Updating a locale on Contentful",
+      done: "Updated a locale on Contentful",
+    },
+    delete_locale: {
+      running: "Deleting a locale on Contentful",
+      done: "Deleted a locale on Contentful",
+    },
+    list_tags: {
+      running: "Listing tags on Contentful",
+      done: "Listed tags on Contentful",
+    },
+    create_tag: {
+      running: "Creating a tag on Contentful",
+      done: "Created a tag on Contentful",
+    },
+    create_ai_action: {
+      running: "Creating an AI action on Contentful",
+      done: "Created an AI action on Contentful",
+    },
+    invoke_ai_action: {
+      running: "Running an AI action on Contentful",
+      done: "Ran an AI action on Contentful",
+    },
+    get_ai_action: {
+      running: "Getting an AI action on Contentful",
+      done: "Got an AI action on Contentful",
+    },
+    get_ai_action_invocation: {
+      running: "Getting an AI action result on Contentful",
+      done: "Got an AI action result on Contentful",
+    },
+    list_ai_actions: {
+      running: "Listing AI actions on Contentful",
+      done: "Listed AI actions on Contentful",
+    },
+    update_ai_action: {
+      running: "Updating an AI action on Contentful",
+      done: "Updated an AI action on Contentful",
+    },
+    publish_ai_action: {
+      running: "Publishing an AI action on Contentful",
+      done: "Published an AI action on Contentful",
+    },
+    unpublish_ai_action: {
+      running: "Unpublishing an AI action on Contentful",
+      done: "Unpublished an AI action on Contentful",
+    },
+    delete_ai_action: {
+      running: "Deleting an AI action on Contentful",
+      done: "Deleted an AI action on Contentful",
+    },
+    list_concepts: {
+      running: "Listing concepts on Contentful",
+      done: "Listed concepts on Contentful",
+    },
+    get_concept: {
+      running: "Getting a concept on Contentful",
+      done: "Got a concept on Contentful",
+    },
+    create_concept: {
+      running: "Creating a concept on Contentful",
+      done: "Created a concept on Contentful",
+    },
+    update_concept: {
+      running: "Updating a concept on Contentful",
+      done: "Updated a concept on Contentful",
+    },
+    delete_concept: {
+      running: "Deleting a concept on Contentful",
+      done: "Deleted a concept on Contentful",
+    },
+    list_concept_schemes: {
+      running: "Listing concept schemes on Contentful",
+      done: "Listed concept schemes on Contentful",
+    },
+    get_concept_scheme: {
+      running: "Getting a concept scheme on Contentful",
+      done: "Got a concept scheme on Contentful",
+    },
+    create_concept_scheme: {
+      running: "Creating a concept scheme on Contentful",
+      done: "Created a concept scheme on Contentful",
+    },
+    update_concept_scheme: {
+      running: "Updating a concept scheme on Contentful",
+      done: "Updated a concept scheme on Contentful",
+    },
+    delete_concept_scheme: {
+      running: "Deleting a concept scheme on Contentful",
+      done: "Deleted a concept scheme on Contentful",
+    },
+    get_editor_interface: {
+      running: "Getting an editor interface on Contentful",
+      done: "Got an editor interface on Contentful",
+    },
+    list_editor_interfaces: {
+      running: "Listing editor interfaces on Contentful",
+      done: "Listed editor interfaces on Contentful",
+    },
+    update_editor_interface: {
+      running: "Updating an editor interface on Contentful",
+      done: "Updated an editor interface on Contentful",
+    },
+  },
+};
+
 export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   {
     id: 10000,
@@ -7016,7 +7440,27 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...CONTENTFUL_SHARED_CONFIG,
     id: 10056,
+    name: "Contentful",
+    description:
+      "Contentful tools for searching, creating, updating and publishing entries, assets, content types, releases, locales and taxonomies (Region: Global).",
+    url: "https://mcp.contentful.com/mcp",
+    connectionInstructions:
+      "Contentful uses OAuth with dynamic client registration. A space admin must first install the Contentful MCP app in each space and environment you want to use, and choose which tools it allows there. When you sign in, pick the spaces and environments to give Dust access to. Use this server if your organization is hosted on app.contentful.com.",
+  },
+  {
+    ...CONTENTFUL_SHARED_CONFIG,
+    id: 10057,
+    name: "Contentful (Europe)",
+    description:
+      "Contentful tools for searching, creating, updating and publishing entries, assets, content types, releases, locales and taxonomies (Region: EU).",
+    url: "https://mcp.eu.contentful.com/mcp",
+    connectionInstructions:
+      "Contentful uses OAuth with dynamic client registration. A space admin must first install the Contentful MCP app in each space and environment you want to use, and choose which tools it allows there. When you sign in, pick the spaces and environments to give Dust access to. Use this server if your organization is hosted on app.eu.contentful.com.",
+  },
+  {
+    id: 10058,
     name: "Fireflies",
     description:
       "Fireflies tools to search meeting transcripts and summaries, read meeting analytics, and manage meeting sharing, privacy, channels and soundbites.",

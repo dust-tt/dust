@@ -86,6 +86,10 @@ export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
 export FDB_PORT=${ports.fdb}
 export FDB_CLUSTER_FILE=${getFdbClusterFilePath(name)}
 export DFS_PORT=${ports.dfs}
+# The dfs server's master key (64 printable characters), and how front reaches it.
+export DFS_MASTER_KEY=${randomBytes(32).toString("hex")}
+export DFS_API_URL=http://127.0.0.1:${ports.dfs}
+export DFS_API_MASTER_KEY=$DFS_MASTER_KEY
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 
 # === Viz service ===

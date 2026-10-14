@@ -88,6 +88,8 @@ export interface CompactionMessageTypeModel {
 // user message at the latest.
 export interface EffortChangeMessageTypeModel {
   role: "effort_change";
+  // Effort in effect when the call was made, for display only: it is not sent to the provider.
+  from: ReasoningEffort;
   effort: ReasoningEffort;
 }
 

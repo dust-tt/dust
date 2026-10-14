@@ -73,10 +73,7 @@ Message bodies are Markdown, and the file preview's `renderCommentBody` shows ag
 mention directives in them as mention chips. When a comment posted in the live session mentions
 agents or users, the collab server hands it to a Temporal job
 (`front/lib/api/documents/comment_mentions.ts`, `mentions_queue`), keyed by the document and
-the message so it is posted once. The job posts it as a user message in the document's
-conversation, waiting while an agent runs there: the file's own conversation, or for a pod file
-a conversation created in the pod on first use and found again by path. Mentioned agents then
-answer there and mentioned users are notified, as for any conversation message.
+the message so it is handled once. The job notifies the mentioned users who can read the document. When the message mentions an agent, the job also posts it as a user message in the document's conversation, carrying only that agent's mention, and waits while another agent runs there. That conversation is the file's own conversation, or, for a pod file, a conversation created in the pod on first use and found again by path. The agent answers there.
 
 The new comment and reply fields are small TipTap editors whose content is submitted as Markdown.
 With `commentInputExtensions`, the host adds extensions to them; the file preview adds the

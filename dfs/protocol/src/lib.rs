@@ -15,7 +15,7 @@ pub use id::{InvalidId, ObjectId};
 pub use reference::ObjectRef;
 
 /// Most references one `Stat` request may carry.
-pub const STAT_MAX_REFERENCES: usize = 256;
+pub const STAT_MAX_REFERENCES: usize = 4_096;
 
 /// Most UTF-8 bytes in an object name. Not taken from `libc`, which does not define `NAME_MAX` on
 /// every platform.

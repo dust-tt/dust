@@ -22,6 +22,7 @@ import ClayLogo from "./Clay";
 import ClickUpLogo from "./ClickUp";
 import CohereLogo from "./Cohere";
 import ConfluenceLogo from "./Confluence";
+import ContentfulLogo from "./Contentful";
 import ContentsquareLogo from "./Contentsquare";
 import CostoryLogo from "./Costory";
 import CursorLogo from "./Cursor";
@@ -156,6 +157,7 @@ export const PLATFORM_LOGOS = {
   ClickUpLogo,
   CohereLogo,
   ConfluenceLogo,
+  ContentfulLogo,
   ContentsquareLogo,
   CostoryLogo,
   CursorLogo,
