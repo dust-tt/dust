@@ -34,7 +34,7 @@ export const unescapeDocumentCommentAttribute = (value: string) =>
 function quoteLabel(quote: string | null): string {
   const flat = (quote ?? "").replace(/\s+/g, " ").trim();
   return flat.length > QUOTE_MAX_LENGTH
-    ? `${flat.slice(0, QUOTE_MAX_LENGTH)}…`
+    ? `${flat.slice(0, QUOTE_MAX_LENGTH - 1)}…`
     : flat;
 }
 

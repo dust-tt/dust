@@ -371,8 +371,12 @@ Quote text
       expect(container.querySelector("blockquote")?.textContent?.trim()).toBe(
         "the [draft] plan"
       );
-      expect(container.textContent).toContain("Thoughts?");
-      expect(container.textContent).not.toContain("document_comment");
+      const text = container.textContent ?? "";
+      expect(text.indexOf("the [draft] plan")).toBeGreaterThanOrEqual(0);
+      expect(text.indexOf("Thoughts?")).toBeGreaterThan(
+        text.indexOf("the [draft] plan")
+      );
+      expect(text).not.toContain("document_comment");
     });
 
     it.each(["# Plan", "- step one", "1. step one"])(

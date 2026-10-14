@@ -31,7 +31,7 @@ describe("document comment directive", () => {
     );
 
     expect(parsed?.comment.quote).toMatch(/^Ship on Thursday\. x+…$/);
-    expect(parsed?.comment.quote).toHaveLength(501);
+    expect(parsed?.comment.quote).toHaveLength(500);
   });
 
   it("parses only a message that opens with the directive", () => {
