@@ -15,11 +15,6 @@ interface MemberNameRow {
   image: string | null;
 }
 
-// When the table has a separate email column, it only shows on containers wide enough to fit it.
-// Below that width, the email stays stacked under the name instead.
-const EMAIL_COLUMN_CLASS_NAME = "hidden @2xl:table-cell";
-const STACKED_EMAIL_WITH_EMAIL_COLUMN_CLASS_NAME = "@2xl:hidden";
-
 interface MemberNameColumnOptions {
   hasEmailColumn: boolean;
 }
@@ -38,10 +33,7 @@ export function MemberNameSkeleton({
         className={["w-28", "w-36", "w-24", "w-40", "w-32"][rowIndex % 5]}
       />
       <TextCellSkeleton
-        className={cn(
-          "w-40",
-          hasEmailColumn && STACKED_EMAIL_WITH_EMAIL_COLUMN_CLASS_NAME
-        )}
+        className={cn("w-40", hasEmailColumn && "@2xl:hidden")}
       />
     </AvatarCellSkeleton>
   );
@@ -78,7 +70,7 @@ export function buildMemberNameColumn<TRow extends MemberNameRow>({
               <div
                 className={cn(
                   "text-xs text-muted-foreground",
-                  hasEmailColumn && STACKED_EMAIL_WITH_EMAIL_COLUMN_CLASS_NAME
+                  hasEmailColumn && "@2xl:hidden"
                 )}
               >
                 {info.row.original.email}
@@ -107,7 +99,9 @@ export function buildMemberEmailColumn<TRow extends MemberNameRow>(): ColumnDef<
       </DataTable.CellContent>
     ),
     meta: {
-      className: EMAIL_COLUMN_CLASS_NAME,
+      // Only shows on containers wide enough to fit it. Below that width, the name column stacks the
+      // email under the name instead.
+      className: "hidden @2xl:table-cell",
     },
   };
 }
