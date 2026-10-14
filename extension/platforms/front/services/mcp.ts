@@ -44,7 +44,6 @@ export class FrontMcpService extends McpService {
       }
     );
 
-    // Register all tools with the server.
     registerAllTools(server, this.frontContext);
 
     return server;
