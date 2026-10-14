@@ -5,7 +5,8 @@ use dfs_protocol::{
 };
 use tonic::{Request, metadata::AsciiMetadataValue, transport::Channel};
 
-/// Most references one `Stat` request may carry.
+/// Most references one `Stat` request may carry. Keep in sync with `STAT_MAX_OBJECTS` in
+/// `dfs/server/src/api.rs`, which rejects larger requests.
 const MAX_STAT_REFERENCES: usize = 256;
 
 /// The mount's connection to the dfs server, authenticated with one session key. The caller builds
