@@ -64,29 +64,20 @@ To parallelize asynchronous handling of dynamic arrays, use `ConcurrentExecutor`
 When checking types, use explicit typeguards over `typeof`, `instanceof`, etc.
 
 @cc [label:backend] query-parameter-extraction
-Use `{ foo } = req.query` and then test with `isString` to extract query parameters in endpoints.
+Endpoints MUST read query parameters from the request context and MUST NOT cast them.
 
 Example:
 
 ```
 // BAD
 
-if (typeof req.query.aId !== "string") {
-  // error
-}
-
-const r = someFunction(req.query.aId);
-const r = someFunction(req.query.aId as string);
+const limit = parseInt(ctx.req.query("limit") as string);
 
 // GOOD
 
-const { aId } = req.query;
-
-if (isString(aId)) {
-  // error
-}
-
-const r = someFunction(aId);
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const { limit } = ctx.req.valid("query");
+});
 ```
 
 @cc [owner:flvndvd,label:backend] resource-identifier-naming

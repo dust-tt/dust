@@ -87,7 +87,16 @@ export function getPaginationParams(
 
 // For `z.preprocess`: parses a query param like `parseInt` ("10.5" -> 10, "abc" -> NaN, which
 // `z.number()` rejects).
+/**
+ * @cc [owner:avervaet,label:api] parse-like-parse-int
+ * A non-empty string MUST be parsed like `parseInt(v, 10)`, an empty string MUST become
+ * `undefined` so an empty query param reads as omitted, and any other value MUST be returned
+ * unchanged.
+ */
 export function parseIntParam(v: unknown): unknown {
+  if (v === "") {
+    return undefined;
+  }
   return isString(v) ? parseInt(v, 10) : v;
 }
 
