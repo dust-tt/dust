@@ -248,7 +248,7 @@ export function BuyCreditDialog({
                 title={t`You still have pay-as-you-go capacity`}
               >
                 <Trans>
-                  You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of
+                  You’re still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of
                   your pay-as-you-go cap.
                 </Trans>
               </ContentMessage>
@@ -672,7 +672,7 @@ export function BuyCreditDialog({
             </DialogTitle>
             <DialogDescription>
               <Trans>
-                You've reached your credit limit for this billing cycle.
+                You’ve reached your credit limit for this billing cycle.
               </Trans>
             </DialogDescription>
           </DialogHeader>

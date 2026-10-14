@@ -30,7 +30,7 @@ msgid "e.g. Weekly report"
 msgstr "ex. : Rapport hebdomadaire"
 
 #: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
-msgid "The sender name shown in Slack on the workflow's messages. It has to match exactly, spelling and capitalization included."
+msgid "The sender name shown in Slack on the workflow’s messages. It has to match exactly, spelling and capitalization included."
 msgstr "Le nom d’expéditeur affiché dans Slack sur les messages du workflow. Il doit correspondre exactement, orthographe et majuscules comprises."
 
 #: front/components/workspace/analytics/automations/AllowSlackWorkflowDialog.tsx
@@ -266,7 +266,7 @@ msgid "Set the pool for {triggerCount, plural, one {# automation} other {# autom
 msgstr "Définir la réserve {triggerCount, plural, one {d’# automatisation} other {de # automatisations}}"
 
 #: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
-msgid "Runs are billed to the workspace's credits, or to the credits of the member who owns each automation."
+msgid "Runs are billed to the workspace’s credits, or to the credits of the member who owns each automation."
 msgstr "Les exécutions sont facturées sur les crédits du workspace, ou sur ceux du membre propriétaire de chaque automatisation."
 
 #: front/components/workspace/analytics/automations/BulkTriggerPoolModal.tsx
@@ -318,7 +318,7 @@ msgid "No Slack workflow can summon agents yet."
 msgstr "Aucun workflow Slack ne peut encore solliciter d’agents."
 
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
-msgid "This webhook lives in a space you don't have access to."
+msgid "This webhook lives in a space you don’t have access to."
 msgstr "Ce webhook se trouve dans un espace auquel vous n’avez pas accès."
 
 #: front/components/workspace/analytics/automations/automationsTriggerColumns.tsx
@@ -360,9 +360,9 @@ msgid "Pool"
 msgstr "Réserve de crédits"
 
 #: front/components/workspace/analytics/automations/trigger_pool_options.ts
-msgid "Your plan doesn't support charging automations to personal credits."
+msgid "Your plan doesn’t support charging automations to personal credits."
 msgstr "Votre forfait ne permet pas de facturer les automatisations sur les crédits personnels."
 
 #: front/components/workspace/analytics/automations/trigger_pool_options.ts
-msgid "You don't have permission to charge automations to the workspace credit pool."
+msgid "You don’t have permission to charge automations to the workspace credit pool."
 msgstr "Vous n’êtes pas autorisé à facturer les automatisations sur la réserve de crédits du workspace."

@@ -105,19 +105,19 @@ msgid "Trigger pool updated"
 msgstr "Réserve de crédits du déclencheur mise à jour"
 
 #: front/lib/swr/agent_triggers.ts
-msgid "This trigger now runs on the workspace's credits."
+msgid "This trigger now runs on the workspace’s credits."
 msgstr "Ce déclencheur utilise désormais les crédits du workspace."
 
 #: front/lib/swr/agent_triggers.ts
-msgid "This trigger now runs on its editor's credits."
+msgid "This trigger now runs on its editor’s credits."
 msgstr "Ce déclencheur utilise désormais les crédits de son éditeur."
 
 #: front/lib/swr/agent_triggers.ts
-msgid "{updatedCount, plural, one {# automation now runs on the workspace's credits.} other {# automations now run on the workspace's credits.}}"
+msgid "{updatedCount, plural, one {# automation now runs on the workspace’s credits.} other {# automations now run on the workspace’s credits.}}"
 msgstr "{updatedCount, plural, one {# automatisation utilise désormais les crédits du workspace.} other {# automatisations utilisent désormais les crédits du workspace.}}"
 
 #: front/lib/swr/agent_triggers.ts
-msgid "{updatedCount, plural, one {# automation now runs on its editor's credits.} other {# automations now run on their editor's credits.}}"
+msgid "{updatedCount, plural, one {# automation now runs on its editor’s credits.} other {# automations now run on their editor’s credits.}}"
 msgstr "{updatedCount, plural, one {# automatisation utilise désormais les crédits de son éditeur.} other {# automatisations utilisent désormais les crédits de leur éditeur.}}"
 
 #: front/lib/swr/agent_triggers.ts
@@ -381,7 +381,7 @@ msgid "Failed to revoke access"
 msgstr "Impossible de révoquer l’accès"
 
 #: front/lib/swr/frames.ts
-msgid "Couldn't save edits"
+msgid "Couldn’t save edits"
 msgstr "Impossible d’enregistrer les modifications"
 
 #: front/lib/swr/frames.ts
@@ -493,11 +493,11 @@ msgid "The update was submitted but the server response could not be read. The t
 msgstr "La mise à jour a été envoyée, mais la réponse du serveur n’a pas pu être lue. Le tableau a été actualisé avec l’état actuel."
 
 #: front/lib/swr/groups.ts
-msgid "{groupName}'s spend limit has been removed."
+msgid "{groupName}’s spend limit has been removed."
 msgstr "La limite de dépenses de {groupName} a été supprimée."
 
 #: front/lib/swr/groups.ts
-msgid "{groupName}'s spend limit has been set to {awuCredits} credits."
+msgid "{groupName}’s spend limit has been set to {awuCredits} credits."
 msgstr "La limite de dépenses de {groupName} a été fixée à {awuCredits} crédits."
 
 #: front/lib/swr/groups.ts
@@ -702,11 +702,11 @@ msgid "Seat removed"
 msgstr "Siège retiré"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat will be removed at the next billing period. They keep full access until then."
+msgid "{memberName}’s seat will be removed at the next billing period. They keep full access until then."
 msgstr "Le siège de {memberName} sera retiré à la prochaine période de facturation. Cette personne conserve un accès complet d’ici là."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat has been removed."
+msgid "{memberName}’s seat has been removed."
 msgstr "Le siège de {memberName} a été retiré."
 
 #: front/lib/swr/memberships.ts
@@ -718,31 +718,31 @@ msgid "Seat updated"
 msgstr "Siège mis à jour"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat will change to {seatName} at the next credit refresh."
+msgid "{memberName}’s seat will change to {seatName} at the next credit refresh."
 msgstr "{memberName} disposera d’un siège {seatName} au prochain renouvellement des crédits."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s scheduled seat change has been canceled."
+msgid "{memberName}’s scheduled seat change has been canceled."
 msgstr "Le changement de siège planifié de {memberName} a été annulé."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
+msgid "{memberName}’s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
 msgstr "{memberName} dispose désormais d’un siège {seatName}. La réserve de crédits du siège sera bientôt provisionnée."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat has been updated to {seatName}."
+msgid "{memberName}’s seat has been updated to {seatName}."
 msgstr "{memberName} dispose désormais d’un siège {seatName}."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s spend limit has been removed."
+msgid "{memberName}’s spend limit has been removed."
 msgstr "La limite de dépenses de {memberName} a été supprimée."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s spend limit has been set to {awuCredits} credits until the next billing cycle."
+msgid "{memberName}’s spend limit has been set to {awuCredits} credits until the next billing cycle."
 msgstr "La limite de dépenses de {memberName} a été fixée à {awuCredits} crédits jusqu’au prochain cycle de facturation."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s spend limit has been set to {awuCredits} credits."
+msgid "{memberName}’s spend limit has been set to {awuCredits} credits."
 msgstr "La limite de dépenses de {memberName} a été fixée à {awuCredits} crédits."
 
 #: front/lib/swr/mentions.tsx
@@ -1433,7 +1433,7 @@ msgid "Upgrade request approved"
 msgstr "Demande d’augmentation approuvée"
 
 #: front/lib/swr/upgrade_requests.ts
-msgid "{requesterName}'s upgrade request has been approved."
+msgid "{requesterName}’s upgrade request has been approved."
 msgstr "La demande d’augmentation de {requesterName} a été approuvée."
 
 #: front/lib/swr/upgrade_requests.ts
@@ -1441,7 +1441,7 @@ msgid "Upgrade request denied"
 msgstr "Demande d’augmentation refusée"
 
 #: front/lib/swr/upgrade_requests.ts
-msgid "{requesterName}'s upgrade request has been denied."
+msgid "{requesterName}’s upgrade request has been denied."
 msgstr "La demande d’augmentation de {requesterName} a été refusée."
 
 #: front/lib/swr/usage_settings.ts

@@ -50,7 +50,7 @@ export function buildSubscriptionCanceledEmailCopy(
         msg`You canceled the subscription of the ${workspaceName} workspace. It will end with your current billing period, on ${formattedEndDate}. You can reactivate it at any time before then.`
       ),
       i18n._(
-        msg`If you don't reactivate it, your workspace will switch back to the free plan:`
+        msg`If you don’t reactivate it, your workspace will switch back to the free plan:`
       ),
       i18n._(
         msg`• All users will be removed from the workspace except for the most tenured admin.`
@@ -85,7 +85,7 @@ export function buildSubscriptionReactivatedEmailCopy(
         msg`The subscription of the ${workspaceName} workspace has been reactivated.`
       ),
       i18n._(
-        msg`It won't be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual.`
+        msg`It won’t be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual.`
       ),
       i18n._(msg`Thank you for renewing your trust in us.`),
       contactSupportLine(i18n),
@@ -142,7 +142,7 @@ export function buildWorkspaceDataDeletionEmailCopy(
   const lines = isTrialEnd
     ? [
         i18n._(
-          msg`You're receiving this as an admin of the Dust workspace ${workspaceName}. Your trial period has ended.`
+          msg`You’re receiving this as an admin of the Dust workspace ${workspaceName}. Your trial period has ended.`
         ),
         i18n._(
           msg`${plural(remainingDays, {
@@ -157,7 +157,7 @@ export function buildWorkspaceDataDeletionEmailCopy(
       ]
     : [
         i18n._(
-          msg`You're receiving this as an admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.`
+          msg`You’re receiving this as an admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.`
         ),
         i18n._(
           msg`${plural(remainingDays, {

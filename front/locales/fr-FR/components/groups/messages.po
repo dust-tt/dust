@@ -77,19 +77,19 @@ msgid "Membership stays managed by your directory."
 msgstr "L’appartenance est gérée par votre annuaire."
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "Only workspace admins can change this group's members."
+msgid "Only workspace admins can change this group’s members."
 msgstr "Seuls les administrateurs du workspace peuvent modifier les membres de ce groupe."
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "Group managers can manage usage and credit limits for this group's members."
+msgid "Group managers can manage usage and credit limits for this group’s members."
 msgstr "Les managers du groupe peuvent gérer les limites d’utilisation et de crédits des membres de ce groupe."
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "{fullName} isn't a member of {groupName} but can manage it."
+msgid "{fullName} isn’t a member of {groupName} but can manage it."
 msgstr "{fullName} n’est pas membre de {groupName} mais peut le gérer."
 
 #: front/components/groups/GroupManagersField.tsx
-msgid "They can grant themselves access to the group's permissions and data."
+msgid "They can grant themselves access to the group’s permissions and data."
 msgstr "Cette personne peut s’accorder l’accès aux autorisations et aux données du groupe."
 
 #: front/components/groups/GroupManagersField.tsx
@@ -172,19 +172,19 @@ msgid "You don’t have any groups yet."
 msgstr "Vous n’avez encore aucun groupe."
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "{fullName} isn't a member of {groupName}"
+msgid "{fullName} isn’t a member of {groupName}"
 msgstr "{fullName} n’est pas membre de {groupName}"
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
+msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group’s permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
 msgstr "En tant que manager, cette personne peut ajouter n’importe qui au groupe, y compris elle-même. Toute personne ajoutée obtient les autorisations du groupe et l’accès à chaque espace et source de données partagés avec lui. Continuez uniquement si vous faites confiance à {firstName} pour ces autorisations."
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "{managerCount, plural, one {# person you're appointing isn't a member of {groupName}} other {# people you're appointing aren't members of {groupName}}}"
+msgid "{managerCount, plural, one {# person you’re appointing isn’t a member of {groupName}} other {# people you’re appointing aren’t members of {groupName}}}"
 msgstr "{managerCount, plural, one {# personne que vous nommez n’est pas membre de {groupName}} other {# personnes que vous nommez ne sont pas membres de {groupName}}}"
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx
-msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
+msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group’s permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
 msgstr "En tant que managers, ces personnes peuvent ajouter n’importe qui au groupe, y compris elles-mêmes. Toute personne ajoutée obtient les autorisations du groupe et l’accès à chaque espace et source de données partagés avec lui. Continuez uniquement si vous leur faites confiance pour ces autorisations."
 
 #: front/components/groups/useGroupManagerAppointmentReview.tsx

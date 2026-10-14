@@ -75,11 +75,11 @@ msgid "No results found"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgid "This Pod’s default agent isn’t available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
+msgid "This conversation’s default agent isn’t available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
@@ -204,7 +204,7 @@ msgid "Search Spaces"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
-msgid "Agent's Spaces"
+msgid "Agent’s Spaces"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
@@ -224,11 +224,11 @@ msgid "No matching Spaces"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You don't have a seat in this workspace."
+msgid "You don’t have a seat in this workspace."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You've reached your usage limit"
+msgid "You’ve reached your usage limit"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
@@ -240,11 +240,11 @@ msgid "Your group has reached its shared usage limit."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit"
+msgid "You’ve used 80% of your usage limit. You’ll be automatically upgraded when you reach the limit"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
-msgid "You've used 80% of your usage limit"
+msgid "You’ve used 80% of your usage limit"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/pasted_utils.ts

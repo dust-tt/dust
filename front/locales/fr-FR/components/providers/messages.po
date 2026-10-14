@@ -22,7 +22,7 @@ msgid "To use OpenAI models you must provide your API key. It can be found <0>he
 msgstr "Pour utiliser les modèles OpenAI, vous devez fournir votre clé API. Vous la trouverez <0>ici</0>."
 
 #: front/components/providers/ProviderSetup.tsx
-msgid "We'll never use your API key for anything other than to run your apps."
+msgid "We’ll never use your API key for anything other than to run your apps."
 msgstr "Nous n’utiliserons jamais votre clé API à d’autres fins que l’exécution de vos apps."
 
 #: front/components/providers/ProviderSetup.tsx
@@ -50,7 +50,7 @@ msgid "To use Fireworks models you must provide your API key."
 msgstr "Pour utiliser les modèles Fireworks, vous devez fournir votre clé API."
 
 #: front/components/providers/ProviderSetup.tsx
-msgid "To use xAI's Grok models you must provide your API key. It can be found <0>here</0>."
+msgid "To use xAI’s Grok models you must provide your API key. It can be found <0>here</0>."
 msgstr "Pour utiliser les modèles Grok de xAI, vous devez fournir votre clé API. Vous la trouverez <0>ici</0>."
 
 #: front/components/providers/ProviderSetup.tsx
@@ -66,7 +66,7 @@ msgid "Browserless lets you use headless browsers to scrape web content. To use 
 msgstr "Browserless permet d’utiliser des navigateurs headless pour extraire du contenu web. Pour utiliser Browserless, vous devez fournir votre clé API. Vous la trouverez <0>ici</0>."
 
 #: front/components/providers/ProviderSetup.tsx
-msgid "Note that it generally takes <0>5 mins</0> for the API key to become active (an email is sent when it's ready)."
+msgid "Note that it generally takes <0>5 mins</0> for the API key to become active (an email is sent when it’s ready)."
 msgstr "Notez que la clé API met généralement <0>5 min</0> à devenir active (un e-mail est envoyé lorsqu’elle est prête)."
 
 #: front/components/providers/ProviderSetup.tsx

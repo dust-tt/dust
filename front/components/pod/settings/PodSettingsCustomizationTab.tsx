@@ -177,7 +177,7 @@ export function PodSettingsCustomizationTab({
               <Icon visual={InfoCircle} size="xs" />
             </span>
           }
-          label={t`This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the Pod for more information.`}
+          label={t`This Pod’s default agent isn’t available to you, so @dust is used instead. Contact the editor of the Pod for more information.`}
         />
       )}
       {interactive && (
@@ -206,7 +206,7 @@ export function PodSettingsCustomizationTab({
           <Trans>
             Seen by all agents in this Pod, stored as{" "}
             <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
-            Pod's files.
+            Pod’s files.
           </Trans>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2">

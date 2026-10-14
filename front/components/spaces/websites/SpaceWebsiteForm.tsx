@@ -80,7 +80,7 @@ export function SpaceWebsiteForm({
           <Trans>Website entry point</Trans>
         </Page.H>
         <Label className="pl-1">
-          <Trans>Enter the address of the website you'd like to index.</Trans>
+          <Trans>Enter the address of the website you’d like to index.</Trans>
         </Label>
         <Input
           placeholder="https://example.com/articles"
@@ -216,7 +216,7 @@ export function SpaceWebsiteForm({
         <Page.Layout direction="vertical" sizing="grow">
           <Page.SectionHeader
             title={t`Page limit`}
-            description={t`What is the maximum number of pages you'd like to index?`}
+            description={t`What is the maximum number of pages you’d like to index?`}
           />
           <Input
             placeholder={WEBCRAWLER_MAX_PAGES.toString()}

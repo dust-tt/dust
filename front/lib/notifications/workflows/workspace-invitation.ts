@@ -24,10 +24,10 @@ export function buildWorkspaceInvitationEmailCopy(
   let intro: string;
   if (isReminder) {
     subject = i18n._(
-      msg`[Dust] Reminder: you're invited to join ${workspaceName}`
+      msg`[Dust] Reminder: you’re invited to join ${workspaceName}`
     );
     intro = i18n._(
-      msg`You were invited to join the ${workspaceName} workspace on Dust and haven't accepted the invitation yet.`
+      msg`You were invited to join the ${workspaceName} workspace on Dust and haven’t accepted the invitation yet.`
     );
   } else if (inviterName) {
     subject = i18n._(
@@ -37,7 +37,7 @@ export function buildWorkspaceInvitationEmailCopy(
       msg`${inviterName} invited you to join the ${workspaceName} workspace on Dust.`
     );
   } else {
-    subject = i18n._(msg`[Dust] You're invited to join ${workspaceName}`);
+    subject = i18n._(msg`[Dust] You’re invited to join ${workspaceName}`);
     intro = i18n._(
       msg`You were invited to join the ${workspaceName} workspace on Dust.`
     );
@@ -46,7 +46,7 @@ export function buildWorkspaceInvitationEmailCopy(
   const content = [
     intro,
     i18n._(
-      msg`If you weren't expecting this invitation, you can ignore this email.`
+      msg`If you weren’t expecting this invitation, you can ignore this email.`
     ),
   ].join("\n");
 

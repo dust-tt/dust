@@ -83,7 +83,7 @@ msgid "Security notice"
 msgstr ""
 
 #: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
-msgid "By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?"
+msgid "By becoming an editor you will have access to this agent’s private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?"
 msgstr ""
 
 #: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx

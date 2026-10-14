@@ -108,7 +108,7 @@ msgid "Start working on task"
 msgstr ""
 
 #: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
-msgid "Can't start work on this task in this state yet."
+msgid "Can’t start work on this task in this state yet."
 msgstr ""
 
 #: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
@@ -124,7 +124,7 @@ msgid "Selected agent: {selectedAgentName}"
 msgstr ""
 
 #: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
-msgid "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgid "This Pod’s default agent isn’t available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
 msgstr ""
 
 #: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
@@ -156,7 +156,7 @@ msgid "Error loading tasks."
 msgstr ""
 
 #: front/components/pod/tasks/PodTasksPanelMain.tsx
-msgid "You're all caught up!"
+msgid "You’re all caught up!"
 msgstr ""
 
 #: front/components/pod/tasks/SuggestedTaskItem.tsx

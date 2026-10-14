@@ -146,11 +146,11 @@ msgid "Monitor usage and credits for programmatic usage (API keys, automated wor
 msgstr ""
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
-msgid "You're almost out of credits."
+msgid "You’re almost out of credits."
 msgstr ""
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
-msgid "You're out of credits."
+msgid "You’re out of credits."
 msgstr ""
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx

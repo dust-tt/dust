@@ -119,7 +119,7 @@ export function ProcessingMethodSection() {
               <Trans>
                 <span className="font-semibold">Note:</span>&nbsp;When you
                 select a folder, only tables directly inside it will be
-                included. Tables in nested subfolders won't be automatically
+                included. Tables in nested subfolders won’t be automatically
                 added.
               </Trans>
             </>

@@ -146,7 +146,7 @@ function DirectorySyncStatus({
               title={<Trans>Directory sync</Trans>}
               description={
                 <Trans>
-                  Sync your organization's users and groups from your identity
+                  Sync your organization’s users and groups from your identity
                   provider
                 </Trans>
               }

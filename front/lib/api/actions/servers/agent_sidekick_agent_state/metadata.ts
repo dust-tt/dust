@@ -21,7 +21,7 @@ export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {
     name: "agent_sidekick_agent_state",
     version: "1.0.0",
     description:
-      "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools.",
+      "Retrieve information about the current agent’s configuration, including name, description, instructions, model, and tools.",
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,

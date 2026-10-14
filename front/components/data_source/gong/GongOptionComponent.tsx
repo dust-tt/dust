@@ -226,7 +226,7 @@ function PermissionProfileSelector({
         <div className="text-muted-foreground">
           <Trans>Filter calls by Gong permission profile.</Trans>{" "}
           <Trans>
-            Only calls involving users listed in the selected profile's
+            Only calls involving users listed in the selected profile’s
             "Specific Teams" section will be synced.
           </Trans>{" "}
           <Trans>Changing the filter only affects future syncs.</Trans>

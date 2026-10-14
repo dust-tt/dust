@@ -245,8 +245,8 @@ msgid "No automation matches your search criteria."
 msgstr "No automation matches your search criteria."
 
 #: front/components/me/UserAutomationsTable.tsx
-msgid "You haven't created any automation yet."
-msgstr "You haven't created any automation yet."
+msgid "You haven’t created any automation yet."
+msgstr "You haven’t created any automation yet."
 
 #: front/components/me/UserAutomationsTable.tsx
 msgid "Are you sure you want to delete \"{triggerToDeleteName}\"?"

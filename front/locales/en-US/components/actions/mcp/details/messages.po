@@ -343,8 +343,8 @@ msgid "Handoff"
 msgstr "Handoff"
 
 #: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
-msgid "{agentName}'s answer"
-msgstr "{agentName}'s answer"
+msgid "{agentName}’s answer"
+msgstr "{agentName}’s answer"
 
 #: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
 msgid "View full conversation"

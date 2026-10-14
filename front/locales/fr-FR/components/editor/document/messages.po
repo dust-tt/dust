@@ -168,31 +168,31 @@ msgid "All comments"
 msgstr "Tous les commentaires"
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a table."
+msgid "This document can’t be edited here yet because it has a table."
 msgstr "Ce document ne peut pas encore être modifié ici, car il contient un tableau."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has HTML."
+msgid "This document can’t be edited here yet because it has HTML."
 msgstr "Ce document ne peut pas encore être modifié ici, car il contient du HTML."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a task list."
+msgid "This document can’t be edited here yet because it has a task list."
 msgstr "Ce document ne peut pas encore être modifié ici, car il contient une liste de tâches."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a code block fenced with ~~~."
+msgid "This document can’t be edited here yet because it has a code block fenced with ~~~."
 msgstr "Ce document ne peut pas encore être modifié ici, car il contient un bloc de code délimité par ~~~."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has an indented code fence."
+msgid "This document can’t be edited here yet because it has an indented code fence."
 msgstr "Ce document ne peut pas encore être modifié ici, car il contient une délimitation de code indentée."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a reference link definition."
+msgid "This document can’t be edited here yet because it has a reference link definition."
 msgstr "Ce document ne peut pas encore être modifié ici, car il contient une définition de lien de référence."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
+msgid "This document uses formatting the editor doesn’t support yet, so it can’t be edited here."
 msgstr "Ce document utilise une mise en forme que l’éditeur ne prend pas encore en charge, il ne peut donc pas être modifié ici."
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
@@ -396,7 +396,7 @@ msgid "The selected text can no longer take a comment. Select other text to comm
 msgstr "Le texte sélectionné ne peut plus recevoir de commentaire. Sélectionnez un autre texte pour commenter."
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This comment can't be saved in this document. Try shortening or simplifying it."
+msgid "This comment can’t be saved in this document. Try shortening or simplifying it."
 msgstr "Ce commentaire ne peut pas être enregistré dans ce document. Essayez de le raccourcir ou de le simplifier."
 
 #: front/components/editor/document/useDocumentComments.ts
@@ -404,7 +404,7 @@ msgid "Suggestions can only replace text within one paragraph."
 msgstr "Une suggestion ne peut remplacer que du texte au sein d’un même paragraphe."
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This suggestion can't replace the commented text. Another comment may cover part of it."
+msgid "This suggestion can’t replace the commented text. Another comment may cover part of it."
 msgstr "Cette suggestion ne peut pas remplacer le texte commenté. Un autre commentaire en couvre peut-être une partie."
 
 #: front/components/editor/document/useDocumentComments.ts
@@ -420,11 +420,11 @@ msgid "This text is too long or complex to suggest a change to."
 msgstr "Ce texte est trop long ou trop complexe pour y suggérer une modification."
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This suggestion can't be saved in this document."
+msgid "This suggestion can’t be saved in this document."
 msgstr "Cette suggestion ne peut pas être enregistrée dans ce document."
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "The suggestion was applied, but the comment couldn't be resolved. {reason}"
+msgid "The suggestion was applied, but the comment couldn’t be resolved. {reason}"
 msgstr "La suggestion a été appliquée, mais le commentaire n’a pas pu être résolu. {reason}"
 
 #: front/components/editor/document/useDocumentEditor.ts

@@ -153,12 +153,12 @@ export function UserProfileStep({
         title={firstName ? t`Hello ${firstName}!` : t`Hello there!`}
       />
       <p className="text-muted-foreground">
-        <Trans>Let's check a few things.</Trans>
+        <Trans>Let’s check a few things.</Trans>
       </p>
       {!isAdmin && (
         <p className="text-muted-foreground">
           <Trans>
-            You'll be joining the workspace:{" "}
+            You’ll be joining the workspace:{" "}
             <span className="font-medium">{workspaceName}</span>.
           </Trans>
         </p>

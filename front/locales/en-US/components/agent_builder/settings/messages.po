@@ -155,8 +155,8 @@ msgid "Ignore credit spend threshold alert"
 msgstr "Ignore credit spend threshold alert"
 
 #: front/components/agent_builder/settings/CostManagementSection.tsx
-msgid "Conversations with this agent will not pause to ask for confirmation when they cross the workspace's credit spend checkpoint."
-msgstr "Conversations with this agent will not pause to ask for confirmation when they cross the workspace's credit spend checkpoint."
+msgid "Conversations with this agent will not pause to ask for confirmation when they cross the workspace’s credit spend checkpoint."
+msgstr "Conversations with this agent will not pause to ask for confirmation when they cross the workspace’s credit spend checkpoint."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 msgid "Failed to retrieve Slack channels. Please check your Slack integration."
@@ -215,8 +215,8 @@ msgid "Private channels only reply to @mentions. Auto-respond applies to public 
 msgstr "Private channels only reply to @mentions. Auto-respond applies to public channels."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
-msgid "Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned."
-msgstr "Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned."
+msgid "Auto-respond isn’t available in private Slack channels. The agent will only reply when @Dust is mentioned."
+msgstr "Auto-respond isn’t available in private Slack channels. The agent will only reply when @Dust is mentioned."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 msgid "Agent will automatically respond to messages in selected channels (not just @mentions)"
@@ -243,8 +243,8 @@ msgid "No tag suggestions available"
 msgstr "No tag suggestions available"
 
 #: front/components/agent_builder/settings/TagsSection.tsx
-msgid "We couldn't find any relevant tags to suggest for this agent."
-msgstr "We couldn't find any relevant tags to suggest for this agent."
+msgid "We couldn’t find any relevant tags to suggest for this agent."
+msgstr "We couldn’t find any relevant tags to suggest for this agent."
 
 #: front/components/agent_builder/settings/TagsSection.tsx
 msgid "Tags"

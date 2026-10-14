@@ -190,7 +190,7 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
               <Trans>
                 Usage cost depends on both the model and its reasoning effort.
                 We compare each combination on representative tasks rather than
-                on the model's token price alone. Raising the reasoning effort
+                on the model’s token price alone. Raising the reasoning effort
                 by one step usually increases the cost by about 30%.
               </Trans>
             </InfoSection>
@@ -200,7 +200,7 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
                 tier: access to Standard also includes Basic.
               </Trans>
             </InfoSection>
-            <InfoSection title={t`See what's included`}>
+            <InfoSection title={t`See what’s included`}>
               <Trans>
                 Select a tier to see the models and reasoning efforts it
                 includes.

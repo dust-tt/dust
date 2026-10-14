@@ -86,7 +86,7 @@ msgid "Data source view not found."
 msgstr "Vue de la source de données introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have access to this data source."
+msgid "You don’t have access to this data source."
 msgstr "Vous n’avez pas accès à cette source de données."
 
 #: front/lib/api_error_messages.ts
@@ -102,7 +102,7 @@ msgid "Document not found."
 msgstr "Document introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "This data source isn't managed by a connection."
+msgid "This data source isn’t managed by a connection."
 msgstr "Cette source de données n’est pas gérée par une connexion."
 
 #: front/lib/api_error_messages.ts
@@ -114,7 +114,7 @@ msgid "App not found."
 msgstr "Application introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have access to this app."
+msgid "You don’t have access to this app."
 msgstr "Vous n’avez pas accès à cette application."
 
 #: front/lib/api_error_messages.ts
@@ -126,7 +126,7 @@ msgid "Model provider not found."
 msgstr "Fournisseur de modèles introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "The model provider endpoint is invalid or can't be reached."
+msgid "The model provider endpoint is invalid or can’t be reached."
 msgstr "L’endpoint du fournisseur de modèles est invalide ou injoignable."
 
 #: front/lib/api_error_messages.ts
@@ -142,11 +142,11 @@ msgid "This workspace is hosted in another region."
 msgstr "Ce workspace est hébergé dans une autre région."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have access to this workspace."
+msgid "You don’t have access to this workspace."
 msgstr "Vous n’avez pas accès à ce workspace."
 
 #: front/lib/api_error_messages.ts
-msgid "Your workspace can't use this product with its current plan."
+msgid "Your workspace can’t use this product with its current plan."
 msgstr "Votre workspace ne peut pas utiliser ce produit avec son forfait actuel."
 
 #: front/lib/api_error_messages.ts
@@ -154,7 +154,7 @@ msgid "User not found in this workspace."
 msgstr "Utilisateur introuvable dans ce workspace."
 
 #: front/lib/api_error_messages.ts
-msgid "This operation isn't supported."
+msgid "This operation isn’t supported."
 msgstr "Cette opération n’est pas prise en charge."
 
 #: front/lib/api_error_messages.ts
@@ -182,7 +182,7 @@ msgid "Invitation not found."
 msgstr "Invitation introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "You've reached a limit of your plan."
+msgid "You’ve reached a limit of your plan."
 msgstr "Vous avez atteint une limite de votre forfait."
 
 #: front/lib/api_error_messages.ts
@@ -198,19 +198,19 @@ msgid "Connection not found."
 msgstr "Connexion introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "The connection couldn't be updated."
+msgid "The connection couldn’t be updated."
 msgstr "Impossible de mettre à jour la connexion."
 
 #: front/lib/api_error_messages.ts
-msgid "You aren't allowed to update this connection."
+msgid "You aren’t allowed to update this connection."
 msgstr "Vous n’êtes pas autorisé à modifier cette connexion."
 
 #: front/lib/api_error_messages.ts
-msgid "The connection's authorization wasn't found."
+msgid "The connection’s authorization wasn’t found."
 msgstr "L’autorisation de la connexion est introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "The authorized account doesn't match this connection."
+msgid "The authorized account doesn’t match this connection."
 msgstr "Le compte autorisé ne correspond pas à cette connexion."
 
 #: front/lib/api_error_messages.ts
@@ -222,7 +222,7 @@ msgid "The authorized account must be an admin."
 msgstr "Le compte autorisé doit être administrateur."
 
 #: front/lib/api_error_messages.ts
-msgid "This connection type isn't supported."
+msgid "This connection type isn’t supported."
 msgstr "Ce type de connexion n’est pas pris en charge."
 
 #: front/lib/api_error_messages.ts
@@ -230,7 +230,7 @@ msgid "The connection credentials are invalid."
 msgstr "Les identifiants de la connexion ne sont pas valides."
 
 #: front/lib/api_error_messages.ts
-msgid "The connection credentials weren't found."
+msgid "The connection credentials weren’t found."
 msgstr "Les identifiants de la connexion sont introuvables."
 
 #: front/lib/api_error_messages.ts
@@ -242,11 +242,11 @@ msgid "Agent not found."
 msgstr "Agent introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have access to this agent."
+msgid "You don’t have access to this agent."
 msgstr "Vous n’avez pas accès à cet agent."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have permission to edit this agent."
+msgid "You don’t have permission to edit this agent."
 msgstr "Vous n’avez pas l’autorisation de modifier cet agent."
 
 #: front/lib/api_error_messages.ts
@@ -254,11 +254,11 @@ msgid "The agent message failed."
 msgstr "Échec du message de l’agent."
 
 #: front/lib/api_error_messages.ts
-msgid "The request couldn't be processed."
+msgid "The request couldn’t be processed."
 msgstr "Impossible de traiter la requête."
 
 #: front/lib/api_error_messages.ts
-msgid "You've reached the message limit of your plan."
+msgid "You’ve reached the message limit of your plan."
 msgstr "Vous avez atteint la limite de messages de votre forfait."
 
 #: front/lib/api_error_messages.ts
@@ -266,7 +266,7 @@ msgid "Your workspace has run out of credits."
 msgstr "Votre workspace n’a plus de crédits."
 
 #: front/lib/api_error_messages.ts
-msgid "You've reached your usage limit."
+msgid "You’ve reached your usage limit."
 msgstr "Vous avez atteint votre limite d’utilisation."
 
 #: front/lib/api_error_messages.ts
@@ -274,7 +274,7 @@ msgid "Your group has reached its shared usage limit."
 msgstr "Votre groupe a atteint sa limite d’utilisation partagée."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have a seat in this workspace."
+msgid "You don’t have a seat in this workspace."
 msgstr "Vous n’avez pas de siège dans ce workspace."
 
 #: front/lib/api_error_messages.ts
@@ -282,7 +282,7 @@ msgid "This model is disabled."
 msgstr "Ce modèle est désactivé."
 
 #: front/lib/api_error_messages.ts
-msgid "This Dust agent couldn't be updated."
+msgid "This Dust agent couldn’t be updated."
 msgstr "Impossible de mettre à jour cet agent Dust."
 
 #: front/lib/api_error_messages.ts
@@ -306,7 +306,7 @@ msgid "The subscription is in an invalid state."
 msgstr "L’abonnement est dans un état non valide."
 
 #: front/lib/api_error_messages.ts
-msgid "This isn't available during the trial."
+msgid "This isn’t available during the trial."
 msgstr "Cette fonctionnalité n’est pas disponible pendant l’essai."
 
 #: front/lib/api_error_messages.ts
@@ -314,7 +314,7 @@ msgid "The service is temporarily unavailable."
 msgstr "Le service est temporairement indisponible."
 
 #: front/lib/api_error_messages.ts
-msgid "This feature isn't enabled for your workspace."
+msgid "This feature isn’t enabled for your workspace."
 msgstr "Cette fonctionnalité n’est pas activée pour votre espace de travail."
 
 #: front/lib/api_error_messages.ts
@@ -322,7 +322,7 @@ msgid "This is only available in Pods."
 msgstr "Disponible uniquement dans les Pods."
 
 #: front/lib/api_error_messages.ts
-msgid "The agent couldn't be saved."
+msgid "The agent couldn’t be saved."
 msgstr "Impossible d’enregistrer l’agent."
 
 #: front/lib/api_error_messages.ts
@@ -370,7 +370,7 @@ msgid "API key not found."
 msgstr "Clé API introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "The API key doesn't have the required scope."
+msgid "The API key doesn’t have the required scope."
 msgstr "La clé API n’a pas le périmètre requis."
 
 #: front/lib/api_error_messages.ts
@@ -386,7 +386,7 @@ msgid "Transcripts configuration not found."
 msgstr "Configuration des transcriptions introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "This transcripts configuration can't be the default."
+msgid "This transcripts configuration can’t be the default."
 msgstr "Cette configuration de transcriptions ne peut pas être définie par défaut."
 
 #: front/lib/api_error_messages.ts
@@ -402,7 +402,7 @@ msgid "The file is too large."
 msgstr "Le fichier est trop volumineux."
 
 #: front/lib/api_error_messages.ts
-msgid "This file type isn't supported."
+msgid "This file type isn’t supported."
 msgstr "Ce type de fichier n’est pas pris en charge."
 
 #: front/lib/api_error_messages.ts
@@ -418,7 +418,7 @@ msgid "This file is being edited live and changed before your edit could be save
 msgstr "Ce fichier est en cours de modification en direct et a changé avant l’enregistrement de votre modification. Rechargez-le et réessayez."
 
 #: front/lib/api_error_messages.ts
-msgid "This file is being edited live and can't take this change."
+msgid "This file is being edited live and can’t take this change."
 msgstr "Ce fichier est en cours de modification en direct et ne peut pas accepter cette modification."
 
 #: front/lib/api_error_messages.ts
@@ -454,7 +454,7 @@ msgid "Coupon not found."
 msgstr "Coupon introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "This coupon can't be redeemed."
+msgid "This coupon can’t be redeemed."
 msgstr "Ce coupon ne peut pas être utilisé."
 
 #: front/lib/api_error_messages.ts
@@ -486,7 +486,7 @@ msgid "Webhook source not found."
 msgstr "Source de webhook introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have access to this webhook source."
+msgid "You don’t have access to this webhook source."
 msgstr "Vous n’avez pas accès à cette source de webhook."
 
 #: front/lib/api_error_messages.ts
@@ -498,11 +498,11 @@ msgid "The webhook source is misconfigured."
 msgstr "La source de webhook est mal configurée."
 
 #: front/lib/api_error_messages.ts
-msgid "The webhook couldn't be processed."
+msgid "The webhook couldn’t be processed."
 msgstr "Impossible de traiter le webhook."
 
 #: front/lib/api_error_messages.ts
-msgid "The webhook couldn't be stored."
+msgid "The webhook couldn’t be stored."
 msgstr "Impossible d’enregistrer le webhook."
 
 #: front/lib/api_error_messages.ts
@@ -518,7 +518,7 @@ msgid "Action not found."
 msgstr "Action introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "This action isn't waiting for approval."
+msgid "This action isn’t waiting for approval."
 msgstr "Cette action n’est pas en attente d’approbation."
 
 #: front/lib/api_error_messages.ts
@@ -526,7 +526,7 @@ msgid "Conversation not found."
 msgstr "Conversation introuvable."
 
 #: front/lib/api_error_messages.ts
-msgid "You don't have access to this conversation."
+msgid "You don’t have access to this conversation."
 msgstr "Vous n’avez pas accès à cette conversation."
 
 #: front/lib/api_error_messages.ts
@@ -538,11 +538,11 @@ msgid "This conversation uses an agent that is no longer available."
 msgstr "Cette conversation utilise un agent qui n’est plus disponible."
 
 #: front/lib/api_error_messages.ts
-msgid "You're already a participant in this conversation."
+msgid "You’re already a participant in this conversation."
 msgstr "Vous participez déjà à cette conversation."
 
 #: front/lib/api_error_messages.ts
-msgid "You aren't allowed to delete this message."
+msgid "You aren’t allowed to delete this message."
 msgstr "Vous n’êtes pas autorisé à supprimer ce message."
 
 #: front/lib/api_error_messages.ts
@@ -570,11 +570,11 @@ msgid "The authentication provider returned an error."
 msgstr "Le fournisseur d’authentification a renvoyé une erreur."
 
 #: front/lib/api_error_messages.ts
-msgid "Multiple SSO connections aren't supported."
+msgid "Multiple SSO connections aren’t supported."
 msgstr "Les connexions SSO multiples ne sont pas prises en charge."
 
 #: front/lib/api_error_messages.ts
-msgid "Multiple directories aren't supported."
+msgid "Multiple directories aren’t supported."
 msgstr "Les annuaires multiples ne sont pas pris en charge."
 
 #: front/lib/api_error_messages.ts
@@ -610,11 +610,11 @@ msgid "The frame runtime is unavailable."
 msgstr "L’environnement d’exécution des Frames est indisponible."
 
 #: front/lib/api_error_messages.ts
-msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
+msgid "A Frame’s manifest can’t be moved or renamed on its own. Move or rename the Frame’s folder instead."
 msgstr "Le manifeste d’un Frame ne peut pas être déplacé ni renommé seul. Déplacez ou renommez plutôt le dossier du Frame."
 
 #: front/lib/api_error_messages.ts
-msgid "A fast function can't call tools."
+msgid "A fast function can’t call tools."
 msgstr "Une fonction rapide ne peut pas appeler d’outils."
 
 #: front/lib/api_error_messages.ts
@@ -635,7 +635,7 @@ msgstr "Réveil introuvable."
 
 #: front/lib/api_error_messages.ts
 msgid "Another user has an active wake-up in this conversation. Only they can post until it fires or is canceled."
-msgstr "Un autre utilisateur a un réveil actif dans cette conversation. Seul cet utilisateur peut publier jusqu'au déclenchement ou à l'annulation du réveil."
+msgstr "Un autre utilisateur a un réveil actif dans cette conversation. Seul cet utilisateur peut publier jusqu’au déclenchement ou à l’annulation du réveil."
 
 #: front/lib/api_error_messages.ts
 msgid "Open Pods are disabled in this workspace. Make the Pod private instead."
@@ -1510,7 +1510,7 @@ msgid "Message: {rawMessage}"
 msgstr "Message : {rawMessage}"
 
 #: front/lib/connector_providers_ui.ts
-msgid "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed."
+msgid "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won’t be indexed."
 msgstr "Dust indexe les pages des espaces globaux sélectionnés qui n’ont aucune restriction de lecture. Si une page, ou l’une de ses pages parentes, a des restrictions de lecture, elle ne sera pas indexée."
 
 #: front/lib/connector_providers_ui.ts
@@ -1708,7 +1708,7 @@ msgid "Enable comprehensive analysis across company data, databases, and web sou
 msgstr "Activer une analyse complète des données de l’entreprise, des bases de données et des sources web. Une analyse approfondie qui peut prendre plusieurs minutes."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Keep a Pod's job moving with the next evidence-backed action"
+msgid "Keep a Pod’s job moving with the next evidence-backed action"
 msgstr "Faites avancer la mission d’un Pod avec la prochaine action étayée par des faits"
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1732,7 +1732,7 @@ msgid "Allow agents to create conversations & messages in Pods, leverage Pods kn
 msgstr "Permettre aux agents de créer des conversations et des messages dans les Pods, et d’exploiter leurs connaissances."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment)."
+msgid "Run code, scripts, and shell commands in the conversation’s Computer (a sandboxed Linux environment)."
 msgstr "Exécuter du code, des scripts et des commandes shell dans le Computer de la conversation (un environnement Linux isolé)."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1768,7 +1768,7 @@ msgid "Automatically discover and activate workspace skills as needed."
 msgstr "Découvrir et activer automatiquement les compétences du workspace selon les besoins."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration."
+msgid "Automatically discover and activate specialized tools as needed. Extend your agent’s capabilities on-demand without manual configuration."
 msgstr "Découvrir et activer automatiquement des outils spécialisés selon les besoins. Étendez les capacités de votre agent à la demande, sans configuration manuelle."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1776,7 +1776,7 @@ msgid "Let agents maintain a live plan.md the user can follow as work progresses
 msgstr "Permettre aux agents de tenir à jour un plan.md que le membre peut suivre au fil du travail."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Give agents a persistent memory of the user's preferences and context across conversations."
+msgid "Give agents a persistent memory of the user’s preferences and context across conversations."
 msgstr "Donner aux agents une mémoire persistante des préférences et du contexte du membre d’une conversation à l’autre."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1800,7 +1800,7 @@ msgid "Tools with access to the agents of the workspace."
 msgstr "Outils ayant accès aux agents du workspace."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data."
+msgid "Load complete content for full context up to memory limits. Note: won’t include spreadsheet/table data."
 msgstr "Charger l’intégralité du contenu pour un contexte complet, dans la limite de la mémoire. Remarque : n’inclut pas les données des feuilles de calcul et des tables."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1924,7 +1924,7 @@ msgid "Search and read from your Slab knowledge base"
 msgstr "Rechercher et lire dans votre base de connaissances Slab"
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Review compliance posture powered by Vanta's security platform."
+msgid "Review compliance posture powered by Vanta’s security platform."
 msgstr "Examiner votre niveau de conformité grâce à la plateforme de sécurité Vanta."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -2012,11 +2012,11 @@ msgid "Retrieve context about available models, skills, tools, and agent-specifi
 msgstr "Récupérer le contexte sur les modèles, compétences et outils disponibles, ainsi que les retours et analyses propres à l’agent. Créer et gérer des suggestions de modification de la configuration de l’agent."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools."
+msgid "Retrieve information about the current agent’s configuration, including name, description, instructions, model, and tools."
 msgstr "Récupérer la configuration de l’agent actuel, notamment son nom, sa description, ses instructions, son modèle et ses outils."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Execute code and commands in the conversation's Computer (an isolated Linux environment)."
+msgid "Execute code and commands in the conversation’s Computer (an isolated Linux environment)."
 msgstr "Exécuter du code et des commandes dans le Computer de la conversation (un environnement Linux isolé)."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -2052,11 +2052,11 @@ msgid "Workspace usage analytics for admins and managers: credit consumption, me
 msgstr "Statistiques d’utilisation du workspace pour les administrateurs et les managers : consommation de crédits, volume de messages et d’exécutions par entité, chiffres clés et tendances dans le temps."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Search the workspace's agents and skills, and inventory tools, tags and groups."
+msgid "Search the workspace’s agents and skills, and inventory tools, tags and groups."
 msgstr "Rechercher les agents et les compétences du workspace, et recenser les outils, les tags et les groupes."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Search for people and companies using Exa's AI-powered search."
+msgid "Search for people and companies using Exa’s AI-powered search."
 msgstr "Rechercher des personnes et des entreprises avec la recherche IA d’Exa."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -2080,7 +2080,7 @@ msgid "Access catalog, customers and orders data from a Shopify store."
 msgstr "Accéder aux données du catalogue, des clients et des commandes d’une boutique Shopify."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Store and retrieve the current user's personal memory, shared across the user's agents."
+msgid "Store and retrieve the current user’s personal memory, shared across the user’s agents."
 msgstr "Enregistrer et récupérer la mémoire personnelle du membre actuel, partagée entre ses agents."
 
 #: front/lib/dust_provided_descriptions.ts

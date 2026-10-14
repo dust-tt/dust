@@ -43,8 +43,8 @@ msgid "No pages found"
 msgstr "No pages found"
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
-msgid "This website doesn't have any pages to browse yet."
-msgstr "This website doesn't have any pages to browse yet."
+msgid "This website doesn’t have any pages to browse yet."
+msgstr "This website doesn’t have any pages to browse yet."
 
 #: front/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable.tsx
 msgid "Go back"

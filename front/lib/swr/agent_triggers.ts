@@ -358,8 +358,8 @@ export function useUpdateTriggerExecutionMode({
         title: t`Trigger pool updated`,
         description:
           executionMode === "workspace_pool"
-            ? t`This trigger now runs on the workspace's credits.`
-            : t`This trigger now runs on its editor's credits.`,
+            ? t`This trigger now runs on the workspace’s credits.`
+            : t`This trigger now runs on its editor’s credits.`,
       });
       return true;
     },
@@ -563,16 +563,16 @@ export function useBulkUpdateTriggerExecutionMode({
         case "workspace_pool":
           parts.push(
             t`${plural(updatedCount, {
-              one: "# automation now runs on the workspace's credits.",
-              other: "# automations now run on the workspace's credits.",
+              one: "# automation now runs on the workspace’s credits.",
+              other: "# automations now run on the workspace’s credits.",
             })}`
           );
           break;
         case "user_pool":
           parts.push(
             t`${plural(updatedCount, {
-              one: "# automation now runs on its editor's credits.",
-              other: "# automations now run on their editor's credits.",
+              one: "# automation now runs on its editor’s credits.",
+              other: "# automations now run on their editor’s credits.",
             })}`
           );
           break;

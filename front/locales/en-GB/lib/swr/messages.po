@@ -105,19 +105,19 @@ msgid "Trigger pool updated"
 msgstr ""
 
 #: front/lib/swr/agent_triggers.ts
-msgid "This trigger now runs on the workspace's credits."
+msgid "This trigger now runs on the workspace’s credits."
 msgstr ""
 
 #: front/lib/swr/agent_triggers.ts
-msgid "This trigger now runs on its editor's credits."
+msgid "This trigger now runs on its editor’s credits."
 msgstr ""
 
 #: front/lib/swr/agent_triggers.ts
-msgid "{updatedCount, plural, one {# automation now runs on the workspace's credits.} other {# automations now run on the workspace's credits.}}"
+msgid "{updatedCount, plural, one {# automation now runs on the workspace’s credits.} other {# automations now run on the workspace’s credits.}}"
 msgstr ""
 
 #: front/lib/swr/agent_triggers.ts
-msgid "{updatedCount, plural, one {# automation now runs on its editor's credits.} other {# automations now run on their editor's credits.}}"
+msgid "{updatedCount, plural, one {# automation now runs on its editor’s credits.} other {# automations now run on their editor’s credits.}}"
 msgstr ""
 
 #: front/lib/swr/agent_triggers.ts
@@ -381,7 +381,7 @@ msgid "Failed to revoke access"
 msgstr ""
 
 #: front/lib/swr/frames.ts
-msgid "Couldn't save edits"
+msgid "Couldn’t save edits"
 msgstr ""
 
 #: front/lib/swr/frames.ts
@@ -493,11 +493,11 @@ msgid "The update was submitted but the server response could not be read. The t
 msgstr ""
 
 #: front/lib/swr/groups.ts
-msgid "{groupName}'s spend limit has been removed."
+msgid "{groupName}’s spend limit has been removed."
 msgstr ""
 
 #: front/lib/swr/groups.ts
-msgid "{groupName}'s spend limit has been set to {awuCredits} credits."
+msgid "{groupName}’s spend limit has been set to {awuCredits} credits."
 msgstr ""
 
 #: front/lib/swr/groups.ts
@@ -702,11 +702,11 @@ msgid "Seat removed"
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat will be removed at the next billing period. They keep full access until then."
+msgid "{memberName}’s seat will be removed at the next billing period. They keep full access until then."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat has been removed."
+msgid "{memberName}’s seat has been removed."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
@@ -718,31 +718,31 @@ msgid "Seat updated"
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat will change to {seatName} at the next credit refresh."
+msgid "{memberName}’s seat will change to {seatName} at the next credit refresh."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s scheduled seat change has been canceled."
-msgstr "{memberName}'s scheduled seat change has been cancelled."
+msgid "{memberName}’s scheduled seat change has been canceled."
+msgstr "{memberName}’s scheduled seat change has been cancelled."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
+msgid "{memberName}’s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s seat has been updated to {seatName}."
+msgid "{memberName}’s seat has been updated to {seatName}."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s spend limit has been removed."
+msgid "{memberName}’s spend limit has been removed."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s spend limit has been set to {awuCredits} credits until the next billing cycle."
+msgid "{memberName}’s spend limit has been set to {awuCredits} credits until the next billing cycle."
 msgstr ""
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s spend limit has been set to {awuCredits} credits."
+msgid "{memberName}’s spend limit has been set to {awuCredits} credits."
 msgstr ""
 
 #: front/lib/swr/mentions.tsx
@@ -1433,7 +1433,7 @@ msgid "Upgrade request approved"
 msgstr ""
 
 #: front/lib/swr/upgrade_requests.ts
-msgid "{requesterName}'s upgrade request has been approved."
+msgid "{requesterName}’s upgrade request has been approved."
 msgstr ""
 
 #: front/lib/swr/upgrade_requests.ts
@@ -1441,7 +1441,7 @@ msgid "Upgrade request denied"
 msgstr ""
 
 #: front/lib/swr/upgrade_requests.ts
-msgid "{requesterName}'s upgrade request has been denied."
+msgid "{requesterName}’s upgrade request has been denied."
 msgstr ""
 
 #: front/lib/swr/usage_settings.ts

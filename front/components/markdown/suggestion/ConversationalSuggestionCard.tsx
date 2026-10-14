@@ -164,7 +164,7 @@ export function RestrictedSuggestionCard() {
   return (
     <ConversationalSuggestionCard
       title={t`Suggested changes`}
-      analysis={t`The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it.`}
+      analysis={t`The agent has made a suggestion to improve an agent or a skill but you don’t have the permissions to read it.`}
     />
   );
 }

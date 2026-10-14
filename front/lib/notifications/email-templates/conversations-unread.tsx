@@ -167,7 +167,7 @@ const ConversationsUnreadEmailTemplate = ({
             📁{" "}
             {isSingleProject
               ? t`${plural(newProjectConversationCount, {
-                  one: `There's a new conversation in ${singleProjectName}:`,
+                  one: `There’s a new conversation in ${singleProjectName}:`,
                   other: `There are # new conversations in ${singleProjectName}:`,
                 })}`
               : t`${plural(newProjectConversationCount, {

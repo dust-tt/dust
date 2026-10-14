@@ -167,7 +167,7 @@ describe("AgentBuilderSimilarAgentsSection", () => {
     render(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
 
     expect(
-      await screen.findByText("Couldn't check for similar agents.", undefined, {
+      await screen.findByText("Couldn’t check for similar agents.", undefined, {
         timeout: 3000,
       })
     ).toBeInTheDocument();

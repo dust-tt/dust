@@ -46,7 +46,7 @@ function getSyncAuthWarningTooltip(
   oAuthUseCase: MCPOAuthUseCase | null
 ): MessageDescriptor {
   if (oAuthUseCase === "personal_actions") {
-    return msg`The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected.`;
+    return msg`The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member’s personal authentication and are unaffected.`;
   }
 
   return msg`Shared authentication is no longer valid and must be refreshed. Until then, agents cannot use these tools.`;

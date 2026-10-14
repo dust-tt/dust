@@ -21,12 +21,12 @@ interface DocumentMarkdownPreviewProps {
 
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
-    table: msg`This document can't be edited here yet because it has a table.`,
-    html: msg`This document can't be edited here yet because it has HTML.`,
-    task_list: msg`This document can't be edited here yet because it has a task list.`,
-    tilde_fence: msg`This document can't be edited here yet because it has a code block fenced with ~~~.`,
-    indented_fence: msg`This document can't be edited here yet because it has an indented code fence.`,
-    reference_definition: msg`This document can't be edited here yet because it has a reference link definition.`,
+    table: msg`This document can’t be edited here yet because it has a table.`,
+    html: msg`This document can’t be edited here yet because it has HTML.`,
+    task_list: msg`This document can’t be edited here yet because it has a task list.`,
+    tilde_fence: msg`This document can’t be edited here yet because it has a code block fenced with ~~~.`,
+    indented_fence: msg`This document can’t be edited here yet because it has an indented code fence.`,
+    reference_definition: msg`This document can’t be edited here yet because it has a reference link definition.`,
   };
 
 /**
@@ -81,8 +81,8 @@ export const DocumentMarkdownPreview = ({
             t(UNSUPPORTED_ELEMENT_NOTES[preview.element])
           ) : (
             <Trans>
-              This document uses formatting the editor doesn't support yet, so
-              it can't be edited here.
+              This document uses formatting the editor doesn’t support yet, so
+              it can’t be edited here.
             </Trans>
           )}
         </p>

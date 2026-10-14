@@ -184,12 +184,12 @@ msgstr "❌ Impossible de valider l’exécution de l’outil. Réessayez."
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/webhook_teams.ts
-msgid "Agent **@{agentName}**'s request to use tool **{toolName}** was ✅ approved"
+msgid "Agent **@{agentName}**’s request to use tool **{toolName}** was ✅ approved"
 msgstr "La demande de l’agent **@{agentName}** d’utiliser l’outil **{toolName}** a été ✅ approuvée"
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/webhook_teams.ts
-msgid "Agent **@{agentName}**'s request to use tool **{toolName}** was ❌ rejected"
+msgid "Agent **@{agentName}**’s request to use tool **{toolName}** was ❌ rejected"
 msgstr "La demande de l’agent **@{agentName}** d’utiliser l’outil **{toolName}** a été ❌ refusée"
 
 #. js-lingui-explicit-id
@@ -221,7 +221,7 @@ msgstr "Une erreur inattendue s’est produite en répondant à votre message. V
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
-msgid "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
+msgid "Dust doesn’t have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
 msgstr "Dust n’a pas l’autorisation de publier dans ce canal. L’agent a répondu, mais Slack a refusé la réponse. Demandez à un administrateur du workspace d’autoriser l’application Dust à publier ici, puis réessayez."
 
 #. js-lingui-explicit-id
@@ -246,12 +246,12 @@ msgstr "({agentName}) est en file d’attente…"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
-msgid "The agent's request to use tool `{toolName}` was ✅ approved"
+msgid "The agent’s request to use tool `{toolName}` was ✅ approved"
 msgstr "La demande de l’agent d’utiliser l’outil `{toolName}` a été ✅ approuvée"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
-msgid "The agent's request to use tool `{toolName}` was ❌ rejected"
+msgid "The agent’s request to use tool `{toolName}` was ❌ rejected"
 msgstr "La demande de l’agent d’utiliser l’outil `{toolName}` a été ❌ refusée"
 
 #. js-lingui-explicit-id
@@ -507,7 +507,7 @@ msgstr "La génération du message a été annulée."
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
-msgid "Slack couldn't upload the generated files, so they aren't attached."
+msgid "Slack couldn’t upload the generated files, so they aren’t attached."
 msgstr "Slack n’a pas pu importer les fichiers générés ; ils ne sont donc pas joints."
 
 #. js-lingui-explicit-id
@@ -552,7 +552,7 @@ msgstr "Dites-nous en plus sur votre expérience…"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/feedback_modal.ts
-msgid "By submitting feedback, you agree to share your conversation internally with the agent's editors."
+msgid "By submitting feedback, you agree to share your conversation internally with the agent’s editors."
 msgstr "En envoyant votre avis, vous acceptez de partager votre conversation en interne avec les éditeurs de l’agent."
 
 #. js-lingui-explicit-id
@@ -577,7 +577,7 @@ msgstr "Visualisation"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/lib/workspace_limits.ts
-msgid "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+msgid "The Slack integration is accessible to members of your company’s Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
 msgstr "L’intégration Slack est accessible aux membres du workspace Dust de votre entreprise. Cliquez sur « Rejoindre mon workspace » pour commencer. Pour obtenir de l’aide, contactez un administrateur."
 
 #. js-lingui-explicit-id
@@ -587,7 +587,7 @@ msgstr "Rejoindre mon workspace"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/lib/workspace_limits.ts
-msgid "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
+msgid "It looks like you’re not a member of your company’s Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
 msgstr "Il semble que vous ne soyez pas encore membre du workspace Dust de votre entreprise. Contactez un administrateur pour le rejoindre et commencer à utiliser Dust sur Slack."
 
 #. js-lingui-explicit-id

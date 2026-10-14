@@ -18,7 +18,7 @@ msgid "Archive this plan?"
 msgstr ""
 
 #: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
-msgid "This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one."
+msgid "This will hide the current plan from the side panel, but keep it in the conversation’s files. The agent can create a new one."
 msgstr ""
 
 #: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx

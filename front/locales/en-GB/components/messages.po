@@ -30,7 +30,7 @@ msgid "Please deselect manually each node you want to unselect. This is due to n
 msgstr ""
 
 #: front/components/ContentNodeTree.tsx
-msgid "Connected service's API limit reached. Please retry shortly."
+msgid "Connected service’s API limit reached. Please retry shortly."
 msgstr ""
 
 #: front/components/ContentNodeTree.tsx
@@ -196,7 +196,7 @@ msgid "Dust plans already include monthly credits for programmatic usage, and mo
 msgstr ""
 
 #: front/components/FairUsageModal.tsx
-msgid "Dust's fair use policy"
+msgid "Dust’s fair use policy"
 msgstr ""
 
 #: front/components/NodePathTooltip.tsx
@@ -559,7 +559,7 @@ msgid "Sound alerts for items that need your attention"
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
-msgid "We couldn't load your notification settings. Please try again later."
+msgid "We couldn’t load your notification settings. Please try again later."
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
@@ -575,7 +575,7 @@ msgid "Invitations"
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Workspaces you've been invited to join"
+msgid "Workspaces you’ve been invited to join"
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx

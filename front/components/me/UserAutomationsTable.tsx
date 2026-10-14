@@ -432,7 +432,7 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
         <div className="py-10 text-center text-sm text-muted-foreground">
           {debouncedValue.trim() || Object.keys(triggersFilter).length > 0
             ? t`No automation matches your search criteria.`
-            : t`You haven't created any automation yet.`}
+            : t`You haven’t created any automation yet.`}
         </div>
       ) : (
         <div aria-busy={isTriggersLoading || undefined}>

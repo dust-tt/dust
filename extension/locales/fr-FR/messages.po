@@ -182,7 +182,7 @@ msgid "Sign in"
 msgstr "Se connecter"
 
 #: extension/ui/pages/LoginPage.tsx
-msgid "By signing in, you agree to Dust's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgid "By signing in, you agree to Dust’s <0>Terms of Use</0> and <1>Privacy Policy</1>."
 msgstr "En vous connectant, vous acceptez les <0>conditions d’utilisation</0> et la <1>politique de confidentialité</1> de Dust."
 
 #: extension/ui/pages/LoginPage.tsx
@@ -227,7 +227,7 @@ msgid "Pod not found"
 msgstr "Pod introuvable"
 
 #: extension/ui/pages/PodMainPage.tsx
-msgid "The Pod you're looking for doesn't exist or you don't have access to it."
+msgid "The Pod you’re looking for doesn’t exist or you don’t have access to it."
 msgstr "Le Pod que vous recherchez n’existe pas ou vous n’y avez pas accès."
 
 #: extension/ui/pages/PodMainPage.tsx

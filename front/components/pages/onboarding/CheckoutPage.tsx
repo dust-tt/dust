@@ -736,13 +736,13 @@ function CheckoutSuccessPage({
       <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
       <div className="flex flex-col items-center gap-4 text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          <Trans>You're all set!</Trans>
+          <Trans>You’re all set!</Trans>
         </h1>
         <p className="text-base text-muted-foreground">
           <Trans>
             Your <span className="font-semibold">{planName}</span> seat is ready
             with <span className="font-semibold">{monthlyCredits}</span> credits
-            a month. Let's build something.
+            a month. Let’s build something.
           </Trans>
         </p>
       </div>
@@ -822,7 +822,7 @@ function RightPane({
       if (isPreparePaymentError) {
         return (
           <CheckoutError
-            title={t`Couldn't load payment details`}
+            title={t`Couldn’t load payment details`}
             description={
               <>
                 <Trans>

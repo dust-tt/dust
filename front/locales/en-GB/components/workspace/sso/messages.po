@@ -124,7 +124,7 @@ msgid "Enable Single Sign On Enforcement"
 msgstr ""
 
 #: front/components/workspace/sso/Toggle.tsx
-msgid "By enforcing SSO, access through social media logins will be discontinued. Instead, you'll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
+msgid "By enforcing SSO, access through social media logins will be discontinued. Instead, you’ll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO."
 msgstr ""
 
 #: front/components/workspace/sso/Toggle.tsx
@@ -196,5 +196,5 @@ msgid "Disable {connectionType} Single Sign On"
 msgstr ""
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Anyone with an {connectionType} account won't be able to access your Dust workspace anymore."
-msgstr "Anyone with an {connectionType} account won't be able to access your Dust workspace any more."
+msgid "Anyone with an {connectionType} account won’t be able to access your Dust workspace anymore."
+msgstr "Anyone with an {connectionType} account won’t be able to access your Dust workspace any more."

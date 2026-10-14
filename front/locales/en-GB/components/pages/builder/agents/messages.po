@@ -62,7 +62,7 @@ msgid "Manage agents"
 msgstr ""
 
 #: front/components/pages/builder/agents/ManageAgentsPage.tsx
-msgid "Build and manage agents that work with your team's knowledge and tools."
+msgid "Build and manage agents that work with your team’s knowledge and tools."
 msgstr ""
 
 #: front/components/pages/builder/agents/ManageAgentsPage.tsx

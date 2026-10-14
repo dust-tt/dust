@@ -40,7 +40,7 @@ function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
       icon={AlertCircle}
-      title={t`You don't have access to this page`}
+      title={t`You don’t have access to this page`}
       message={[t`This conversation may include restricted data.`]}
     />
   );

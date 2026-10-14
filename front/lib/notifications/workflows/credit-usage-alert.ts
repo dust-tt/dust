@@ -37,7 +37,7 @@ export function buildCreditUsageAlertEmailCopy(
     ),
     content: [
       i18n._(
-        msg`You're receiving this as an admin of the Dust workspace ${workspaceName}.`
+        msg`You’re receiving this as an admin of the Dust workspace ${workspaceName}.`
       ),
       i18n._(
         msg`Your workspace has consumed ${percentUsed}% of its available programmatic usage credits.`

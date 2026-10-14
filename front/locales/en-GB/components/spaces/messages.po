@@ -153,7 +153,7 @@ msgid "Check Notion URL status"
 msgstr ""
 
 #: front/components/spaces/AdvancedNotionManagement.tsx
-msgid "Check if a URL exists in Notion and whether it's synced to Dust"
+msgid "Check if a URL exists in Notion and whether it’s synced to Dust"
 msgstr ""
 
 #: front/components/spaces/AdvancedNotionManagement.tsx
@@ -310,7 +310,7 @@ msgid "Security notice"
 msgstr ""
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
-msgid "You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?"
+msgid "You are modifying this space’s settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?"
 msgstr ""
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
@@ -386,7 +386,7 @@ msgid "Name"
 msgstr ""
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
-msgid "Space's name"
+msgid "Space’s name"
 msgstr ""
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
@@ -759,11 +759,11 @@ msgid "You are not a member of this space."
 msgstr ""
 
 #: front/components/spaces/SpaceLayout.tsx
-msgid "You can't create more spaces."
+msgid "You can’t create more spaces."
 msgstr ""
 
 #: front/components/spaces/SpaceLayout.tsx
-msgid "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
+msgid "We’re going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
 msgstr ""
 
 #: front/components/spaces/SpaceLayout.tsx

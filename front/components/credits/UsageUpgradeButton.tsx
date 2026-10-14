@@ -205,7 +205,7 @@ export function UsageUpgradeButton({
                     return (
                       <TextArea
                         ref={registerRef}
-                        placeholder={t`e.g. processing a large batch of documents for this quarter's audit`}
+                        placeholder={t`e.g. processing a large batch of documents for this quarter’s audit`}
                         rows={3}
                         showErrorLabel={showError}
                         error={showError ? errorMessage : undefined}

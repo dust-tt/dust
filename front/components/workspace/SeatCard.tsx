@@ -488,7 +488,7 @@ export function getInvoiceImpactMessage({
       <Trans>
         This will add an estimated{" "}
         <span className="font-semibold text-foreground">{extra}</span> to your
-        next invoice — you&apos;ll be billed{" "}
+        next invoice — you’ll be billed{" "}
         <span className="font-semibold text-foreground">{price}</span> upfront
         for the year starting next annual term.
       </Trans>

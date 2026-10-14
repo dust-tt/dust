@@ -48,7 +48,7 @@ export function useSearchMembersByEmails({
       const failed = results.find((r) => r.isErr());
       if (failed?.isErr()) {
         sendApiErrorNotification({
-          title: t`We couldn't check which users are already members`,
+          title: t`We couldn’t check which users are already members`,
           error: failed.error,
         });
         return null;

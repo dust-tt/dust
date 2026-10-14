@@ -353,7 +353,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
               size="lg"
             >
               <Trans>
-                This skill was automatically generated based on your workspace's
+                This skill was automatically generated based on your workspace’s
                 configuration. We recommend reviewing and editing it to match
                 your specific needs before saving.
               </Trans>

@@ -51,7 +51,7 @@ const LLM_ERROR_DESCRIPTIONS: Record<
   permission_error: (provider) =>
     msg`${provider} blocked your request. Check your access rights.`,
   not_found_error: () =>
-    msg`The requested resource wasn't found. Check your request and try again.`,
+    msg`The requested resource wasn’t found. Check your request and try again.`,
   network_error: (provider) =>
     msg`Connection to ${provider} failed. Check your network and try again.`,
   timeout_error: () => msg`The request timed out. Try again.`,
@@ -66,17 +66,17 @@ const BYOK_LLM_ERROR_DESCRIPTIONS: Partial<
   Record<LLMErrorType, (provider: string) => MessageDescriptor>
 > = {
   authentication_error: (provider) =>
-    msg`Your workspace's ${provider} credentials are invalid. Contact your workspace administrator to update them.`,
+    msg`Your workspace’s ${provider} credentials are invalid. Contact your workspace administrator to update them.`,
   permission_error: (provider) =>
-    msg`Your workspace's ${provider} credentials don't have access to the requested model. Contact your workspace administrator.`,
+    msg`Your workspace’s ${provider} credentials don’t have access to the requested model. Contact your workspace administrator.`,
   rate_limit_error: (provider) =>
-    msg`Your workspace's ${provider} usage limits have been exceeded. Contact your workspace administrator.`,
+    msg`Your workspace’s ${provider} usage limits have been exceeded. Contact your workspace administrator.`,
 };
 
 const CATEGORY_DESCRIPTIONS: Partial<
   Record<AgentErrorCategory, MessageDescriptor>
 > = {
-  retryable_model_error: msg`The model couldn't complete the request. Try again.`,
+  retryable_model_error: msg`The model couldn’t complete the request. Try again.`,
   context_window_exceeded: CONTEXT_LENGTH_EXCEEDED_DESCRIPTION,
   empty_content: EMPTY_CONTENT_DESCRIPTION,
   provider_internal_error: msg`The model provider ran into an issue. Try again in a moment.`,
@@ -108,16 +108,16 @@ const BLOCKED_REASON_DESCRIPTIONS: Record<
     member: msg`Your workspace has run out of credits. Contact your administrator to purchase more credits.`,
   },
   user_cap_reached: {
-    admin: msg`You've reached your personal usage cap. You can adjust user caps on the usage page.`,
-    member: msg`You've reached your personal usage cap. Contact your administrator to increase it.`,
+    admin: msg`You’ve reached your personal usage cap. You can adjust user caps on the usage page.`,
+    member: msg`You’ve reached your personal usage cap. Contact your administrator to increase it.`,
   },
   group_shared_usage_limit_reached: {
     admin: msg`Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page.`,
     member: msg`Your group has reached its shared usage limit. Contact your group managers or administrator to increase it.`,
   },
   no_seat: {
-    admin: msg`You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one.`,
-    member: msg`You don't have a seat assigned in this workspace. Contact your administrator to assign you one.`,
+    admin: msg`You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one.`,
+    member: msg`You don’t have a seat assigned in this workspace. Contact your administrator to assign you one.`,
   },
 };
 
@@ -136,7 +136,7 @@ const CODE_MESSAGES: Record<string, AgentErrorMessages> = {
   },
   model_tier_not_enabled: {
     title: msg`Model tier not enabled`,
-    description: msg`This agent uses a model tier that isn't enabled for you. Contact your workspace administrator or use another agent.`,
+    description: msg`This agent uses a model tier that isn’t enabled for you. Contact your workspace administrator or use another agent.`,
   },
   early_exit: {
     title: msg`Early exit`,
@@ -148,7 +148,7 @@ const CODE_MESSAGES: Record<string, AgentErrorMessages> = {
   },
   model_not_available: {
     title: DEFAULT_TITLE,
-    description: msg`The model this agent uses isn't available. Edit the agent to use another model (advanced settings in the Instructions panel).`,
+    description: msg`The model this agent uses isn’t available. Edit the agent to use another model (advanced settings in the Instructions panel).`,
   },
   duplicate_specification_name: {
     title: DEFAULT_TITLE,
@@ -156,11 +156,11 @@ const CODE_MESSAGES: Record<string, AgentErrorMessages> = {
   },
   free_usage_limit_reached: {
     title: DEFAULT_TITLE,
-    description: msg`You've reached the free usage cap for this 24-hour period. Try again later.`,
+    description: msg`You’ve reached the free usage cap for this 24-hour period. Try again later.`,
   },
   action_not_found: {
     title: DEFAULT_TITLE,
-    description: msg`The agent tried to run an action that doesn't exist. You can retry.`,
+    description: msg`The agent tried to run an action that doesn’t exist. You can retry.`,
   },
   tool_error: {
     title: DEFAULT_TITLE,
@@ -168,11 +168,11 @@ const CODE_MESSAGES: Record<string, AgentErrorMessages> = {
   },
   tool_test_run_parse_error: {
     title: DEFAULT_TITLE,
-    description: msg`The tool call couldn't be parsed.`,
+    description: msg`The tool call couldn’t be parsed.`,
   },
   tool_test_run_tool_not_found: {
     title: DEFAULT_TITLE,
-    description: msg`This tool isn't available to the agent.`,
+    description: msg`This tool isn’t available to the agent.`,
   },
   agent_loop_cost_cap_exceeded: {
     title: DEFAULT_TITLE,

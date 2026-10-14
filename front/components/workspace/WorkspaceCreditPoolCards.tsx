@@ -354,7 +354,7 @@ export function WorkspaceCreditPoolSection({
           variant="warning"
         >
           <Trans>
-            An error occurred while loading the workspace's credit pool data.
+            An error occurred while loading the workspace’s credit pool data.
           </Trans>
         </ContentMessage>
       ) : (

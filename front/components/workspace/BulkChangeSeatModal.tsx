@@ -451,8 +451,8 @@ function BulkChangeSeatModalPreviewDialogContent({
       {blockedByCapCount > 0 && targetMaxSeats !== null && (
         <p className="text-sm text-warning-600">
           {t`${plural(blockedByCapCount, {
-            one: "# member can't",
-            other: "# members can't",
+            one: "# member can’t",
+            other: "# members can’t",
           })} be assigned — ${targetLabel} is at its cap of ${plural(
             targetMaxSeats,
             { one: "# seat", other: "# seats" }
@@ -488,7 +488,7 @@ function BulkChangeSeatModalPreviewDialogContent({
           {t`${plural(unchangedCount, {
             one: "# member is",
             other: "# members are",
-          })} already on ${targetLabel} and won't change.`}
+          })} already on ${targetLabel} and won’t change.`}
         </p>
       )}
       {seatTotals.length > 0 && hasAnyChange && (
@@ -628,8 +628,8 @@ function BulkChangeSeatForm({
         {isSubscriptionCancelled && (
           <p className="mb-3 text-xs text-warning-600">
             <Trans>
-              Your subscription is scheduled to end and seats can&apos;t be
-              changed until it&apos;s reactivated.
+              Your subscription is scheduled to end and seats can’t be changed
+              until it’s reactivated.
             </Trans>
           </p>
         )}

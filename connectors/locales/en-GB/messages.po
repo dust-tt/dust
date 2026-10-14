@@ -184,12 +184,12 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/webhook_teams.ts
-msgid "Agent **@{agentName}**'s request to use tool **{toolName}** was ✅ approved"
+msgid "Agent **@{agentName}**’s request to use tool **{toolName}** was ✅ approved"
 msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/webhook_teams.ts
-msgid "Agent **@{agentName}**'s request to use tool **{toolName}** was ❌ rejected"
+msgid "Agent **@{agentName}**’s request to use tool **{toolName}** was ❌ rejected"
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -221,7 +221,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
-msgid "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
+msgid "Dust doesn’t have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -246,12 +246,12 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
-msgid "The agent's request to use tool `{toolName}` was ✅ approved"
+msgid "The agent’s request to use tool `{toolName}` was ✅ approved"
 msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
-msgid "The agent's request to use tool `{toolName}` was ❌ rejected"
+msgid "The agent’s request to use tool `{toolName}` was ❌ rejected"
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -507,7 +507,7 @@ msgstr "Message generation was cancelled."
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
-msgid "Slack couldn't upload the generated files, so they aren't attached."
+msgid "Slack couldn’t upload the generated files, so they aren’t attached."
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -552,7 +552,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/feedback_modal.ts
-msgid "By submitting feedback, you agree to share your conversation internally with the agent's editors."
+msgid "By submitting feedback, you agree to share your conversation internally with the agent’s editors."
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -577,7 +577,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/lib/workspace_limits.ts
-msgid "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+msgid "The Slack integration is accessible to members of your company’s Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -587,7 +587,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/lib/workspace_limits.ts
-msgid "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
+msgid "It looks like you’re not a member of your company’s Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
 msgstr ""
 
 #. js-lingui-explicit-id

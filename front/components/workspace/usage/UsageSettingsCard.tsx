@@ -102,8 +102,8 @@ export function UsageSettingsCard({
                 <Trans>
                   Define the workspace credit pool credit limit for users per
                   month in your workspace. This limit is added on top of each
-                  seat&apos;s built-in allowance. Can be overridden per user in
-                  the members table.{" "}
+                  seat’s built-in allowance. Can be overridden per user in the
+                  members table.{" "}
                   <strong>Set to 0 to remove pool access.</strong>
                 </Trans>
               ) : (
@@ -184,7 +184,7 @@ export function UsageSettingsCard({
                 them to the next seat tier available in your plan (free → pro,
                 pro → max) instead of blocking them.{" "}
                 <strong>
-                  Auto-upgrade isn't available on your current plan. Upgrade to
+                  Auto-upgrade isn’t available on your current plan. Upgrade to
                   a paid plan to enable it.
                 </strong>
               </Trans>
@@ -207,7 +207,7 @@ export function UsageSettingsCard({
         />
         <SettingsList.Row
           title={t`Credit spend checkpoint`}
-          description={t`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${thresholdCredits} credits.`}
+          description={t`Pause the agent and ask the user to confirm continuing once a single message’s LLM token spend reaches ${thresholdCredits} credits.`}
           action={
             <SliderToggle
               selected={usageSettings.creditSpendCheckpointEnabled}

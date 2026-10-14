@@ -167,7 +167,7 @@ function ContentNodeTreeInfiniteScroll({
 }
 
 const PERMISSIONS_ERROR_MESSAGES: Record<string, MessageDescriptor> = {
-  rate_limit_error: msg`Connected service's API limit reached. Please retry shortly.`,
+  rate_limit_error: msg`Connected service’s API limit reached. Please retry shortly.`,
   data_source_auth_error: msg`Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.`,
   connector_oauth_user_must_be_admin: msg`The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account.`,
 };

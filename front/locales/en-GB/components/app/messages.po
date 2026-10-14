@@ -394,7 +394,7 @@ msgid "Credit quota exceeded"
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "We've paused messaging for your account due to our fair usage policy."
+msgid "We’ve paused messaging for your account due to our fair usage policy."
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx
@@ -406,7 +406,7 @@ msgid "Message quota exceeded"
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "We've paused messaging for your workspace due to our fair usage policy."
+msgid "We’ve paused messaging for your workspace due to our fair usage policy."
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx
@@ -438,11 +438,11 @@ msgid "Go to usage page"
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+msgid "You don’t have a seat assigned in this workspace. Go to the usage page to assign yourself one."
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."
+msgid "You don’t have a seat assigned in this workspace. Please contact your administrator to assign you one."
 msgstr ""
 
 #: front/components/app/ReachedLimitPopup.tsx

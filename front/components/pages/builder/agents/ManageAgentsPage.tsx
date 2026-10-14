@@ -440,7 +440,7 @@ export function ManageAgentsPage({
                 )}
               </div>
             }
-            description={t`Build and manage agents that work with your team's knowledge and tools.`}
+            description={t`Build and manage agents that work with your team’s knowledge and tools.`}
             noTopPadding
           />
         )}

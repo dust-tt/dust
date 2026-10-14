@@ -267,7 +267,7 @@ describe("modelPickerUtils premium gating", () => {
           unavailabilityReason: "premium",
         })
       ).toBe(
-        "This option isn't available on your workspace's current plan. " +
+        "This option isn’t available on your workspace’s current plan. " +
           "Contact your administrator to upgrade."
       );
       expect(
@@ -276,7 +276,7 @@ describe("modelPickerUtils premium gating", () => {
           unavailabilityReason: "model_tier",
         })
       ).toBe(
-        "Your current model access doesn't include this option. " +
+        "Your current model access doesn’t include this option. " +
           "Contact your administrator to get access."
       );
     });

@@ -271,7 +271,7 @@ function LegacySubscribePage() {
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        <Trans>You're currently on a free trial.</Trans>
+                        <Trans>You’re currently on a free trial.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
@@ -310,7 +310,7 @@ function LegacySubscribePage() {
                     </Page.P>
                     <Page.P>
                       <Trans>
-                        You'll be charged immediately. You can cancel at any
+                        You’ll be charged immediately. You can cancel at any
                         time.
                       </Trans>
                     </Page.P>
@@ -321,12 +321,12 @@ function LegacySubscribePage() {
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        <Trans>You've selected monthly billing.</Trans>
+                        <Trans>You’ve selected monthly billing.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
                       <Trans>
-                        You'll pay on a month-to-month basis. You can cancel at
+                        You’ll pay on a month-to-month basis. You can cancel at
                         any time before the end of your monthly billing cycle.
                       </Trans>
                     </Page.P>
@@ -335,12 +335,12 @@ function LegacySubscribePage() {
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        <Trans>You've selected yearly billing.</Trans>
+                        <Trans>You’ve selected yearly billing.</Trans>
                       </span>
                     </Page.P>
                     <Page.P>
                       <Trans>
-                        You'll pay for a year upfront and enjoy savings compared
+                        You’ll pay for a year upfront and enjoy savings compared
                         to the monthly plan. You can cancel at any time before
                         the end of your annual billing cycle.
                       </Trans>

@@ -35,8 +35,8 @@ msgid "Add triggers"
 msgstr "Add triggers"
 
 #: front/components/agent_builder/triggers/AgentBuilderTriggersBlock.tsx
-msgid "Other members' triggers"
-msgstr "Other members' triggers"
+msgid "Other members’ triggers"
+msgstr "Other members’ triggers"
 
 #: front/components/agent_builder/triggers/RecentWebhookRequests.tsx
 msgid "Request history"
@@ -67,12 +67,12 @@ msgid "No payload available."
 msgstr "No payload available."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Triggered by {event} events on {sourceName}'s source."
-msgstr "Triggered by {event} events on {sourceName}'s source."
+msgid "Triggered by {event} events on {sourceName}’s source."
+msgstr "Triggered by {event} events on {sourceName}’s source."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
-msgid "Triggered on {sourceName}'s source."
-msgstr "Triggered on {sourceName}'s source."
+msgid "Triggered on {sourceName}’s source."
+msgstr "Triggered on {sourceName}’s source."
 
 #: front/components/agent_builder/triggers/TriggerCard.tsx
 msgid "Managed by <0>{editorName}</0>."
@@ -168,24 +168,24 @@ msgid "Workspace credits"
 msgstr "Workspace credits"
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
-msgstr "Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access."
+msgid "Automations on your plan must be charged to the workspace credit pool, which you don’t have permission to use. Ask a workspace admin for access."
+msgstr "Automations on your plan must be charged to the workspace credit pool, which you don’t have permission to use. Ask a workspace admin for access."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Your plan doesn't support charging automations to personal credits."
-msgstr "Your plan doesn't support charging automations to personal credits."
+msgid "Your plan doesn’t support charging automations to personal credits."
+msgstr "Your plan doesn’t support charging automations to personal credits."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "You don't have permission to charge automations to the workspace credit pool."
-msgstr "You don't have permission to charge automations to the workspace credit pool."
+msgid "You don’t have permission to charge automations to the workspace credit pool."
+msgstr "You don’t have permission to charge automations to the workspace credit pool."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
 msgid "Credits"
 msgstr "Credits"
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
-msgid "Which pool this trigger's runs take credits from."
-msgstr "Which pool this trigger's runs take credits from."
+msgid "Which pool this trigger’s runs take credits from."
+msgstr "Which pool this trigger’s runs take credits from."
 
 #: front/components/agent_builder/triggers/TriggerPoolSelector.tsx
 msgctxt "placeholder, no option selected"
@@ -221,8 +221,8 @@ msgid "Status"
 msgstr "Status"
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
-msgid "This trigger's status is managed by Dust."
-msgstr "This trigger's status is managed by Dust."
+msgid "This trigger’s status is managed by Dust."
+msgstr "This trigger’s status is managed by Dust."
 
 #: front/components/agent_builder/triggers/TriggerStatusToggle.tsx
 msgid "Only a manager or an admin can re-enable this trigger."

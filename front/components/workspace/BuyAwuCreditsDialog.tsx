@@ -277,7 +277,7 @@ function UseCouponTab({
               <Icon visual={XCircle} size="lg" className="text-warning-500" />
               <div className="text-center">
                 <p className="text-lg font-medium text-foreground">
-                  <Trans>Couldn't apply coupon</Trans>
+                  <Trans>Couldn’t apply coupon</Trans>
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {couponError}
@@ -904,7 +904,7 @@ export function BuyAwuCreditsDialog({
               <Trans>Top-up</Trans>
             </DialogTitle>
             <DialogDescription>
-              <Trans>We couldn't load your purchase information.</Trans>
+              <Trans>We couldn’t load your purchase information.</Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
@@ -1061,7 +1061,7 @@ export function BuyAwuCreditsDialog({
       return (
         <p className="text-sm text-muted-foreground">
           <Trans>
-            You've reached your credit limit for this billing cycle. It resets
+            You’ve reached your credit limit for this billing cycle. It resets
             at the start of your next billing cycle. If you need additional
             credits before then, please{" "}
             <a

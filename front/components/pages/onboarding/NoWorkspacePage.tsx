@@ -113,7 +113,7 @@ export function NoWorkspacePage() {
             <div className="flex flex-col gap-4">
               <span className="heading-lg text-muted-foreground">
                 <Trans>
-                  You no longer have access to {workspaceName}'s Dust workspace.
+                  You no longer have access to {workspaceName}’s Dust workspace.
                 </Trans>
               </span>
               <span className="copy-md text-muted-foreground">

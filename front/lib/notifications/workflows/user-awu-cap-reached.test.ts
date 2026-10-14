@@ -19,7 +19,7 @@ describe("user AWU cap reached copy", () => {
       PAYLOAD
     );
 
-    expect(subject).toBe("[Dust] You've reached your usage limit in Acme");
+    expect(subject).toBe("[Dust] You’ve reached your usage limit in Acme");
   });
 
   it("renders the in-app notification in French", async () => {

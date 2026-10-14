@@ -62,7 +62,7 @@ msgid "{protectedCount, plural, one {# agent with a schedule or a pending wake-u
 msgstr "{protectedCount, plural, one {# agent planifié ou avec un réveil en attente.} other {# agents planifiés ou avec un réveil en attente.}} Les agents planifiés ou avec un réveil en attente sont exclus de l’archivage."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-msgid "Archiving will cancel their pending runs and suspend their editors' access. It can be undone one agent at a time."
+msgid "Archiving will cancel their pending runs and suspend their editors’ access. It can be undone one agent at a time."
 msgstr "L’archivage annulera leurs exécutions en attente et suspendra l’accès de leurs éditeurs. Il peut être annulé agent par agent."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
@@ -161,7 +161,7 @@ msgid "{monthlyPrice} · billed annually"
 msgstr "{monthlyPrice} · facturé annuellement"
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
-msgid "{blockedByCapCount, plural, one {# member can't} other {# members can't}} be assigned — {targetLabel} is at its cap of {targetMaxSeats, plural, one {# seat} other {# seats}}."
+msgid "{blockedByCapCount, plural, one {# member can’t} other {# members can’t}} be assigned — {targetLabel} is at its cap of {targetMaxSeats, plural, one {# seat} other {# seats}}."
 msgstr "{blockedByCapCount, plural, one {# membre ne peut pas être affecté} other {# membres ne peuvent pas être affectés}} — {targetLabel} a atteint son plafond de {targetMaxSeats, plural, one {# siège} other {# sièges}}."
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
@@ -177,7 +177,7 @@ msgid "Changes on next billing period"
 msgstr "Changements à la prochaine période de facturation"
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
-msgid "{unchangedCount, plural, one {# member is} other {# members are}} already on {targetLabel} and won't change."
+msgid "{unchangedCount, plural, one {# member is} other {# members are}} already on {targetLabel} and won’t change."
 msgstr "{unchangedCount, plural, one {# membre est déjà sur {targetLabel} et ne changera pas.} other {# membres sont déjà sur {targetLabel} et ne changeront pas.}}"
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
@@ -194,7 +194,7 @@ msgstr "Changer le siège de {displayedMemberCount, plural, one {# membre} other
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
 #: front/components/workspace/ChangeSeatModal.tsx
-msgid "Your subscription is scheduled to end and seats can't be changed until it's reactivated."
+msgid "Your subscription is scheduled to end and seats can’t be changed until it’s reactivated."
 msgstr "Votre abonnement doit prendre fin et les sièges ne peuvent pas être modifiés tant qu’il n’est pas réactivé."
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
@@ -255,7 +255,7 @@ msgid "Close"
 msgstr "Fermer"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Couldn't apply coupon"
+msgid "Couldn’t apply coupon"
 msgstr "Impossible d’appliquer le coupon"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -393,7 +393,7 @@ msgid "Top-up"
 msgstr "Recharge"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "We couldn't load your purchase information."
+msgid "We couldn’t load your purchase information."
 msgstr "Impossible de charger vos informations d’achat."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -421,7 +421,7 @@ msgid "You have pending credit purchases awaiting payment. Please complete your 
 msgstr "Vous avez des achats de crédits en attente de paiement. Effectuez votre paiement en attente avant tout nouvel achat, ou <0>contactez le support</0> pour annuler vos paiements en attente."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "You've reached your credit limit for this billing cycle. It resets at the start of your next billing cycle. If you need additional credits before then, please <0>contact support</0>."
+msgid "You’ve reached your credit limit for this billing cycle. It resets at the start of your next billing cycle. If you need additional credits before then, please <0>contact support</0>."
 msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation. Elle sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, <0>contactez le support</0>."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -449,7 +449,7 @@ msgid "You still have pay-as-you-go capacity"
 msgstr "Il vous reste de la capacité en facturation à l’usage"
 
 #: front/components/workspace/BuyCreditDialog.tsx
-msgid "You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your pay-as-you-go cap."
+msgid "You’re still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your pay-as-you-go cap."
 msgstr "Vous êtes encore sous les {PAYG_CAP_WARNING_THRESHOLD_PERCENT} % de votre plafond de facturation à l’usage."
 
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -542,7 +542,7 @@ msgid "Learn more"
 msgstr "En savoir plus"
 
 #: front/components/workspace/BuyCreditDialog.tsx
-msgid "You've reached your credit limit for this billing cycle."
+msgid "You’ve reached your credit limit for this billing cycle."
 msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation."
 
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -627,7 +627,7 @@ msgid "No seat plans available"
 msgstr "Aucune offre de siège disponible"
 
 #: front/components/workspace/ChangeSeatModal.tsx
-msgid "We couldn't load the seat plans for this workspace."
+msgid "We couldn’t load the seat plans for this workspace."
 msgstr "Impossible de charger les offres de sièges de ce workspace."
 
 #: front/components/workspace/ChangeSeatModal.tsx
@@ -635,7 +635,7 @@ msgid "Seat managed by group"
 msgstr "Siège géré par un groupe"
 
 #: front/components/workspace/ChangeSeatModal.tsx
-msgid "This member's seat is set by their group membership. Change it from the group-seat mapping in Usage settings."
+msgid "This member’s seat is set by their group membership. Change it from the group-seat mapping in Usage settings."
 msgstr "Le siège de ce membre est défini par son appartenance à un groupe. Modifiez-le depuis l’association groupes-sièges dans les paramètres d’utilisation."
 
 #: front/components/workspace/ChangeSeatModal.tsx
@@ -761,7 +761,7 @@ msgid "Deactivate Directory sync"
 msgstr "Désactiver la synchronisation d’annuaire"
 
 #: front/components/workspace/DirectorySync.tsx
-msgid "Sync your organization's users and groups from your identity provider"
+msgid "Sync your organization’s users and groups from your identity provider"
 msgstr "Synchronisez les utilisateurs et les groupes de votre organisation depuis votre fournisseur d’identité"
 
 #: front/components/workspace/DirectorySync.tsx
@@ -1031,7 +1031,7 @@ msgid "Members"
 msgstr "Membres"
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "Consuming the group budget ahead of the billing cycle's pace"
+msgid "Consuming the group budget ahead of the billing cycle’s pace"
 msgstr "Consomme le budget du groupe plus vite que le rythme du cycle de facturation"
 
 #: front/components/workspace/GroupsUsageTable.tsx
@@ -1044,11 +1044,11 @@ msgid "Models tier"
 msgstr "Niveau de modèles"
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
+msgid "A group’s monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
 msgstr "La limite de dépenses mensuelle d’un groupe s’applique à chacun de ses membres. Si un membre appartient à plusieurs groupes, la limite la plus élevée s’applique."
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "A group budget caps what all the group's members spend together."
+msgid "A group budget caps what all the group’s members spend together."
 msgstr "Un budget de groupe plafonne ce que tous les membres du groupe dépensent ensemble."
 
 #: front/components/workspace/MemberGroupLimitTable.tsx
@@ -1292,7 +1292,7 @@ msgid "Upgrade seat"
 msgstr "Passer à un siège supérieur"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "Consuming credits ahead of the billing cycle's pace"
+msgid "Consuming credits ahead of the billing cycle’s pace"
 msgstr "Consomme des crédits plus vite que le rythme du cycle de facturation"
 
 #: front/components/workspace/MembersUsageTable.tsx
@@ -1369,7 +1369,7 @@ msgid "Why costs differ"
 msgstr "Pourquoi les coûts diffèrent"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
-msgid "Usage cost depends on both the model and its reasoning effort. We compare each combination on representative tasks rather than on the model's token price alone. Raising the reasoning effort by one step usually increases the cost by about 30%."
+msgid "Usage cost depends on both the model and its reasoning effort. We compare each combination on representative tasks rather than on the model’s token price alone. Raising the reasoning effort by one step usually increases the cost by about 30%."
 msgstr "Le coût d’utilisation dépend à la fois du modèle et de son niveau d’effort. Nous comparons chaque combinaison sur des tâches représentatives plutôt que sur le seul prix des tokens du modèle. Augmenter le niveau d’effort d’un cran augmente généralement le coût d’environ 30 %."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
@@ -1381,7 +1381,7 @@ msgid "A member can use the tier they are assigned and every lower-cost tier: ac
 msgstr "Un membre peut utiliser le niveau qui lui est attribué et tous les niveaux moins coûteux : l’accès à Standard inclut aussi Basic."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
-msgid "See what's included"
+msgid "See what’s included"
 msgstr "Voir le contenu"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
@@ -1597,7 +1597,7 @@ msgid "This will add up to <0>{price}/yr</0>, prorated for the remainder of your
 msgstr "Cela ajoutera jusqu’à <0>{price}/an</0>, au prorata du reste de votre période annuelle en cours."
 
 #: front/components/workspace/SeatCard.tsx
-msgid "This will add an estimated <0>{extra}</0> to your next invoice — you'll be billed <1>{price}</1> upfront for the year starting next annual term."
+msgid "This will add an estimated <0>{extra}</0> to your next invoice — you’ll be billed <1>{price}</1> upfront for the year starting next annual term."
 msgstr "Cela ajoutera environ <0>{extra}</0> à votre prochaine facture — <1>{price}</1> vous seront facturés d’avance pour l’année débutant à la prochaine période annuelle."
 
 #: front/components/workspace/SeatCard.tsx
@@ -1658,7 +1658,7 @@ msgid "Edit spend limit for {requesterName}"
 msgstr "Modifier la limite de dépenses de {requesterName}"
 
 #: front/components/workspace/UpgradeRequestLimitModal.tsx
-msgid "Could not load this member's current limits. Refresh the page to try again."
+msgid "Could not load this member’s current limits. Refresh the page to try again."
 msgstr "Impossible de charger les limites actuelles de ce membre. Actualisez la page pour réessayer."
 
 #: front/components/workspace/UpgradeRequests.tsx
@@ -1666,7 +1666,7 @@ msgid "Deny upgrade request"
 msgstr "Refuser la demande d’augmentation"
 
 #: front/components/workspace/UpgradeRequests.tsx
-msgid "Deny {requesterName}'s request to increase their spend limit?"
+msgid "Deny {requesterName}’s request to increase their spend limit?"
 msgstr "Refuser la demande de {requesterName} d’augmenter sa limite de dépenses ?"
 
 #: front/components/workspace/UpgradeRequests.tsx
@@ -1803,7 +1803,7 @@ msgid "Failed to load Workspace Credits Pool"
 msgstr "Impossible de charger la réserve de crédits du workspace"
 
 #: front/components/workspace/WorkspaceCreditPoolCards.tsx
-msgid "An error occurred while loading the workspace's credit pool data."
+msgid "An error occurred while loading the workspace’s credit pool data."
 msgstr "Une erreur s’est produite lors du chargement des données de la réserve de crédits du workspace."
 
 #: front/components/workspace/WorkspaceDefaultLimitInput.tsx

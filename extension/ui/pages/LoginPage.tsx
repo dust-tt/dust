@@ -119,7 +119,7 @@ export const LoginPage = () => {
         </div>
         <p className="text-muted-foreground mx-auto max-w-[300px] text-center">
           <Trans>
-            By signing in, you agree to Dust's{" "}
+            By signing in, you agree to Dust’s{" "}
             <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
               Terms of Use
             </Link>{" "}

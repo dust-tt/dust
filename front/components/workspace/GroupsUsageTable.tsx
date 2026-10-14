@@ -205,7 +205,7 @@ export function GroupsUsageTable({
                       info.row.original.sharedUsageLimitUsage?.usageTarget
                     }
                     labels={{
-                      elevated: t`Consuming the group budget ahead of the billing cycle's pace`,
+                      elevated: t`Consuming the group budget ahead of the billing cycle’s pace`,
                       critical: t`At this rate, this group will use its whole budget before the cycle ends and its members will lose access to Dust until it resets.`,
                     }}
                   />
@@ -259,14 +259,14 @@ export function GroupsUsageTable({
       {showSpendLimitColumn && (
         <span className="copy-sm text-muted-foreground">
           <Trans>
-            A group's monthly spend limit applies to each of its members. When a
+            A group’s monthly spend limit applies to each of its members. When a
             member belongs to several groups, the highest limit is used.
           </Trans>
           {isSharedUsageLimitShown && (
             <>
               {" "}
               <Trans>
-                A group budget caps what all the group's members spend together.
+                A group budget caps what all the group’s members spend together.
               </Trans>
             </>
           )}

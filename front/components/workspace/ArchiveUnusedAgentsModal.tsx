@@ -159,7 +159,7 @@ function ArchiveUnusedAgentsForm({
                 <span className="text-muted-foreground">
                   <Trans>
                     Archiving will cancel their pending runs and suspend their
-                    editors&apos; access. It can be undone one agent at a time.
+                    editors’ access. It can be undone one agent at a time.
                   </Trans>
                 </span>
               )}

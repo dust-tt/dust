@@ -68,7 +68,7 @@ describe("GroupsUsageTable group budget pace", () => {
     {
       usageTarget: "elevated" as const,
       colorClass: "text-warning-500",
-      tooltip: "Consuming the group budget ahead of the billing cycle's pace",
+      tooltip: "Consuming the group budget ahead of the billing cycle’s pace",
     },
     {
       usageTarget: "critical" as const,

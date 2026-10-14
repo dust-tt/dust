@@ -164,8 +164,8 @@ msgid "New users will be charged a <0>monthly fee of {price} at the end of the t
 msgstr "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
-msgid "Next bill will be adjusted proportionally based on the members' sign-up date."
-msgstr "Next bill will be adjusted proportionally based on the members' sign-up date."
+msgid "Next bill will be adjusted proportionally based on the members’ sign-up date."
+msgstr "Next bill will be adjusted proportionally based on the members’ sign-up date."
 
 #: front/components/members/MemberSelectionTable.tsx
 #: front/components/members/MembersList.tsx
@@ -297,8 +297,8 @@ msgid "Full administrative control, including settings, connections, billing, an
 msgstr "Full administrative control, including settings, connections, billing, and governance."
 
 #: front/components/members/Roles.ts
-msgid "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
-msgstr "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
+msgid "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member’s group membership."
+msgstr "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member’s group membership."
 
 #: front/components/members/WorkspaceMembersSection.tsx
 msgid "Search"

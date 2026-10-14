@@ -22,7 +22,7 @@ msgid "Archive Pod?"
 msgstr "Archiver le Pod ?"
 
 #: front/hooks/useArchivePod.tsx
-msgid "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
+msgid "You’ll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
 msgstr "Vous ne pourrez plus créer de conversations dans ce Pod, et il sera masqué dans la barre latérale. Les déclencheurs qui ciblent ce Pod seront désactivés. Les agents pourront toutefois continuer à utiliser son contenu existant. Désarchivez-le pour en rétablir l’accès."
 
 #: front/hooks/useArchivePod.tsx
@@ -99,7 +99,7 @@ msgstr "Le message a bien été supprimé."
 
 #: front/hooks/useDiscoveryHomepageOptIn.ts
 msgid "Could not switch homepage"
-msgstr "Impossible de changer de page d'accueil"
+msgstr "Impossible de changer de page d’accueil"
 
 #: front/hooks/useDismissFeedback.ts
 msgid "Failed to mark feedback as seen."
@@ -409,7 +409,7 @@ msgid "Discard your unsaved changes?"
 msgstr "Abandonner vos modifications non enregistrées ?"
 
 #: front/hooks/useNavigationLock.tsx
-msgid "If you leave now, your latest edits won't be kept."
+msgid "If you leave now, your latest edits won’t be kept."
 msgstr "Si vous quittez maintenant, vos dernières modifications ne seront pas conservées."
 
 #: front/hooks/useNavigationLock.tsx
@@ -517,7 +517,7 @@ msgid "Could not update the published agents model access setting."
 msgstr "Impossible de mettre à jour le paramètre d’accès aux modèles des agents publiés."
 
 #: front/hooks/useSearchMembersByEmails.ts
-msgid "We couldn't check which users are already members"
+msgid "We couldn’t check which users are already members"
 msgstr "Impossible de vérifier quels utilisateurs sont déjà membres"
 
 #: front/hooks/useSetupNotifications.ts
@@ -603,11 +603,11 @@ msgid "Failed to update the group budget"
 msgstr "Échec de la mise à jour du budget du groupe"
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget has been removed."
+msgid "{groupName}’s budget has been removed."
 msgstr "Le budget de {groupName} a été supprimé."
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget is now {amount} credits per billing cycle."
+msgid "{groupName}’s budget is now {amount} credits per billing cycle."
 msgstr "Le budget de {groupName} est désormais de {amount} crédits par cycle de facturation."
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts

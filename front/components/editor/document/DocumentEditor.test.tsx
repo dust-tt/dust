@@ -1020,7 +1020,7 @@ describe("Document for a file the editor cannot open", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This document can't be edited here yet because it has a table."
+      "This document can’t be edited here yet because it has a table."
     );
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Ship" })).toBeInTheDocument();
@@ -1034,7 +1034,7 @@ describe("Document for a file the editor cannot open", () => {
     renderRefused("A\n\n* a\n+ b\n");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This document uses formatting the editor doesn't support yet, so it can't be edited here."
+      "This document uses formatting the editor doesn’t support yet, so it can’t be edited here."
     );
   });
 

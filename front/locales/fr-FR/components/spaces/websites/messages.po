@@ -67,7 +67,7 @@ msgid "Website entry point"
 msgstr "Point d’entrée du site web"
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
-msgid "Enter the address of the website you'd like to index."
+msgid "Enter the address of the website you’d like to index."
 msgstr "Saisissez l’adresse du site web à indexer."
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
@@ -123,7 +123,7 @@ msgid "Page limit"
 msgstr "Limite de pages"
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
-msgid "What is the maximum number of pages you'd like to index?"
+msgid "What is the maximum number of pages you’d like to index?"
 msgstr "Combien de pages souhaitez-vous indexer au maximum ?"
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx

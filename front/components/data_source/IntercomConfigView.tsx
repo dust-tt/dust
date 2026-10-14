@@ -78,7 +78,7 @@ export function IntercomConfigView({
           <div className="text-muted-foreground">
             <Trans>
               If activated, Dust will also sync the notes from the conversations
-              you've selected.
+              you’ve selected.
             </Trans>
           </div>
         </ContextItem.Description>

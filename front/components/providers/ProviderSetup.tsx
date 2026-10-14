@@ -56,7 +56,7 @@ function OpenAIInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -75,7 +75,7 @@ function AzureOpenAIInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -100,7 +100,7 @@ function AnthropicInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -126,7 +126,7 @@ function MistralInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -152,7 +152,7 @@ function GoogleAIStudioInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -167,7 +167,7 @@ function DeepseekInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -182,7 +182,7 @@ function FireworksInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -194,7 +194,7 @@ function XAIInstructions() {
     <>
       <p>
         <Trans>
-          To use xAI's Grok models you must provide your API key. It can be
+          To use xAI’s Grok models you must provide your API key. It can be
           found{" "}
           <a
             className="font-bold text-highlight-600 hover:text-highlight-500"
@@ -208,7 +208,7 @@ function XAIInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -234,7 +234,7 @@ function SerpAPIInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -260,7 +260,7 @@ function SerperInstructions() {
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>
@@ -287,12 +287,12 @@ function BrowserlessInstructions() {
       <p className="mt-2">
         <Trans>
           Note that it generally takes <span className="font-bold">5 mins</span>{" "}
-          for the API key to become active (an email is sent when it's ready).
+          for the API key to become active (an email is sent when it’s ready).
         </Trans>
       </p>
       <p className="mt-2">
         <Trans>
-          We'll never use your API key for anything other than to run your apps.
+          We’ll never use your API key for anything other than to run your apps.
         </Trans>
       </p>
     </>

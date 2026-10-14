@@ -144,7 +144,7 @@ export const jobSkill = {
   kind: "global",
   name: "Dust Pod Goal",
   userFacingDescription:
-    "Keep a Pod's job moving with the next evidence-backed action",
+    "Keep a Pod’s job moving with the next evidence-backed action",
   agentFacingDescription:
     "Use in a Pod that has a job to do: interpret the Work Areas as the durable contract, " +
     "diagnose the current constraint, pick one bounded next action, decide whether Dust or a " +

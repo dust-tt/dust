@@ -178,12 +178,12 @@ msgid "Workspace credit usage"
 msgstr "Workspace credit usage"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
-msgstr "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgid "Are you sure you want to remove {memberName}’s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgstr "Are you sure you want to remove {memberName}’s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
-msgstr "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgid "Are you sure you want to remove {memberName}’s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgstr "Are you sure you want to remove {memberName}’s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Remove seat"
@@ -246,8 +246,8 @@ msgid "At your current rate, you have enough credits to finish the cycle."
 msgstr "At your current rate, you have enough credits to finish the cycle."
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
-msgstr "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgid "At this rate, you’re expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgstr "At this rate, you’re expected to consume your full credits by <0>{resetAtFormatted}</0>."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} other {{overageCreditsFormatted} overage credits}}"

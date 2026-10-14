@@ -125,7 +125,7 @@ export function DataSourceBrowserTable({
         return (
           <EmptyCTA
             title={t`No pages found`}
-            message={t`This website doesn't have any pages to browse yet.`}
+            message={t`This website doesn’t have any pages to browse yet.`}
             action={
               <EmptyCTAButton
                 variant="primary"

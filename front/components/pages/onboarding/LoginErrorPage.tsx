@@ -17,7 +17,7 @@ function LoginErrorMessage({ domain, reason }: LoginErrorMessageProps) {
     <Page.Header
       title={
         <span className="text-primary-50">
-          <Trans>We couldn't log you in.</Trans>
+          <Trans>We couldn’t log you in.</Trans>
         </span>
       }
     />
@@ -57,7 +57,7 @@ function LoginErrorMessage({ domain, reason }: LoginErrorMessageProps) {
           {headerNode}
           <p className={defaultErrorMessageClassName}>
             <Trans>
-              Oops! Looks like you're not authorized to access this application
+              Oops! Looks like you’re not authorized to access this application
               yet.
             </Trans>
             <br />
@@ -149,7 +149,7 @@ function LoginErrorMessage({ domain, reason }: LoginErrorMessageProps) {
           {headerNode}
           <p className={defaultErrorMessageClassName}>
             <Trans>
-              It looks like there's a mismatch between the invitation and the
+              It looks like there’s a mismatch between the invitation and the
               email address provided.
             </Trans>
             <br />

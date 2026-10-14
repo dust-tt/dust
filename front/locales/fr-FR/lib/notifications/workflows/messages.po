@@ -90,7 +90,7 @@ msgid "[Dust] Credit balance alert - your workspace balance dropped below {thres
 msgstr "[Dust] Le solde de crédits de votre workspace est passé sous {threshold} crédits"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
-msgid "Your workspace's remaining credit balance has dropped below the threshold you configured."
+msgid "Your workspace’s remaining credit balance has dropped below the threshold you configured."
 msgstr "Le solde de crédits restant de votre workspace est passé sous le seuil que vous avez configuré."
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
@@ -208,7 +208,7 @@ msgstr "[Dust] Alerte de consommation : {percentUsed} % de vos crédits utilis
 
 #: front/lib/notifications/workflows/credit-usage-alert.ts
 #: front/lib/notifications/workflows/mcp-global-sharing-reconfiguration.ts
-msgid "You're receiving this as an admin of the Dust workspace {workspaceName}."
+msgid "You’re receiving this as an admin of the Dust workspace {workspaceName}."
 msgstr "Vous recevez cet e-mail en tant qu’administrateur du workspace Dust {workspaceName}."
 
 #: front/lib/notifications/workflows/credit-usage-alert.ts
@@ -248,7 +248,7 @@ msgid "{sharedByName} shared a frame with you on Dust."
 msgstr "{sharedByName} a partagé une Frame avec vous sur Dust."
 
 #: front/lib/notifications/workflows/frame-sharing.ts
-msgid "{expiresInMinutes, plural, one {The code expires in # minute.} other {The code expires in # minutes.}} Didn't request it? Ignore this email."
+msgid "{expiresInMinutes, plural, one {The code expires in # minute.} other {The code expires in # minutes.}} Didn’t request it? Ignore this email."
 msgstr "{expiresInMinutes, plural, one {Le code expire dans # minute.} other {Le code expire dans # minutes.}} Vous ne l’avez pas demandé ? Ignorez cet e-mail."
 
 #: front/lib/notifications/workflows/frame-sharing.ts
@@ -348,7 +348,7 @@ msgid "[Dust] Your programmatic triggers are paused in {workspaceName}"
 msgstr "[Dust] Vos déclencheurs sont en pause dans {workspaceName}"
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
-msgid "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
+msgid "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace’s monthly programmatic usage limit is set to 0 credits."
 msgstr "Un déclencheur de votre workspace Dust « {workspaceName} » n’a pas pu s’exécuter, car la limite mensuelle d’utilisation via l’API du workspace est fixée à 0 crédit."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
@@ -392,7 +392,7 @@ msgid "You canceled the subscription of the {workspaceName} workspace. It will e
 msgstr "Vous avez annulé l’abonnement du workspace {workspaceName}. Il prendra fin avec votre période de facturation actuelle, le {formattedEndDate}. Vous pouvez le réactiver à tout moment d’ici là."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
-msgid "If you don't reactivate it, your workspace will switch back to the free plan:"
+msgid "If you don’t reactivate it, your workspace will switch back to the free plan:"
 msgstr "Si vous ne le réactivez pas, votre workspace repassera au forfait gratuit :"
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
@@ -428,7 +428,7 @@ msgid "The subscription of the {workspaceName} workspace has been reactivated."
 msgstr "L’abonnement du workspace {workspaceName} a été réactivé."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
-msgid "It won't be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual."
+msgid "It won’t be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual."
 msgstr "Il ne sera pas annulé à la fin de la période de facturation, aucun changement de forfait n’aura lieu et vous pouvez continuer à utiliser Dust normalement."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
@@ -460,7 +460,7 @@ msgid "{remainingDays, plural, one {Your Dust data will be deleted in # day} oth
 msgstr "{remainingDays, plural, one {Vos données Dust seront supprimées dans # jour} other {Vos données Dust seront supprimées dans # jours}}"
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
-msgid "You're receiving this as an admin of the Dust workspace {workspaceName}. Your trial period has ended."
+msgid "You’re receiving this as an admin of the Dust workspace {workspaceName}. Your trial period has ended."
 msgstr "Vous recevez cet e-mail en tant qu’administrateur du workspace Dust {workspaceName}. Votre période d’essai est terminée."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
@@ -472,7 +472,7 @@ msgid "Subscribe now to keep your conversations, custom agents, and data sources
 msgstr "Abonnez-vous dès maintenant pour conserver vos conversations, vos agents personnalisés et vos sources de données, et continuer à utiliser Dust sans interruption."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
-msgid "You're receiving this as an admin of the Dust workspace {workspaceName}. You recently canceled your Dust subscription."
+msgid "You’re receiving this as an admin of the Dust workspace {workspaceName}. You recently canceled your Dust subscription."
 msgstr "Vous recevez cet e-mail en tant qu’administrateur du workspace Dust {workspaceName}. Vous avez récemment annulé votre abonnement Dust."
 
 #: front/lib/notifications/workflows/subscription-lifecycle.ts
@@ -612,7 +612,7 @@ msgid "Review the requests from your workspace usage page."
 msgstr "Examinez les demandes depuis la page d’utilisation de votre workspace."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
-msgid "You've reached your usage limit"
+msgid "You’ve reached your usage limit"
 msgstr "Vous avez atteint votre limite d’utilisation"
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
@@ -620,7 +620,7 @@ msgid "You have reached your {cap} credits limit in workspace \"{workspaceName}\
 msgstr "Vous avez atteint votre limite de {cap} crédits dans le workspace « {workspaceName} » et ne pouvez plus exécuter d’agents. Contactez votre administrateur pour augmenter votre limite."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
-msgid "You've used 80% of your usage limit"
+msgid "You’ve used 80% of your usage limit"
 msgstr "Vous avez utilisé 80 % de votre limite d’utilisation"
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
@@ -628,7 +628,7 @@ msgid "You have used 80% of your {cap} credits limit in workspace \"{workspaceNa
 msgstr "Vous avez utilisé 80 % de votre limite de {cap} crédits dans le workspace « {workspaceName} ». Contactez votre administrateur pour augmenter votre limite avant d’être bloqué."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
-msgid "[Dust] You've reached your usage limit in {workspaceName}"
+msgid "[Dust] You’ve reached your usage limit in {workspaceName}"
 msgstr "[Dust] Vous avez atteint votre limite d’utilisation dans {workspaceName}"
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
@@ -640,7 +640,7 @@ msgid "Please contact your workspace admin to increase your limit."
 msgstr "Contactez l’administrateur de votre workspace pour augmenter votre limite."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
-msgid "[Dust] You've used 80% of your usage limit in {workspaceName}"
+msgid "[Dust] You’ve used 80% of your usage limit in {workspaceName}"
 msgstr "[Dust] Vous avez utilisé 80 % de votre limite d’utilisation dans {workspaceName}"
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
@@ -648,7 +648,7 @@ msgid "You have used 80% of your {cap} credits usage limit in the Dust workspace
 msgstr "Vous avez utilisé 80 % de votre limite d’utilisation de {cap} crédits dans le workspace Dust {workspaceName}."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
-msgid "Once you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin."
+msgid "Once you reach 100%, you won’t be able to run agents until your limit is increased. Please contact your workspace admin."
 msgstr "Une fois 100 % atteints, vous ne pourrez plus exécuter d’agents tant que votre limite n’aura pas été augmentée. Contactez l’administrateur de votre workspace."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
@@ -656,11 +656,11 @@ msgid "Go to workspace"
 msgstr "Accéder au workspace"
 
 #: front/lib/notifications/workflows/workspace-invitation.ts
-msgid "[Dust] Reminder: you're invited to join {workspaceName}"
+msgid "[Dust] Reminder: you’re invited to join {workspaceName}"
 msgstr "[Dust] Rappel : vous êtes invité à rejoindre {workspaceName}"
 
 #: front/lib/notifications/workflows/workspace-invitation.ts
-msgid "You were invited to join the {workspaceName} workspace on Dust and haven't accepted the invitation yet."
+msgid "You were invited to join the {workspaceName} workspace on Dust and haven’t accepted the invitation yet."
 msgstr "Vous avez été invité à rejoindre le workspace {workspaceName} sur Dust et n’avez pas encore accepté l’invitation."
 
 #: front/lib/notifications/workflows/workspace-invitation.ts
@@ -672,7 +672,7 @@ msgid "{inviterName} invited you to join the {workspaceName} workspace on Dust."
 msgstr "{inviterName} vous invite à rejoindre le workspace {workspaceName} sur Dust."
 
 #: front/lib/notifications/workflows/workspace-invitation.ts
-msgid "[Dust] You're invited to join {workspaceName}"
+msgid "[Dust] You’re invited to join {workspaceName}"
 msgstr "[Dust] Vous êtes invité à rejoindre {workspaceName}"
 
 #: front/lib/notifications/workflows/workspace-invitation.ts
@@ -680,7 +680,7 @@ msgid "You were invited to join the {workspaceName} workspace on Dust."
 msgstr "Vous avez été invité à rejoindre le workspace {workspaceName} sur Dust."
 
 #: front/lib/notifications/workflows/workspace-invitation.ts
-msgid "If you weren't expecting this invitation, you can ignore this email."
+msgid "If you weren’t expecting this invitation, you can ignore this email."
 msgstr "Si vous n’attendiez pas cette invitation, vous pouvez ignorer cet e-mail."
 
 #: front/lib/notifications/workflows/workspace-invitation.ts

@@ -102,7 +102,7 @@ msgid "Your credit balance is running low"
 msgstr ""
 
 #: front/components/navigation/AppStatusBanner.tsx
-msgid "Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits."
+msgid "Your workspace’s remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits."
 msgstr ""
 
 #: front/components/navigation/Navigation.tsx

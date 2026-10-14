@@ -110,15 +110,15 @@ msgid "Read more about importing skills <0>here</0>."
 msgstr "En savoir plus sur l’import de compétences <0>ici</0>."
 
 #: front/components/skills/import/ImportFromRepositoryTab.tsx
-msgid "GitHub connection can't access this repository"
+msgid "GitHub connection can’t access this repository"
 msgstr "La connexion GitHub ne peut pas accéder à ce dépôt"
 
 #: front/components/skills/import/ImportFromRepositoryTab.tsx
-msgid "The currently connected GitHub account can't access this repository. Check the URL or reconnect with an account that has access."
+msgid "The currently connected GitHub account can’t access this repository. Check the URL or reconnect with an account that has access."
 msgstr "Le compte GitHub actuellement connecté ne peut pas accéder à ce dépôt. Vérifiez l’URL ou reconnectez-vous avec un compte qui y a accès."
 
 #: front/components/skills/import/ImportFromRepositoryTab.tsx
-msgid "The currently connected GitHub account can't access this repository. Check the URL or ask an admin to reconnect with an account that has access."
+msgid "The currently connected GitHub account can’t access this repository. Check the URL or ask an admin to reconnect with an account that has access."
 msgstr "Le compte GitHub actuellement connecté ne peut pas accéder à ce dépôt. Vérifiez l’URL ou demandez à un administrateur de le reconnecter avec un compte qui y a accès."
 
 #: front/components/skills/import/ImportFromRepositoryTab.tsx

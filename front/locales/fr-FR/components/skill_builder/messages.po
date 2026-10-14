@@ -90,7 +90,7 @@ msgid "This is a generated skill suggestion"
 msgstr "Ceci est une suggestion de compétence générée"
 
 #: front/components/skill_builder/SkillBuilder.tsx
-msgid "This skill was automatically generated based on your workspace's configuration. We recommend reviewing and editing it to match your specific needs before saving."
+msgid "This skill was automatically generated based on your workspace’s configuration. We recommend reviewing and editing it to match your specific needs before saving."
 msgstr "Cette compétence a été générée automatiquement à partir de la configuration de votre workspace. Nous vous recommandons de la vérifier et de l’adapter à vos besoins avant de l’enregistrer."
 
 #: front/components/skill_builder/SkillBuilder.tsx

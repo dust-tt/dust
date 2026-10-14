@@ -69,7 +69,7 @@ msgid "{unreadCount, plural, one {You have unread message(s) in the following co
 msgstr "{unreadCount, plural, one {Vous avez des messages non lus dans la conversation suivante :} many {Vous avez des messages non lus dans les conversations suivantes :} other {Vous avez des messages non lus dans les conversations suivantes :}}"
 
 #: front/lib/notifications/email-templates/conversations-unread.tsx
-msgid "{newProjectConversationCount, plural, one {There's a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
+msgid "{newProjectConversationCount, plural, one {There’s a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
 msgstr "{newProjectConversationCount, plural, one {Il y a une nouvelle conversation dans {singleProjectName} :} many {Il y a # nouvelles conversations dans {singleProjectName} :} other {Il y a # nouvelles conversations dans {singleProjectName} :}}"
 
 #: front/lib/notifications/email-templates/conversations-unread.tsx

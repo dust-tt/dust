@@ -224,7 +224,7 @@ function DisableWorkOSSSOConnectionModal({
         </DialogHeader>
         <DialogContainer>
           <Trans>
-            Anyone with an {connectionType} account won't be able to access your
+            Anyone with an {connectionType} account won’t be able to access your
             Dust workspace anymore.
           </Trans>
         </DialogContainer>

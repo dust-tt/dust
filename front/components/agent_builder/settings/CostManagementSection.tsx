@@ -30,7 +30,7 @@ export function CostManagementSection() {
           <span className="text-xs text-muted-foreground">
             <Trans>
               Conversations with this agent will not pause to ask for
-              confirmation when they cross the workspace's credit spend
+              confirmation when they cross the workspace’s credit spend
               checkpoint.
             </Trans>
           </span>

@@ -41,12 +41,12 @@ type Translate = (descriptor: MessageDescriptor) => string;
 
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
 // locked because the workspace is on a legacy (non usage-based) plan.
-const PREMIUM_MODEL_LOCKED_TOOLTIP = msg`This option isn't available on your workspace's current plan. Contact your administrator to upgrade.`;
+const PREMIUM_MODEL_LOCKED_TOOLTIP = msg`This option isn’t available on your workspace’s current plan. Contact your administrator to upgrade.`;
 
 // Shown when a model row is locked because the model's tier is not enabled for
 // the workspace's current model-tier ceiling (independent of the plan: this
 // applies even on usage-based plans whose tier grants stop below the model).
-const MODEL_TIER_LOCKED_TOOLTIP = msg`Your current model access doesn't include this option. Contact your administrator to get access.`;
+const MODEL_TIER_LOCKED_TOOLTIP = msg`Your current model access doesn’t include this option. Contact your administrator to get access.`;
 
 export const AUTO_MODELS_DOC_URL =
   "https://docs.dust.tt/docs/user-documentation/agents/model-selection#auto-models";
@@ -104,7 +104,7 @@ export function getTierFallbackMessage(
   replacementModelName: string
 ): string {
   return t(
-    msg`The usual model for ${tierName} is having issues. You're on ${replacementModelName} until it's back.`
+    msg`The usual model for ${tierName} is having issues. You’re on ${replacementModelName} until it’s back.`
   );
 }
 

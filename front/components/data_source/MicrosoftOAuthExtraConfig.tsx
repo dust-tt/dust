@@ -112,7 +112,7 @@ export function MicrosoftOAuthExtraConfig({
           />
           <Input
             label={t`Service account secret`}
-            placeholder={t`Save this secret - you'll need to re-enter it each time you configure this connector`}
+            placeholder={t`Save this secret - you’ll need to re-enter it each time you configure this connector`}
             disabled={!useServicePrincipal}
             name="client_secret"
             type="password"

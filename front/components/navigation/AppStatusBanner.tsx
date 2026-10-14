@@ -312,7 +312,7 @@ function WorkspaceUsageStatusBanner({
       return {
         variant: "warning",
         title: t`Your credit balance is running low`,
-        description: t`Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits.`,
+        description: t`Your workspace’s remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits.`,
         footer: manageCreditsFooter,
       };
     }

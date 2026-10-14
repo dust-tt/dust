@@ -67,8 +67,8 @@ msgid "Website entry point"
 msgstr "Website entry point"
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
-msgid "Enter the address of the website you'd like to index."
-msgstr "Enter the address of the website you'd like to index."
+msgid "Enter the address of the website you’d like to index."
+msgstr "Enter the address of the website you’d like to index."
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
 msgid "Ensure the website is public"
@@ -123,8 +123,8 @@ msgid "Page limit"
 msgstr "Page limit"
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
-msgid "What is the maximum number of pages you'd like to index?"
-msgstr "What is the maximum number of pages you'd like to index?"
+msgid "What is the maximum number of pages you’d like to index?"
+msgstr "What is the maximum number of pages you’d like to index?"
 
 #: front/components/spaces/websites/SpaceWebsiteForm.tsx
 msgid "Maximum pages must be between 1 and {WEBCRAWLER_MAX_PAGES}"

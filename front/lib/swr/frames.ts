@@ -126,7 +126,7 @@ export function useBatchEditFrameText({
         if (!response.ok) {
           const errorData = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: t`Couldn't save edits`,
+            title: t`Couldn’t save edits`,
             error: errorData,
           });
           return { success: false, error: errorData.message };
@@ -135,7 +135,7 @@ export function useBatchEditFrameText({
         return { success: true };
       } catch (error) {
         sendApiErrorNotification({
-          title: t`Couldn't save edits`,
+          title: t`Couldn’t save edits`,
           error,
         });
         return {

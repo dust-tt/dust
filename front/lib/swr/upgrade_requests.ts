@@ -202,14 +202,14 @@ export function useResolveUpgradeRequest({
           sendNotification({
             type: "success",
             title: t`Upgrade request approved`,
-            description: t`${requesterName}'s upgrade request has been approved.`,
+            description: t`${requesterName}’s upgrade request has been approved.`,
           });
           break;
         case "denied":
           sendNotification({
             type: "success",
             title: t`Upgrade request denied`,
-            description: t`${requesterName}'s upgrade request has been denied.`,
+            description: t`${requesterName}’s upgrade request has been denied.`,
           });
           break;
         default:

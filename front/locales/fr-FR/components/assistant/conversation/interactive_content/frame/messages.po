@@ -334,11 +334,11 @@ msgid "Anyone with the link"
 msgstr "Toute personne disposant du lien"
 
 #: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
-msgid "Couldn't save edits"
+msgid "Couldn’t save edits"
 msgstr "Impossible d’enregistrer les modifications"
 
 #: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts
-msgid "The Frame didn't respond. Your edits are still staged, try saving again."
+msgid "The Frame didn’t respond. Your edits are still staged, try saving again."
 msgstr "Le Frame n’a pas répondu. Vos modifications sont toujours en attente, réessayez d’enregistrer."
 
 #: front/components/assistant/conversation/interactive_content/frame/useFrameEditSession.ts

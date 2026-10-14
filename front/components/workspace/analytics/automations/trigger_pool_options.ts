@@ -14,6 +14,6 @@ export const EXECUTION_MODE_UNAVAILABLE_MESSAGES: Record<
   TriggerExecutionMode,
   MessageDescriptor
 > = {
-  user_pool: msg`Your plan doesn't support charging automations to personal credits.`,
-  workspace_pool: msg`You don't have permission to charge automations to the workspace credit pool.`,
+  user_pool: msg`Your plan doesn’t support charging automations to personal credits.`,
+  workspace_pool: msg`You don’t have permission to charge automations to the workspace credit pool.`,
 };

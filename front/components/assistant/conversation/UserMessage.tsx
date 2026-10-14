@@ -264,12 +264,12 @@ export function UserMessage({
     let confirmMessage: string;
     if (isCurrentUser) {
       confirmMessage = hasAgentReply
-        ? t`Are you sure you want to delete this message? The agent's reply will also be removed. This action cannot be undone.`
+        ? t`Are you sure you want to delete this message? The agent’s reply will also be removed. This action cannot be undone.`
         : t`Are you sure you want to delete this message? This action cannot be undone.`;
     } else {
       confirmMessage = hasAgentReply
-        ? t`Are you sure you want to delete this user's message? The agent's reply will also be removed. This will be reflected for all participants.`
-        : t`Are you sure you want to delete this user's message? This will be reflected for all participants.`;
+        ? t`Are you sure you want to delete this user’s message? The agent’s reply will also be removed. This will be reflected for all participants.`
+        : t`Are you sure you want to delete this user’s message? This will be reflected for all participants.`;
     }
 
     const confirmed = await confirm({

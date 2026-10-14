@@ -36,7 +36,7 @@ export function PodEmptyCallout({
   return (
     <div className="flex flex-col gap-3 items-center justify-center">
       <h3 className="heading-lg text-foreground">
-        <Trans>It's quiet in here.</Trans>
+        <Trans>It’s quiet in here.</Trans>
       </h3>
       <div className="text-sm text-muted-foreground">
         <Trans>
@@ -45,7 +45,7 @@ export function PodEmptyCallout({
         </Trans>
       </div>
       <Button
-        label={t`Let's go`}
+        label={t`Let’s go`}
         icon={MagicWand02}
         isPulsing
         disabled={isSeeding}

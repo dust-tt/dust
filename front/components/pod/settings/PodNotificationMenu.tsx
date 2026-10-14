@@ -30,7 +30,7 @@ const NOTIFICATION_CONDITION_LABELS: Record<
 > = {
   all_messages: msg`All activity`,
   only_mentions: msg`Only when mentioned`,
-  never: msg`Don't notify me`,
+  never: msg`Don’t notify me`,
 };
 
 interface PodNotificationMenuProps {

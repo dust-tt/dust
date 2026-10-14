@@ -134,8 +134,8 @@ export function useFrameEditSession({
       if (!(await flushEditables(iframeRef.current))) {
         sendNotification({
           type: "error",
-          title: t`Couldn't save edits`,
-          description: t`The Frame didn't respond. Your edits are still staged, try saving again.`,
+          title: t`Couldn’t save edits`,
+          description: t`The Frame didn’t respond. Your edits are still staged, try saving again.`,
         });
         return;
       }

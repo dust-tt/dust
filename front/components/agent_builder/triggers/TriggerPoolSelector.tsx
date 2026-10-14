@@ -24,14 +24,14 @@ const POOL_OPTIONS: {
   { value: "workspace_pool", label: msg`Workspace credits` },
 ];
 
-const NO_EXECUTION_MODE_AVAILABLE_MESSAGE = msg`Automations on your plan must be charged to the workspace credit pool, which you don't have permission to use. Ask a workspace admin for access.`;
+const NO_EXECUTION_MODE_AVAILABLE_MESSAGE = msg`Automations on your plan must be charged to the workspace credit pool, which you don’t have permission to use. Ask a workspace admin for access.`;
 
 const EXECUTION_MODE_UNAVAILABLE_MESSAGES: Record<
   TriggerExecutionMode,
   MessageDescriptor
 > = {
-  user_pool: msg`Your plan doesn't support charging automations to personal credits.`,
-  workspace_pool: msg`You don't have permission to charge automations to the workspace credit pool.`,
+  user_pool: msg`Your plan doesn’t support charging automations to personal credits.`,
+  workspace_pool: msg`You don’t have permission to charge automations to the workspace credit pool.`,
 };
 
 interface TriggerPoolSelectorProps {
@@ -69,7 +69,7 @@ export function TriggerPoolSelector({
         <Trans>Credits</Trans>
       </Label>
       <p className="text-sm text-muted-foreground">
-        <Trans>Which pool this trigger's runs take credits from.</Trans>
+        <Trans>Which pool this trigger’s runs take credits from.</Trans>
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

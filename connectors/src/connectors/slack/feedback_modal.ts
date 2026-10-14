@@ -153,7 +153,7 @@ export async function openFeedbackModal({
             text: {
               type: "mrkdwn",
               text: `_${i18n._(
-                "By submitting feedback, you agree to share your conversation internally with the agent's editors."
+                "By submitting feedback, you agree to share your conversation internally with the agent’s editors."
               )}_`,
             },
           },

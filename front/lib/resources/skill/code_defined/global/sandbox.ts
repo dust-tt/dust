@@ -400,7 +400,7 @@ export const sandboxSkill = {
   kind: "global",
   name: "Computer",
   userFacingDescription:
-    "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
+    "Run code, scripts, and shell commands in the conversation’s Computer (a sandboxed Linux environment).",
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
     "process data, manipulate files, or perform any task requiring shell access. " +

@@ -332,7 +332,7 @@ export function AdvancedNotionManagement({
         </div>
         <div className="text-element-700 p-1 text-sm">
           <Trans>
-            Check if a URL exists in Notion and whether it's synced to Dust
+            Check if a URL exists in Notion and whether it’s synced to Dust
           </Trans>
         </div>
 

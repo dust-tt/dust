@@ -27,19 +27,19 @@ function getMaintenancePageInfo(
             <p className={defaultErrorMessageClassName}>
               <Trans>
                 Your account is currently being relocated to a new region.
-                During this planned migration, you won't be able to access our
+                During this planned migration, you won’t be able to access our
                 application. This temporary interruption ensures a smooth
-                transition of your organization's data.
+                transition of your organization’s data.
               </Trans>
             </p>
             <h4 className="heading-xl text-primary-50">
-              <Trans>What's happening?</Trans>
+              <Trans>What’s happening?</Trans>
             </h4>
             <p className={defaultErrorMessageClassName}>
               <Trans>
-                As discussed with your team, we're moving your account to a
+                As discussed with your team, we’re moving your account to a
                 different regional infrastructure. All your data, settings, and
-                configurations will remain exactly as they were. We'll notify
+                configurations will remain exactly as they were. We’ll notify
                 your team once the relocation is complete and your access is
                 restored.
               </Trans>
@@ -76,7 +76,7 @@ function getMaintenancePageInfo(
           <>
             <p className={defaultErrorMessageClassName}>
               <Trans>
-                We're currently performing maintenance on this workspace.
+                We’re currently performing maintenance on this workspace.
                 <br />
                 Please check back in a few minutes.
               </Trans>

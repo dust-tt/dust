@@ -137,7 +137,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   confluence: {
     ...CONNECTOR_METADATA.confluence,
     hide: false,
-    limitations: msg`Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.`,
+    limitations: msg`Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won’t be indexed.`,
     mismatchError: msg`You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
     selectLabel: msg`Select pages`,
     getLogoComponent: () => {

@@ -80,7 +80,7 @@ function getQuotaDescription({
       case "user_pool":
         return t(msg`This will count toward your personal credit pool.`);
       case "workspace_pool":
-        return t(msg`This will count toward your workspace's credit pool.`);
+        return t(msg`This will count toward your workspace’s credit pool.`);
       default:
         return assertNever(executionMode);
     }
@@ -90,7 +90,7 @@ function getQuotaDescription({
         return t(msg`This will count toward your personal fair use limits.`);
       case "workspace_pool":
         return t(
-          msg`This will count toward your workspace's programmatic usage.`
+          msg`This will count toward your workspace’s programmatic usage.`
         );
       default:
         return assertNever(executionMode);
@@ -296,7 +296,7 @@ function WebhookEditionPodSelector({
         <Trans>Where to create this conversation? (optional)</Trans>
       </Label>
       <p className="text-sm text-muted-foreground">
-        <Trans>Run this trigger's conversation inside a Pod instead.</Trans>
+        <Trans>Run this trigger’s conversation inside a Pod instead.</Trans>
       </p>
       <TriggerPodSelector
         owner={owner}

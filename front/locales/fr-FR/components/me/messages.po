@@ -245,7 +245,7 @@ msgid "No automation matches your search criteria."
 msgstr "Aucune automatisation ne correspond à vos critères de recherche."
 
 #: front/components/me/UserAutomationsTable.tsx
-msgid "You haven't created any automation yet."
+msgid "You haven’t created any automation yet."
 msgstr "Vous n’avez encore créé aucune automatisation."
 
 #: front/components/me/UserAutomationsTable.tsx

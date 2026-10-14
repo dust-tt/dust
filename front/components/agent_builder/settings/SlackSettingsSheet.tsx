@@ -448,7 +448,7 @@ export function SlackSettingsSheet({
                     {hasPrivateSelected
                       ? canAutoRespond
                         ? t`Private channels only reply to @mentions. Auto-respond applies to public channels.`
-                        : t`Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned.`
+                        : t`Auto-respond isn’t available in private Slack channels. The agent will only reply when @Dust is mentioned.`
                       : t`Agent will automatically respond to messages in selected channels (not just @mentions)`}
                   </span>
                 </div>

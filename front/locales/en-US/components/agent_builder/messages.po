@@ -123,8 +123,8 @@ msgid "Pending suggestions"
 msgstr "Pending suggestions"
 
 #: front/components/agent_builder/AgentBuilder.tsx
-msgid "{pendingCount, plural, one {You have # pending instruction suggestion that won't be included in this save. You can review it later.} other {You have # pending instruction suggestions that won't be included in this save. You can review them later.}}"
-msgstr "{pendingCount, plural, one {You have # pending instruction suggestion that won't be included in this save. You can review it later.} other {You have # pending instruction suggestions that won't be included in this save. You can review them later.}}"
+msgid "{pendingCount, plural, one {You have # pending instruction suggestion that won’t be included in this save. You can review it later.} other {You have # pending instruction suggestions that won’t be included in this save. You can review them later.}}"
+msgstr "{pendingCount, plural, one {You have # pending instruction suggestion that won’t be included in this save. You can review it later.} other {You have # pending instruction suggestions that won’t be included in this save. You can review them later.}}"
 
 #: front/components/agent_builder/AgentBuilder.tsx
 msgid "Save anyway"
@@ -213,8 +213,8 @@ msgid "Agent Sidekick"
 msgstr "Agent Sidekick"
 
 #: front/components/agent_builder/AgentBuilderSimilarAgentsSection.tsx
-msgid "Couldn't check for similar agents."
-msgstr "Couldn't check for similar agents."
+msgid "Couldn’t check for similar agents."
+msgstr "Couldn’t check for similar agents."
 
 #: front/components/agent_builder/AgentBuilderSimilarAgentsSection.tsx
 msgid "Checking for similar agents…"

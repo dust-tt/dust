@@ -67,4 +67,4 @@ export const ROLE_DESCRIPTIONS: Record<ActiveRoleType, MessageDescriptor> = {
 
 // Message shown when a workspace has groups mapped to roles, so member roles
 // are (partly) driven by group membership and can't be edited by hand.
-export const GROUP_ROLE_MANAGED_MESSAGE = msg`Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership.`;
+export const GROUP_ROLE_MANAGED_MESSAGE = msg`Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member’s group membership.`;

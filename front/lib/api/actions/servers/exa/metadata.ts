@@ -87,7 +87,7 @@ export const EXA_SERVER = {
     name: EXA_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Search for people and companies using Exa's AI-powered search.",
+      "Search for people and companies using Exa’s AI-powered search.",
     authorization: null,
     icon: "ActionMagnifyingGlassIcon",
     documentationUrl: null,

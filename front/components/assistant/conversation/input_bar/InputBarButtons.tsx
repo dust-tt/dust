@@ -109,8 +109,8 @@ function SelectedAgentPill({
   const isWidthConstrained = useIsWidthConstrained();
   const isPod = space ? isProjectType(space) : false;
   const defaultAgentUnavailableLabel = isPod
-    ? t`This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error.`
-    : t`This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.`;
+    ? t`This Pod’s default agent isn’t available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error.`
+    : t`This conversation’s default agent isn’t available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.`;
   const selectedAgentName = selectedAgent.label;
 
   return (

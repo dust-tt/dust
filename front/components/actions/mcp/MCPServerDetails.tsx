@@ -393,7 +393,7 @@ export function MCPServerDetails({
           );
           if (isPromotingToGlobal && affectedSpaceNames.length > 0) {
             const confirmed = await confirm({
-              title: t`This action will delete the tool's existing copies`,
+              title: t`This action will delete the tool’s existing copies`,
               message: (
                 <>
                   <div>
@@ -411,7 +411,7 @@ export function MCPServerDetails({
                     <Trans>
                       Any agents using the tool there will lose access until an
                       admin manually re-adds the shared version to each one. If
-                      any agents are affected, you'll receive an email listing
+                      any agents are affected, you’ll receive an email listing
                       them.
                     </Trans>
                   </div>

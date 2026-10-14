@@ -168,31 +168,31 @@ msgid "All comments"
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a table."
+msgid "This document can’t be edited here yet because it has a table."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has HTML."
+msgid "This document can’t be edited here yet because it has HTML."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a task list."
+msgid "This document can’t be edited here yet because it has a task list."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a code block fenced with ~~~."
+msgid "This document can’t be edited here yet because it has a code block fenced with ~~~."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has an indented code fence."
+msgid "This document can’t be edited here yet because it has an indented code fence."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a reference link definition."
+msgid "This document can’t be edited here yet because it has a reference link definition."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
+msgid "This document uses formatting the editor doesn’t support yet, so it can’t be edited here."
 msgstr ""
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
@@ -396,7 +396,7 @@ msgid "The selected text can no longer take a comment. Select other text to comm
 msgstr ""
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This comment can't be saved in this document. Try shortening or simplifying it."
+msgid "This comment can’t be saved in this document. Try shortening or simplifying it."
 msgstr ""
 
 #: front/components/editor/document/useDocumentComments.ts
@@ -404,7 +404,7 @@ msgid "Suggestions can only replace text within one paragraph."
 msgstr ""
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This suggestion can't replace the commented text. Another comment may cover part of it."
+msgid "This suggestion can’t replace the commented text. Another comment may cover part of it."
 msgstr ""
 
 #: front/components/editor/document/useDocumentComments.ts
@@ -420,11 +420,11 @@ msgid "This text is too long or complex to suggest a change to."
 msgstr ""
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This suggestion can't be saved in this document."
+msgid "This suggestion can’t be saved in this document."
 msgstr ""
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "The suggestion was applied, but the comment couldn't be resolved. {reason}"
+msgid "The suggestion was applied, but the comment couldn’t be resolved. {reason}"
 msgstr ""
 
 #: front/components/editor/document/useDocumentEditor.ts

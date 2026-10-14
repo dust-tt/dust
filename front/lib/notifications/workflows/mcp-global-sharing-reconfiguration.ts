@@ -26,7 +26,7 @@ export function buildMCPGlobalSharingReconfigurationEmailCopy(
     ),
     content: [
       i18n._(
-        msg`You're receiving this as an admin of the Dust workspace ${workspaceName}.`
+        msg`You’re receiving this as an admin of the Dust workspace ${workspaceName}.`
       ),
       i18n._(
         msg`The tool ${toolName} was just made available to all workspace members.`

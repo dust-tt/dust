@@ -22,11 +22,11 @@ msgid "Your custom agents"
 msgstr "Vos agents personnalisés"
 
 #: front/components/paywall/DontLoseSection.tsx
-msgid "Don't lose:"
+msgid "Don’t lose:"
 msgstr "Ne perdez pas :"
 
 #: front/components/paywall/DontLoseSection.tsx
-msgid "All the AI agents you've configured with your workflows"
+msgid "All the AI agents you’ve configured with your workflows"
 msgstr "Tous les agents IA que vous avez configurés pour vos workflows"
 
 #: front/components/paywall/DontLoseSection.tsx

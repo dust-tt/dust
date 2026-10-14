@@ -87,8 +87,8 @@ export function MentionInvalid({
             </Trans>
           ) : (
             <Trans>
-              <span className="font-semibold">{mentionLabel}</span> doesn't have
-              access to this conversation's spaces and won't be able to view it
+              <span className="font-semibold">{mentionLabel}</span> doesn’t have
+              access to this conversation’s spaces and won’t be able to view it
               nor be invited.
             </Trans>
           )}

@@ -30,7 +30,7 @@ export function buildBalanceThresholdReachedEmailCopy(
 
   const lines = [
     i18n._(
-      msg`Your workspace's remaining credit balance has dropped below the threshold you configured.`
+      msg`Your workspace’s remaining credit balance has dropped below the threshold you configured.`
     ),
     i18n._(msg`Alert threshold: ${threshold} credits`),
   ];

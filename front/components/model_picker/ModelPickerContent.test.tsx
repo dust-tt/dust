@@ -82,7 +82,7 @@ describe("ModelPickerContent", () => {
 
     expect(
       await screen.findAllByText(
-        /The usual model for Standard is having issues\. You're on GPT-5 Medium until it's back\./
+        /The usual model for Standard is having issues\. You’re on GPT-5 Medium until it’s back\./
       )
     ).not.toHaveLength(0);
   });

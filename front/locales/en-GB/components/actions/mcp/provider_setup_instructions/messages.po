@@ -54,7 +54,7 @@ msgid "Go to <0>Setup → Integration → Manage Integrations → New</0>. Name 
 msgstr ""
 
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
-msgid "Save the record and copy the <0>Consumer Key (Client ID)</0> and <1>Consumer Secret (Client Secret)</1> — they won't be visible again."
+msgid "Save the record and copy the <0>Consumer Key (Client ID)</0> and <1>Consumer Secret (Client Secret)</1> — they won’t be visible again."
 msgstr ""
 
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
@@ -147,7 +147,7 @@ msgid "3. Create a client secret"
 msgstr ""
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
-msgid "Under <0>Certificates & secrets → New client secret</0>, generate a secret and copy its <1>Value</1> immediately — it won't be visible again."
+msgid "Under <0>Certificates & secrets → New client secret</0>, generate a secret and copy its <1>Value</1> immediately — it won’t be visible again."
 msgstr ""
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
@@ -187,7 +187,7 @@ msgid "<0>Important:</0> the scope must use <1>analysis.windows.net</1>, not <2>
 msgstr ""
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
-msgid "The <0>offline_access</0> scope allows Dust to automatically refresh the authentication token in the background, so users don't have to re-authenticate every time the token expires (typically after one hour)."
+msgid "The <0>offline_access</0> scope allows Dust to automatically refresh the authentication token in the background, so users don’t have to re-authenticate every time the token expires (typically after one hour)."
 msgstr ""
 
 #: front/components/actions/mcp/provider_setup_instructions/SnowflakeSetupInstructions.tsx
