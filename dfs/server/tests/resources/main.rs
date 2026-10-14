@@ -17,6 +17,8 @@ fn resources() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
+        file::batch_reads_reject_invalid_ids_and_preserve_transaction_errors().await?;
+        file::batch_reads_budget_only_data_and_preserve_per_file_errors().await?;
         file::reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks().await?;
         file::reads_preserve_tenant_scope_snapshot_and_attributes().await?;
         file::reads_validate_kind_length_blocks_and_handle_maximum_offsets().await?;

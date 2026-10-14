@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use dfs_protocol::{
-    STAT_MAX_REFERENCES,
+    READ_FILES_MAX_OBJECTS, STAT_MAX_REFERENCES,
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
-        EntryPage, ErrorCode, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LookupRequest,
-        OperationBatch, ReadData, ReadFilesRequest, ReadRequest, RevokeSessionRequest,
-        SearchRequest, SearchResults, Session, StatRequest, Tenant, UpdateGrantsRequest,
-        dfs_server::Dfs,
+        EntryPage, ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
+        LookupRequest, OperationBatch, ReadData, ReadFilesRequest, ReadRequest,
+        RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
+        UpdateGrantsRequest, dfs_server::Dfs,
     },
 };
 use prost::Message;
@@ -30,6 +30,13 @@ use crate::{
 
 pub(crate) mod auth;
 mod errors;
+
+// Reserve space for each result's attributes, error, and protobuf framing, without metadata.
+const READ_FILES_RESULT_OVERHEAD_BYTES: usize = 512;
+
+#[cfg(test)]
+#[path = "../tests/api/read_files_budget.rs"]
+mod read_files_budget_tests;
 
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
@@ -275,12 +282,61 @@ impl Dfs for API {
         Ok(Response::new(response))
     }
 
+    /**
+     * @cc [owner:spolu,label:api;security] read-files-results
+     * ReadFiles MUST accept 1-256 IDs and preserve input order and duplicates. Each result MUST
+     * contain either whole-file data and attributes or ErrorDetails. Unreadable objects MUST be
+     * concealed as NOT_FOUND through the file resource's shared error mapping.
+     */
+    /**
+     * @cc [owner:spolu,label:api;performance] read-files-budget
+     * The data budget passed to the resource MUST reserve enough space for every result's
+     * attributes, errors, and protobuf framing to keep the encoded batch within 4 MiB.
+     * A conservative overhead allowance MAY reject files that an exact encoded budget would fit.
+     */
     async fn read_files(
         &self,
         request: Request<ReadFilesRequest>,
     ) -> Result<Response<FilesBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let ReadFilesRequest { object_ids } = request.into_inner();
+        if object_ids.is_empty() || object_ids.len() > READ_FILES_MAX_OBJECTS {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        let max_bytes =
+            crate::MAX_MESSAGE_SIZE_BYTES - object_ids.len() * READ_FILES_RESULT_OVERHEAD_BYTES;
+        let results = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let object_ids = &object_ids;
+            async move {
+                FileResource::read_batch_for_session(&tx, session, object_ids, max_bytes).await
+            }
+        })
+        .await?;
+        let response = FilesBatch {
+            results: object_ids
+                .into_iter()
+                .zip(results)
+                .map(|(object_id, result)| match result {
+                    Ok((object, data)) => FileResult {
+                        object_id,
+                        object: Some(object),
+                        data: Some(data),
+                        error: None,
+                    },
+                    Err(error) => FileResult {
+                        object_id,
+                        object: None,
+                        data: None,
+                        error: Some(error.into()),
+                    },
+                })
+                .collect(),
+        };
+        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+            return Err(status(ErrorCode::Capacity));
+        }
+        Ok(Response::new(response))
     }
 
     async fn apply(
