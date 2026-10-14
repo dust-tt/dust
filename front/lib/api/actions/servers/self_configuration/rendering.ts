@@ -72,7 +72,11 @@ export function renderEffortChangeMessageForAction(
       block.resource
     );
     if (resource.success) {
-      return { role: "effort_change", effort: resource.data.to };
+      return {
+        role: "effort_change",
+        from: resource.data.from,
+        effort: resource.data.to,
+      };
     }
   }
 
