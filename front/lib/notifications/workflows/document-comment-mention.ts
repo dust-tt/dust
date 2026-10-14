@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import {
   ensureSlackNotificationsReady,
   getActiveSubscriberAuth,
@@ -15,7 +14,6 @@ import {
   DocumentCommentMentionPayloadSchema,
   getReadableDocument,
 } from "@app/lib/notifications/triggers/document-comment-mention";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   CONVERSATION_UNREAD_TRIGGER_ID,
@@ -29,10 +27,10 @@ import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 import z from "zod";
 
-const MentionSchema = z.object({
-  authorName: z.string(),
-  fileName: z.string(),
-  route: z.string(),
+const MentionSchema = DocumentCommentMentionPayloadSchema.pick({
+  authorName: true,
+  fileName: true,
+  route: true,
 });
 
 type MentionType = z.infer<typeof MentionSchema>;
@@ -51,15 +49,6 @@ const ChannelsSchema = z.object({
 });
 
 type ChannelsType = z.infer<typeof ChannelsSchema>;
-
-const MentionResultSchema = z.discriminatedUnion("success", [
-  z.object({
-    success: z.literal(true),
-    mention: MentionSchema,
-    channels: ChannelsSchema,
-  }),
-  z.object({ success: z.literal(false) }),
-]);
 
 const DigestResultSchema = z.object({
   digest: ReadableMentionsSchema.nullable(),
@@ -104,41 +93,26 @@ export async function getReadableMentions(
     return null;
   }
 
-  const documentPaths = [...new Set(payloads.map((p) => p.documentPath))];
-  const documents = new Map(
+  const readablePaths = new Set(
     removeNulls(
       await concurrentExecutor(
-        documentPaths,
-        async (documentPath) => {
-          const document = await getReadableDocument(auth, documentPath);
-          return document ? ([documentPath, document] as const) : null;
-        },
+        [...new Set(payloads.map((p) => p.documentPath))],
+        async (documentPath) =>
+          (await getReadableDocument(auth, documentPath)) ? documentPath : null,
         { concurrency: 4 }
       )
     )
   );
-  const authors = new Map(
-    (
-      await UserResource.fetchByIds([
-        ...new Set(payloads.map((p) => p.authorId)),
-      ])
-    ).map((author) => [author.sId, author.fullName()])
-  );
 
   return {
     workspaceName: auth.getNonNullableWorkspace().name,
-    mentions: removeNulls(
-      payloads.map(({ documentPath, authorId }) => {
-        const document = documents.get(documentPath);
-        return document
-          ? {
-              authorName: authors.get(authorId) ?? "",
-              fileName: getFileNameFromScopedPath(documentPath),
-              route: document.route,
-            }
-          : null;
-      })
-    ),
+    mentions: payloads
+      .filter(({ documentPath }) => readablePaths.has(documentPath))
+      .map(({ authorName, fileName, route }) => ({
+        authorName,
+        fileName,
+        route,
+      })),
   };
 }
 
@@ -163,28 +137,14 @@ export function buildDocumentCommentMentionCopy(
 export const documentCommentMentionWorkflow = workflow(
   DOCUMENT_COMMENT_MENTION_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
-    const mentionResult = await step.custom(
-      "get-mention-details",
-      async () => {
-        const { subscriberId } = subscriber;
-        const readable = subscriberId
-          ? await getReadableMentions(subscriberId, payload.workspaceId, [
-              payload,
-            ])
-          : null;
-        const mention = readable?.mentions[0];
-        return subscriberId && mention
-          ? {
-              success: true as const,
-              mention,
-              channels: await getConversationChannels(subscriberId),
-            }
-          : { success: false as const };
-      },
-      { outputSchema: MentionResultSchema }
+    const channels = await step.custom(
+      "get-channels",
+      async () =>
+        subscriber.subscriberId
+          ? getConversationChannels(subscriber.subscriberId)
+          : { inApp: false, chat: false, email: false },
+      { outputSchema: ChannelsSchema }
     );
-    const mention = mentionResult.success ? mentionResult.mention : null;
-    const channels = mentionResult.success ? mentionResult.channels : null;
 
     const getI18n = async () =>
       getNotificationI18n(
@@ -197,38 +157,36 @@ export const documentCommentMentionWorkflow = workflow(
     await step.inApp(
       "send-in-app",
       async () => {
-        const m = mention!;
         const { subject, content, actionLabel } =
-          buildDocumentCommentMentionCopy(await getI18n(), m);
+          buildDocumentCommentMentionCopy(await getI18n(), payload);
         return {
           subject,
           body: content,
           primaryAction: {
             label: actionLabel,
-            redirect: { url: m.route },
+            redirect: { url: payload.route },
           },
           data: { autoDelete: true },
         };
       },
-      { skip: async () => !channels?.inApp }
+      { skip: async () => !channels.inApp }
     );
 
     await step.chat(
       "slack-notification",
       async () => {
-        const m = mention!;
         const { content, actionLabel } = buildDocumentCommentMentionCopy(
           await getI18n(),
-          m
+          payload
         );
         return {
-          body: `${content}\n<${config.getAppUrl()}${m.route}|${actionLabel}>`,
+          body: `${content}\n<${config.getAppUrl()}${payload.route}|${actionLabel}>`,
         };
       },
       {
         skip: async () => {
           if (
-            !channels?.chat ||
+            !channels.chat ||
             (await shouldSkipConversationExternalNotification(
               payload.workspaceId
             ))
@@ -245,7 +203,7 @@ export const documentCommentMentionWorkflow = workflow(
     );
 
     const skipEmail = async () =>
-      !channels?.email ||
+      !channels.email ||
       shouldSkipConversationExternalNotification(payload.workspaceId);
 
     const userNotificationDelayStep = await step.custom(

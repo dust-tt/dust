@@ -59,7 +59,9 @@ describe("getReadableMentions", () => {
       workspaceId: workspace.sId,
       documentPath: podScopedPath(pod.sId, relPath),
       commentId: "c1",
-      authorId: author.sId,
+      authorName: author.fullName(),
+      fileName: relPath,
+      route: `/route/${relPath}`,
     }));
 
     const readable = await getReadableMentions(
@@ -69,11 +71,12 @@ describe("getReadableMentions", () => {
     );
     expect(readable?.workspaceName).toBe(workspace.name);
     expect(readable?.mentions).toEqual([
-      expect.objectContaining({
+      {
         authorName: author.fullName(),
         fileName: "plan.md",
-      }),
-      expect.objectContaining({ fileName: "brief.md" }),
+        route: "/route/plan.md",
+      },
+      expect.objectContaining({ fileName: "notes/brief.md" }),
     ]);
 
     expect(

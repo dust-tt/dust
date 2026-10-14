@@ -2,11 +2,12 @@ import type { NewCommentMessage } from "@app/lib/api/documents/comment_signature
 import { parseScopedPrefix } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
-import { filterParticipantsByNotifyCondition } from "@app/lib/notifications/triggers/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -18,7 +19,13 @@ import {
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
-import { DOCUMENT_COMMENT_MENTION_TRIGGER_ID } from "@app/types/notification_preferences";
+import type { NotificationCondition } from "@app/types/notification_preferences";
+import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  DEFAULT_NOTIFICATION_CONDITION,
+  DOCUMENT_COMMENT_MENTION_TRIGGER_ID,
+  isNotificationCondition,
+} from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -31,7 +38,9 @@ export const DocumentCommentMentionPayloadSchema = z.object({
   workspaceId: z.string(),
   documentPath: z.string(),
   commentId: z.string(),
-  authorId: z.string(),
+  authorName: z.string(),
+  fileName: z.string(),
+  route: z.string(),
 });
 
 export type DocumentCommentMentionPayloadType = z.infer<
@@ -78,11 +87,6 @@ export async function getReadableDocument(
       };
     }
     case "conversation": {
-      if (
-        (await ConversationResource.canAccess(auth, scope.id)) !== "allowed"
-      ) {
-        return null;
-      }
       const conversation = await ConversationResource.fetchById(auth, scope.id);
       if (!conversation) {
         return null;
@@ -104,11 +108,40 @@ export async function getReadableDocument(
   }
 }
 
+async function dropNeverNotified(
+  auth: Authenticator,
+  users: UserResource[],
+  spaceModelId: ModelId | null
+): Promise<UserResource[]> {
+  const userModelIds = users.map((user) => user.id);
+  const generalPreferences =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+      userModelIds
+    );
+  const projectPreferences = spaceModelId
+    ? await UserProjectPreferencesResource.fetchNotificationPreferenceMap(
+        auth,
+        { spaceModelId, userModelIds }
+      )
+    : new Map<ModelId, NotificationCondition>();
+  return users.filter((user) => {
+    const general = generalPreferences.get(user.id);
+    const notifyCondition =
+      projectPreferences.get(user.id) ??
+      (isNotificationCondition(general) ? general : undefined) ??
+      DEFAULT_NOTIFICATION_CONDITION;
+    return notifyCondition !== "never";
+  });
+}
+
 /**
  * @cc [owner:adrien,label:product;security] document-comment-mention-notification
  * Each user mentioned in a new comment message MUST be notified once, except its author, users
  * who are not active members of the workspace, users who cannot read the document, and users whose
- * notify condition for the document's space is `never`.
+ * notify condition for the document's space is `never`. The payload MUST carry the document's
+ * route and file name, and the author's name, so the immediate channels send without checking
+ * access again.
  */
 /**
  * @cc [owner:adrien,label:product;performance] document-comment-mention-idempotent
@@ -156,14 +189,11 @@ export async function triggerDocumentCommentMentionNotifications(
     return new Ok(undefined);
   }
 
-  // Every reader is mentioned, so only a `never` notify condition drops one.
-  const recipients = await filterParticipantsByNotifyCondition({
+  const recipients = await dropNeverNotified(
     auth,
-    participants: readers.map(({ user }) => user),
-    mentionedUserIds,
-    totalParticipantCount: readers.length,
-    spaceModelId: readers[0].document.spaceModelId,
-  });
+    readers.map(({ user }) => user),
+    readers[0].document.spaceModelId
+  );
   if (recipients.length === 0) {
     return new Ok(undefined);
   }
@@ -172,7 +202,9 @@ export async function triggerDocumentCommentMentionNotifications(
     workspaceId,
     documentPath,
     commentId: newMessage.commentId,
-    authorId: author.sId,
+    authorName: author.fullName(),
+    fileName: getFileNameFromScopedPath(documentPath),
+    route: readers[0].document.route,
   };
   const transactionIdPrefix = makeDocumentCommentMentionWorkflowId({
     workspaceId,

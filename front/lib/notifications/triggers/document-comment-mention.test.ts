@@ -113,7 +113,9 @@ describe("document comment mention notifications", () => {
       payload: {
         documentPath,
         commentId: "c1",
-        authorId: author.sId,
+        authorName: author.fullName(),
+        fileName: "plan.md",
+        route: expect.stringContaining(pod.sId),
       },
     });
   });
