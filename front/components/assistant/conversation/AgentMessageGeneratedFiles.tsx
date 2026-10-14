@@ -6,10 +6,10 @@ import {
 } from "@app/types/files";
 import {
   ActionFrame,
-  Citation,
-  CitationDescription,
+  Avatar,
+  Card,
+  ChevronRight,
   CitationGrid,
-  CitationTitle,
   cn,
   Icon,
 } from "@dust-tt/sparkle";
@@ -28,7 +28,7 @@ function getDescriptionForContentType(
   }
 
   if (isFrameContentType(file.contentType)) {
-    return msg`Frames`;
+    return msg`Frame`;
   }
 
   return null;
@@ -102,34 +102,50 @@ export function AgentMessageInteractiveContentGeneratedFiles({
           : null;
 
         return (
-          <Citation
+          <Card
             key={fileId}
-            //tooltip={file.title}
+            variant="secondary"
+            size="sm"
             onClick={disabled ? undefined : handleClick}
-            className={disabled ? "bg-background" : "bg-primary-50"}
             disabled={disabled}
+            className="flex-row items-center gap-3"
           >
-            <div className="flex flex-row items-center">
-              <CitationTitle className={disabled ? "text-primary-muted" : ""}>
-                {file.title}
-              </CitationTitle>
-            </div>
-            <CitationDescription>
-              <div className="flow-row flex items-center gap-2">
-                {description && (
-                  <p
-                    className={cn(
-                      "flex items-center gap-1 text-sm",
-                      disabled ? "text-primary-muted" : "text-muted-foreground"
-                    )}
-                  >
-                    <Icon visual={ActionFrame} size="xs" />
-                    {description}
-                  </p>
+            <Avatar
+              size="md"
+              icon={ActionFrame}
+              backgroundColor={
+                disabled ? "bg-muted-background" : "bg-highlight-50"
+              }
+              iconColor={disabled ? "text-primary-muted" : "text-highlight"}
+            />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span
+                className={cn(
+                  "heading-sm truncate",
+                  disabled && "text-primary-muted"
                 )}
-              </div>
-            </CitationDescription>
-          </Citation>
+              >
+                {file.title}
+              </span>
+              {description && (
+                <span
+                  className={cn(
+                    "truncate text-sm",
+                    disabled ? "text-primary-muted" : "text-muted-foreground"
+                  )}
+                >
+                  {description}
+                </span>
+              )}
+            </div>
+            {!disabled && (
+              <Icon
+                visual={ChevronRight}
+                size="sm"
+                className="mr-1 shrink-0 text-muted-foreground"
+              />
+            )}
+          </Card>
         );
       })}
     </CitationGrid>

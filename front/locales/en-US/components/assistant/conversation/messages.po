@@ -228,8 +228,8 @@ msgid "Presentation"
 msgstr "Presentation"
 
 #: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
-msgid "Frames"
-msgstr "Frames"
+msgid "Frame"
+msgstr "Frame"
 
 #: front/components/assistant/conversation/CompactionMessage.tsx
 msgid "Context compaction failed"
