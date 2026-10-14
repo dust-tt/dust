@@ -71,6 +71,8 @@ const TABLES: {
   parentColumn: string;
   repointView: boolean;
   skipConflicts: boolean;
+  // Columns that identify an equivalent link; a row is skipped when one already exists.
+  skipExistingOn?: string[];
 }[] = [
   {
     tableName: AgentMCPServerConfigurationModel.tableName,
@@ -101,11 +103,14 @@ const TABLES: {
     skipConflicts: false,
   },
   {
+    // Skills are edited in place and have no unique index on their links, so a tool re-added
+    // by hand since the deletion would otherwise be duplicated.
     tableName: SkillMCPServerConfigurationModel.tableName,
     parentTable: SkillConfigurationModel.tableName,
     parentColumn: "skillConfigurationId",
     repointView: true,
     skipConflicts: false,
+    skipExistingOn: ["skillConfigurationId", "mcpServerViewId"],
   },
   {
     // A conversation may already have the destination view added by hand since the deletion.
@@ -178,17 +183,24 @@ async function insertRows(
     parentTable,
     parentColumn,
     skipConflicts,
+    skipExistingOn,
   }: (typeof TABLES)[number],
   rows: Row[],
   transaction: Transaction
 ): Promise<ModelId[]> {
   const insertedIds: ModelId[] = [];
+  const skipExistingClause = skipExistingOn
+    ? `AND NOT EXISTS (SELECT 1 FROM "${tableName}" e WHERE ${skipExistingOn
+        .map((column) => `e."${column}" = r."${column}"`)
+        .join(" AND ")})`
+    : "";
   for (const batch of chunk(rows, INSERT_BATCH_SIZE)) {
     // oxlint-disable-next-line dust/noRawSql -- restores full rows by column name, including columns the models omit.
     const [inserted] = await frontSequelize.query(
       `INSERT INTO "${tableName}"
        SELECT r.* FROM json_populate_recordset(NULL::"${tableName}", :rows::json) r
        WHERE EXISTS (SELECT 1 FROM "${parentTable}" p WHERE p.id = r."${parentColumn}")
+       ${skipExistingClause}
        ${skipConflicts ? "ON CONFLICT DO NOTHING" : ""}
        RETURNING id`,
       { replacements: { rows: JSON.stringify(batch) }, transaction }
