@@ -149,6 +149,12 @@ The tenant key holder asserts the session's subjects, such as `u:<userSId>` and 
 Subjects are opaque, case-sensitive strings matched exactly; the server does not resolve group
 membership or infer additional subjects. Sessions contain subjects, not grants or permission masks.
 
+The subject `v:master` (`v` stands for virtual) is reserved:
+a session holding it has `rw` on every object of its tenant,
+and the server skips every grant check for it, as if each object granted `rw` to that session.
+`Attr.mode` reports `rw`, plus execute/traverse for directories. Its other subjects have no effect.
+It never crosses tenants: like any session, it only reaches objects of the tenant that created it.
+
 Object grants have two variants:
 
 ```text
@@ -199,8 +205,9 @@ matching sessions with `r`: the subtree can be read and traversed but not modifi
 read/traverse access there for that subject, with inheritance to its descendants. The inaccessible
 parent stays hidden; the reopened entry point can be discovered through `/shared`.
 
-The server enforces grant permissions on every call. Mount/client checks of the session's
-`Attr.mode` do not replace server authorization. Required grant permissions are:
+The server enforces grant permissions on every call, except for `v:master` sessions. Mount/client
+checks of the session's `Attr.mode` do not replace server authorization. Required grant permissions
+are:
 
 | Operation | Required effective permissions |
 | --- | --- |
