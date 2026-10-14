@@ -10,6 +10,7 @@ import type {
   ModelConfigurationType,
   WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
+import { GATEWAY_MODEL_IDS } from "@app/types/gateways/models";
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -92,6 +93,11 @@ function checkModelSpecificAccessRules(
  * `unavailableIfOneOf` conditions, whatever `availableIfOneOf`, `plan`, `region` or
  * `regionalModelsOnly` would otherwise grant.
  */
+/**
+ * @cc [owner:pmilliotte,label:product;security] gateway-plans-see-gateway-models-only
+ * On a plan with a `gateway`, a model MUST be reported unavailable unless it is listed in
+ * `GATEWAY_MODEL_IDS` for that gateway, routing streams (auto, auto_fast, auto_complex) included.
+ */
 // Returns true if the model is available to the workspace for build.
 export function isModelAvailable(
   m: ModelConfigurationType,
@@ -113,6 +119,10 @@ export function isModelAvailable(
   });
 
   if (!hasAccess) {
+    return false;
+  }
+
+  if (plan?.gateway && !GATEWAY_MODEL_IDS[plan.gateway].includes(m.modelId)) {
     return false;
   }
 

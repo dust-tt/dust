@@ -137,6 +137,18 @@ msgstr "The feedback has been marked as unseen."
 msgid "Failed to update the Dust MCP server settings"
 msgstr "Failed to update the Dust MCP server settings"
 
+#: front/hooks/useEdgeeConnection.ts
+msgid "Failed to save the Edgee connection"
+msgstr "Failed to save the Edgee connection"
+
+#: front/hooks/useEdgeeConnection.ts
+msgid "Edgee connection saved"
+msgstr "Edgee connection saved"
+
+#: front/hooks/useEdgeeConnection.ts
+msgid "Model calls now go through your Edgee organization."
+msgstr "Model calls now go through your Edgee organization."
+
 #: front/hooks/useEditAndValidateAction.ts
 msgid "Failed to edit and approve action"
 msgstr "Failed to edit and approve action"

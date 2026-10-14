@@ -15,6 +15,7 @@ import {
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -86,13 +87,15 @@ function SidekickContent({
       resetConversation,
       actionsToShow: [
         "attachment",
-        ...(subscription.plan.isByok ? [] : ["voice" as const]),
+        ...(usesCustomerCredentials(subscription.plan)
+          ? []
+          : ["voice" as const]),
       ] satisfies InputBarAction[],
       disableAgentMentions: true,
       clientSideMCPServerIds,
       skipToolsValidation: true,
     }),
-    [resetConversation, clientSideMCPServerIds, subscription.plan.isByok]
+    [resetConversation, clientSideMCPServerIds, subscription.plan]
   );
 
   const additionalMarkdownComponents: Components = useMemo(

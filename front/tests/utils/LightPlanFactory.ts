@@ -41,6 +41,7 @@ export class LightPlanFactory {
         canUseProduct: true,
       },
       isByok: false,
+      gateway: null,
       isAuditLogsAllowed: true,
       hasAdvancedModelAccess: true,
       ...overrides,

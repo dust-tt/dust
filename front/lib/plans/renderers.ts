@@ -56,6 +56,7 @@ export function renderPlanFromModel({
       canUseProduct: plan.canUseProduct,
     },
     isByok: plan.isByok,
+    gateway: plan.gateway,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
     hasAdvancedModelAccess: plan.hasAdvancedModelAccess,
   };
