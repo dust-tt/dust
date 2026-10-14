@@ -7,6 +7,7 @@ import type {
 import { useCollabAgentActivity } from "@app/components/editor/document/useCollabAgentActivity";
 import { useCollabParticipants } from "@app/components/editor/document/useCollabParticipants";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
+import { useShowSaving } from "@app/components/editor/document/useShowSaving";
 import { useCollabConnection } from "@app/hooks/useCollabConnection";
 import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
@@ -18,7 +19,11 @@ interface CollabEditorProps extends DocumentProps {
 /** A Document in a live session: the file read-only until the shared document has synced. */
 export default function CollabEditor(props: CollabEditorProps) {
   const { t } = useLingui();
-  const { connection, status, syncing } = useCollabConnection(props.live);
+  const { connection, status, syncingSinceMs } = useCollabConnection(
+    props.live
+  );
+  // Here rather than in the icon, which mounts again with each connection.
+  const showSaving = useShowSaving(syncingSinceMs);
   const agent = useCollabAgentActivity(connection?.provider ?? null);
   const { id, name, color } = props.live.user;
   const participants = useCollabParticipants(
@@ -48,7 +53,7 @@ export default function CollabEditor(props: CollabEditorProps) {
       {...props}
       collabView={{
         status,
-        syncing,
+        showSaving,
         agent,
         participants,
         binding: {

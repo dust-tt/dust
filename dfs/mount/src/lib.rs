@@ -8,6 +8,7 @@
 
 mod errno;
 mod fs;
+mod inodes;
 mod remote;
 
 pub use errno::Errno;

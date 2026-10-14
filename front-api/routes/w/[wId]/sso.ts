@@ -126,6 +126,14 @@ app.get("/", async (ctx): HandlerResult<WorkOSConnectionSyncStatus> => {
   });
 });
 
+/**
+ * @cc [owner:fabiencelier,label:security;product] delete-connection-disables-enforcement
+ * Once the SSO connection is deleted, the workspace's `ssoEnforced` flag MUST be set to `false`
+ * (with a `workspace.sso_enforcement_updated` audit event when it was `true`). Enforcing SSO
+ * without a connection locks every member out, admins included, since the enforcement toggle is
+ * only shown while a connection is configured. If the WorkOS deletion fails, `ssoEnforced` MUST
+ * be left unchanged.
+ */
 app.delete("/", async (ctx) => {
   const result = await checkAccess(ctx);
   if (result instanceof Response) {
@@ -154,6 +162,23 @@ app.delete("/", async (ctx) => {
       connection_type: activeConnection.type,
     },
   });
+
+  const workspaceResource = await WorkspaceResource.fetchByModelId(
+    workspace.id
+  );
+  if (workspaceResource?.ssoEnforced) {
+    await workspaceResource.updateWorkspaceSettings({ ssoEnforced: false });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "workspace.sso_enforcement_updated",
+      targets: [buildAuditLogTarget("workspace", workspace)],
+      context: getAuditLogContext(auth),
+      metadata: {
+        enabled: "false",
+      },
+    });
+  }
 
   return ctx.body(null, 204);
 });

@@ -135,10 +135,10 @@ const STATUS_ICONS: Record<
 /** The icon state and its label, from where the live session stands. */
 const statusIcon = ({
   status,
-  syncing,
+  showSaving,
 }: {
   status: CollabStatus;
-  syncing: boolean;
+  showSaving: boolean;
 }): { state: StatusIconState; label: MessageDescriptor } => {
   switch (status) {
     case "connecting":
@@ -148,7 +148,7 @@ const statusIcon = ({
     case "refused":
       return { state: "disconnected", label: msg`Live editing unavailable` };
     case "live":
-      return syncing
+      return showSaving
         ? { state: "saving", label: msg`Saving…` }
         : { state: "saved", label: msg`Saved` };
     default:
@@ -157,16 +157,16 @@ const statusIcon = ({
 };
 
 interface DocumentStatusIconProps {
-  live?: { status: CollabStatus; syncing: boolean };
+  live?: { status: CollabStatus; showSaving: boolean };
 }
 
 /**
  * @cc [owner:tdraier,label:product] document-status-icon
  * Shown next to the host's file name instead of the status badge, a live document's status MUST
- * be one icon with its state as label and tooltip: a green check once live with every change
- * synced; an orange spinning arrow circle while changes wait to sync, or while connecting; a red
- * disconnected icon when the live session is lost or refused. A document without a live session
- * MUST show no icon.
+ * be one icon with its state as label and tooltip: a green check once live, unless changes show
+ * as saving (`document-saving-delay`); an orange spinning arrow circle while they do, or while
+ * connecting; a red disconnected icon when the live session is lost or refused. A document without
+ * a live session MUST show no icon.
  */
 export const DocumentStatusIcon = ({ live }: DocumentStatusIconProps) => {
   const { t } = useLingui();

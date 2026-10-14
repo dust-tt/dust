@@ -354,6 +354,52 @@ Quote text
       expect(container).toBeInTheDocument();
     });
 
+    it("renders a document comment's passage as a quote above the comment", () => {
+      const message = {
+        ...mockMessage,
+        context: { ...mockMessage.context, origin: "document_comment" },
+        content:
+          ':document_comment[the \\[draft\\] plan]{id="c1" path="pod-abc/plan.md"}\n\nThoughts?',
+      };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(container.querySelector("blockquote")?.textContent?.trim()).toBe(
+        "the [draft] plan"
+      );
+      const text = container.textContent ?? "";
+      expect(text.indexOf("the [draft] plan")).toBeGreaterThanOrEqual(0);
+      expect(text.indexOf("Thoughts?")).toBeGreaterThan(
+        text.indexOf("the [draft] plan")
+      );
+      expect(text).not.toContain("document_comment");
+    });
+
+    it.each(["# Plan", "- step one", "1. step one"])(
+      "keeps a document comment's passage %j as quoted text",
+      (quote) => {
+        const message = {
+          ...mockMessage,
+          context: { ...mockMessage.context, origin: "document_comment" },
+          content: `:document_comment[${quote}]{id="c1" path="pod-abc/plan.md"}\n\nThoughts?`,
+        };
+        const { container } = render(
+          <UserMessageMarkdown
+            owner={mockOwner}
+            message={message}
+            isLastMessage={false}
+          />
+        );
+        const blockquote = container.querySelector("blockquote");
+        expect(blockquote?.textContent?.trim()).toBe(quote);
+        expect(blockquote?.querySelector("h1, ul, ol")).toBeNull();
+      }
+    );
+
     it("renders scoped file preview directives as previewable files", () => {
       const directive = getFilePreviewMarkdownDirective({
         contentType: "application/pdf",

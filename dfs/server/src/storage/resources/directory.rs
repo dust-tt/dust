@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use dfs_protocol::{ObjectId, rpc::ObjectKind};
+use dfs_protocol::{NAME_MAX_BYTES, ObjectId, is_valid_name, rpc::ObjectKind};
 use foundationdb::{
     FdbBindingError, Transaction,
     tuple::{Subspace, pack, unpack},
@@ -19,7 +19,6 @@ use crate::{
 };
 
 const FAMILY: &str = "child";
-const NAME_MAX_BYTES: usize = 255;
 const PAGE_MAX_ENTRIES: usize = 4_096;
 
 #[derive(Debug)]
@@ -225,8 +224,7 @@ impl DirectoryResource {
         if name.len() > NAME_MAX_BYTES {
             return Err(Error::NameTooLong);
         }
-        let invalid = name.is_empty() || name == "." || name == ".." || name.contains(['/', '\0']);
-        if invalid {
+        if !is_valid_name(name) {
             return Err(Error::InvalidName);
         }
         Ok(())

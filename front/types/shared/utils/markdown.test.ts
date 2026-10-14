@@ -81,6 +81,17 @@ describe("stripMarkdown", () => {
     expect(stripMarkdown(input)).toBe("📎 Notes");
   });
 
+  it("replaces document comments with their passage, or their file without one", () => {
+    expect(
+      stripMarkdown(
+        ':document_comment[the \\[draft\\] plan]{id="c1" path="pod-abc/plan.md"}\n\nThoughts?'
+      )
+    ).toBe("💬 the [draft] plan\n\nThoughts?");
+    expect(
+      stripMarkdown(':document_comment[]{id="c1" path="pod-abc/plan.md"}')
+    ).toBe("💬 plan.md");
+  });
+
   it("returns plain text unchanged", () => {
     expect(stripMarkdown("just plain text")).toBe("just plain text");
   });
