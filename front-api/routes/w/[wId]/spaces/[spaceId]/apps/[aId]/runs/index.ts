@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { parseIntParam } from "@app/lib/api/pagination";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -18,10 +19,23 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
+import { z } from "zod";
 
 import runId from "./[runId]";
+
+const GetRunsQuerySchema = z.object({
+  limit: z.preprocess(
+    parseIntParam,
+    z.number().int().nonnegative().default(10)
+  ),
+  offset: z.preprocess(
+    parseIntParam,
+    z.number().int().nonnegative().default(0)
+  ),
+});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs.
 const app = workspaceApp();
@@ -73,6 +87,7 @@ app.get(
   "/",
   sessionAuth,
   withSpace({ requireCanWrite: true }),
+  validate("query", GetRunsQuerySchema),
   async (ctx): HandlerResult<GetRunsResponseBody> => {
     const loaded = await loadApp(ctx);
     if (loaded instanceof Response) {
@@ -126,10 +141,7 @@ app.get(
       owner = targetOwner;
     }
 
-    const limitStr = ctx.req.query("limit");
-    const limit = limitStr ? parseInt(limitStr) : 10;
-    const offsetStr = ctx.req.query("offset");
-    const offset = offsetStr ? parseInt(offsetStr) : 0;
+    const { limit, offset } = ctx.req.valid("query");
     const runType = ctx.req.query("runType") ?? "local";
 
     const userRuns = await RunResource.listByAppAndRunType(
