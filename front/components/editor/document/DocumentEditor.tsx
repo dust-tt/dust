@@ -54,7 +54,7 @@ const CollabEditor = lazy(
  * className MUST apply only to the outer container.
  */
 /**
- * @cc [owner:tdraier,label:product] document-conflict-copy-note
+ * @cc [owner:PopDaph,label:product] document-conflict-copy-note
  * While a live document's save state has a conflict copy, a note above its content MUST say the
  * file was changed elsewhere and name the copy by its file name, until the session ends.
  */
