@@ -545,9 +545,13 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     triggeringUserMessageOrigin,
   } = creditContext;
 
-  // Attribution only explains what was billed, so it mirrors the billing status gate: an untracked
-  // status has no charge to compose.
-  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
+  // Attribution only explains what was billed. Billing skips an untracked status (`failed`), but
+  // the message keeps the bill of the executions finalized before it failed, which still has to be
+  // composed.
+  if (
+    !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status) &&
+    billedCredits === null
+  ) {
     return new Ok({});
   }
 
@@ -741,10 +745,16 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
 
 /**
  * @cc [owner:sfriquet,label:product;backend] reconcile-current-version-or-fail
- * For a message with a tracked status and runs, other than one skipped by
- * `unbilled-unavailable-calls-skipped`, the items of `AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION`
- * MUST reconcile against the message's bill, otherwise the result MUST be an `Err` carrying the
+ * For a message with runs, other than one skipped by `unbilled-unavailable-calls-skipped` or
+ * `failed-message-attributed-when-billed`, the items of
+ * `AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION` MUST reconcile against the message's bill, otherwise the result MUST be an `Err` carrying the
  * allocation skip reason. An older attribution version MUST NOT be reconciled in their place.
+ */
+/**
+ * @cc [owner:sfriquet,label:product;backend] failed-message-attributed-when-billed
+ * A message whose status is not tracked for billing (`failed`) MUST be attributed over all its runs
+ * when its `costCredits` is not null, like a message with a tracked status. When its `costCredits`
+ * is null, the result MUST be `Ok` with no consumption update, and no item MUST be written.
  */
 /**
  * @cc [owner:sfriquet,label:product;backend] unbilled-unavailable-calls-skipped
