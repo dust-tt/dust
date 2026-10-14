@@ -13,6 +13,7 @@ import {
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { FILE_PREVIEW_NODE_TYPE } from "@app/lib/markdown/file_preview";
 import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
@@ -572,6 +573,22 @@ describe("saveDfm", () => {
     }
   });
 
+  it("round-trips file previews with their attributes", () => {
+    for (const source of [
+      ':preview_file{path="pod-abc/report.pdf"}\n',
+      'See :preview_file{path="pod-abc/report.pdf" title="Q3 report" contentType="application/pdf"} for details.\n',
+      '- :preview_file{path="conversation-c1/a &amp; b.md" title="&quot;A&quot; &amp; B"}\n',
+      ':comment-start{id=c1}Read :preview_file{path="pod-abc/x.pdf"} first.:comment-end{id=c1}\n\n' +
+        OPEN_THREAD,
+      ':preview_file{path="pod-abc/x.pdf" title="" contentType=""}\n',
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+      expect(() =>
+        documentSchema.nodeFromJSON(load(source).content).check()
+      ).not.toThrow();
+    }
+  });
+
   it("reads a Frame embed only from a line holding the directive alone", () => {
     for (const source of [
       'See ::embed_frame{path="pod-abc/x.tsx"} here.\n',
@@ -674,6 +691,16 @@ describe("saveDfm", () => {
     expect(save({ alt: "C:\\", width: 400 })).toEqual(
       new Ok("![C:\\\\|400](pod-abc/chart.png)\n")
     );
+  });
+
+  it("keeps a file preview with another attribute as text", () => {
+    const source =
+      ':preview_file{path="pod-abc/x.pdf" mimeType="application/pdf"}\n';
+
+    const reopened = load(roundTrip(source)).content;
+
+    expect(JSON.stringify(reopened)).not.toContain(FILE_PREVIEW_NODE_TYPE);
+    expect(reopened.content?.[0]?.content?.[0]?.text).toBe(source.trimEnd());
   });
 
   it("refuses content the editor cannot write as Markdown", () => {

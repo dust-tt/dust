@@ -4,6 +4,7 @@ import {
   DocumentCommentMark,
   DocumentComments,
 } from "@app/components/editor/document/DocumentComments";
+import { DocumentFilePreview } from "@app/components/editor/document/DocumentFilePreview";
 import { DocumentFrame } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
@@ -109,6 +110,7 @@ const buildSchemaExtensions = ({
     ? DocumentImage.configure({ resolveSource: resolveImageSource })
     : DocumentImage,
   DocumentFrame,
+  DocumentFilePreview,
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),

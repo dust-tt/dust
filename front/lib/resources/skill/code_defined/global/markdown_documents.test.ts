@@ -70,6 +70,9 @@ describe("markdownDocumentsSkill", () => {
         '::embed_frame{path="pod-<id>/dashboards/revenue.tsx"}'
       );
       expect(instructions).toContain(
+        ':preview_file{path="pod-<id>/reports/q3.pdf" title="Q3 report"}'
+      );
+      expect(instructions).toContain(
         getPrefixedToolName(FILES_SERVER_NAME, FILES_RESOLVE_ACTION_NAME)
       );
       expect(instructions).toContain(

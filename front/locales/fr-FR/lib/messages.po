@@ -1712,8 +1712,8 @@ msgid "Keep a Pod's job moving with the next evidence-backed action"
 msgstr "Faites avancer la mission d’un Pod avec la prochaine action étayée par des faits"
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Write and edit Markdown documents that open in the editor, with images and Frames from the conversation or pod, and answer their comments."
-msgstr "Rédiger et modifier des documents Markdown qui s’ouvrent dans l’éditeur, avec des images et des Frames de la conversation ou du Pod, et répondre à leurs commentaires."
+msgid "Write and edit Markdown documents that open in the editor, with images, Frames and files from the conversation or pod, and answer their comments."
+msgstr "Rédiger et modifier des documents Markdown qui s’ouvrent dans l’éditeur, avec des images, des Frames et des fichiers de la conversation ou du Pod, et répondre à leurs commentaires."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Allow agents to mention and notify workspace users in conversations."

@@ -1,14 +1,17 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
+import { DocumentFilePreviewDisplay } from "@app/components/editor/document/DocumentFilePreview";
 import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
 import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentProps } from "@app/components/editor/document/types";
+import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
   checkInputBounds,
   extractAnchors,
   parseDfm,
 } from "@app/lib/markdown/dfm";
+import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
 import {
   FRAME_EMBED_COMPONENT_NAME,
   FRAME_EMBED_DIRECTIVE_NAME,
@@ -94,12 +97,28 @@ function frameEmbedDirective() {
     withFrameEmbeds(tree, String(file.value), false, false);
 }
 
-const MARKDOWN_PLUGINS = [frameEmbedDirective];
+const MARKDOWN_PLUGINS = [frameEmbedDirective, filePreviewDirective];
 
 const FrameEmbed = ({ path }: DocumentFramePathProps) => (
   <div className="my-6">
     <DocumentFrameDisplay path={path} />
   </div>
+);
+
+interface FilePreviewDirectiveProps {
+  path: string;
+  title?: string;
+  contentType?: string;
+}
+
+const FilePreviewEmbed = ({
+  path,
+  title,
+  contentType,
+}: FilePreviewDirectiveProps) => (
+  <DocumentFilePreviewDisplay
+    preview={{ path, title: title ?? null, contentType: contentType ?? null }}
+  />
 );
 
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
@@ -155,6 +174,7 @@ export const DocumentMarkdownPreview = ({
     () => ({
       img: getMarkdownImagePlugin(resolveImageSource),
       [FRAME_EMBED_COMPONENT_NAME]: FrameEmbed,
+      [FILE_PREVIEW_COMPONENT_NAME]: FilePreviewEmbed,
     }),
     [resolveImageSource]
   );

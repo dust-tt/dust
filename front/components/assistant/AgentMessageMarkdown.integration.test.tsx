@@ -179,11 +179,14 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       fireEvent.click(fileLink);
 
       await waitFor(() => {
-        expect(openPanel).toHaveBeenCalledWith({
-          type: "file_preview",
-          kind: "path",
-          filePath: "conversation-c1/booklet.pdf",
-        });
+        expect(openPanel).toHaveBeenCalledWith(
+          {
+            type: "file_preview",
+            kind: "path",
+            filePath: "conversation-c1/booklet.pdf",
+          },
+          { keepCurrent: false }
+        );
       });
     });
 

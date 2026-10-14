@@ -14,6 +14,7 @@ export const FILE_PREVIEW_DIRECTIVE_EXAMPLE =
   ':preview_file{path="conversation-<id>/report.pdf" title="report.pdf" contentType="application/pdf"}';
 
 type ParsedFilePreviewDirective = {
+  attributeNames: string[];
   contentType?: string;
   path: string;
   raw: string;
@@ -85,7 +86,7 @@ export function parseFilePreviewMarkdownDirective(
   }
 
   let index = prefix.length;
-  const attributes: Record<string, string> = {};
+  const attributes = new Map<string, string>();
 
   while (index < src.length && src[index] !== "}") {
     while (index < src.length && src[index] === " ") {
@@ -106,7 +107,7 @@ export function parseFilePreviewMarkdownDirective(
       return null;
     }
 
-    attributes[key] = parsedValue.value;
+    attributes.set(key, parsedValue.value);
     index = parsedValue.endIndex;
   }
 
@@ -114,16 +115,17 @@ export function parseFilePreviewMarkdownDirective(
     return null;
   }
 
-  const path = attributes.path;
+  const path = attributes.get("path");
   if (!path) {
     return null;
   }
 
   return {
-    contentType: attributes.contentType,
+    attributeNames: [...attributes.keys()],
+    contentType: attributes.get("contentType"),
     path,
     raw: src.slice(0, index + 1),
-    title: attributes.title,
+    title: attributes.get("title"),
   };
 }
 
@@ -182,12 +184,28 @@ export function getFilePreviewMarkdownDirective({
   path: string;
   title?: string;
 }): string {
-  const fileName = title || getFileNameFromScopedPath(path);
-  const attributes = [
-    `path=${quoteDirectiveAttribute(path)}`,
-    `title=${quoteDirectiveAttribute(fileName)}`,
-  ];
-  if (contentType) {
+  return serializeFilePreviewMarkdownDirective({
+    contentType: contentType || undefined,
+    path,
+    title: title || getFileNameFromScopedPath(path),
+  });
+}
+
+/** The directive with exactly the attributes given, empty ones included, in the order the parser documents them. */
+export function serializeFilePreviewMarkdownDirective({
+  contentType,
+  path,
+  title,
+}: {
+  contentType?: string;
+  path: string;
+  title?: string;
+}): string {
+  const attributes = [`path=${quoteDirectiveAttribute(path)}`];
+  if (title !== undefined) {
+    attributes.push(`title=${quoteDirectiveAttribute(title)}`);
+  }
+  if (contentType !== undefined) {
     attributes.push(`contentType=${quoteDirectiveAttribute(contentType)}`);
   }
 

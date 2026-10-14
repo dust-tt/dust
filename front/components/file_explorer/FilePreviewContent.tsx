@@ -1,3 +1,5 @@
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
+import type { DocumentFilePreview } from "@app/components/editor/document";
 import { DocumentEditor } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -12,6 +14,7 @@ import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
 import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
 import { useCollabTicket } from "@app/hooks/useCollabTicket";
 import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
@@ -372,6 +375,20 @@ interface RichMarkdownDocumentProps {
   statusContainer?: HTMLElement | null;
 }
 
+const renderFilePreview = (preview: DocumentFilePreview) => (
+  <FilePreviewBlock
+    path={preview.path}
+    title={preview.title ?? undefined}
+    contentType={preview.contentType ?? undefined}
+  />
+);
+
+/**
+ * @cc [owner:tdraier,label:product;react] rich-document-in-file-preview-provider
+ * The document MUST render inside its own `FilePreviewProvider` with `keepCurrentPanel`: its file
+ * references render as `FilePreviewBlock`, which requires one, and a file opened from them MUST
+ * keep the document in the side panel's history, so closing the file returns to it.
+ */
 function RichMarkdownDocument({
   editor,
   owner,
@@ -424,30 +441,36 @@ function RichMarkdownDocument({
     : undefined;
 
   return (
-    <DocumentEditor
-      initialContent={editor.initialContent}
-      headerControlsContainer={headerControlsContainer}
-      statusContainer={statusContainer}
-      live={live}
-      commentAuthor={
-        user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
-      }
-      verifyCommentMessage={verifyCommentMessage ?? undefined}
-      renderCommentBody={(body) => (
-        <CommentBodyMarkdown owner={owner} body={body} />
-      )}
-      commentInputExtensions={commentInputExtensions}
-      resolveImageSource={resolveImageSource}
-      embeddableFiles={embeddableFiles}
-      renderFrame={renderFrame}
-      renderCommentAuthorAvatar={(author, size) => (
-        <CommentAuthorAvatar owner={owner} author={author} size={size} />
-      )}
-      badge={<CoEditionBadge />}
-      renderCollabParticipants={(participants) => (
-        <CollabParticipantsAvatars owner={owner} participants={participants} />
-      )}
-    />
+    <FilePreviewProvider owner={owner} keepCurrentPanel>
+      <DocumentEditor
+        initialContent={editor.initialContent}
+        headerControlsContainer={headerControlsContainer}
+        statusContainer={statusContainer}
+        live={live}
+        commentAuthor={
+          user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
+        }
+        verifyCommentMessage={verifyCommentMessage ?? undefined}
+        renderCommentBody={(body) => (
+          <CommentBodyMarkdown owner={owner} body={body} />
+        )}
+        commentInputExtensions={commentInputExtensions}
+        resolveImageSource={resolveImageSource}
+        embeddableFiles={embeddableFiles}
+        renderFrame={renderFrame}
+        renderFilePreview={renderFilePreview}
+        renderCommentAuthorAvatar={(author, size) => (
+          <CommentAuthorAvatar owner={owner} author={author} size={size} />
+        )}
+        badge={<CoEditionBadge />}
+        renderCollabParticipants={(participants) => (
+          <CollabParticipantsAvatars
+            owner={owner}
+            participants={participants}
+          />
+        )}
+      />
+    </FilePreviewProvider>
   );
 }
 
