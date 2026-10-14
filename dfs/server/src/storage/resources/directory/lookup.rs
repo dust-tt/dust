@@ -9,12 +9,11 @@ use super::{DirectoryResource, Error, VIRTUAL_SHARED_NAME};
 use crate::storage::{
     self,
     resources::{
+        CONCURRENT_READS,
         object::{self, Mode, ObjectResource},
         session::SessionResource,
     },
 };
-
-const CONCURRENT_LOOKUPS: usize = 32;
 
 impl DirectoryResource {
     /**
@@ -67,7 +66,7 @@ impl DirectoryResource {
             })
             .collect();
         let children: Vec<_> = stream::iter(resolutions)
-            .buffered(CONCURRENT_LOOKUPS)
+            .buffered(CONCURRENT_READS)
             .try_collect()
             .await?;
 

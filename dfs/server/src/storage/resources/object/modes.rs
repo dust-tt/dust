@@ -11,9 +11,10 @@ use foundationdb::{FdbBindingError, RangeOption, Transaction};
 use futures::{StreamExt, TryStreamExt, stream};
 
 use super::{Error, GRANT_READ_MODE, GRANT_WRITE_MODE, ObjectResource, hints::Hint};
-use crate::storage::{self, resources::session::SessionResource};
-
-const CONCURRENT_READS: usize = 32;
+use crate::storage::{
+    self,
+    resources::{CONCURRENT_READS, session::SessionResource},
+};
 
 /// Effective read/write grant bits, before conversion to POSIX owner permissions.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
