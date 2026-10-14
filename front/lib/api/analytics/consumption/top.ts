@@ -2,6 +2,7 @@ import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/con
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { buildPodSpaceFilter } from "@app/lib/api/analytics/consumption/pods";
 import type {
   ConsumptionScopeFilter,
   ConsumptionTopDimension,
@@ -390,6 +391,12 @@ export async function fetchConsumptionTopGroups(
     dimension,
     search,
   });
+  const podFilter =
+    dimension === "pod" ? await buildPodSpaceFilter(auth) : null;
+  const rankingFilter =
+    podFilter && searchFilter
+      ? { bool: { filter: [podFilter, searchFilter] } }
+      : (podFilter ?? searchFilter);
 
   const query = buildConsumptionScopeQuery({
     auth,
@@ -418,7 +425,7 @@ export async function fetchConsumptionTopGroups(
       dimension,
       bucketCount: batchSize,
       excludedKeys: rankedGroups.map((group) => group.key),
-      searchFilter,
+      searchFilter: rankingFilter,
       sortOrder,
       rankBy,
       includeTotalCount,
@@ -432,7 +439,7 @@ export async function fetchConsumptionTopGroups(
       return result;
     }
 
-    const ranking = searchFilter
+    const ranking = rankingFilter
       ? result.value.aggregations?.ranking
       : result.value.aggregations;
     buckets = bucketsToArray<GroupBucket>(ranking?.by_group?.buckets);

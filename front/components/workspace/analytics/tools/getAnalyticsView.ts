@@ -35,6 +35,7 @@ export function analyticsViewToolPayload(view: AnalyticsViewInput) {
       agentIds: ids.agent,
       userIds: ids.user,
       groupIds: ids.group,
+      podIds: ids.pod,
       modelIds: ids.model,
       toolNames: ids.tool,
       skillIds: ids.skill,

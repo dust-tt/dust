@@ -13,6 +13,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -47,7 +48,8 @@ type ConsumptionFacetCatalogSource =
   | "models"
   | "mcp_servers"
   | "skills"
-  | "triggers";
+  | "triggers"
+  | "pods";
 
 function traceFacetCatalogLoad<T>(
   source: ConsumptionFacetCatalogSource,
@@ -122,6 +124,12 @@ function toolFacetCatalogEntries(
 }
 
 /** Lists current workspace entities that can be selected as consumption filters. */
+/**
+ * @cc [owner:rfrenoy,label:security] pod-catalog-all-groups-analytics-only
+ * The pod catalog lists every pod of the workspace, including restricted ones, regardless of the
+ * caller's membership. The pod dimension MUST only be requested for callers who can read every
+ * group's analytics, so personal and agent analytics MUST NOT request it.
+ */
 async function listConsumptionFacetCatalogWithoutTracing(
   auth: Authenticator,
   requestedDimensions: ConsumptionScopeDimension[] | null = null
@@ -196,6 +204,13 @@ async function listConsumptionFacetCatalogWithoutTracing(
     () => TriggerResource.listByWorkspace(auth)
   );
 
+  const pods = await traceFacetCatalogLoad(
+    "pods",
+    "pod",
+    requestedDimensions,
+    () => SpaceResource.listProjectSpaces(auth)
+  );
+
   return {
     agent: agents
       .filter((agent) => !isHiddenHelperSubAgentId(agent.sId))
@@ -248,6 +263,11 @@ async function listConsumptionFacetCatalogWithoutTracing(
     trigger: triggers.map((trigger) => ({
       value: trigger.sId,
       label: trigger.name,
+      pictureUrl: null,
+    })),
+    pod: pods.map((pod) => ({
+      value: pod.sId,
+      label: pod.name,
       pictureUrl: null,
     })),
   };

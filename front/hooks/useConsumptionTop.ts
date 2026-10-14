@@ -14,6 +14,7 @@ import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
+import type { GetConsumptionTopPodsResponse } from "@app/lib/api/analytics/consumption/top_pods";
 import type { GetConsumptionTopReasoningEffortsResponse } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
@@ -40,6 +41,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   skill: "top-skills",
   source: "top-sources",
   trigger: "top-triggers",
+  pod: "top-pods",
   api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionTopDimension, string>;
 
@@ -71,6 +73,7 @@ export type ConsumptionTopResponse =
   | GetConsumptionTopSkillsResponse
   | GetConsumptionTopSourcesResponse
   | GetConsumptionTopTriggersResponse
+  | GetConsumptionTopPodsResponse
   | GetConsumptionTopApiKeysResponse;
 
 export interface UseConsumptionTopParams {
@@ -217,6 +220,21 @@ export function toConsumptionTopRows(
   if ("triggers" in data) {
     return data.triggers.map((row) => ({
       id: row.triggerId,
+      name: row.name,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      count: row.messageCount,
+      avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
+    }));
+  }
+  if ("pods" in data) {
+    return data.pods.map((row) => ({
+      id: row.podId,
       name: row.name,
       pictureUrl: null,
       description: null,

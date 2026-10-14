@@ -8,6 +8,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -36,6 +37,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
  * - "skill": skill sIds
  * - "source": origin slugs
  * - "trigger": trigger sIds
+ * - "pod": space sIds
  * - "conversation": conversation sIds
  * - "tag": agent tag sIds
  */
@@ -223,6 +225,14 @@ export async function resolveDimensionLabels(
       const namesById = new Map(
         triggers.map((trigger) => [trigger.sId, trigger.name])
       );
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      );
+    }
+
+    case "pod": {
+      const pods = await SpaceResource.fetchByIds(auth, keys);
+      const namesById = new Map(pods.map((pod) => [pod.sId, pod.name]));
       return labelsFromNames(
         new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
       );

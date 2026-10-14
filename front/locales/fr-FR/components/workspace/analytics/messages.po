@@ -98,6 +98,10 @@ msgid "Groups"
 msgstr "Groupes"
 
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Models"
 msgstr "Modèles"
 
@@ -128,6 +132,10 @@ msgstr "Rechercher des membres"
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search groups"
 msgstr "Rechercher des groupes"
+
+#: front/components/workspace/analytics/UsageFilterPanel.tsx
+msgid "Search pods"
+msgstr "Rechercher des pods"
 
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search models"
@@ -182,6 +190,10 @@ msgstr "Membre"
 #: front/components/workspace/analytics/UsageFilterSummary.tsx
 msgid "Group"
 msgstr "Groupe"
+
+#: front/components/workspace/analytics/UsageFilterSummary.tsx
+msgid "Pod"
+msgstr "Pod"
 
 #: front/components/workspace/analytics/UsageFilterSummary.tsx
 msgid "Model"

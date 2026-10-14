@@ -549,10 +549,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listProjectSpaces(
-    auth: Authenticator
+    auth: Authenticator,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource[]> {
     return this.baseFetch(auth, {
       where: { kind: "project" },
+      includeDeleted,
     });
   }
 

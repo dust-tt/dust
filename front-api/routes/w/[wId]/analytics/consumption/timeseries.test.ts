@@ -107,7 +107,7 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
     );
   });
 
-  it.each(["user", "group"] as const)(
+  it.each(["user", "group", "pod"] as const)(
     "rejects the %s breakdown in personal analytics",
     async (breakdownBy) => {
       vi.mocked(fetchConsumptionTimeseries).mockClear();
@@ -148,21 +148,24 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
     );
   });
 
-  it("rejects the agent breakdown when the route already fixes the agent", async () => {
-    vi.mocked(fetchConsumptionTimeseries).mockClear();
-    const { auth, workspace } = await createPrivateApiMockRequest({
-      role: "user",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  it.each(["agent", "pod"] as const)(
+    "rejects the %s breakdown in agent analytics",
+    async (breakdownBy) => {
+      vi.mocked(fetchConsumptionTimeseries).mockClear();
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        role: "user",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const response = await postAgentTimeseriesRequest(
-      workspace.sId,
-      agent.sId,
-      { breakdownBy: "agent" }
-    );
+      const response = await postAgentTimeseriesRequest(
+        workspace.sId,
+        agent.sId,
+        { breakdownBy }
+      );
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
-    expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
+    }
+  );
 });

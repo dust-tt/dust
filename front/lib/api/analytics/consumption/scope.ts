@@ -33,6 +33,8 @@ export const CONVERSATION_ID_FIELD = "conversation_id";
 
 export const TRIGGER_ID_FIELD = "trigger_id";
 
+export const SPACE_ID_FIELD = "space_id";
+
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 
 // Upper bound on the number of buckets a terms aggregation over an export's
@@ -81,6 +83,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   skill: "tool.attributed_skill_ids",
   source: "normalized_origin",
   trigger: TRIGGER_ID_FIELD,
+  pod: SPACE_ID_FIELD,
 };
 
 export const AGENT_TAG_IDS_FIELD = "agent.tag_ids";
@@ -111,6 +114,7 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   skill: "invocation",
   source: "message",
   trigger: "message",
+  pod: "message",
 };
 
 export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
@@ -135,6 +139,7 @@ export const CONSUMPTION_MESSAGE_DIMENSIONS = [
   "model",
   "source",
   "trigger",
+  "pod",
   "conversation",
   "tag",
   "reasoning_effort",

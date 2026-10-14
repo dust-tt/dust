@@ -20,6 +20,10 @@ import {
   type GetConsumptionTopModelsResponse,
 } from "@app/lib/api/analytics/consumption/top_models";
 import {
+  fetchConsumptionTopPods,
+  type GetConsumptionTopPodsResponse,
+} from "@app/lib/api/analytics/consumption/top_pods";
+import {
   fetchConsumptionTopReasoningEfforts,
   type GetConsumptionTopReasoningEffortsResponse,
 } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
@@ -75,6 +79,10 @@ vi.mock(
     return { ...mod, fetchConsumptionTopModels: vi.fn() };
   }
 );
+vi.mock(import("@app/lib/api/analytics/consumption/top_pods"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, fetchConsumptionTopPods: vi.fn() };
+});
 vi.mock(
   import("@app/lib/api/analytics/consumption/top_reasoning_efforts"),
   async (orig) => {
@@ -241,6 +249,23 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   ],
 };
 
+const TOP_PODS: GetConsumptionTopPodsResponse = {
+  period: PERIOD,
+  totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
+  pods: [
+    {
+      podId: "vlt_pod1",
+      name: "Marketing",
+      credits: 400,
+      previousCredits: null,
+      messageCount: 8,
+      avgCreditsPerMessage: 50,
+    },
+  ],
+};
+
 const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
@@ -364,6 +389,13 @@ const RANKINGS = [
     lastCall: () => vi.mocked(fetchConsumptionTopGroups).mock.lastCall,
   },
   {
+    path: "top-pods",
+    body: TOP_PODS,
+    arrangeOk: () =>
+      vi.mocked(fetchConsumptionTopPods).mockResolvedValue(new Ok(TOP_PODS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopPods).mock.lastCall,
+  },
+  {
     path: "top-tools",
     body: TOP_TOOLS,
     arrangeOk: () =>
@@ -382,9 +414,12 @@ const RANKINGS = [
 ];
 
 const PERSONAL_RANKINGS = RANKINGS.filter(
-  ({ path }) => path !== "top-users" && path !== "top-groups"
+  ({ path }) =>
+    path !== "top-users" && path !== "top-groups" && path !== "top-pods"
 );
-const AGENT_RANKINGS = RANKINGS.filter(({ path }) => path !== "top-agents");
+const AGENT_RANKINGS = RANKINGS.filter(
+  ({ path }) => path !== "top-agents" && path !== "top-pods"
+);
 
 async function setupTest({
   role = "admin",
@@ -466,7 +501,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     }
   );
 
-  it.each(["top-users", "top-groups"])(
+  it.each(["top-users", "top-groups", "top-pods"])(
     "%s is not mounted for personal analytics",
     async (path) => {
       const { workspace } = await setupTest({ role: "user" });
@@ -501,20 +536,23 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     }
   );
 
-  it("does not mount the agent ranking for agent-scoped analytics", async () => {
-    const { auth, workspace } = await setupTest({ role: "user" });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  it.each(["top-agents", "top-pods"])(
+    "%s is not mounted for agent-scoped analytics",
+    async (path) => {
+      const { auth, workspace } = await setupTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const response = await postRankingRequest(
-      workspace.sId,
-      "top-agents",
-      {},
-      false,
-      agent.sId
-    );
+      const response = await postRankingRequest(
+        workspace.sId,
+        path,
+        {},
+        false,
+        agent.sId
+      );
 
-    expect(response.status).toBe(404);
-  });
+      expect(response.status).toBe(404);
+    }
+  );
 
   it("forwards the page, the period, the search and the filter", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));

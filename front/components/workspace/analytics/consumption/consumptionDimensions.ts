@@ -13,6 +13,7 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "agent",
   "user",
   "group",
+  "pod",
   "model",
   "tool",
   "skill",
@@ -30,6 +31,7 @@ export const CONSUMPTION_ATTRIBUTION_DIMENSIONS: ConsumptionAttributionDimension
     "agent",
     "user",
     "group",
+    "pod",
     "model",
     "tool",
     "skill",
@@ -41,11 +43,12 @@ export const CONSUMPTION_ATTRIBUTION_DIMENSIONS: ConsumptionAttributionDimension
 
 const PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS =
   CONSUMPTION_ATTRIBUTION_DIMENSIONS.filter(
-    (dimension) => dimension !== "user" && dimension !== "group"
+    (dimension) =>
+      dimension !== "user" && dimension !== "group" && dimension !== "pod"
   );
 
 const AGENT_CONSUMPTION_ATTRIBUTION_DIMENSIONS = CONSUMPTION_DIMENSIONS.filter(
-  (dimension) => dimension !== "agent"
+  (dimension) => dimension !== "agent" && dimension !== "pod"
 );
 
 export function getConsumptionAttributionDimensions(
@@ -91,6 +94,12 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   },
   group: {
     label: msg`Groups`,
+    hasAvatar: false,
+    countLabel: MESSAGE_COUNT_LABEL,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
+  pod: {
+    label: msg`Pods`,
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
