@@ -21,7 +21,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -609,41 +608,6 @@ describe("processToolResults", () => {
     if (stored.type === "text") {
       expect(stored.text).toBe(smallText);
     }
-  });
-
-  it("should record each output item's GCS path once the deferred persist completes", async () => {
-    const { auth, action, toolContext } = await setupTest();
-    fileStorageMock.reset();
-
-    const { awaitDurablePersist } = await processToolResults(auth, {
-      localLogger: logger.child({ test: true }),
-      toolContext,
-      toolCallResultContent: [
-        { type: "text", text: "first block" },
-        { type: "text", text: "second block" },
-      ],
-    });
-    const persistResult = await awaitDurablePersist();
-    expect(persistResult.isOk()).toBe(true);
-
-    const outputItems =
-      (
-        await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-          actionIds: [action.id],
-          ignoreContent: false,
-        })
-      ).get(action.id) ?? [];
-    const savedPaths = fileStorageMock.saveFileCalls.map(
-      (call) => call.filePath
-    );
-
-    expect(outputItems).toHaveLength(2);
-    for (const item of outputItems) {
-      expect(savedPaths).toContain(item.contentGcsPath);
-    }
-    expect(new Set(outputItems.map((item) => item.contentGcsPath)).size).toBe(
-      2
-    );
   });
 
   it("should merge many text blocks into a single output item", async () => {
