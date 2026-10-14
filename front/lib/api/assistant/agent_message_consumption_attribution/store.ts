@@ -3,6 +3,7 @@ import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import {
   buildLatestMessageConsumptionAllocation,
   compareRunsChronologically,
+  isUnavailableRunUsage,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
@@ -122,10 +123,12 @@ function selectRunUsagesNeedingEvidence({
 
     // New usages have no rows. Previously processed usages should have every reported bucket because
     // model evidence is written atomically. Treating a partial set as incomplete is defensive recovery.
+    // An unavailable usage never gets model items (see `isUnavailableRunUsage`).
     const hasCompleteModelItems =
-      modelItemTypes?.has("input") === true &&
-      modelItemTypes.has("output") &&
-      (usage.reasoningTokens === null || modelItemTypes.has("reasoning"));
+      isUnavailableRunUsage(usage) ||
+      (modelItemTypes?.has("input") === true &&
+        modelItemTypes.has("output") &&
+        (usage.reasoningTokens === null || modelItemTypes.has("reasoning")));
 
     // Tool evidence needs another pass only when absent or when a pending row can now be completed.
     const hasActionNeedingEvidence = runActions.some((action) => {
@@ -144,9 +147,10 @@ function selectRunUsagesNeedingEvidence({
 }
 
 /**
- * A tool result emitted by the last reported model run of a terminal message was never sent back
- * to the model. Run IDs on the message are de-duplicated in SQL without an ordering guarantee, so
- * use the durable Run chronology instead.
+ * A tool result emitted by the last model run of a terminal message was never sent back to the
+ * model. An unavailable run counts as a model run: it did read the results emitted before it. Run
+ * IDs on the message are de-duplicated in SQL without an ordering guarantee, so use the durable Run
+ * chronology instead.
  */
 function runUsageModelIdsWithUnconsumedToolResults({
   runs,
@@ -161,12 +165,10 @@ function runUsageModelIdsWithUnconsumedToolResults({
     return new Set();
   }
 
-  const runModelIdsWithReportedUsage = new Set(
-    usages.map((usage) => usage.runModelId)
-  );
+  const runModelIdsWithUsage = new Set(usages.map((usage) => usage.runModelId));
   let lastRun: RunResource | null = null;
   for (const run of runs) {
-    if (!runModelIdsWithReportedUsage.has(run.id)) {
+    if (!runModelIdsWithUsage.has(run.id)) {
       continue;
     }
     if (lastRun === null || compareRunsChronologically(run, lastRun) > 0) {
@@ -185,6 +187,11 @@ function runUsageModelIdsWithUnconsumedToolResults({
   );
 }
 
+/**
+ * @cc [owner:sfriquet,label:product;backend] unavailable-usage-tool-items-only
+ * For an `unavailable` run usage, the evidence MUST contain no model items, and MUST contain a tool
+ * item for every action its run emitted, carrying its direct fee as billed and no output tokens.
+ */
 async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
@@ -263,7 +270,9 @@ async function buildRunUsageConsumptionEvidence(
   );
 
   // A single partition of the usage: the tool calls take their share of the output budget, and the
-  // model buckets take the rest (so the output row here is net of tool emission).
+  // model buckets take the rest (so the output row here is net of tool emission). An unavailable
+  // usage has no output budget, so its tool calls get no output tokens, and it gets no model items
+  // (see `isUnavailableRunUsage`).
   const { modelItems, toolCalls } = buildRunUsageAttribution({
     usage,
     toolCalls: measuredToolCalls.map((measured) => ({
@@ -271,8 +280,9 @@ async function buildRunUsageConsumptionEvidence(
       measuredOutputTokensCount: measured.footprint.callOutputTokensCount,
     })),
   });
+  const usageModelItems = isUnavailableRunUsage(usage) ? [] : modelItems;
 
-  for (const item of modelItems) {
+  for (const item of usageModelItems) {
     switch (item.itemType) {
       case "input":
         records.push({
@@ -558,8 +568,13 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
   const capabilities = getAttachmentCapabilityContext(conversation);
 
   // Every usage is reached through this message's own runIds, so each one belongs to this message.
+  // Unavailable usages are included so the billed tool calls their runs emitted get a tool item (see
+  // `isUnavailableRunUsage`).
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+  const usages = await RunResource.listRunUsagesForRuns(auth, {
+    includeUnavailable: true,
+    runs,
+  });
   const unconsumedToolResultRunUsageModelIds =
     runUsageModelIdsWithUnconsumedToolResults({ runs, status, usages });
 

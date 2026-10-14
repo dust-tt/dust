@@ -262,7 +262,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
 
   const dustRunIds = [...new Set(agentMessage.runIds ?? [])];
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+  // Unavailable usages carry the tool items of the calls they emitted (see `isUnavailableRunUsage`).
+  const usages = await RunResource.listRunUsagesForRuns(auth, {
+    includeUnavailable: true,
+    runs,
+  });
   const billedUsages = usages.filter(isBilledRunUsage);
   if (billedUsages.length === 0) {
     return null;

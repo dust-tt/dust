@@ -42,6 +42,9 @@ function summarizeToolConsumptionItem({
 
   // TODO(2026-08-07 OBSERVABILITY): We currently exclusively store the direct charge credits and
   // gross credits but we don't have credit consumption just for the result footprint.
+  // A tool emitted by an unavailable call has no output tokens, and a tool whose result was read by
+  // an unavailable call gets no credits for that result: those calls were never billed (see
+  // `isUnavailableRunUsage`). Its direct charge is always included.
   return {
     credit_micro: attributedCreditMicro,
     gross_credit_micro: {

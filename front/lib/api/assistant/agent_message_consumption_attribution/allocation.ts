@@ -68,6 +68,27 @@ export type ToolResult = {
   tokensCount: number;
 };
 
+/**
+ * An `unavailable` run usage is a model call whose provider stream ended without reporting token
+ * usage. Billing recorded no tokens and charged no LLM cost for it, but the tool calls it emitted
+ * were executed and billed their direct fee like any other. Attribution therefore keeps these
+ * usages: they are the only place the tool items of the calls they emitted can hang from, and
+ * without them those billed fees would have no item and the message could never reconcile.
+ *
+ * Such a usage gets tool items only, never model items, and is never indexed as an LLM document.
+ * Since it has no tokens and no cost, the tool items around it can miss part of their evidence:
+ * - a tool emitted by an unavailable call has no output tokens: there are no completion tokens to
+ *   carve the emitted call out of, and no billed output cost to share;
+ * - a tool result read by an unavailable call gets no share of input cost: no billed call paid for
+ *   reading it. Its result footprint is still measured. When the call reading the result was
+ *   reported, the result is paid from that call's input cost as usual.
+ */
+export function isUnavailableRunUsage(
+  usage: Pick<RunUsageWithRunKeyType, "usageState">
+): boolean {
+  return usage.usageState === "unavailable";
+}
+
 function splitByWeight(
   amountCreditMicro: number,
   entries: WeightedItem[]
@@ -417,11 +438,12 @@ function buildLlmBillingLines({
   if (llmBilledCreditMicro < 0) {
     return new Err("direct_credits_exceed_bill");
   }
+  // Billing never loads unavailable usages, so they take no part in the LLM bill.
   const llmBillingPlan = buildAgentMessageBillingPlan({
     actions: [],
     contextOrigin: null,
     getUsageAllocationKey: (usage) => String(usage.runUsageModelId),
-    runUsages: usages,
+    runUsages: usages.filter((usage) => !isUnavailableRunUsage(usage)),
   });
   if (
     llmBilledCreditMicro !==
@@ -515,6 +537,10 @@ function hasCompleteModelAttribution(
   }
 
   return usages.every((usage) => {
+    if (isUnavailableRunUsage(usage)) {
+      return true;
+    }
+
     const itemTypes = itemTypesByRunUsageModelId.get(usage.runUsageModelId);
     return (
       itemTypes?.has("input") === true &&

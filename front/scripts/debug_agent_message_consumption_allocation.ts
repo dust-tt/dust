@@ -89,7 +89,10 @@ makeScript(
     const billedCredits = creditContext.previousCostCredits;
     const dustRunIds = [...new Set(creditContext.runIds ?? [])];
     const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-    const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+    const usages = await RunResource.listRunUsagesForRuns(auth, {
+      includeUnavailable: true,
+      runs,
+    });
     const [actions, items] = await Promise.all([
       AgentMCPActionResource.listByAgentMessageIds(auth, [
         creditContext.agentMessageModelId,
