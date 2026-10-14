@@ -41,6 +41,11 @@ DfsUserFolderModel.init(
         unique: true,
         concurrently: true,
       },
+      {
+        fields: ["userId"],
+        name: "dfs_user_folders_user_id_idx",
+        concurrently: true,
+      },
     ],
   }
 );

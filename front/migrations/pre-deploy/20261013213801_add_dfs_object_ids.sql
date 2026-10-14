@@ -69,33 +69,40 @@ CREATE UNIQUE INDEX CONCURRENTLY dfs_user_folders_workspace_id_user_id_idx ON pu
 /*
 Statement 8
 */
-SET SESSION statement_timeout = 3000;
+SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-ALTER SEQUENCE "public"."dfs_user_folders_id_seq" OWNED BY "public"."dfs_user_folders"."id";
+CREATE INDEX CONCURRENTLY dfs_user_folders_user_id_idx ON public.dfs_user_folders USING btree ("userId");
 
 /*
 Statement 9
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."dfs_user_folders" ADD CONSTRAINT "dfs_user_folders_userId_fkey" FOREIGN KEY ("userId") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+ALTER SEQUENCE "public"."dfs_user_folders_id_seq" OWNED BY "public"."dfs_user_folders"."id";
 
 /*
 Statement 10
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."dfs_user_folders" VALIDATE CONSTRAINT "dfs_user_folders_userId_fkey";
+ALTER TABLE "public"."dfs_user_folders" ADD CONSTRAINT "dfs_user_folders_userId_fkey" FOREIGN KEY ("userId") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
 Statement 11
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."dfs_user_folders" ADD CONSTRAINT "dfs_user_folders_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+ALTER TABLE "public"."dfs_user_folders" VALIDATE CONSTRAINT "dfs_user_folders_userId_fkey";
 
 /*
 Statement 12
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."dfs_user_folders" ADD CONSTRAINT "dfs_user_folders_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+/*
+Statement 13
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
