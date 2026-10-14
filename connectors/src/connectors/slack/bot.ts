@@ -44,6 +44,11 @@ import type {
   MentionMatch,
 } from "@connectors/lib/bot/mentions";
 import { processMentions } from "@connectors/lib/bot/mentions";
+import type { SlackPlusTokenParseError } from "@connectors/lib/bot/slack_plus_tokens";
+import {
+  parseSlackLeadingPlusTokens,
+  stripSlackPlusTokensFromMessage,
+} from "@connectors/lib/bot/slack_plus_tokens";
 import { getBotI18nForWorkspace } from "@connectors/lib/bot/workspace_locale";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
@@ -130,6 +135,25 @@ function makeAgentMentionErrorMessage(
   }
 }
 
+function makeSlackPlusTokenErrorMessage(
+  i18n: I18n,
+  error: SlackPlusTokenParseError
+): string {
+  switch (error.code) {
+    case "multiple_agents":
+      return i18n._("Only one agent at a time can be called through Slack.");
+    case "multiple_models":
+      return i18n._("Only one model at a time can be selected through Slack.");
+    case "unknown_model":
+      return i18n._(
+        "Unknown model selection: {token}. Use a model id such as +claude-opus-5-5 or +claude-opus-5-5/high.",
+        { token: error.token ?? "" }
+      );
+    default:
+      assertNever(error.code);
+  }
+}
+
 // Keep aligned with front/types/files.ts MAX_FILE_SIZES for conversation uploads.
 const MAX_OTHER_FILE_SIZE_TO_UPLOAD = 50 * 1024 * 1024; // 50 MB
 const MAX_IMAGE_FILE_SIZE_TO_UPLOAD = 20 * 1024 * 1024; // 20 MB
@@ -147,9 +171,6 @@ function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
 
   return MAX_OTHER_FILE_SIZE_TO_UPLOAD;
 }
-
-// Pattern to match +mention, ~mention, or =mention at the beginning of the string.
-const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
 
 // Slack prefixes the status with the app name: "Dust is thinking...".
 function makeSlackAssistantThreadStatus(
@@ -1212,35 +1233,30 @@ async function answerMessage(
 
   let mention: MentionMatch | undefined;
 
-  // Extract all ~mentions and +mentions that appear right after the bot mention.
-  let mentionCandidate: string | null = null;
+  // Extract leading +/~/= tokens after the bot mention. These can select an
+  // agent and/or a model (+ optional /reasoningEffort), e.g.
+  // `+claude-opus-5-5/high` or `+myagent +claude-opus-5-5/high`.
   // There may be no bot mention (e.g., when DMing the bot).
   textAfterBotMention ??= message;
   const textAfterBotMentionWithoutMarkdown =
     removeMarkdown(textAfterBotMention);
 
-  const firstMatch = textAfterBotMentionWithoutMarkdown.match(
-    SLACK_MENTION_PATTERN
+  const plusTokensResult = parseSlackLeadingPlusTokens(
+    textAfterBotMentionWithoutMarkdown
   );
-
-  if (firstMatch?.[1]) {
-    mentionCandidate = firstMatch[1] ?? null;
-
-    // If the user tagged multiple agents, we need to show a custom message since we only support one agent at a time
-    // and they will expect all agents to answer.
-    const afterFirst = textAfterBotMentionWithoutMarkdown.slice(
-      firstMatch[0].length
+  if (plusTokensResult.isErr()) {
+    return new Err(
+      new SlackExternalUserError(
+        makeSlackPlusTokenErrorMessage(i18n, plusTokensResult.error)
+      )
     );
-    const secondMatch = afterFirst.match(SLACK_MENTION_PATTERN);
-
-    if (secondMatch) {
-      return new Err(
-        new SlackExternalUserError(
-          i18n._("Only one agent at a time can be called through Slack.")
-        )
-      );
-    }
   }
+
+  const {
+    agentMentionCandidate: mentionCandidate,
+    modelSelection,
+    matchedTokens,
+  } = plusTokensResult.value;
 
   // First we look at mention override
   // (e.g.: a mention coming from the Slack agent picker from Slack).
@@ -1253,15 +1269,18 @@ async function answerMessage(
         new SlackExternalUserError(i18n._("Cannot find selected agent."))
       );
     }
-    // Removing all previous mentions.
-    if (mentionCandidate) {
-      message = message.replace(mentionCandidate, "");
-    }
+    // Removing all previous agent/model +tokens.
+    message = stripSlackPlusTokensFromMessage(message, matchedTokens);
     mention = {
       agentId: agentConfig.sId,
       agentName: agentConfig.name,
     };
   } else {
+    // Strip model tokens first; processMentions strips the agent candidate.
+    message = stripSlackPlusTokensFromMessage(
+      message,
+      matchedTokens.filter((token) => token !== mentionCandidate)
+    );
     const mentionResult = processMentions({
       message,
       activeAgentConfigurations,
@@ -1447,6 +1466,7 @@ async function answerMessage(
       origin,
     },
     skipToolsValidation,
+    ...(modelSelection ? { modelSelection } : {}),
   };
 
   // Await the promise to get the content fragment.
