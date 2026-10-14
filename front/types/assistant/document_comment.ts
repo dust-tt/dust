@@ -1,17 +1,15 @@
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+
 export const DOCUMENT_COMMENT_DIRECTIVE_NAME = "document_comment";
 
 const QUOTE_MAX_LENGTH = 500;
 
-const LABEL_PATTERN = String.raw`((?:\\.|[^\\\]\n])*)`;
-const ATTRIBUTES_PATTERN = String.raw`id="([^"\n]*)" path="([^"\n]*)"`;
+const DIRECTIVE_PATTERN = String.raw`:${DOCUMENT_COMMENT_DIRECTIVE_NAME}\[((?:\\.|[^\\\]\n])*)\]\{id="([^"\n]*)" path="([^"\n]*)"\}`;
 
-export const DOCUMENT_COMMENT_DIRECTIVE_REGEX = new RegExp(
-  String.raw`:${DOCUMENT_COMMENT_DIRECTIVE_NAME}\[${LABEL_PATTERN}\]\{${ATTRIBUTES_PATTERN}\}`,
-  "g"
-);
+const DOCUMENT_COMMENT_DIRECTIVE_REGEX = new RegExp(DIRECTIVE_PATTERN, "g");
 
 const LEADING_DOCUMENT_COMMENT_DIRECTIVE_REGEX = new RegExp(
-  String.raw`^:${DOCUMENT_COMMENT_DIRECTIVE_NAME}\[${LABEL_PATTERN}\]\{${ATTRIBUTES_PATTERN}\}(?:\n\n)?`
+  String.raw`^${DIRECTIVE_PATTERN}(?:\n\n)?`
 );
 
 export interface DocumentComment {
@@ -20,15 +18,17 @@ export interface DocumentComment {
   quote: string | null;
 }
 
+export const isDocumentCommentOrigin = (origin: UserMessageOrigin | null) =>
+  origin === "document_comment";
+
 const escapeLabel = (text: string) => text.replace(/[\\[\]]/g, "\\$&");
 
-export const unescapeDocumentCommentLabel = (label: string) =>
-  label.replace(/\\(.)/g, "$1");
+const unescapeLabel = (label: string) => label.replace(/\\(.)/g, "$1");
 
 const escapeAttribute = (value: string) =>
   value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
 
-export const unescapeDocumentCommentAttribute = (value: string) =>
+const unescapeAttribute = (value: string) =>
   value.replaceAll("&quot;", '"').replaceAll("&amp;", "&");
 
 function quoteLabel(quote: string | null): string {
@@ -36,6 +36,18 @@ function quoteLabel(quote: string | null): string {
   return flat.length > QUOTE_MAX_LENGTH
     ? `${flat.slice(0, QUOTE_MAX_LENGTH - 1)}…`
     : flat;
+}
+
+function toDocumentComment(
+  label: string,
+  commentId: string,
+  documentPath: string
+): DocumentComment {
+  return {
+    commentId: unescapeAttribute(commentId),
+    documentPath: unescapeAttribute(documentPath),
+    quote: unescapeLabel(label) || null,
+  };
 }
 
 /**
@@ -60,13 +72,19 @@ export function parseDocumentCommentMessage(
     return null;
   }
   const [directive, label, commentId, documentPath] = match;
-  const quote = unescapeDocumentCommentLabel(label);
   return {
-    comment: {
-      commentId: unescapeDocumentCommentAttribute(commentId),
-      documentPath: unescapeDocumentCommentAttribute(documentPath),
-      quote: quote || null,
-    },
+    comment: toDocumentComment(label, commentId, documentPath),
     body: content.slice(directive.length),
   };
+}
+
+export function replaceDocumentCommentDirectives(
+  text: string,
+  replace: (comment: DocumentComment) => string
+): string {
+  return text.replaceAll(
+    DOCUMENT_COMMENT_DIRECTIVE_REGEX,
+    (_directive, label: string, commentId: string, documentPath: string) =>
+      replace(toDocumentComment(label, commentId, documentPath))
+  );
 }

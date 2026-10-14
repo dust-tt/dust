@@ -21,11 +21,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
-import type { UserMessageType } from "@app/types/assistant/conversation";
-
-const isDocumentCommentMessage = (
-  userMessage: Pick<UserMessageType, "context"> | null | undefined
-) => userMessage?.context.origin === "document_comment";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isDocumentCommentOrigin } from "@app/types/assistant/document_comment";
 
 const MARKDOWN_DOCUMENTS_INSTRUCTIONS = `
 Markdown documents (\`.md\`) in the conversation's or pod's files open in an editor where people read and edit them, and discuss passages in comment threads.
@@ -69,11 +66,10 @@ Write like a reviewer in the margin: short, about the passage, no headings.
 **Mentioning people.** Mention a user only to ask for their input or tell them something they need to act on, never just to address the person you answer. A mention reads \`:mention_user[Name]{sId=<user id>}\`; for someone in the thread, take both from their message line, \`author=user:<user id> name="Name"\`. For anyone else, find them with \`${getPrefixedToolName(USER_MENTIONS_SERVER_NAME, SEARCH_AVAILABLE_USERS_TOOL_NAME)}\` and get the mention with \`${getPrefixedToolName(USER_MENTIONS_SERVER_NAME, GET_MENTION_MARKDOWN_TOOL_NAME)}\`. Do not mention agents in comments.
 `;
 
-/** The skill's instructions for a run whose user message is `userMessage`. */
 export const getMarkdownDocumentsInstructions = (
-  userMessage: Pick<UserMessageType, "context"> | null | undefined
+  origin: UserMessageOrigin | null
 ) =>
-  isDocumentCommentMessage(userMessage)
+  isDocumentCommentOrigin(origin)
     ? MARKDOWN_DOCUMENTS_INSTRUCTIONS + DOCUMENT_COMMENTS_INSTRUCTIONS
     : MARKDOWN_DOCUMENTS_INSTRUCTIONS;
 
@@ -104,7 +100,9 @@ export const markdownDocumentsSkill = {
     "image or a comment: explains the document tools to use, the Markdown the document editor " +
     "opens and how to embed generated or attached images and Frames, and reference files.",
   fetchInstructions: async (_auth, { agentLoopData }) =>
-    getMarkdownDocumentsInstructions(agentLoopData?.userMessage),
+    getMarkdownDocumentsInstructions(
+      agentLoopData?.userMessage.context.origin ?? null
+    ),
   mcpServers: [{ name: USER_MENTIONS_SERVER_NAME }],
   exposeInstructions: true,
   version: 1,
@@ -112,5 +110,7 @@ export const markdownDocumentsSkill = {
   isRestricted: async (auth: Authenticator) =>
     !(await hasFeatureFlag(auth, "co_edition")),
   getAutoEnabledOrEquippedForAgentLoop: ({ userMessage }) =>
-    isDocumentCommentMessage(userMessage) ? "enabled" : "equipped",
+    isDocumentCommentOrigin(userMessage?.context.origin ?? null)
+      ? "enabled"
+      : "equipped",
 } as const satisfies GlobalSkillDefinition;

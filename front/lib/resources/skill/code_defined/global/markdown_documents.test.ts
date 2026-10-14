@@ -16,20 +16,9 @@ import {
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type {
-  UserMessageContext,
-  UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
-const commentContext = (origin: UserMessageOrigin): UserMessageContext => ({
-  username: "yuka",
-  fullName: "Yuka",
-  email: null,
-  profilePictureUrl: null,
-  timezone: "UTC",
-  origin,
-});
 const REPLY_TOOL = getPrefixedToolName(
   DOCUMENTS_SERVER_NAME,
   DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME
@@ -66,12 +55,8 @@ describe("markdownDocumentsSkill", () => {
   });
 
   it("explains the document tools and images, and comments only for a comment message", () => {
-    const plain = getMarkdownDocumentsInstructions({
-      context: commentContext("web"),
-    });
-    const comment = getMarkdownDocumentsInstructions({
-      context: commentContext("document_comment"),
-    });
+    const plain = getMarkdownDocumentsInstructions("web");
+    const comment = getMarkdownDocumentsInstructions("document_comment");
     const withoutRun = getMarkdownDocumentsInstructions(null);
 
     for (const instructions of [plain, comment, withoutRun]) {

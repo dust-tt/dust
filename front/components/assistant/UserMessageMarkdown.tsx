@@ -47,7 +47,10 @@ import type {
   UserMessageOrigin,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { parseDocumentCommentMessage } from "@app/types/assistant/document_comment";
+import {
+  isDocumentCommentOrigin,
+  parseDocumentCommentMessage,
+} from "@app/types/assistant/document_comment";
 import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import {
   SKILL_SIDE_PANEL_TYPE,
@@ -84,10 +87,11 @@ const escapeLeadingBlockMarker = (text: string) =>
 
 function withDocumentCommentQuote(
   content: string,
-  origin: UserMessageOrigin | null | undefined
+  origin: UserMessageOrigin
 ): string {
-  const parsed =
-    origin === "document_comment" ? parseDocumentCommentMessage(content) : null;
+  const parsed = isDocumentCommentOrigin(origin)
+    ? parseDocumentCommentMessage(content)
+    : null;
   if (!parsed) {
     return content;
   }
