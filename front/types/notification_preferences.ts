@@ -95,6 +95,8 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
 } as const;
 
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;
+export const DOCUMENT_COMMENT_MENTION_TRIGGER_ID =
+  "document-comment-mention" as const;
 export const POD_ADDED_AS_MEMBER_TRIGGER_ID =
   "project-added-as-member" as const;
 export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =

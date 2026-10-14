@@ -38,6 +38,7 @@ msgid "Reply to {requesterName}"
 msgstr "Reply to {requesterName}"
 
 #: front/lib/notifications/workflows/agent-message-feedback.ts
+#: front/lib/notifications/workflows/document-comment-mention.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "Someone"
 msgstr "Someone"
@@ -238,6 +239,22 @@ msgstr "Learn more about programmatic usage at Dust: {PROGRAMMATIC_USAGE_DOC_URL
 #: front/lib/notifications/workflows/credit-usage-alert.ts
 msgid "Purchase credits"
 msgstr "Purchase credits"
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "{author} mentioned you in \"{fileName}\""
+msgstr "{author} mentioned you in \"{fileName}\""
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "{author} mentioned you in a comment on \"{fileName}\"."
+msgstr "{author} mentioned you in a comment on \"{fileName}\"."
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "View document"
+msgstr "View document"
+
+#: front/lib/notifications/workflows/document-comment-mention.ts
+msgid "[Dust] You were mentioned {count, plural, one {once} other {# times}}"
+msgstr "[Dust] You were mentioned {count, plural, one {once} other {# times}}"
 
 #: front/lib/notifications/workflows/frame-sharing.ts
 msgid "Your Dust login code"
