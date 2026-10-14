@@ -11,11 +11,7 @@ import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
 import {
@@ -36,7 +32,6 @@ import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
-import { isCreditPricedPlan } from "@app/types/plan";
 
 import { isAdmin } from "@app/types/user";
 import {
@@ -60,12 +55,6 @@ const MODELS_TABS = [
 ] as const;
 type ModelsTab = (typeof MODELS_TABS)[number];
 
-const MODEL_TIER_ADMIN_TABS = new Set<ModelsTab>([
-  "tiers",
-  "members",
-  "groups",
-]);
-
 const DEFAULT_PAGE_SIZE = 25;
 const EMPTY_IDS = new Set<string>();
 const NOOP_MEMBER_ACTION = (_member: MemberUsageType) => {};
@@ -77,24 +66,25 @@ const TAB_CONTENT_CLASS = "block min-h-panel";
 
 /**
  * Model-tier administration (workspace ceiling, member/group overrides, and the
- * Published agents override) is only available on credit-priced plans. Providers
- * and App Credentials stay available on every plan.
+ * Published agents override) is available on every workspace — credit-priced and
+ * legacy alike. Tier ceilings only restrict selection among models the workspace
+ * is already entitled to use; enabling these controls does not expand plan
+ * entitlements (Premium/Complex still require credit-priced access,
+ * hasAdvancedModelAccess, or the premium_model_access feature flag).
  */
-export function isModelTierAdministrationEnabled(plan: PlanType): boolean {
-  return isCreditPricedPlan(plan);
+export function isModelTierAdministrationEnabled(_plan: PlanType): boolean {
+  return true;
 }
 
 export function ModelsPage() {
   const { t } = useLingui();
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const isWorkspaceAdmin = isAdmin(owner);
   const showApps = hasFeature("legacy_dust_apps");
-  const showModelTierAdmin = isModelTierAdministrationEnabled(
-    subscription.plan
-  );
-  const showMemberGroupTier = showModelTierAdmin && isWorkspaceAdmin;
+  // Member/group override editors require workspace admin; the Settings tab
+  // (workspace ceiling + Published agents) is visible to admins via route auth.
+  const showMemberGroupTier = isWorkspaceAdmin;
   const { workspace, isWorkspaceValidating, mutateWorkspace } =
     useWorkspaceDetails({ owner });
   const { providersSelection, toggleProvider, selectAllProviders } =
@@ -103,9 +93,6 @@ export function ModelsPage() {
   const { tab, setTab } = useAdminPageTab<ModelsTab>(MODELS_TABS, "providers");
   const activeTab: ModelsTab = (() => {
     if (tab === "apps" && !showApps) {
-      return "providers";
-    }
-    if (!showModelTierAdmin && MODEL_TIER_ADMIN_TABS.has(tab)) {
       return "providers";
     }
     return tab;
@@ -147,12 +134,12 @@ export function ModelsPage() {
       : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
-  const { setUserAllowedModelTier, clearUserAllowedModelTier } =
+  const { setUserAllowedModelTier, clearUserAllowedModelTiers } =
     useUserAllowedModelTierMutations({ owner });
   const handleSetUserModelTiers = useCallback(
     async (member: MemberUsageType, selection: UserModelTierSelection) => {
       if (selection === INHERIT_MODEL_TIER) {
-        await clearUserAllowedModelTier({ userId: member.sId });
+        await clearUserAllowedModelTiers({ userId: member.sId });
         return;
       }
 
@@ -161,7 +148,7 @@ export function ModelsPage() {
         tierName: selection,
       });
     },
-    [clearUserAllowedModelTier, setUserAllowedModelTier]
+    [clearUserAllowedModelTiers, setUserAllowedModelTier]
   );
 
   const {
@@ -178,15 +165,13 @@ export function ModelsPage() {
     orderDirection: membersOrderDirection,
     groupId: groupFilter ?? undefined,
     // Members usage only feeds the Members tab; GroupsUsageTable fetches its own data.
-    disabled: !showModelTierAdmin || activeTab !== "members",
+    disabled: activeTab !== "members",
   });
 
   const { groups } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-    disabled:
-      !showModelTierAdmin ||
-      (activeTab !== "members" && activeTab !== "groups"),
+    disabled: activeTab !== "members" && activeTab !== "groups",
   });
   const tierHooksDisabled =
     !showMemberGroupTier ||
@@ -267,18 +252,12 @@ export function ModelsPage() {
         >
           <TabsList>
             <TabsTrigger value="providers" label={t`Providers`} />
-            {showModelTierAdmin && (
-              <>
-                <TabsTrigger value="members" label={t`Members`} />
-                <TabsTrigger value="groups" label={t`Groups`} />
-              </>
-            )}
+            <TabsTrigger value="members" label={t`Members`} />
+            <TabsTrigger value="groups" label={t`Groups`} />
             {showApps && (
               <TabsTrigger value="apps" label={t`App Credentials`} />
             )}
-            {showModelTierAdmin && (
-              <TabsTrigger value="tiers" label={t`Settings`} />
-            )}
+            <TabsTrigger value="tiers" label={t`Settings`} />
           </TabsList>
           <TabsContent value="providers" className="flex flex-col gap-4">
             <AdminSectionAnchor
@@ -293,87 +272,81 @@ export function ModelsPage() {
               />
             </AdminSectionAnchor>
           </TabsContent>
-          {showModelTierAdmin && (
-            <TabsContent value="tiers" className="flex flex-col gap-4">
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.modelProviders.tiers}
-              >
-                <ModelTiersSettingsCard owner={owner} />
-              </AdminSectionAnchor>
-            </TabsContent>
-          )}
-          {showModelTierAdmin && (
-            <TabsContent value="members" className={TAB_CONTENT_CLASS}>
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.modelProviders.members}
-              >
-                <UsageMembersSection
-                  searchTerm={searchTerm}
-                  onSearchChange={handleSetSearchTerm}
-                  groups={groups}
-                  groupId={groupFilter}
-                  onGroupChange={handleSetGroupFilter}
-                  extraFilters={
-                    showMemberGroupTier && groupFilter ? (
-                      <GroupModelTierPickerDropdown
-                        owner={owner}
-                        groupId={groupFilter}
-                      />
-                    ) : undefined
-                  }
-                  membersTable={
-                    <MembersUsageTable
-                      members={membersUsage}
-                      isLoading={isMembersUsageLoading}
-                      isRefreshing={isMembersUsageRefreshing}
-                      showSeatAndCredits={false}
-                      showSpendLimit={false}
-                      showModelTiersColumn={showMemberGroupTier}
-                      userModelTierSelectionByUserId={
-                        userModelTierSelectionByUserId
-                      }
-                      userAllowedModelTiersByUserId={
-                        userAllowedModelTiersByUserId
-                      }
-                      groupModelTiersByGroupId={groupModelTiersByGroupId}
-                      workspaceAllowedModelTiers={workspaceAllowedModelTiers}
-                      groupNameToId={groupNameToId}
-                      modelTierDefinitionByName={modelTierDefinitionByName}
-                      totalAllowedUsagePendingMemberIds={EMPTY_IDS}
-                      seatChangePendingMemberIds={EMPTY_IDS}
-                      isSeatBased={false}
-                      onChangeSeat={NOOP_MEMBER_ACTION}
-                      onRemoveSeat={NOOP_MEMBER_ACTION}
-                      onEditSpendLimit={NOOP_MEMBER_ACTION}
-                      onSetUserModelTier={handleSetUserModelTiers}
-                      pagination={pagination}
-                      setPagination={setPagination}
-                      totalRowCount={totalMembersUsage}
-                      sorting={effectiveSorting}
-                      setSorting={handleSetSorting}
-                      showGroupsColumn={groups.length > 0}
-                      enableSelection={false}
+          <TabsContent value="tiers" className="flex flex-col gap-4">
+            <AdminSectionAnchor
+              sectionId={ADMIN_SECTION_IDS.modelProviders.tiers}
+            >
+              <ModelTiersSettingsCard owner={owner} />
+            </AdminSectionAnchor>
+          </TabsContent>
+          <TabsContent value="members" className={TAB_CONTENT_CLASS}>
+            <AdminSectionAnchor
+              sectionId={ADMIN_SECTION_IDS.modelProviders.members}
+            >
+              <UsageMembersSection
+                searchTerm={searchTerm}
+                onSearchChange={handleSetSearchTerm}
+                groups={groups}
+                groupId={groupFilter}
+                onGroupChange={handleSetGroupFilter}
+                extraFilters={
+                  showMemberGroupTier && groupFilter ? (
+                    <GroupModelTierPickerDropdown
+                      owner={owner}
+                      groupId={groupFilter}
                     />
-                  }
-                />
-              </AdminSectionAnchor>
-            </TabsContent>
-          )}
+                  ) : undefined
+                }
+                membersTable={
+                  <MembersUsageTable
+                    members={membersUsage}
+                    isLoading={isMembersUsageLoading}
+                    isRefreshing={isMembersUsageRefreshing}
+                    showSeatAndCredits={false}
+                    showSpendLimit={false}
+                    showModelTiersColumn={showMemberGroupTier}
+                    userModelTierSelectionByUserId={
+                      userModelTierSelectionByUserId
+                    }
+                    userAllowedModelTiersByUserId={
+                      userAllowedModelTiersByUserId
+                    }
+                    groupModelTiersByGroupId={groupModelTiersByGroupId}
+                    workspaceAllowedModelTiers={workspaceAllowedModelTiers}
+                    groupNameToId={groupNameToId}
+                    modelTierDefinitionByName={modelTierDefinitionByName}
+                    totalAllowedUsagePendingMemberIds={EMPTY_IDS}
+                    seatChangePendingMemberIds={EMPTY_IDS}
+                    isSeatBased={false}
+                    onChangeSeat={NOOP_MEMBER_ACTION}
+                    onRemoveSeat={NOOP_MEMBER_ACTION}
+                    onEditSpendLimit={NOOP_MEMBER_ACTION}
+                    onSetUserModelTiers={handleSetUserModelTiers}
+                    pagination={pagination}
+                    setPagination={setPagination}
+                    totalRowCount={totalMembersUsage}
+                    sorting={effectiveSorting}
+                    setSorting={handleSetSorting}
+                    showGroupsColumn={groups.length > 0}
+                    enableSelection={false}
+                  />
+                }
+              />
+            </AdminSectionAnchor>
+          </TabsContent>
 
-          {showModelTierAdmin && (
-            <TabsContent value="groups" className={TAB_CONTENT_CLASS}>
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.modelProviders.groups}
-              >
-                <GroupsUsageTable
-                  owner={owner}
-                  showSpendLimitColumn={false}
-                  showModelTiersColumn={showMemberGroupTier}
-                  showSharedUsageLimitColumn={false}
-                />
-              </AdminSectionAnchor>
-            </TabsContent>
-          )}
+          <TabsContent value="groups" className={TAB_CONTENT_CLASS}>
+            <AdminSectionAnchor
+              sectionId={ADMIN_SECTION_IDS.modelProviders.groups}
+            >
+              <GroupsUsageTable
+                owner={owner}
+                showSpendLimitColumn={false}
+                showModelTiersColumn={showMemberGroupTier}
+                showSharedUsageLimitColumn={false}
+              />
+            </AdminSectionAnchor>
+          </TabsContent>
 
           {showApps && (
             <TabsContent value="apps" className="flex flex-col gap-4">

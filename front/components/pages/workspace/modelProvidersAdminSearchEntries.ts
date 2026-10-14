@@ -9,8 +9,8 @@ const PAGE = "models" as const;
 
 /**
  * Search entries for Models (providers, access tiers, members, groups, apps).
- * Tier-related entries (Settings / Members / Groups) apply to credit-priced
- * plans only; Providers and App Credentials remain available on every plan.
+ * Tier-related entries (Settings / Members / Groups) apply to every workspace;
+ * Providers and App Credentials remain available on every plan as well.
  */
 export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(

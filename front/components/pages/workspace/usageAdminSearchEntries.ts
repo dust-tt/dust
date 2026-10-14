@@ -8,11 +8,12 @@ const PAGE = "credits" as const;
 const SETTINGS_TAB = "settings";
 
 /**
- * Search entries for Credits (formerly Usage). Per-member and per-group model
- * tiers are edited on the Members / Groups tabs here (credit-priced plans only;
- * the Credits route itself is plan-gated). Workspace defaults and the Published
- * agents override live under Models › Settings. Self-improving spend caps sit
- * in programmatic settings.
+ * Search entries for Credits (formerly Usage). On credit-priced plans,
+ * per-member and per-group model tiers can also be edited on the Members /
+ * Groups tabs here (the Credits route itself is plan-gated). Workspace
+ * defaults, member/group overrides, and the Published agents override are
+ * always available under Models. Self-improving spend caps sit in
+ * programmatic settings.
  */
 export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
