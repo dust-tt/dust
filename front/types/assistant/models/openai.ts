@@ -577,7 +577,7 @@ export const GPT_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "OpenAI's GPT 6 Sol model for complex reasoning, coding, and agentic tasks (272k context).",
   shortDescription: "OpenAI's GPT 6 reasoning model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,

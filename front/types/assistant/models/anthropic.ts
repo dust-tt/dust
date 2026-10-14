@@ -220,7 +220,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 4.5 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's super-fast model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
@@ -428,7 +428,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude Opus 4.8 model, an advanced model with strong agentic coding, reasoning, and judgement (200k context).",
   shortDescription: "An older Claude Opus model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
@@ -475,7 +475,7 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude Opus 5 model, a powerful model for complex agentic coding and enterprise work (250k context).",
   shortDescription: "Anthropic's previous flagship model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
@@ -569,7 +569,7 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude Fable 5 model, their most intelligent model, a new tier above Opus (250k context).",
   shortDescription: "Anthropic's most powerful model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
@@ -714,7 +714,7 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude Sonnet 5 model, reaching near-Opus quality on coding and agentic work while balancing power and efficiency (200k context).",
   shortDescription: "Anthropic's balanced model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
@@ -752,7 +752,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (200k context).",
   shortDescription: "Anthropic's balanced model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,

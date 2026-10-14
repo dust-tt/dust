@@ -41,7 +41,7 @@ API handlers are **not** here — they live in `front-api/routes/`, one file per
 # Development setup
 
 - Use `npx tsgo --noEmit` to type-check the front project.
-- Use `npm run format:changed` (from the repo root) to format and lint changed files.
+- Use `npm run lint:fix` then `npm run format` (from the repo root) to lint and format the codebase.
 - For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, webhook sources, and PostHog event tracking, and for testing, use the corresponding skills.
 - For user-visible UI text, use the `dust-i18n` skill; to translate catalogs, use the `dust-translate` skill.
 
