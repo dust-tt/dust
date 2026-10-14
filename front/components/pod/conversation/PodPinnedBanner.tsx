@@ -1,5 +1,8 @@
 import type { FrameOpenSource } from "@app/components/assistant/conversation/interactive_content/frameTracking";
-import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
+import {
+  trackFrameExpand,
+  trackFrameOpen,
+} from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
@@ -187,10 +190,22 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     setBannerPreferences({ collapsed: false });
   }, [setBannerPreferences, trackBannerOpen]);
 
+  const toggleFullscreen = useCallback(() => {
+    if (!isFullscreen && fileId) {
+      trackFrameExpand({
+        frameId: fileId,
+        uiElement: "pod_pinned_banner",
+        location: { type: "pod", id: podInfo.sId },
+      });
+    }
+    setIsFullscreen((prev) => !prev);
+  }, [isFullscreen, fileId, podInfo.sId]);
+
+  // The Frame was hidden, so this is both an open and an expand.
   const openFullscreenFromCollapsed = useCallback(() => {
     trackBannerOpen("user");
-    setIsFullscreen(true);
-  }, [trackBannerOpen]);
+    toggleFullscreen();
+  }, [trackBannerOpen, toggleFullscreen]);
 
   useEffect(() => {
     if (pinnedFramePath && isNotFound) {
@@ -257,7 +272,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     isEditor: podInfo.isEditor,
     onHide: hideBanner,
     onUnpin: handleUnpin,
-    onToggleFullscreen: () => setIsFullscreen((prev) => !prev),
+    onToggleFullscreen: toggleFullscreen,
   };
 
   const fullscreenOverlay =

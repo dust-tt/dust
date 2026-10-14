@@ -1,4 +1,7 @@
-import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
+import {
+  trackFrameExpand,
+  trackFrameOpen,
+} from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { trackEvent } from "@app/lib/tracking";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -51,6 +54,26 @@ describe("trackFrameOpen", () => {
         source: "user",
         ui_element: "shared_link",
         location_resource_type: "public_share",
+      },
+    });
+  });
+
+  it("names the Frame and where it was put in full screen", () => {
+    trackFrameExpand({
+      frameId: "fil_1",
+      uiElement: "conversation_side_panel",
+      location: { type: "conversation", id: "cnv_1" },
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith({
+      area: "frames",
+      object: "frame",
+      action: "expand",
+      extra: {
+        frame_id: "fil_1",
+        ui_element: "conversation_side_panel",
+        location_resource_type: "conversation",
+        location_resource_id: "cnv_1",
       },
     });
   });

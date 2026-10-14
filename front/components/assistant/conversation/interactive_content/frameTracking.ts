@@ -5,7 +5,8 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 
-// PostHog event for every place a Frame gets opened. `trackEvent` names it `frames:frame:open`.
+// PostHog events for Frames being opened (`frames:frame:open`) and put in full screen
+// (`frames:frame:expand`).
 
 // Who opened it: the agent publishing it, the page showing it on load, or the user clicking.
 export type FrameOpenSource = "agent" | "auto" | "user";
@@ -33,6 +34,15 @@ export type FrameOpenLocation =
   | { type: "conversation"; id: string }
   | { type: "pod"; id: string }
   | { type: "public_share" };
+
+// Where the full screen button was clicked.
+export type FrameExpandUiElement =
+  // Frame side panel of a conversation.
+  | "conversation_side_panel"
+  // Frame pinned as the Pod banner.
+  | "pod_pinned_banner"
+  // Frame sheet opened from the Pod's file explorer.
+  | "pod_files";
 
 export interface FrameOpenOrigin {
   source: FrameOpenSource;
@@ -66,10 +76,42 @@ export function trackFrameOpen({
       frame_id: frameId,
       source: origin.source,
       ui_element: origin.uiElement,
-      location_resource_type: location.type,
-      ...(location.type === "public_share"
-        ? {}
-        : { location_resource_id: location.id }),
+      ...locationExtra(location),
+    },
+  });
+}
+
+function locationExtra(location: FrameOpenLocation): TrackingExtra {
+  return location.type === "public_share"
+    ? { location_resource_type: location.type }
+    : {
+        location_resource_type: location.type,
+        location_resource_id: location.id,
+      };
+}
+
+/**
+ * @cc [owner:theogz,label:product] frame-expand-event-names-frame-and-location
+ * `frames:frame:expand` MUST carry the same `frame_id`, `ui_element` and location properties as
+ * `frames:frame:open`, and fire only when entering full screen, never when leaving it.
+ */
+export function trackFrameExpand({
+  frameId,
+  uiElement,
+  location,
+}: {
+  frameId: string;
+  uiElement: FrameExpandUiElement;
+  location: FrameOpenLocation;
+}): void {
+  trackEvent({
+    area: TRACKING_AREAS.FRAMES,
+    object: "frame",
+    action: TRACKING_ACTIONS.EXPAND,
+    extra: {
+      frame_id: frameId,
+      ui_element: uiElement,
+      ...locationExtra(location),
     },
   });
 }

@@ -76,6 +76,7 @@ export const TRACKING_ACTIONS = {
   CLOSE: "close",
   VIEW: "view",
   DISMISS: "dismiss",
+  EXPAND: "expand",
 } as const;
 
 export type TrackingAction =
