@@ -52,3 +52,7 @@ operation updates.
 
 The [URI proposal](URI.md) defines stable object references, relative path resolution, and how
 applications and sandbox mounts address files.
+
+## Mount
+
+The [mount design](../mount/DESIGN.md) describes the library behind the dfs FUSE client for Linux.
