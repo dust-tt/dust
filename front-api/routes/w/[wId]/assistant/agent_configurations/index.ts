@@ -163,156 +163,137 @@ const app = workspaceApp();
  *         description: Unauthorized
  */
 
-app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
-  const rawQuery = ctx.req.query();
+app.get(
+  "/",
+  validate("query", GetAgentConfigurationsQuerySchema),
+  async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  // Mirror the Next handler: limit is a numeric param but URL params are
-  // strings, so coerce before passing to the schema.
-  const queryValidation = GetAgentConfigurationsQuerySchema.safeParse({
-    ...rawQuery,
-    limit:
-      typeof rawQuery.limit === "string"
-        ? parseInt(rawQuery.limit, 10)
-        : undefined,
-  });
-  if (!queryValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid query parameters: ${queryValidation.error.message}`,
-      },
-    });
-  }
-
-  const {
-    view,
-    limit,
-    withUsage,
-    withAuthors,
-    withFeedbacks,
-    withEditors,
-    sort,
-  } = queryValidation.data;
-  let viewParam = view ? view : "all";
-  // @ts-expect-error: added for backwards compatibility
-  viewParam = viewParam === "assistant-search" ? "list" : viewParam;
-  if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only Dust Super Users can see admin_internal agents.",
-      },
-    });
-  }
-  if (viewParam === "manage_unrestricted" && !auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only admins can list all agents of the workspace.",
-      },
-    });
-  }
-  const agents = await listAgentsForView(
-    auth,
-    viewParam === "workspace"
-      ? "published" // workspace is deprecated, return all visible agents
-      : viewParam,
-    { sort: sort === "priority" ? undefined : sort }
-  );
-  // Sorted and limited after the permission filtering, so a limit never drops a readable agent.
-  const sortedAgents =
-    sort === "priority"
-      ? agents.toSorted(
-          compareAgentsWithFavorites(await enrichWithFavorites(auth, agents))
-        )
-      : agents;
-  const listedAgents = limit ? sortedAgents.slice(0, limit) : sortedAgents;
-  // Stripped to stay under Next.js' 4MB API response limit.
-  let agentConfigurations = await toLightAgentConfigurations(
-    auth,
-    listedAgents,
-    { withInstructions: false }
-  );
-  if (withUsage === "true") {
-    const mentionCounts = await runOnRedis(
-      { origin: "agent_usage" },
-      async (redis) => {
-        return getAgentsUsage({
-          providedRedis: redis,
-          workspaceId: owner.sId,
-          limit:
-            typeof rawQuery.limit === "string"
-              ? parseInt(rawQuery.limit, 10)
-              : -1,
-        });
-      }
-    );
-    const usageMap = keyBy(mentionCounts, "agentId");
-    agentConfigurations = agentConfigurations.map((agentConfiguration) =>
-      usageMap[agentConfiguration.sId]
-        ? {
-            ...agentConfiguration,
-            usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
-          }
-        : agentConfiguration
-    );
-  }
-  if (withAuthors === "true") {
-    const recentAuthors = await getAgentsRecentAuthors({
+    const {
+      view,
+      limit,
+      withUsage,
+      withAuthors,
+      withFeedbacks,
+      withEditors,
+      sort,
+    } = ctx.req.valid("query");
+    let viewParam = view ? view : "all";
+    // @ts-expect-error: added for backwards compatibility
+    viewParam = viewParam === "assistant-search" ? "list" : viewParam;
+    if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only Dust Super Users can see admin_internal agents.",
+        },
+      });
+    }
+    if (viewParam === "manage_unrestricted" && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can list all agents of the workspace.",
+        },
+      });
+    }
+    const agents = await listAgentsForView(
       auth,
-      agents: listedAgents,
-    });
-    agentConfigurations = agentConfigurations.map(
-      (agentConfiguration, index) => ({
-        ...agentConfiguration,
-        lastAuthors: recentAuthors[index],
-      })
+      viewParam === "workspace"
+        ? "published" // workspace is deprecated, return all visible agents
+        : viewParam,
+      { sort: sort === "priority" ? undefined : sort }
     );
-  }
-
-  if (withEditors === "true") {
-    const editors = await getAgentsEditors(auth, listedAgents);
-    agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-      ...agentConfiguration,
-      editors: editors[agentConfiguration.sId],
-    }));
-  }
-
-  if (withFeedbacks === "true") {
-    const feedbacks =
-      await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
-        auth,
-        listedAgents
-          .filter((agent) => agent.scope !== "global")
-          .map((agent) => agent.sId),
-        30
+    // Sorted and limited after the permission filtering, so a limit never drops a readable agent.
+    const sortedAgents =
+      sort === "priority"
+        ? agents.toSorted(
+            compareAgentsWithFavorites(await enrichWithFavorites(auth, agents))
+          )
+        : agents;
+    const listedAgents = limit ? sortedAgents.slice(0, limit) : sortedAgents;
+    // Stripped to stay under Next.js' 4MB API response limit.
+    let agentConfigurations = await toLightAgentConfigurations(
+      auth,
+      listedAgents,
+      { withInstructions: false }
+    );
+    if (withUsage === "true") {
+      const mentionCounts = await runOnRedis(
+        { origin: "agent_usage" },
+        async (redis) => {
+          return getAgentsUsage({
+            providedRedis: redis,
+            workspaceId: owner.sId,
+            limit: limit ?? -1,
+          });
+        }
       );
-    agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-      ...agentConfiguration,
-      feedbacks: {
-        up:
-          feedbacks.find(
-            (f) =>
-              f.agentConfigurationId === agentConfiguration.sId &&
-              f.thumbDirection === "up"
-          )?.count ?? 0,
-        down:
-          feedbacks.find(
-            (f) =>
-              f.agentConfigurationId === agentConfiguration.sId &&
-              f.thumbDirection === "down"
-          )?.count ?? 0,
-      },
-    }));
-  }
+      const usageMap = keyBy(mentionCounts, "agentId");
+      agentConfigurations = agentConfigurations.map((agentConfiguration) =>
+        usageMap[agentConfiguration.sId]
+          ? {
+              ...agentConfiguration,
+              usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
+            }
+          : agentConfiguration
+      );
+    }
+    if (withAuthors === "true") {
+      const recentAuthors = await getAgentsRecentAuthors({
+        auth,
+        agents: listedAgents,
+      });
+      agentConfigurations = agentConfigurations.map(
+        (agentConfiguration, index) => ({
+          ...agentConfiguration,
+          lastAuthors: recentAuthors[index],
+        })
+      );
+    }
 
-  return ctx.json({ agentConfigurations });
-});
+    if (withEditors === "true") {
+      const editors = await getAgentsEditors(auth, listedAgents);
+      agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+        ...agentConfiguration,
+        editors: editors[agentConfiguration.sId],
+      }));
+    }
+
+    if (withFeedbacks === "true") {
+      const feedbacks =
+        await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+          auth,
+          listedAgents
+            .filter((agent) => agent.scope !== "global")
+            .map((agent) => agent.sId),
+          30
+        );
+      agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+        ...agentConfiguration,
+        feedbacks: {
+          up:
+            feedbacks.find(
+              (f) =>
+                f.agentConfigurationId === agentConfiguration.sId &&
+                f.thumbDirection === "up"
+            )?.count ?? 0,
+          down:
+            feedbacks.find(
+              (f) =>
+                f.agentConfigurationId === agentConfiguration.sId &&
+                f.thumbDirection === "down"
+            )?.count ?? 0,
+        },
+      }));
+    }
+
+    return ctx.json({ agentConfigurations });
+  }
+);
 
 app.post(
   "/",
