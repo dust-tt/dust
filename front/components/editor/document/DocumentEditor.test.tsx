@@ -925,7 +925,9 @@ describe("Document comments", () => {
 });
 
 describe("Document caret on open", () => {
-  const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
+  // TipTap moves focus on the next animation frame.
+  const nextFrame = () =>
+    new Promise((resolve) => requestAnimationFrame(resolve));
   // jsdom lays nothing out; ProseMirror measures ranges when it scrolls to the selection.
   const layoutStubs = [
     [Element.prototype, "scrollIntoView", vi.fn()],
@@ -972,7 +974,7 @@ describe("Document caret on open", () => {
     field.focus();
     try {
       await renderDocument("# Title\n", { focusOnOpen: true });
-      await act(nextTick);
+      await act(nextFrame);
 
       expect(document.activeElement).toBe(field);
     } finally {
@@ -982,7 +984,7 @@ describe("Document caret on open", () => {
 
   it("does not take focus without focusOnOpen", async () => {
     const { dom } = await renderDocument("# Title\n");
-    await act(nextTick);
+    await act(nextFrame);
 
     expect(document.activeElement).not.toBe(dom);
   });
