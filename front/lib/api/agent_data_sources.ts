@@ -8,6 +8,7 @@ import {
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -24,9 +25,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import sortBy from "lodash/sortBy";
 import uniq from "lodash/uniq";
-import uniqBy from "lodash/uniqBy";
 import type { ProjectionAlias, WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -158,6 +157,47 @@ async function fetchSkillsByDataSourceIds(
   return groupSkillsByKnowledgeId(auth, skills, dataSourceIds, (skill) =>
     skill.dataSourceConfigurations.map((c) => c.dataSourceId)
   );
+}
+
+/**
+ * @cc [owner:avervaet,label:security;product] usage-agents-fetchable
+ * An agent MUST be listed only if the caller holds a verb on it: a member MUST NOT see an agent
+ * they do not edit that is hidden or requests a space they cannot read.
+ */
+function fetchUsageAgents(
+  auth: Authenticator,
+  agentIds: string[]
+): Promise<AgentResource[]> {
+  return AgentResource.fetchByIds(auth, agentIds);
+}
+
+async function keepFetchableAgents(
+  auth: Authenticator,
+  usageById: Record<ModelId, AgentOnlyUsage>
+): Promise<Record<ModelId, AgentOnlyUsage>> {
+  const agentById = new Map(
+    (
+      await fetchUsageAgents(
+        auth,
+        Object.values(usageById).flatMap((usage) =>
+          usage.agents.map((agent) => agent.sId)
+        )
+      )
+    ).map((agent) => [agent.sId, agent])
+  );
+
+  const result: Record<ModelId, AgentOnlyUsage> = {};
+  for (const [id, usage] of Object.entries(usageById)) {
+    const agents = removeNulls(
+      uniq(usage.agents.map((agent) => agent.sId)).map(
+        (agentId) => agentById.get(agentId) ?? null
+      )
+    );
+    if (agents.length > 0) {
+      result[Number(id)] = AgentResource.toAgentsUsageJSON(agents);
+    }
+  }
+  return result;
 }
 
 /**
@@ -366,14 +406,10 @@ export async function getDataSourceViewsUsageByModelIds({
     });
   }
 
-  Object.values(result).forEach((usage) => {
-    if (usage) {
-      usage.agents = sortBy(uniqBy(usage.agents, "sId"), "name");
-      usage.count = usage.agents.length;
-    }
-  });
-
-  return mergeSkillsIntoUsage(result, skillsByDataSourceViewId);
+  return mergeSkillsIntoUsage(
+    await keepFetchableAgents(auth, result),
+    skillsByDataSourceViewId
+  );
 }
 
 export async function getDataSourcesUsageByCategory({
@@ -544,14 +580,10 @@ export async function getDataSourcesUsageByCategory({
       return acc;
     }, {});
 
-  Object.values(result).forEach((usage) => {
-    if (usage) {
-      usage.agents = sortBy(uniqBy(usage.agents, "sId"), "name");
-      usage.count = usage.agents.length;
-    }
-  });
-
-  return mergeSkillsIntoUsage(result, skillsByDataSourceId);
+  return mergeSkillsIntoUsage(
+    await keepFetchableAgents(auth, result),
+    skillsByDataSourceId
+  );
 }
 
 export async function getDataSourceUsage({
@@ -660,11 +692,16 @@ export async function getDataSourceUsage({
           agent.name.length > 0
       );
 
-    const sortedAgents = sortBy(uniqBy(agents, "sId"), "name");
+    const usage = AgentResource.toAgentsUsageJSON(
+      await fetchUsageAgents(
+        auth,
+        agents.map((agent) => agent.sId)
+      )
+    );
 
     return new Ok({
-      count: sortedAgents.length + skills.length,
-      agents: sortedAgents,
+      count: usage.count + skills.length,
+      agents: usage.agents,
       skills,
     });
   }
@@ -776,11 +813,16 @@ export async function getDataSourceViewUsage({
           agent.name.length > 0
       );
 
-    const sortedAgents = sortBy(uniqBy(agents, "sId"), "name");
+    const usage = AgentResource.toAgentsUsageJSON(
+      await fetchUsageAgents(
+        auth,
+        agents.map((agent) => agent.sId)
+      )
+    );
 
     return new Ok({
-      count: sortedAgents.length + skills.length,
-      agents: sortedAgents,
+      count: usage.count + skills.length,
+      agents: usage.agents,
       skills,
     });
   }

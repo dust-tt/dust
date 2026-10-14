@@ -281,3 +281,130 @@ describe("data source view/source usage with agents", () => {
     );
   });
 });
+
+describe("data source view/source usage agent visibility for members", () => {
+  it("omits hidden agents the member does not edit and agents in spaces they cannot read", async () => {
+    const testContext = await createResourceTest({ role: "admin" });
+    const auth = testContext.authenticator;
+    const { workspace, globalSpace } = testContext;
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const view = await DataSourceViewFactory.folder(workspace, globalSpace);
+    const mcpServerView = await MCPServerViewFactory.internal(
+      workspace,
+      "search",
+      globalSpace
+    );
+
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const linkedAgent = async (
+      agentAuth: Authenticator,
+      overrides: Parameters<
+        typeof AgentConfigurationFactory.createTestAgent
+      >[1],
+      { tableOnly }: { tableOnly: boolean }
+    ) => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        agentAuth,
+        overrides
+      );
+      const mcpServerConfiguration =
+        await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+          agent,
+          mcpServerView,
+        });
+      if (!tableOnly) {
+        await AgentDataSourceConfigurationModel.create({
+          workspaceId: workspace.id,
+          dataSourceId: view.dataSource.id,
+          dataSourceViewId: view.id,
+          mcpServerConfigurationId: mcpServerConfiguration.id,
+          tagsMode: null,
+          tagsIn: null,
+          tagsNotIn: null,
+        });
+      }
+      await AgentTablesQueryConfigurationTableModel.create({
+        workspaceId: workspace.id,
+        tableId: "table-1",
+        dataSourceId: view.dataSource.id,
+        dataSourceViewId: view.id,
+        mcpServerConfigurationId: mcpServerConfiguration.id,
+      });
+      return agent;
+    };
+
+    const visibleAgent = await linkedAgent(
+      auth,
+      { name: "A visible", scope: "visible" },
+      { tableOnly: false }
+    );
+    const memberHiddenAgent = await linkedAgent(
+      memberAuth,
+      { name: "B member hidden", scope: "hidden" },
+      { tableOnly: false }
+    );
+    const tableOnlyHiddenAgent = await linkedAgent(
+      auth,
+      { name: "C table hidden", scope: "hidden" },
+      { tableOnly: true }
+    );
+    const restrictedSpaceAgent = await linkedAgent(
+      auth,
+      {
+        name: "D restricted space",
+        scope: "visible",
+        requestedSpaceIds: [restrictedSpace.id],
+      },
+      { tableOnly: false }
+    );
+
+    const usageAgentIds = async (callerAuth: Authenticator) => {
+      const byModelIds = await getDataSourceViewsUsageByModelIds({
+        auth: callerAuth,
+        dataSourceViewModelIds: [view.id],
+      });
+      const viewUsage = await getDataSourceViewUsage({
+        auth: callerAuth,
+        dataSourceView: view,
+      });
+      const sourceUsage = await getDataSourceUsage({
+        auth: callerAuth,
+        dataSource: view.dataSource,
+      });
+      assert(viewUsage.isOk() && sourceUsage.isOk());
+      expect(byModelIds[view.id]?.count).toBe(
+        byModelIds[view.id]?.agents.length
+      );
+      return [
+        byModelIds[view.id]?.agents,
+        viewUsage.value.agents,
+        sourceUsage.value.agents,
+      ].map((agents) => agents?.map((agent) => agent.sId));
+    };
+
+    const visibleToMember = [visibleAgent.sId, memberHiddenAgent.sId];
+    expect(await usageAgentIds(memberAuth)).toEqual([
+      visibleToMember,
+      visibleToMember,
+      visibleToMember,
+    ]);
+
+    const visibleToAdmin = [
+      visibleAgent.sId,
+      memberHiddenAgent.sId,
+      tableOnlyHiddenAgent.sId,
+      restrictedSpaceAgent.sId,
+    ];
+    expect(await usageAgentIds(auth)).toEqual([
+      visibleToAdmin,
+      visibleToAdmin,
+      visibleToAdmin,
+    ]);
+  });
+});
