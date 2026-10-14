@@ -1,18 +1,17 @@
 import {
-  DocumentStatusIcon,
   SAVING_DISPLAY_DELAY_MS,
+  useShowSaving,
 } from "@app/components/editor/document/DocumentSaveStatus";
-import type { CollabStatus } from "@app/components/editor/document/types";
-import { act, render, screen } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const icon = (status: CollabStatus, syncing: boolean) => (
-  <DocumentStatusIcon live={{ status, syncing }} />
-);
+const renderShowSaving = () =>
+  renderHook<boolean, { syncingSinceMs: number | null }>(
+    ({ syncingSinceMs }) => useShowSaving(syncingSinceMs),
+    { initialProps: { syncingSinceMs: null } }
+  );
 
-const shownState = () => screen.getByRole("status").getAttribute("data-state");
-
-describe("DocumentStatusIcon", () => {
+describe("useShowSaving", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -21,54 +20,47 @@ describe("DocumentStatusIcon", () => {
     vi.useRealTimers();
   });
 
-  it("shows saving once changes have waited the delay, and saved as soon as they sync", () => {
-    const { rerender } = render(icon("live", false));
-    expect(shownState()).toBe("saved");
+  it("shows saving once changes have waited the delay, and stops as soon as they sync", () => {
+    const { result, rerender } = renderShowSaving();
+    expect(result.current).toBe(false);
 
-    rerender(icon("live", true));
+    rerender({ syncingSinceMs: 1 });
     act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS - 1));
-    expect(shownState()).toBe("saved");
+    expect(result.current).toBe(false);
 
     act(() => vi.advanceTimersByTime(1));
-    expect(shownState()).toBe("saving");
+    expect(result.current).toBe(true);
 
-    rerender(icon("live", false));
-    expect(shownState()).toBe("saved");
+    rerender({ syncingSinceMs: null });
+    expect(result.current).toBe(false);
   });
 
-  it("stays saved while each change syncs within the delay", () => {
-    const { rerender } = render(icon("live", false));
+  it("does not show changes that sync within the delay", () => {
+    const { result, rerender } = renderShowSaving();
 
-    for (let keystroke = 0; keystroke < 5; keystroke++) {
-      rerender(icon("live", true));
+    for (let keystroke = 1; keystroke <= 5; keystroke++) {
+      rerender({ syncingSinceMs: keystroke });
       act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS / 2));
-      expect(shownState()).toBe("saved");
-      rerender(icon("live", false));
+      expect(result.current).toBe(false);
+      rerender({ syncingSinceMs: null });
       act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS / 2));
     }
-    expect(shownState()).toBe("saved");
+    expect(result.current).toBe(false);
   });
 
   it("waits the delay again for the changes after a slow sync", () => {
-    const { rerender } = render(icon("live", true));
+    const { result, rerender } = renderShowSaving();
+    rerender({ syncingSinceMs: 1 });
     act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS));
-    expect(shownState()).toBe("saving");
-    rerender(icon("live", false));
+    expect(result.current).toBe(true);
+    rerender({ syncingSinceMs: null });
 
-    for (let keystroke = 0; keystroke < 5; keystroke++) {
-      rerender(icon("live", true));
-      expect(shownState()).toBe("saved");
+    for (let keystroke = 2; keystroke <= 6; keystroke++) {
+      rerender({ syncingSinceMs: keystroke });
+      expect(result.current).toBe(false);
       act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS / 2));
-      rerender(icon("live", false));
+      rerender({ syncingSinceMs: null });
     }
-    expect(shownState()).toBe("saved");
-  });
-
-  it("shows connecting and a lost session at once", () => {
-    const { rerender } = render(icon("connecting", false));
-    expect(shownState()).toBe("saving");
-
-    rerender(icon("offline", true));
-    expect(shownState()).toBe("disconnected");
+    expect(result.current).toBe(false);
   });
 });

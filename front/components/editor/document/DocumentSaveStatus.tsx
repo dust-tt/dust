@@ -1,4 +1,5 @@
 import type { CollabStatus } from "@app/components/editor/document/types";
+import { useDebouncedValue } from "@app/hooks/useDebounce";
 import type { AgentEvent } from "@app/lib/client/collab/agents";
 import type { AgentActivity } from "@app/types/collab";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -16,7 +17,6 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useState } from "react";
 
 interface StatusRowProps {
   /** The row's controls, side by side: the live status, the comments toggle. */
@@ -122,20 +122,20 @@ export const CollabAgentIndicator = ({
 // Every keystroke waits one round trip to sync: only a longer wait shows as saving.
 export const SAVING_DISPLAY_DELAY_MS = 1000;
 
-/** Whether `active` has stayed true for `delayMs`; false again as soon as it is not. */
-function useActiveFor(active: boolean, delayMs: number): boolean {
-  const [elapsed, setElapsed] = useState(false);
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-    const timeout = setTimeout(() => setElapsed(true), delayMs);
-    return () => {
-      clearTimeout(timeout);
-      setElapsed(false);
-    };
-  }, [active, delayMs]);
-  return active && elapsed;
+/**
+ * @cc [owner:tdraier,label:product] document-saving-delay
+ * Changes MUST show as saving only once they have waited `SAVING_DISPLAY_DELAY_MS` since
+ * `syncingSinceMs`, the start of their wait, and MUST stop as soon as they are synced: a wait that
+ * ended MUST NOT shorten the next one's delay. A wait already started when the hook mounts shows
+ * at once, so it MUST be mounted where the connection starts, not per shared document.
+ */
+export function useShowSaving(syncingSinceMs: number | null): boolean {
+  // The start of the wait, not a boolean: a wait that ended leaves no delay behind for the next.
+  const { debouncedValue } = useDebouncedValue(
+    syncingSinceMs,
+    SAVING_DISPLAY_DELAY_MS
+  );
+  return syncingSinceMs !== null && debouncedValue === syncingSinceMs;
 }
 
 type StatusIconState = "saved" | "saving" | "disconnected";
@@ -183,24 +183,17 @@ interface DocumentStatusIconProps {
 /**
  * @cc [owner:tdraier,label:product] document-status-icon
  * Shown next to the host's file name instead of the status badge, a live document's status MUST
- * be one icon with its state as label and tooltip: a green check once live, unless changes have
- * waited to sync for `SAVING_DISPLAY_DELAY_MS`; an orange spinning arrow circle from then until
- * they are synced, or while connecting; a red disconnected icon when the live session is lost or
- * refused. A document without a live session MUST show no icon.
+ * be one icon with its state as label and tooltip: a green check once live, unless changes show
+ * as saving (`document-saving-delay`); an orange spinning arrow circle while they do, or while
+ * connecting; a red disconnected icon when the live session is lost or refused. A document without
+ * a live session MUST show no icon.
  */
 export const DocumentStatusIcon = ({ live }: DocumentStatusIconProps) => {
   const { t } = useLingui();
-  const syncingForAWhile = useActiveFor(
-    live?.syncing ?? false,
-    SAVING_DISPLAY_DELAY_MS
-  );
   if (!live) {
     return null;
   }
-  const { state, label } = statusIcon({
-    status: live.status,
-    syncing: syncingForAWhile,
-  });
+  const { state, label } = statusIcon(live);
   const { icon, className } = STATUS_ICONS[state];
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 text-muted-foreground copy-xs">

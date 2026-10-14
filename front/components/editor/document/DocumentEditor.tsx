@@ -107,7 +107,7 @@ export const DocumentEditor = (props: DocumentProps) =>
 interface DocumentViewProps extends DocumentProps {
   collabView?: {
     status: CollabStatus;
-    /** Changes not yet confirmed by the server. */
+    /** Changes not yet confirmed by the server, shown per `document-saving-delay`. */
     syncing?: boolean;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: AgentEvent | null;

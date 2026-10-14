@@ -1,5 +1,6 @@
 import { buildCollabExtensions } from "@app/components/editor/document/collabExtensions";
 import { DocumentView } from "@app/components/editor/document/DocumentEditor";
+import { useShowSaving } from "@app/components/editor/document/DocumentSaveStatus";
 import type {
   CollabConnectionSettings,
   DocumentProps,
@@ -18,7 +19,11 @@ interface CollabEditorProps extends DocumentProps {
 /** A Document in a live session: the file read-only until the shared document has synced. */
 export default function CollabEditor(props: CollabEditorProps) {
   const { t } = useLingui();
-  const { connection, status, syncing } = useCollabConnection(props.live);
+  const { connection, status, syncingSinceMs } = useCollabConnection(
+    props.live
+  );
+  // Here rather than in the icon, which mounts again with each connection.
+  const syncing = useShowSaving(syncingSinceMs);
   const agent = useCollabAgentActivity(connection?.provider ?? null);
   const { id, name, color } = props.live.user;
   const participants = useCollabParticipants(
