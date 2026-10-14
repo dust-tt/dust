@@ -124,7 +124,7 @@ the Image entry of the `/` menu; agents and raw edits write them.
 
 With the host's `embeddableFiles`, the `/` menu adds a Frame and an Image entry. Picking one asks
 the host to load the files and turns the menu into a search over them, by name or path; picking a
-file replaces the `/` with its embed: a `::frame` line, or an image whose alt text is the file
+file replaces the `/` with its embed: a `::embed_frame` line, or an image whose alt text is the file
 name. Escape, or the Back entry above the files, returns to the `/` menu. The file preview offers
 the Frames and images of the document's own pod or conversation, Frames only when they have a
 linked file, since only those render (`useDocumentEmbeddableFiles`), and lists that pod's or

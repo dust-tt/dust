@@ -91,7 +91,7 @@ describe("useDocumentBlockMenu embeds", () => {
 
     expect(menu.result.current.isPicking).toBe(false);
     expect(editor?.getMarkdown().trimEnd()).toBe(
-      'Intro\n\n::frame{path="pod-p/Clock/Clock.tsx"}'
+      'Intro\n\n::embed_frame{path="pod-p/Clock/Clock.tsx"}'
     );
   });
 
