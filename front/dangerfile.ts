@@ -720,7 +720,7 @@ async function checkDiffFiles() {
       collabSharedFiles.includes(path) ||
       (collabSharedDirectories.some((prefix) => path.startsWith(prefix)) &&
         path.endsWith(".ts") &&
-        !path.endsWith(".test.ts"))
+        !/\.test(_utils)?\.ts$/.test(path))
   );
   if (modifiedCollabSharedFiles.length > 0) {
     checkCollabSharedFilesLabel();
