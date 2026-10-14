@@ -35,6 +35,8 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
   declare mountFilePath: string | null;
+  // The file's dfs object, once it is written to dfs.
+  declare dfsObjectId: CreationOptional<string | null>;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -91,6 +93,10 @@ FileModel.init(
       type: DataTypes.STRING(4096),
       allowNull: true,
       defaultValue: null,
+    },
+    dfsObjectId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

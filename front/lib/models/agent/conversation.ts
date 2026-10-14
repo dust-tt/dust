@@ -42,6 +42,8 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare hasError: CreationOptional<boolean>;
   declare metadata: CreationOptional<ConversationMetadata>;
   declare memoryFilePath: CreationOptional<string | null>;
+  // The dfs folder holding the conversation's files, created on first use.
+  declare dfsObjectId: CreationOptional<string | null>;
 
   declare requestedSpaceIds: number[];
 
@@ -102,6 +104,10 @@ ConversationModel.init(
       defaultValue: {},
     },
     memoryFilePath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    dfsObjectId: {
       type: DataTypes.STRING,
       allowNull: true,
     },

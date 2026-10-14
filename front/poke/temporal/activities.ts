@@ -32,6 +32,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DfsTenantResource } from "@app/lib/resources/dfs_tenant_resource";
+import { DfsUserFolderResource } from "@app/lib/resources/dfs_user_folder_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -758,6 +759,7 @@ export async function deleteWorkspaceActivity({
   await ProviderCredentialResource.deleteAllForWorkspace(auth);
   // dfs has no tenant deletion RPC: the tenant's data stays in dfs, unreachable without its key.
   // TODO(dfs): scrub the tenant's data in dfs when the workspace is deleted, before dropping its key.
+  await DfsUserFolderResource.deleteAllForWorkspace(auth);
   await DfsTenantResource.deleteAllForWorkspace(auth);
   await DustAppSecretModel.destroy({
     where: {
