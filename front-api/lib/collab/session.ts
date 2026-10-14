@@ -23,6 +23,7 @@ import type {
 import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Document, Hocuspocus } from "@hocuspocus/server";
 import type * as Y from "yjs";
@@ -357,46 +358,56 @@ export function recordSaveResult(
   if (!session) {
     return;
   }
-  const failed = outcome !== "saved";
+  let failed: boolean;
+  switch (outcome) {
+    case "saved":
+      failed = false;
+      clearTimeout(session.saveRetryTimer);
+      session.saveRetryTimer = undefined;
+      session.saveRetries = 0;
+      break;
+    case "failed_until_edited":
+      failed = true;
+      clearTimeout(session.saveRetryTimer);
+      session.saveRetryTimer = undefined;
+      break;
+    case "failed":
+      failed = true;
+      // A failure while a retry is pending leaves it as scheduled: the delay doubles per retry.
+      if (session.saveRetryTimer === undefined) {
+        const delayMs = Math.min(
+          SAVE_RETRY_DELAY_MS * 2 ** session.saveRetries,
+          SAVE_RETRY_MAX_DELAY_MS
+        );
+        session.saveRetries++;
+        session.saveRetryTimer = setTimeout(() => {
+          session.saveRetryTimer = undefined;
+          // Unloaded, it has nothing left to save; shutting down, `saveAllSessions` saves it.
+          if (document.isDestroyed || isStoppingWrites(hocuspocus)) {
+            return;
+          }
+          // Not awaited: `onStoreDocument` logs a failure and schedules the next retry.
+          void hocuspocus.storeDocumentHooks(
+            document,
+            {
+              clientsCount: document.getConnectionsCount(),
+              document,
+              documentName: document.name,
+              instance: hocuspocus,
+              // The store hook saves through the last writer it recorded, not this context.
+              lastContext: undefined,
+              lastTransactionOrigin: undefined,
+            },
+            true
+          );
+        }, delayMs);
+      }
+      break;
+    default:
+      assertNever(outcome);
+  }
   if (session.saveFailed !== failed) {
     session.saveFailed = failed;
     document.broadcastStateless(saveStateMessage(toSaveState(session)));
   }
-  if (outcome !== "failed") {
-    clearTimeout(session.saveRetryTimer);
-    session.saveRetryTimer = undefined;
-    if (outcome === "saved") {
-      session.saveRetries = 0;
-    }
-    return;
-  }
-  if (session.saveRetryTimer !== undefined) {
-    return;
-  }
-  const delay = Math.min(
-    SAVE_RETRY_DELAY_MS * 2 ** session.saveRetries,
-    SAVE_RETRY_MAX_DELAY_MS
-  );
-  session.saveRetries++;
-  session.saveRetryTimer = setTimeout(() => {
-    session.saveRetryTimer = undefined;
-    // Unloaded, it has nothing left to save; shutting down, `saveAllSessions` saves it.
-    if (document.isDestroyed || isStoppingWrites(hocuspocus)) {
-      return;
-    }
-    // Not awaited: `onStoreDocument` logs a failure and schedules the next retry.
-    void hocuspocus.storeDocumentHooks(
-      document,
-      {
-        clientsCount: document.getConnectionsCount(),
-        document,
-        documentName: document.name,
-        instance: hocuspocus,
-        // The store hook saves through the last writer it recorded, not this context.
-        lastContext: undefined,
-        lastTransactionOrigin: undefined,
-      },
-      true
-    );
-  }, delay);
 }

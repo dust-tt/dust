@@ -282,6 +282,8 @@ describe("createCollabHocuspocus", () => {
         source: `${base}\n\nMore.`,
       })
     ).toEqual(new Ok("unsaved"));
+    const after = await readSessionSource(hocuspocus, name);
+    expect(after.isOk() && after.value.open && after.value.source).toBe(base);
   });
 
   it("refuses comment commands while saves fail", async () => {

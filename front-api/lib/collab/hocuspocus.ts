@@ -106,7 +106,7 @@ function logUnexpected(
  * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
  * unless a connection is open or its last save failed. A direct connection that leaves
  * during that period does not extend it. A failed save MUST be retried after
- * `SAVE_RETRY_DELAY_MS`, the delay doubling at each failure up to `SAVE_RETRY_MAX_DELAY_MS`, until
+ * `SAVE_RETRY_DELAY_MS`, the delay doubling with each retry up to `SAVE_RETRY_MAX_DELAY_MS`, until
  * one succeeds, the document unloads or `saveAllSessions` is called, except a save whose writer
  * cannot write, which only another edit fixes. Every time the session's save state
  * (`toSaveState`) changes, every connection MUST be sent it as `save_state`, and a connection
@@ -122,7 +122,7 @@ function logUnexpected(
  * message it added handed to `dispatchSessionCommentMentions` without waiting for it. A command its
  * document unloaded before it finished MUST change nothing. Every command carrying a request id
  * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document,
- * came while the document's last save failed, or did not finish within
+ * found the document's last save failed at its turn, or did not finish within
  * `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold the later ones. Any
  * other message that is not a valid client message MUST be ignored.
  */
