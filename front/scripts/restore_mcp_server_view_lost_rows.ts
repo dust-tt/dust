@@ -51,7 +51,7 @@ const ManifestSchema = z.object({
   workspaceModelId: z.number(),
   internalMCPServerId: z.string().nullable(),
   remoteMCPServerId: z.number().nullable(),
-  lostViewIds: z.array(z.number()),
+  lostViewModelIds: z.array(z.number()),
 });
 type Manifest = z.infer<typeof ManifestSchema>;
 
@@ -318,7 +318,7 @@ makeScript(
     logger.info(
       {
         destinationViewId: destinationView.id,
-        lostViewIds: manifest.lostViewIds,
+        lostViewModelIds: manifest.lostViewModelIds,
       },
       "Restoring"
     );
@@ -335,7 +335,7 @@ makeScript(
       return;
     }
 
-    const insertedAgentMcpIds = new Set(
+    const insertedAgentMcpModelIds = new Set(
       insertedByTable.get(AgentMCPServerConfigurationModel.tableName) ?? []
     );
     const restoredAgentConfigurations = await AgentConfigurationModel.findAll({
@@ -344,7 +344,7 @@ makeScript(
         workspaceId: manifest.workspaceModelId,
         id: uniq(
           agentMcpRows
-            .filter((r) => insertedAgentMcpIds.has(r.id))
+            .filter((r) => insertedAgentMcpModelIds.has(r.id))
             .map((r) => Number(r.agentConfigurationId))
         ),
       },

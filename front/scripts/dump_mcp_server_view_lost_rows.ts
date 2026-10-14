@@ -110,15 +110,15 @@ async function selectRows(
  */
 async function dumpLostRows(
   workspaceModelId: ModelId,
-  viewIds: ModelId[]
+  viewModelIds: ModelId[]
 ): Promise<Record<string, DumpedRow[]>> {
   const agentConfigurations = await selectRows(
     AgentMCPServerConfigurationModel.tableName,
     "mcpServerViewId",
     workspaceModelId,
-    viewIds
+    viewModelIds
   );
-  const configurationIds = agentConfigurations.map((r) => r.id);
+  const configurationModelIds = agentConfigurations.map((r) => r.id);
 
   return {
     [AgentMCPServerConfigurationModel.tableName]: agentConfigurations,
@@ -126,31 +126,31 @@ async function dumpLostRows(
       AgentDataSourceConfigurationModel.tableName,
       "mcpServerConfigurationId",
       workspaceModelId,
-      configurationIds
+      configurationModelIds
     ),
     [AgentTablesQueryConfigurationTableModel.tableName]: await selectRows(
       AgentTablesQueryConfigurationTableModel.tableName,
       "mcpServerConfigurationId",
       workspaceModelId,
-      configurationIds
+      configurationModelIds
     ),
     [AgentChildAgentConfigurationModel.tableName]: await selectRows(
       AgentChildAgentConfigurationModel.tableName,
       "mcpServerConfigurationId",
       workspaceModelId,
-      configurationIds
+      configurationModelIds
     ),
     [SkillMCPServerConfigurationModel.tableName]: await selectRows(
       SkillMCPServerConfigurationModel.tableName,
       "mcpServerViewId",
       workspaceModelId,
-      viewIds
+      viewModelIds
     ),
     [ConversationMCPServerViewModel.tableName]: await selectRows(
       ConversationMCPServerViewModel.tableName,
       "mcpServerViewId",
       workspaceModelId,
-      viewIds
+      viewModelIds
     ),
   };
 }
@@ -228,7 +228,7 @@ makeScript(
           workspaceModelId: workspace.id,
           internalMCPServerId: views[0].internalMCPServerId,
           remoteMCPServerId: views[0].remoteMCPServerId,
-          lostViewIds: views.map((v) => v.id),
+          lostViewModelIds: views.map((v) => v.id),
           counts,
         },
         null,
@@ -237,7 +237,7 @@ makeScript(
     );
 
     logger.info(
-      { dir, lostViewIds: views.map((v) => v.id), counts },
+      { dir, lostViewModelIds: views.map((v) => v.id), counts },
       "Dump written"
     );
   }
