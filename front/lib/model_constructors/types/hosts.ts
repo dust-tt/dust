@@ -1,4 +1,5 @@
 export const OPENAI_RESPONSES_HOST = "openai-responses" as const;
+export const OPENAI_DECISIONS_HOST = "openai-decisions" as const;
 export const ANTHROPIC_HOST = "anthropic" as const;
 export const GOOGLE_AI_STUDIO_HOST = "google-ai-studio" as const;
 export const AGENT_PLATFORM_HOST = "agent-platform" as const;
@@ -9,6 +10,7 @@ export const NOOP_HOST = "noop" as const;
 
 export const HOSTS = [
   OPENAI_RESPONSES_HOST,
+  OPENAI_DECISIONS_HOST,
   ANTHROPIC_HOST,
   GOOGLE_AI_STUDIO_HOST,
   AGENT_PLATFORM_HOST,
