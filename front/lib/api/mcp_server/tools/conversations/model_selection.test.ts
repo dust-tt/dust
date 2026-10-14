@@ -11,6 +11,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_OPUS_5_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: vi.fn(),
@@ -44,25 +45,35 @@ async function connectAuthenticatedMcpClient(authenticator: Authenticator) {
   return { client, close: () => client.close() };
 }
 
-type McpToolResult = {
-  isError?: boolean;
-  content: Array<{ type: string; text?: string }>;
-};
+const McpToolResultSchema = z.object({
+  isError: z.boolean().optional(),
+  content: z.array(
+    z
+      .object({
+        type: z.string(),
+        text: z.string().optional(),
+      })
+      .passthrough()
+  ),
+});
 
-function asMcpToolResult(result: unknown): McpToolResult {
-  if (
-    typeof result !== "object" ||
-    result === null ||
-    !("content" in result) ||
-    !Array.isArray((result as { content: unknown }).content)
-  ) {
-    throw new Error("Unexpected MCP tool result shape");
-  }
-  return result as McpToolResult;
+const CreateMessageResponseSchema = z.object({
+  userMessageId: z.string(),
+});
+
+const CreateConversationResponseSchema = z.object({
+  conversationId: z.string(),
+  userMessageId: z.string(),
+});
+
+function parseMcpToolResult(result: unknown) {
+  return McpToolResultSchema.parse(result);
 }
 
 function toolText(result: unknown): string {
-  const text = asMcpToolResult(result).content.find((c) => c.type === "text");
+  const text = parseMcpToolResult(result).content.find(
+    (c) => c.type === "text"
+  );
   if (text?.type !== "text" || text.text === undefined) {
     throw new Error("Expected text content from MCP tool result");
   }
@@ -135,10 +146,10 @@ describe("Dust MCP conversation modelSelection", () => {
         },
       });
 
-      expect(asMcpToolResult(result).isError).toBeFalsy();
-      const body = JSON.parse(toolText(result)) as {
-        userMessageId: string;
-      };
+      expect(parseMcpToolResult(result).isError).toBeFalsy();
+      const body = CreateMessageResponseSchema.parse(
+        JSON.parse(toolText(result))
+      );
       const conversationResource = await ConversationResource.fetchById(
         authenticator,
         conversation.sId
@@ -192,7 +203,7 @@ describe("Dust MCP conversation modelSelection", () => {
         },
       });
 
-      expect(asMcpToolResult(result).isError).toBe(true);
+      expect(parseMcpToolResult(result).isError).toBe(true);
       expect(toolText(result)).toMatch(
         /Invalid arguments|invalid_enum_value|modelId/i
       );
@@ -230,7 +241,7 @@ describe("Dust MCP conversation modelSelection", () => {
         },
       });
 
-      expect(asMcpToolResult(result).isError).toBe(true);
+      expect(parseMcpToolResult(result).isError).toBe(true);
       expect(toolText(result)).toContain("not authorized");
     } finally {
       await close();
@@ -263,11 +274,10 @@ describe("Dust MCP conversation modelSelection", () => {
         },
       });
 
-      expect(asMcpToolResult(result).isError).toBeFalsy();
-      const body = JSON.parse(toolText(result)) as {
-        conversationId: string;
-        userMessageId: string;
-      };
+      expect(parseMcpToolResult(result).isError).toBeFalsy();
+      const body = CreateConversationResponseSchema.parse(
+        JSON.parse(toolText(result))
+      );
 
       const conversationResource = await ConversationResource.fetchById(
         authenticator,

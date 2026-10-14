@@ -51,7 +51,7 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
         modelSelection
       );
       if (modelSelectionRes.isErr()) {
-        return mcpError(modelSelectionRes.error.api_error.message);
+        return mcpError(modelSelectionRes.error.message);
       }
 
       let mentions: { configurationId: string }[] = [];

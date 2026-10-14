@@ -2,30 +2,35 @@ import type { Authenticator } from "@app/lib/auth";
 import { getEnabledModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { fromError } from "zod-validation-error";
 
+export class ModelSelectionError extends Error {
+  constructor(
+    readonly code: "invalid_model_selection" | "model_disabled",
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 export async function validatePublicModelSelection(
   auth: Authenticator,
   rawModelSelection: unknown
-): Promise<
-  Result<ModelSelectionType | undefined, APIErrorWithContentfulStatusCode>
-> {
+): Promise<Result<ModelSelectionType | undefined, ModelSelectionError>> {
   if (!rawModelSelection) {
     return new Ok(undefined);
   }
 
   const parsed = ModelSelectionSchema.safeParse(rawModelSelection);
   if (!parsed.success) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid modelSelection: ${fromError(parsed.error).toString()}`,
-      },
-    });
+    return new Err(
+      new ModelSelectionError(
+        "invalid_model_selection",
+        `Invalid modelSelection: ${fromError(parsed.error).toString()}`
+      )
+    );
   }
   const modelSelection = parsed.data;
 
@@ -37,15 +42,13 @@ export async function validatePublicModelSelection(
       model.modelId === modelSelection.modelId
   );
   if (!isAuthorized) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "model_disabled",
-        message:
-          `The selected model (${modelSelection.providerId}/${modelSelection.modelId}) ` +
-          "is not authorized for this workspace.",
-      },
-    });
+    return new Err(
+      new ModelSelectionError(
+        "model_disabled",
+        `The selected model (${modelSelection.providerId}/${modelSelection.modelId}) ` +
+          "is not authorized for this workspace."
+      )
+    );
   }
 
   return new Ok(modelSelection);
