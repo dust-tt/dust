@@ -106,61 +106,11 @@ function replaceInBody({
   });
 }
 
-function anchorIds(body: string): Result<Set<string>, DfmAgentDocumentError> {
+function anchorIds(body: string): string[] | null {
   const anchors = extractAnchors(body);
-  if (anchors.isErr()) {
-    return new Err(
-      new DfmAgentDocumentError(
-        "anchors_invalid",
-        `The edit would break \`:comment-start{…}\` / \`:comment-end{…}\` anchors: ${anchors.error.message} ` +
-          "Keep each anchor pair intact around at least some of its text."
-      )
-    );
-  }
-  return new Ok(new Set(anchors.value.anchors.map(({ id }) => id)));
-}
-
-// `anchors_invalid` covers what an agent edit must never do: write an anchor, which would pass
-// for a comment thread nobody started, or leave a malformed one. `anchors_removed` covers
-// removing anchors, refused until an edit can also decide what becomes of their threads.
-function checkAnchorEdit(
-  bodyBefore: string,
-  bodyAfter: string
-): Result<undefined, DfmAgentDocumentError> {
-  const before = anchorIds(bodyBefore);
-  if (before.isErr()) {
-    return before;
-  }
-  const after = anchorIds(bodyAfter);
-  if (after.isErr()) {
-    return after;
-  }
-  const idsBefore = before.value;
-  const idsAfter = after.value;
-  const added = [...idsAfter].filter((id) => !idsBefore.has(id));
-  if (added.length > 0) {
-    return new Err(
-      new DfmAgentDocumentError(
-        "anchors_invalid",
-        `The edit would add comment anchors (${added.join(", ")}). Never write ` +
-          "`:comment-start{…}` / `:comment-end{…}` anchors: comment with the comment tools."
-      )
-    );
-  }
-
-  const removed = [...idsBefore].filter((id) => !idsAfter.has(id));
-  if (removed.length > 0) {
-    return new Err(
-      new DfmAgentDocumentError(
-        "anchors_removed",
-        `The edit would remove the anchors of comment threads ${removed.join(", ")}. ` +
-          "Keep each `:comment-start{…}` / `:comment-end{…}` anchor pair around at least some " +
-          "of its text."
-      )
-    );
-  }
-
-  return new Ok(undefined);
+  return anchors.isOk()
+    ? anchors.value.anchors.map(({ id }) => id).sort()
+    : null;
 }
 
 /**
@@ -187,9 +137,9 @@ export async function readAgentDocument(
  * Line breaks in the source and `oldString` MUST be matched normalized to `\n`, so a passage
  * quoted from a CRLF source still matches; they MAY be normalized to `\n` and trailing ones
  * dropped from the edited body. It MUST leave the front matter, the comment threads and the set
- * of comment anchors unchanged, refusing an edit that adds an anchor or leaves a malformed one
- * with `anchors_invalid`, and otherwise one that removes anchor pairs with `anchors_removed`.
- * It MUST be written through `writeDocumentChange`.
+ * of comment anchors unchanged, refusing an edit that adds or breaks anchors with
+ * `anchors_invalid`, and otherwise one that removes anchors with `anchors_removed`. It MUST be
+ * written through `writeDocumentChange`.
  */
 export async function editAgentDocument(
   auth: Authenticator,
@@ -238,9 +188,29 @@ export async function editAgentDocument(
         .replaceAll("\r\n", "\n")
         .replace(/\n+$/, "");
 
-      const anchorEdit = checkAnchorEdit(document.body, editedBody);
-      if (anchorEdit.isErr()) {
-        return anchorEdit;
+      const anchorsBefore = anchorIds(document.body);
+      const anchorsAfter = anchorIds(editedBody);
+      if (
+        anchorsAfter === null ||
+        anchorsBefore === null ||
+        anchorsAfter.some((id) => !anchorsBefore.includes(id))
+      ) {
+        return new Err(
+          new DfmAgentDocumentError(
+            "anchors_invalid",
+            "The edit would add or break `:comment-start{…}` / `:comment-end{…}` anchors. " +
+              "Keep every existing anchor pair intact and do not write new ones."
+          )
+        );
+      }
+      if (anchorsAfter.length !== anchorsBefore.length) {
+        return new Err(
+          new DfmAgentDocumentError(
+            "anchors_removed",
+            "The edit would remove `:comment-start{…}` / `:comment-end{…}` anchors. " +
+              "Keep every existing anchor pair intact."
+          )
+        );
       }
 
       return new Ok({
