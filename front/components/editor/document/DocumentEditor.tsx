@@ -20,6 +20,7 @@ import {
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
+import { DocumentTableToolbar } from "@app/components/editor/document/DocumentTableToolbar";
 import type {
   CollabParticipant,
   DocumentProps,
@@ -235,7 +236,7 @@ interface DocumentEditingControlsProps {
   blockMenu: ReturnType<typeof useDocumentBlockMenu>;
 }
 
-/** The formatting toolbar over a selection, the image menu and the `/` block menu, while editable. */
+/** The formatting toolbar over a selection, the image menu, the table toolbar and the `/` block menu, while editable. */
 const DocumentEditingControls = ({
   editor,
   comments,
@@ -248,6 +249,7 @@ const DocumentEditingControls = ({
         onComment={comments.canWrite ? comments.startDraft : undefined}
       />
       <DocumentImageMenu editor={editor} />
+      <DocumentTableToolbar editor={editor} />
       <DocumentBlockMenu editor={editor} menu={blockMenu} />
     </>
   );

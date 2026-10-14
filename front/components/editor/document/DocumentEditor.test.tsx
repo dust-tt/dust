@@ -33,6 +33,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
@@ -1564,6 +1565,21 @@ describe("Document Escape inside a host dialog", () => {
 });
 
 describe("Document tables", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const TABLE = "| Name | Count |\n| --- | --- |\n| apple | 3 |\n";
 
   const cellText = (editor: Editor, text: string) => {
@@ -1619,6 +1635,90 @@ describe("Document tables", () => {
     }
 
     expect(editor.state.doc.eq(before)).toBe(true);
+  });
+
+  const openTableMenu = async () => {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit table" }));
+    return user;
+  };
+
+  const rowTexts = (editor: Editor) => {
+    const rows: string[] = [];
+    editor.state.doc.firstChild?.forEach((row) => {
+      const cells: string[] = [];
+      row.forEach((cell) => cells.push(cell.textContent));
+      rows.push(cells.join("|"));
+    });
+    return rows;
+  };
+
+  it("adds and deletes rows and columns from the table toolbar", async () => {
+    const { editor } = await renderDocument(TABLE);
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "apple").to);
+    });
+
+    const shape = () => {
+      const table = editor.state.doc.firstChild;
+      return [table?.childCount, table?.firstChild?.childCount];
+    };
+    const choose = async (name: string) => {
+      const user = await openTableMenu();
+      await user.click(screen.getByRole("menuitem", { name }));
+    };
+
+    await choose("Add row below");
+    expect(rowTexts(editor)).toEqual(["Name|Count", "apple|3", "|"]);
+    await choose("Add column right");
+    expect(rowTexts(editor)[0]).toBe("Name||Count");
+    await choose("Add column left");
+    expect(shape()).toEqual([3, 4]);
+    await choose("Delete column");
+    expect(shape()).toEqual([3, 3]);
+    await choose("Delete row");
+    expect(shape()).toEqual([2, 3]);
+
+    const user = await openTableMenu();
+    await user.click(screen.getByRole("menuitem", { name: "Delete table" }));
+    expect(editor.state.doc.firstChild?.type.name).not.toBe("table");
+  });
+
+  it("offers no row above the header row", async () => {
+    const { editor } = await renderDocument(TABLE);
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "Name").to);
+    });
+
+    await openTableMenu();
+
+    expect(
+      screen.getByRole("menuitem", { name: "Add row below" })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("menuitem", { name: "Add row above" })
+    ).toBeNull();
+  });
+
+  it("aligns a row added from the table toolbar as its columns", async () => {
+    const { editor } = await renderDocument(
+      "| Name | Count |\n| --- | --: |\n| apple | 3 |\n"
+    );
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "apple").to);
+    });
+
+    const user = await openTableMenu();
+    await user.click(screen.getByRole("menuitem", { name: "Add row below" }));
+
+    const aligns: unknown[] = [];
+    editor.state.doc.firstChild?.lastChild?.forEach((cell) =>
+      aligns.push(cell.attrs.align)
+    );
+    expect(aligns).toEqual([null, "right"]);
   });
 
   it("offers no text style or list menu over a selection in a cell", async () => {

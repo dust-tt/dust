@@ -1,4 +1,5 @@
 import type {
+  CommandProps,
   JSONContent,
   MarkdownParseHelpers,
   MarkdownRendererHelpers,
@@ -6,6 +7,7 @@ import type {
   RawCommands,
   RenderContext,
 } from "@tiptap/core";
+import { findParentNode } from "@tiptap/core";
 import {
   preprocessTablePipes,
   Table,
@@ -75,6 +77,40 @@ export const withColumnAlignments = (table: JSONContent): JSONContent => {
       })),
     })),
   };
+};
+
+/** Aligns every cell of the table holding the selection as its column is written. */
+export const alignCellsToColumns = ({ tr }: CommandProps): boolean => {
+  const table = findParentNode(
+    (node) => node.type.name === DOCUMENT_TABLE_NODE_NAME
+  )(tr.selection);
+  if (!table) {
+    return false;
+  }
+  const alignments: (ColumnAlignment | undefined)[] = [];
+  table.node.forEach((row) =>
+    row.forEach((cell, _, column) => {
+      if (
+        alignments[column] === undefined &&
+        isColumnAlignment(cell.attrs.align)
+      ) {
+        alignments[column] = cell.attrs.align;
+      }
+    })
+  );
+  table.node.forEach((row, rowOffset) =>
+    row.forEach((cell, cellOffset, column) => {
+      const align = alignments[column] ?? null;
+      if (cell.attrs.align !== align) {
+        tr.setNodeAttribute(
+          table.start + rowOffset + 1 + cellOffset,
+          "align",
+          align
+        );
+      }
+    })
+  );
+  return true;
 };
 
 const UNESCAPED_PIPE = /(?<!\\)\|/;

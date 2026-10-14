@@ -8,6 +8,7 @@ import {
   Image01,
   List,
   Minus,
+  Table,
   Type01,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
@@ -109,6 +110,14 @@ export const BLOCKS: DocumentBlock[] = [
     icon: Code01,
     keywords: "codeblock",
     apply: (chain: ChainedCommands) => chain.toggleCodeBlock().run(),
+  },
+  {
+    name: msg({ message: "Table", context: "document block" }),
+    description: msg`Rows and columns, with a header row`,
+    icon: Table,
+    keywords: "grid rows columns",
+    apply: (chain: ChainedCommands) =>
+      chain.insertTable({ rows: 3, cols: 3 }).run(),
   },
   {
     name: msg`Divider`,

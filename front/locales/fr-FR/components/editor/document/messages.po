@@ -330,6 +330,44 @@ msgstr "Listes"
 msgid "Edit link"
 msgstr "Modifier le lien"
 
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgctxt "document table toolbar"
+msgid "Edit table"
+msgstr "Modifier le tableau"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgctxt "document table toolbar"
+msgid "Table"
+msgstr "Tableau"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Add row above"
+msgstr "Ajouter une ligne au-dessus"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Add row below"
+msgstr "Ajouter une ligne en dessous"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Add column left"
+msgstr "Ajouter une colonne à gauche"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Add column right"
+msgstr "Ajouter une colonne à droite"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Delete row"
+msgstr "Supprimer la ligne"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Delete column"
+msgstr "Supprimer la colonne"
+
+#: front/components/editor/document/DocumentTableToolbar.tsx
+msgid "Delete table"
+msgstr "Supprimer le tableau"
+
 #: front/components/editor/document/blocks.ts
 msgctxt "document paragraph style"
 msgid "Text"
@@ -396,6 +434,15 @@ msgstr "Code"
 #: front/components/editor/document/blocks.ts
 msgid "A code snippet"
 msgstr "Un extrait de code"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block"
+msgid "Table"
+msgstr "Tableau"
+
+#: front/components/editor/document/blocks.ts
+msgid "Rows and columns, with a header row"
+msgstr "Des lignes et des colonnes, avec une ligne d'en-tête"
 
 #: front/components/editor/document/blocks.ts
 msgid "Divider"

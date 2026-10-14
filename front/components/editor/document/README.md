@@ -34,12 +34,14 @@ preserved: a CRLF file opens and is written back with LF.
 ## Tables
 
 A GFM table opens as a table whose first row is its header, shown as column headers, at the top
-level, in a list item or in a quote. Each cell holds one paragraph of text, so Enter does
-nothing in a cell, and the text style and list menus are not offered there. Saving writes
-compact rows, `| a | b |` with `---`, `:--`, `:-:` or `--:` per column as the table aligns it,
-and every `|` in a cell escaped, a `|` inside code included. Comments may sit in a cell, span
-cells in reading order, or surround a table. A table is refused when a row has more cells than
-its header, since marked would drop them.
+level, in a list item or in a quote; the Table entry of the `/` menu inserts a 3 by 3 one, the
+cursor in its first header cell. Each cell holds one paragraph of text, so Enter does nothing in a
+cell, and the text style and list menus are not offered there. Saving writes compact rows,
+`| a | b |` with `---`, `:--`, `:-:` or `--:` per column as the table aligns it, and every `|` in a cell
+escaped, a `|` inside code included. While the cursor is in a table, a toolbar above it adds rows
+and columns and deletes the row, the column or the table; it never adds a row above the first one,
+the header. Comments may sit in a cell, span cells in reading order, or surround a table. A table
+is refused when a row has more cells than its header, since marked would drop them.
 
 Front matter is kept in an envelope and written back unchanged on save. The editor rewrites
 the body and the comment threads, and only when the codec confirms the result reads back
@@ -175,6 +177,7 @@ opens the file through the file API. Without it, the reference shows as its titl
 | `DocumentFrameMenu.tsx` | The height slider and remove menu over a hovered Frame. |
 | `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
+| `DocumentTableToolbar.tsx` | The row and column controls over a table holding the cursor. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the live status and the agent at work. |
 | `DocumentMarkdownPreview.tsx` | A file that cannot open, rendered read-only under the reason. |
