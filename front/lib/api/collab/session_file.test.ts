@@ -304,11 +304,14 @@ describe("saveCollabSession", () => {
       const { file, lastSave } = await loadConversationFile("# Notes\n");
       await writeAround(file, "# Notes\n");
 
+      const writesBefore = fileStorageMock.saveFileCalls.length;
+
       const kept = await keepConflictingFile(file, lastSave);
       expect(kept.isOk() && kept.value.copyPath).toBeNull();
       expect(kept.isOk() && kept.value.lastSave.revision).not.toBe(
         lastSave.revision
       );
+      expect(fileStorageMock.saveFileCalls).toHaveLength(writesBefore);
     });
 
     it("numbers a copy whose name is taken", async () => {
