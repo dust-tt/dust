@@ -422,7 +422,9 @@ function RichMarkdownDocument({
   });
   const resolveImageSource = useResolveMarkdownImageUrl(owner);
   const renderFrame = useCallback(
-    (path: string) => <DocumentFrameEmbed owner={owner} path={path} />,
+    (path: string, height: number) => (
+      <DocumentFrameEmbed owner={owner} path={path} height={height} />
+    ),
     [owner]
   );
 

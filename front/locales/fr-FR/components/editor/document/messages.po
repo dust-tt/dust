@@ -171,6 +171,24 @@ msgstr "Résolus ({resolvedCount})"
 msgid "All comments"
 msgstr "Tous les commentaires"
 
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgctxt "toolbar over a hovered Frame embedded in a document"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgid "Frame height"
+msgstr "Hauteur du Frame"
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr "{value} px"
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgid "Remove Frame"
+msgstr "Retirer le Frame"
+
 #: front/components/editor/document/DocumentImageMenu.tsx
 msgctxt "toolbar over a hovered image"
 msgid "Image"
@@ -179,10 +197,6 @@ msgstr "Image"
 #: front/components/editor/document/DocumentImageMenu.tsx
 msgid "Image width"
 msgstr "Largeur de l’image"
-
-#: front/components/editor/document/DocumentImageMenu.tsx
-msgid "{value} px"
-msgstr "{value} px"
 
 #: front/components/editor/document/DocumentImageMenu.tsx
 msgid "Original size"

@@ -565,6 +565,7 @@ describe("saveDfm", () => {
       '::embed_frame{path="pod-abc/dashboards/revenue.tsx"}\n',
       '# Report\n\n::embed_frame{path="conversation-c1/a &amp; b.tsx"}\n\nText.\n',
       'Intro\n\n::embed_frame{path="pod-abc/x.tsx"}\n\n::embed_frame{path="pod-abc/y.tsx"}\n',
+      '::embed_frame{path="pod-abc/x.tsx" height="400"}\n',
     ]) {
       expect(roundTrip(source)).toBe(source);
       expect(() =>
@@ -627,6 +628,9 @@ describe("saveDfm", () => {
     const source = '- ::embed_frame{path="pod-abc/x.tsx"}\n';
     expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
     expect(roundTrip(source)).toBe('- ::embed\\_frame{path="pod-abc/x.tsx"}\n');
+    expect(
+      roundTrip('- ::embed_frame{path="pod-abc/x.tsx" height="400"}\n')
+    ).toBe('- ::embed\\_frame{path="pod-abc/x.tsx" height="400"}\n');
   });
 
   it("reads an image's width after its alt text, and keeps alt text ending like one", () => {

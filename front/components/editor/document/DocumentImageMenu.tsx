@@ -3,6 +3,7 @@ import {
   IMAGE_SOURCE_ATTRIBUTE,
   parseImageWidth,
 } from "@app/components/editor/document/DocumentImage";
+import { asOwnUndoStep } from "@app/components/editor/document/undoSteps";
 import { useEditorLayoutVersion } from "@app/components/editor/document/useEditorLayoutVersion";
 import {
   Button,
@@ -13,10 +14,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
-import { yUndoPluginKey } from "@tiptap/y-tiptap";
 import type React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { UndoManager } from "yjs";
 
 const MIN_IMAGE_WIDTH_PX = 64;
 const MENU_INSET_PX = 8;
@@ -50,21 +49,6 @@ const previewImageWidth = (
   if (isDocumentImage(image)) {
     image.style.width = width !== null ? `${width}px` : "";
   }
-};
-
-// The collaboration history merges edits made within half a second into one undo step.
-const asOwnUndoStep = (editor: Editor, edit: () => void) => {
-  const undoManager: unknown = yUndoPluginKey.getState(
-    editor.state
-  )?.undoManager;
-  const stopCapturing = () => {
-    if (undoManager instanceof UndoManager) {
-      undoManager.stopCapturing();
-    }
-  };
-  stopCapturing();
-  edit();
-  stopCapturing();
 };
 
 interface DocumentImageMenuProps {

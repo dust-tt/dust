@@ -45,9 +45,9 @@ const CollabEditor = lazy(
  * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply the
  * document editor's instance, extensions, or toolbar configuration; `commentInputExtensions`
  * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
- * text selection, and image controls a hovered image (see `document-image-menu`). Block commands
- * MUST require an editable document, and either a typed `/` or the selection toolbar's text
- * style and list menus.
+ * text selection, image controls a hovered image (see `document-image-menu`), and Frame controls
+ * a hovered Frame (see `document-frame-menu`). Block commands MUST require an editable document,
+ * and either a typed `/` or the selection toolbar's text style and list menus.
  * className MUST apply only to the outer container.
  */
 /**
@@ -258,16 +258,16 @@ export const DocumentView = ({
   badge,
 }: DocumentViewProps) => {
   const live = collabEditorMode(collabView);
-  const embeds = useMemo(
-    () => ({ renderFrame, renderFilePreview }),
-    [renderFrame, renderFilePreview]
-  );
   const { editor, editable, unsupported, isSavable } = useDocumentEditor({
     initialContent,
     readOnly: readOnly || live.waiting,
     live: live.binding,
     resolveImageSource,
   });
+  const embeds = useMemo(
+    () => ({ renderFrame, renderFilePreview, editable }),
+    [renderFrame, renderFilePreview, editable]
+  );
   const blockMenu = useDocumentBlockMenu(editor, editable, embeddableFiles);
   const comments = useDocumentComments({
     editor,

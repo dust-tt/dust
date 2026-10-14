@@ -11,16 +11,22 @@ import { useContext } from "react";
 interface DocumentFrameEmbedProps {
   owner: LightWorkspaceType;
   path: string;
+  height: number;
 }
 
 /**
  * @cc [owner:tdraier,label:product;security] document-frame-embed-access
  * A Frame embedded in a document MUST load only through the file API from its path, so it shows
  * only to a reader who can read the Frame's file; a path the API refuses or that is not a Frame
- * MUST show as the path. It MUST render as a regular, non-editable Frame, inline, 600px high,
- * with the reader's editor and member status in the Frame's pod for a Frame of a pod.
+ * MUST show as the path. It MUST render as a regular, non-editable Frame, inline, at the height
+ * the document gives it, with the reader's editor and member status in the Frame's pod for a
+ * Frame of a pod.
  */
-export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
+export function DocumentFrameEmbed({
+  owner,
+  path,
+  height,
+}: DocumentFrameEmbedProps) {
   const vizUrl = useContext(AuthContext)?.vizUrl;
   const scope = parseCanonicalScopedPath(path)?.scope;
   const podId = scope?.kind === "canonical-pod" ? scope.id : null;
@@ -47,7 +53,10 @@ export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
   }
 
   return (
-    <div className="h-[600px] overflow-hidden rounded-xl ring-1 ring-border/60">
+    <div
+      className="overflow-hidden rounded-xl ring-1 ring-border/60"
+      style={{ height }}
+    >
       <PodFrameVisualization
         owner={owner}
         spaceId={podId ?? undefined}

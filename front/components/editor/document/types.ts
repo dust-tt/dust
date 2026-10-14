@@ -52,8 +52,11 @@ export interface DocumentProps {
   resolveImageSource: (src: string) => string | null;
   /** Files the `/` menu offers to embed. Without them, it offers no Frame or image. */
   embeddableFiles?: DocumentEmbeddableFiles;
-  /** Renders the Frame a `::embed_frame` line embeds, from its path. Without it, the embed shows its path. */
-  renderFrame?: (path: string) => ReactNode;
+  /**
+   * Renders the Frame a `::embed_frame` line embeds, from its path, filling the height in pixels the
+   * document gives it. Without it, the embed shows its path.
+   */
+  renderFrame?: (path: string, height: number) => ReactNode;
   /** Renders a file reference. Without it, the reference shows as its file name. */
   renderFilePreview?: (preview: DocumentFilePreview) => ReactNode;
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
