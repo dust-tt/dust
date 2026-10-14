@@ -114,7 +114,9 @@ function toSteps(node: Expression | Super): Result<Step[], string> {
 
     // All other syntax, for example `a + b` or `(a, b)`.
     default:
-      return new Err('only "workbook.name.name(args)" is allowed.');
+      return new Err(
+        "expression not supported. Use only properties and method calls, as in \"workbook.worksheets.getItem('Sheet1')\"."
+      );
   }
 }
 
