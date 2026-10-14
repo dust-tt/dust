@@ -25,6 +25,12 @@ const QuerySchema = z.object({
 
 export const PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS = 2;
 
+// The dust_project connector downloads all the files of one listing in a single sync activity,
+// which can run for up to 60 minutes, so every URL must stay valid that long. The URL returned
+// here may come from the signed URL cache and be up to 80% through its lifetime: with 6 hours,
+// it still has at least 72 minutes left.
+const PROJECT_FILES_SIGNED_URL_EXPIRATION_DELAY_MS = 6 * 60 * 60 * 1000;
+
 // This system-key-only route is owned by the dust_project connector. Keep the
 // circuit breaker local to this route so unrelated front requests are unaffected.
 let activeProjectFilesRequests = 0;
@@ -132,7 +138,9 @@ app.get(
           if (entry.isDirectory) {
             return entry;
           }
-          const urlResult = await dustFs.getDownloadUrl(entry.path);
+          const urlResult = await dustFs.getDownloadUrl(entry.path, {
+            expiresInMs: PROJECT_FILES_SIGNED_URL_EXPIRATION_DELAY_MS,
+          });
           return {
             ...entry,
             signedDownloadUrl: urlResult.isOk() ? urlResult.value : null,
