@@ -1,3 +1,4 @@
+import { parseIntParam } from "@app/lib/api/pagination";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { isSupportedModel } from "@app/types/assistant/assistant";
@@ -33,7 +34,7 @@ export const GetAgentConfigurationsQuerySchema = z.object({
   withAuthors: z.enum(["true", "false"]).optional(),
   withEditors: z.enum(["true", "false"]).optional(),
   withFeedbacks: z.enum(["true", "false"]).optional(),
-  limit: LimitSchema.optional(),
+  limit: z.preprocess(parseIntParam, LimitSchema.optional()),
   sort: z.enum(["priority", "alphabetical"]).optional(),
 });
 
