@@ -19,6 +19,7 @@ interface GetJoinErrorBody {
   redirectUrl: string;
 }
 
+// Mounted at /api/w/:wId/join (no workspace auth — public endpoint).
 /**
  * @cc [owner:ykmsd,label:product] join-locale-is-workspace-locale
  * The visitor of the join page has no Dust session, so the `workspace.locale` of the response MUST
