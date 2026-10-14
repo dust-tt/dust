@@ -110,7 +110,10 @@ vi.mock(
   })
 );
 
-const tierRoutingDecision = vi.hoisted(() => ({ basicProbability: 0 }));
+const tierRoutingDecision = vi.hoisted(() => ({
+  basicProbability: 0,
+  calls: 0,
+}));
 
 vi.mock(
   "@app/lib/api/llm/selectPreferredEndpointForWorkspace",
@@ -125,6 +128,7 @@ vi.mock(
 
       return class extends DustOpenAIGptSixLunaGlobalOpenAIDecisionsSystemOne {
         override async decide() {
+          tierRoutingDecision.calls += 1;
           const basic = tierRoutingDecision.basicProbability;
           return new Ok({
             answers: [
@@ -2167,16 +2171,24 @@ describe("postUserMessage", () => {
   });
 
   describe("auto tier routing", () => {
-    async function postToAutoAgent(routingAuth: Authenticator) {
-      const autoAgent = await AgentConfigurationFactory.createTestAgent(
-        routingAuth,
-        { name: "Auto Agent", model: { providerId: "auto", modelId: "auto" } }
-      );
-      const userJson = routingAuth.getNonNullableUser().toJSON();
+    let autoAgent: LightAgentConfigurationType;
 
-      return postUserMessage(routingAuth, {
+    beforeEach(async () => {
+      autoAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Auto Agent",
+        model: { providerId: "auto", modelId: "auto" },
+      });
+      tierRoutingDecision.basicProbability = 0;
+      tierRoutingDecision.calls = 0;
+    });
+
+    async function postToAutoAgent(basicProbability: number) {
+      tierRoutingDecision.basicProbability = basicProbability;
+      const userJson = auth.getNonNullableUser().toJSON();
+
+      const result = await postUserMessage(auth, {
         conversationResource: await fetchConversationResource(
-          routingAuth,
+          auth,
           conversation.sId
         ),
         content: "Say hi @Auto Agent",
@@ -2191,26 +2203,59 @@ describe("postUserMessage", () => {
         },
         skipToolsValidation: false,
       });
+      assert(result.isOk(), "expected the message to be posted");
+
+      return result.value;
+    }
+
+    async function finish(agentMessage: AgentMessageType) {
+      const conversationResource = await fetchConversationResource(
+        auth,
+        conversation.sId
+      );
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation: conversationResource.toJSON(),
+        agentMessage,
+        status: "succeeded",
+      });
+    }
+
+    // Posts a message, lets its agent message finish, and returns the stream it ran on.
+    async function exchange(basicProbability: number) {
+      const { agentMessages } = await postToAutoAgent(basicProbability);
+      const [agentMessage] = agentMessages;
+      assert(agentMessage, "expected an agent message");
+      await finish(agentMessage);
+
+      return agentMessage.modelResolutionMethod;
+    }
+
+    async function latestAgentMessageRow() {
+      const conversationResource = await fetchConversationResource(
+        auth,
+        conversation.sId
+      );
+      const row = await AgentMessageModel.findOne({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: workspace.id,
+        },
+        order: [["id", "DESC"]],
+      });
+      assert(row, "expected an agent message");
+
+      return row;
     }
 
     it("runs a routed message on the lower stream and bills the decision with it", async () => {
       await FeatureFlagFactory.basic(auth, "auto_tier_routing");
-      tierRoutingDecision.basicProbability = 0.9;
 
-      const result = await postToAutoAgent(auth);
+      const { agentMessages } = await postToAutoAgent(0.9);
 
-      assert(result.isOk(), "expected the message to be posted");
-      const [agentMessage] = result.value.agentMessages;
+      const [agentMessage] = agentMessages;
       assert(agentMessage, "expected an agent message");
       expect(agentMessage.modelResolutionMethod).toBe("auto_fast");
-
-      const agentMessageRow = await AgentMessageModel.findOne({
-        where: {
-          id: agentMessage.agentMessageId,
-          workspaceId: workspace.id,
-        },
-      });
-      const [decisionRunId] = agentMessageRow?.runIds ?? [];
+      const [decisionRunId] = (await latestAgentMessageRow()).runIds ?? [];
       assert(decisionRunId, "expected the decision run on the agent message");
       expect(launchAgentLoopWorkflow).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -2222,21 +2267,43 @@ describe("postUserMessage", () => {
     });
 
     it("resolves the configured stream without a decision when the flag is off", async () => {
-      tierRoutingDecision.basicProbability = 0.9;
+      expect(await exchange(0.9)).toBe("auto");
+      expect(tierRoutingDecision.calls).toBe(0);
+    });
 
-      const result = await postToAutoAgent(auth);
+    it("decides on each message until a decision lands on the configured tier, then never again", async () => {
+      await FeatureFlagFactory.basic(auth, "auto_tier_routing");
 
-      assert(result.isOk(), "expected the message to be posted");
-      const [agentMessage] = result.value.agentMessages;
-      assert(agentMessage, "expected an agent message");
-      expect(agentMessage.modelResolutionMethod).toBe("auto");
-      expect(launchAgentLoopWorkflow).toHaveBeenCalledWith(
-        expect.objectContaining({
-          agentLoopArgs: expect.not.objectContaining({
-            dustRunIds: expect.anything(),
-          }),
-        })
+      expect(await exchange(0.9)).toBe("auto_fast");
+      expect(tierRoutingDecision.calls).toBe(1);
+
+      expect(await exchange(0.9)).toBe("auto_fast");
+      expect(tierRoutingDecision.calls).toBe(2);
+
+      expect(await exchange(0.1)).toBe("auto");
+      expect(tierRoutingDecision.calls).toBe(3);
+
+      expect(await exchange(0.9)).toBe("auto");
+      expect(await exchange(0.9)).toBe("auto");
+      expect(tierRoutingDecision.calls).toBe(3);
+    });
+
+    it("runs a steered message on the current routed tier without a new decision", async () => {
+      await FeatureFlagFactory.basic(auth, "auto_tier_routing");
+      const { agentMessages } = await postToAutoAgent(0.9);
+      const [runningAgentMessage] = agentMessages;
+      assert(runningAgentMessage, "expected an agent message");
+
+      const steering = await postToAutoAgent(0.1);
+      expect(steering.userMessage.visibility).toBe("pending");
+      await finish(runningAgentMessage);
+
+      const promotedAgentMessageRow = await latestAgentMessageRow();
+      expect(promotedAgentMessageRow.id).not.toBe(
+        runningAgentMessage.agentMessageId
       );
+      expect(promotedAgentMessageRow.modelResolutionMethod).toBe("auto_fast");
+      expect(tierRoutingDecision.calls).toBe(1);
     });
   });
 
