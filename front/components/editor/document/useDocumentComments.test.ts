@@ -34,6 +34,7 @@ import {
   describe,
   expect,
   it,
+  onTestFinished,
   vi,
 } from "vitest";
 
@@ -424,18 +425,21 @@ describe("useDocumentComments", () => {
     expect(saved()).toBe("Hi there\n");
   });
 
-  it("reveals the requested thread once its text is in the document", async () => {
+  it("opens the requested thread once its text is in the document", async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
-    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+    onTestFinished(() => {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      vi.unstubAllGlobals();
+    });
     const onChange = vi.fn();
     const { result } = await renderCommentedEditor(SOURCE, {
       activeComment: { id: "c1", onChange },
     });
 
     await waitFor(() => expect(result.current.comments.activeId).toBe("c1"));
-    expect(result.current.comments.focusRequest?.threadId).toBe("c1");
-    expect(result.current.comments.listOpen).toBe(false);
+    expect(result.current.comments.focusRequest).toBeNull();
     expect(scrollIntoView).toHaveBeenCalled();
     expect(onChange).toHaveBeenCalledExactlyOnceWith("c1");
   });

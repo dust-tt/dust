@@ -220,9 +220,9 @@ export interface CommentsFocusRequest {
 /**
  * @cc [owner:adrien,label:react] document-comment-reveal-on-open
  * When `activeComment.id` names a thread whose text is in the document and that is not already
- * active, the hook MUST reveal it once each time the id is set, as revealing it from its
- * highlight does, and scroll its highlight into view. While a draft is pending, or for a thread
- * not in the document, it MUST change nothing.
+ * active, the hook MUST activate it once each time the id is set and scroll its highlight into
+ * view, without moving focus. While a draft is pending, or for a thread not in the document, it
+ * MUST change nothing.
  */
 /**
  * @cc [owner:adrien,label:react] document-comment-report-active
@@ -393,11 +393,6 @@ export const useDocumentComments = ({
       return;
     }
     editor.commands.setActiveComment(revealCommentId);
-    setListOpen(false);
-    setFocusRequest((current) => ({
-      threadId: revealCommentId,
-      nonce: (current?.nonce ?? 0) + 1,
-    }));
     scrollToCommentHighlight(editor, revealCommentId);
   }, [editor, revealCommentId, state.activeId, state.draft, state.quotes]);
 
