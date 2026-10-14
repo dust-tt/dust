@@ -9,6 +9,9 @@ export const SAVING_DISPLAY_DELAY_MS = 1000;
  * `syncingSinceMs`, the start of their wait, and MUST stop as soon as they are synced: a wait that
  * ended MUST NOT shorten the next one's delay. A wait already started when the hook mounts shows
  * at once, so it MUST be mounted where the connection starts, not per shared document.
+ * This is a deliberate exception to `async-network-loading-state` (`front/CONTRACTS`): the edits
+ * are already applied in the editor, so nobody waits on their sync, and showing it on every
+ * keystroke made the icon flicker. A sync slower than the delay still shows.
  */
 export function useShowSaving(syncingSinceMs: number | null): boolean {
   // The start of the wait, not a boolean: a wait that ended leaves no delay behind for the next.
