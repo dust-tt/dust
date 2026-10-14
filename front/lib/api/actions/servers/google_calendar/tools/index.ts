@@ -21,6 +21,7 @@ import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/goo
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
 import { randomUUID } from "crypto";
 import type { calendar_v3 } from "googleapis";
@@ -108,7 +109,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         : [];
 
       const eventCount = enrichedEvents.length;
-      const summaryText = `Found ${eventCount} event${eventCount !== 1 ? "s" : ""}${res.data.nextPageToken ? " (more available)" : ""}`;
+      const summaryText = `Found ${eventCount} event${pluralize(eventCount)}${res.data.nextPageToken ? " (more available)" : ""}`;
       const formattedText = formatEventsListAsText(enrichedEvents, summaryText);
 
       return new Ok([{ type: "text" as const, text: formattedText }]);

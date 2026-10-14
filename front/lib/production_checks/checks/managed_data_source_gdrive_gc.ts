@@ -13,6 +13,7 @@ import type { Logger } from "@app/logger/logger";
 import { googleDriveGarbageCollectorWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { withRetries } from "@app/types/shared/retries";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { Client } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
@@ -156,7 +157,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       const notDeletedRatio = notDeleted.length / coreDocumentIds.length;
       if (notDeletedRatio <= NOT_DELETED_RATIO_THRESHOLD) {
         reportSuccess({
-          message: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} awaiting GC out of ${coreDocumentIds.length} (below ${NOT_DELETED_RATIO_THRESHOLD * 100}% threshold, connector: ${ds.connectorId})`,
+          message: `${notDeleted.length} document${pluralize(notDeleted.length)} awaiting GC out of ${coreDocumentIds.length} (below ${NOT_DELETED_RATIO_THRESHOLD * 100}% threshold, connector: ${ds.connectorId})`,
         });
         return;
       }
@@ -167,7 +168,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         await isGarbageCollectorRunning(temporalClient, ds.connectorId, logger)
       ) {
         reportSuccess({
-          message: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} awaiting GC but the garbage collector is currently running (connector: ${ds.connectorId})`,
+          message: `${notDeleted.length} document${pluralize(notDeleted.length)} awaiting GC but the garbage collector is currently running (connector: ${ds.connectorId})`,
         });
         return;
       }
@@ -178,7 +179,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       });
       const actionLinks: ActionLink[] = [
         {
-          label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
+          label: `${notDeleted.length} document${pluralize(notDeleted.length)} not GC'd (connector: ${ds.connectorId})`,
           url: `/poke/${ds.workspaceId}/data_sources/${dataSourceId}`,
         },
       ];

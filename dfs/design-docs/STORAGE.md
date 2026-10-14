@@ -120,8 +120,9 @@ projections; the real tenant root is an ordinary stored object. Virtual `root` r
 versions; `shared` has no stored record.
 
 Effective `mode` and `store_version` are computed per response. Directory execute/traverse derives
-from read permission. File size, versions, and affected blocks commit together. Missing blocks read as
-zeroes within the logical size; truncation discards trailing data so extension cannot restore it.
+from read permission. File size, versions, and affected blocks commit together. Missing blocks and
+short block tails read as zeroes within the logical size; truncation discards trailing data so
+extension cannot restore it.
 
 ### Directory state and versions
 

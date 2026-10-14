@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr ""
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Back"
+msgstr ""
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Loading files…"
 msgstr ""
 
@@ -167,8 +171,29 @@ msgstr ""
 msgid "All comments"
 msgstr ""
 
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "toolbar over a hovered image"
+msgid "Image"
+msgstr ""
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Image width"
+msgstr ""
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr ""
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Original size"
+msgstr ""
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Remove image"
+msgstr ""
+
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a table."
+msgid "This document can't be edited here because a table row has more cells than its header."
 msgstr ""
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
@@ -356,6 +381,19 @@ msgstr ""
 
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
+msgstr ""
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding a Frame"
+msgid "Frame"
+msgstr ""
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr ""
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
 msgstr ""
 
 #: front/components/editor/document/blocks.ts

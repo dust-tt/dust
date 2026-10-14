@@ -207,6 +207,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "CursorLogo",
   "DriveLogo",
   "FathomLogo",
+  "FirefliesLogo",
   "FreshserviceLogo",
   "FrontLogo",
   "FullEnrichLogo",

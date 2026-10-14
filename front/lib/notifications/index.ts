@@ -1,15 +1,24 @@
 export { getNovuClient } from "@app/lib/notifications/novu-client";
 
 import { getNovuClient } from "@app/lib/notifications/novu-client";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
+import type {
+  NotificationCondition,
+  NotificationPreferencesDelay,
+} from "@app/types/notification_preferences";
 import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  DEFAULT_NOTIFICATION_CONDITION,
   DEFAULT_NOTIFICATION_DELAY,
+  isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
 } from "@app/types/notification_preferences";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -72,6 +81,47 @@ export const getActiveSubscriberAuth = async (
     });
   return membership ? auth : null;
 };
+
+/**
+ * @cc [owner:adrien,label:product] notify-condition-resolution
+ * Each user's notify condition MUST be their preference for the space `spaceModelId` when set, else
+ * their general conversation preference when valid, else `DEFAULT_NOTIFICATION_CONDITION`.
+ */
+export async function filterUsersByNotifyCondition<T extends { id: ModelId }>(
+  auth: Authenticator,
+  {
+    users,
+    spaceModelId,
+    shouldNotify,
+  }: {
+    users: T[];
+    spaceModelId: ModelId | null;
+    shouldNotify: (user: T, notifyCondition: NotificationCondition) => boolean;
+  }
+): Promise<T[]> {
+  const userModelIds = users.map((user) => user.id);
+  const generalPreferences =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+      userModelIds
+    );
+  const projectPreferences = spaceModelId
+    ? await UserProjectPreferencesResource.fetchNotificationPreferenceMap(
+        auth,
+        { spaceModelId, userModelIds }
+      )
+    : new Map<ModelId, NotificationCondition>();
+
+  return users.filter((user) => {
+    const general = generalPreferences.get(user.id);
+    return shouldNotify(
+      user,
+      projectPreferences.get(user.id) ??
+        (isNotificationCondition(general) ? general : undefined) ??
+        DEFAULT_NOTIFICATION_CONDITION
+    );
+  });
+}
 
 export const getUserNotificationDelay = async ({
   subscriberId,

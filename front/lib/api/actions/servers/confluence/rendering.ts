@@ -6,6 +6,7 @@ import type {
   RenderablePage,
   RenderConfluencePageOptions,
 } from "@app/lib/api/actions/servers/confluence/types";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import TurndownService from "turndown";
 
 const turndownService = new TurndownService({
@@ -96,7 +97,7 @@ export function renderConfluencePageList(
     return "No pages found.";
   }
 
-  const header = `Found ${pages.length} page${pages.length === 1 ? "" : "s"}${hasMore ? " (more available)" : ""}`;
+  const header = `Found ${pages.length} page${pluralize(pages.length)}${hasMore ? " (more available)" : ""}`;
   const sections = pages.map((page) => {
     const includeBody = Boolean(page.body?.storage?.value);
     return ["---", renderConfluencePage(page, { includeBody })].join("\n");
@@ -113,7 +114,7 @@ export function renderConfluenceSpacesList(
     return "No spaces found.";
   }
 
-  const header = `Found ${spaces.length} space${spaces.length === 1 ? "" : "s"}${hasMore ? " (more available)" : ""}`;
+  const header = `Found ${spaces.length} space${pluralize(spaces.length)}${hasMore ? " (more available)" : ""}`;
   const sections = spaces.map((space) => {
     return [
       `### ${space.name} (${space.key})`,

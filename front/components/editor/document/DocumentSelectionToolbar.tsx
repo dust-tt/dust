@@ -158,7 +158,8 @@ const LinkField = ({
  * @cc [owner:PopDaph;tdraier,label:product] document-selection-toolbar
  * The toolbar MUST offer, over a nonempty text selection of an editable document: a text style
  * menu (text, headings 1 to 3), bold, italic, underline, strikethrough, inline code, a list menu
- * (bulleted, numbered) and a link control. A link MUST be a valid http(s) URL, a value without a
+ * (bulleted, numbered) and a link control. In a table cell, which holds one paragraph, the text
+ * style and list menus MUST NOT be offered. A link MUST be a valid http(s) URL, a value without a
  * scheme reading as https, or a mailto address. Using a control MUST keep the editor's selection,
  * except that applying or removing a link MUST act on the whole link under the selection.
  */
@@ -192,6 +193,7 @@ export const DocumentSelectionToolbar = ({
       link: editor.isActive("link"),
       href: linkHref(editor),
       canComment: editor.can().startCommentDraft(),
+      inTableCell: editor.isActive("tableCell"),
     }),
   });
   const isApple =
@@ -293,28 +295,32 @@ export const DocumentSelectionToolbar = ({
                   <HoveringBar.Separator />
                 </>
               )}
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="xs"
-                    variant="ghost-secondary"
-                    label="Aa"
-                    aria-label={t`Text style`}
-                    isSelect
-                    onMouseDown={keepSelection}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" mountPortal={false}>
-                  {TEXT_STYLES.map(({ name, apply }) => (
-                    <DropdownMenuItem
-                      key={name.id}
-                      label={t(name)}
-                      onClick={() => apply(chain())}
-                    />
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <HoveringBar.Separator />
+              {!selection.inTableCell && (
+                <>
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        variant="ghost-secondary"
+                        label="Aa"
+                        aria-label={t`Text style`}
+                        isSelect
+                        onMouseDown={keepSelection}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" mountPortal={false}>
+                      {TEXT_STYLES.map(({ name, apply }) => (
+                        <DropdownMenuItem
+                          key={name.id}
+                          label={t(name)}
+                          onClick={() => apply(chain())}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <HoveringBar.Separator />
+                </>
+              )}
               {marks.map(({ key, label, shortcut, icon, active, run }) => (
                 <Button
                   key={key}
@@ -328,28 +334,32 @@ export const DocumentSelectionToolbar = ({
                   onClick={run}
                 />
               ))}
-              <HoveringBar.Separator />
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="xs"
-                    variant="ghost-secondary"
-                    icon={List}
-                    aria-label={t`Lists`}
-                    isSelect
-                    onMouseDown={keepSelection}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" mountPortal={false}>
-                  {LIST_STYLES.map(({ name, apply }) => (
-                    <DropdownMenuItem
-                      key={name.id}
-                      label={t(name)}
-                      onClick={() => apply(chain())}
-                    />
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {!selection.inTableCell && (
+                <>
+                  <HoveringBar.Separator />
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        variant="ghost-secondary"
+                        icon={List}
+                        aria-label={t`Lists`}
+                        isSelect
+                        onMouseDown={keepSelection}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" mountPortal={false}>
+                      {LIST_STYLES.map(({ name, apply }) => (
+                        <DropdownMenuItem
+                          key={name.id}
+                          label={t(name)}
+                          onClick={() => apply(chain())}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
               <HoveringBar.Separator />
               <Button
                 size="xs"

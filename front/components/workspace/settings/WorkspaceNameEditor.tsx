@@ -83,10 +83,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
 
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.governance.workspaceName}>
-      <div className="heading-base text-foreground">
-        <Trans>Workspace Name</Trans>
-      </div>
-      <SettingsList>
+      <SettingsList title={<Trans>Workspace Name</Trans>}>
         <SettingsList.Row
           title={owner.name}
           action={

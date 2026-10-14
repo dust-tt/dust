@@ -9,6 +9,7 @@ import type {
   UsageFilterSourceOption,
   UsageFilterToolOption,
   UsageFilterTriggerOption,
+  UsageFilterPodOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
 import {
@@ -98,6 +99,10 @@ export function toConsumptionFacetOptions(
     trigger: data.facets.trigger.map<UsageFilterTriggerOption>((facet) => ({
       ...baseOption(facet),
       kind: "trigger",
+    })),
+    pod: data.facets.pod.map<UsageFilterPodOption>((facet) => ({
+      ...baseOption(facet),
+      kind: "pod",
     })),
     api_key: data.facets.api_key.map<UsageFilterApiKeyOption>((facet) => ({
       ...baseOption(facet),

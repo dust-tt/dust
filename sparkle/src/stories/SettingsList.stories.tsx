@@ -15,6 +15,7 @@ const meta = {
 - For a settings or preferences panel where each row exposes a single labelled control.
 
 **Guidelines**
+- Pass **title** (and optionally **description**) to render a section heading above the list instead of composing one by hand.
 - Compose rows with **SettingsList.Row**; both **description** and **action** are optional, so rows can be title-only.
 - Use a **SliderToggle** for instant on/off settings or an **Input** for value entry in the **action** slot.
 - For list rows that need a leading visual or hover-revealed controls, use **ContextItem** instead.`,
@@ -75,6 +76,19 @@ export const Compact: Story = {
   ...Default,
   args: {
     density: "compact",
+  },
+};
+
+/**
+ * A section heading bundled with the list: `title` and optional `description`
+ * render above the rows with consistent spacing.
+ * @summary Settings list with a section title.
+ */
+export const WithTitle: Story = {
+  ...Default,
+  args: {
+    title: "Spending policies",
+    description: "Customize how your workspace consumes credits.",
   },
 };
 

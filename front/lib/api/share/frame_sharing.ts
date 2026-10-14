@@ -21,6 +21,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
@@ -246,7 +247,7 @@ export async function getFrameFunctionSharingConflict(
 
   const audience = reachesAnyoneWithLink
     ? "publicly, with anyone holding its link"
-    : `with ${externalGrants.length} recipient${externalGrants.length === 1 ? "" : "s"} outside the workspace`;
+    : `with ${externalGrants.length} recipient${pluralize(externalGrants.length)} outside the workspace`;
 
   return (
     `Not published: this Frame is shared ${audience}, and a Frame that declares functions is ` +

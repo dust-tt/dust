@@ -393,7 +393,14 @@ describe("buildAndPublishFramePublication", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(sandbox.writeFile).toHaveBeenCalledTimes(sourceFiles.length);
+    expect(sandbox.writeFile).toHaveBeenCalledTimes(1);
+    expect(sandbox.writeFile).toHaveBeenCalledWith(
+      auth,
+      expect.stringMatching(
+        new RegExp(`^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/sources\\.tar$`)
+      ),
+      expect.any(ArrayBuffer)
+    );
     expect(buildSandboxFunctionOnReadySandbox).toHaveBeenCalledWith(auth, {
       sandbox,
       srcSandboxPath: expect.stringMatching(
@@ -410,7 +417,7 @@ describe("buildAndPublishFramePublication", () => {
         )
       ),
     });
-    expect(sandbox.readFile).toHaveBeenCalledTimes(sourceFiles.length);
+    expect(sandbox.readFile).not.toHaveBeenCalled();
     expect(
       renderRootCommand(vi.mocked(sandbox.execRoot).mock.calls.at(-1)![1])
     ).toMatch(
@@ -549,8 +556,13 @@ describe("buildAndPublishFramePublication", () => {
 
     expect(result.isOk()).toBe(true);
     expect(ensureFrameSandboxReady).toHaveBeenCalledOnce();
-    expect(sandbox.writeFile).toHaveBeenCalledTimes(
-      sourceFilesWithDatabase.length
+    expect(sandbox.writeFile).toHaveBeenCalledTimes(1);
+    expect(sandbox.writeFile).toHaveBeenCalledWith(
+      auth,
+      expect.stringMatching(
+        new RegExp(`^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/sources\\.tar$`)
+      ),
+      expect.any(ArrayBuffer)
     );
     expect(buildSandboxFunctionOnReadySandbox).toHaveBeenCalledOnce();
     expect(reconcileDatabaseOnReadySandbox).toHaveBeenCalledOnce();

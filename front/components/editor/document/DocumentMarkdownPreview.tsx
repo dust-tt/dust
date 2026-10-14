@@ -1,12 +1,22 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
+import { DocumentFilePreviewDisplay } from "@app/components/editor/document/DocumentFilePreview";
+import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
+import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentProps } from "@app/components/editor/document/types";
+import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
   checkInputBounds,
   extractAnchors,
   parseDfm,
 } from "@app/lib/markdown/dfm";
+import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
+import {
+  FRAME_EMBED_COMPONENT_NAME,
+  FRAME_EMBED_DIRECTIVE_NAME,
+  parseFrameEmbedDirective,
+} from "@app/lib/markdown/frame_embed";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -19,9 +29,101 @@ interface DocumentMarkdownPreviewProps {
   resolveImageSource: DocumentProps["resolveImageSource"];
 }
 
+interface MarkdownNode {
+  type: string;
+  name?: string;
+  value?: string;
+  position?: {
+    start: { column: number; offset?: number };
+    end: { offset?: number };
+  };
+  data?: object;
+  children?: MarkdownNode[];
+}
+
+// The renderer reads any `::embed_frame` leaf directive; the editor reads only the exact line
+// `parseFrameEmbedDirective` accepts, at the start of a top-level line and never opening a list
+// item, so the preview re-reads the directive's source the same way and shows anything else as
+// the text the editor keeps.
+function withFrameEmbeds(
+  node: MarkdownNode,
+  source: string,
+  isTopLevel: boolean,
+  opensListItem: boolean
+): MarkdownNode {
+  if (
+    node.type === "leafDirective" &&
+    node.name === FRAME_EMBED_DIRECTIVE_NAME
+  ) {
+    const start = node.position?.start;
+    const end = node.position?.end.offset;
+    if (start?.offset === undefined || end === undefined) {
+      return node;
+    }
+    const raw = source.slice(start.offset, end);
+    const parsed =
+      !opensListItem && (!isTopLevel || start.column === 1)
+        ? parseFrameEmbedDirective(raw)
+        : null;
+    if (!parsed) {
+      return { type: "paragraph", children: [{ type: "text", value: raw }] };
+    }
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        hName: FRAME_EMBED_COMPONENT_NAME,
+        hProperties: { path: parsed.path },
+      },
+    };
+  }
+  return node.children
+    ? {
+        ...node,
+        children: node.children.map((child, index) =>
+          withFrameEmbeds(
+            child,
+            source,
+            node.type === "root",
+            node.type === "listItem" && index === 0
+          )
+        ),
+      }
+    : node;
+}
+
+function frameEmbedDirective() {
+  return (tree: MarkdownNode, file: { value: unknown }) =>
+    withFrameEmbeds(tree, String(file.value), false, false);
+}
+
+const MARKDOWN_PLUGINS = [frameEmbedDirective, filePreviewDirective];
+
+const FrameEmbed = ({ path }: DocumentFramePathProps) => (
+  <div className="my-6">
+    <DocumentFrameDisplay path={path} />
+  </div>
+);
+
+interface FilePreviewDirectiveProps {
+  path: string;
+  title?: string;
+  contentType?: string;
+}
+
+const FilePreviewEmbed = ({
+  path,
+  title,
+  contentType,
+}: FilePreviewDirectiveProps) => (
+  <DocumentFilePreviewDisplay
+    preview={{ path, title: title ?? null, contentType: contentType ?? null }}
+  />
+);
+
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
-    table: msg`This document can't be edited here yet because it has a table.`,
+    table_extra_cells: msg`This document can't be edited here because a table row has more cells than its header.`,
     html: msg`This document can't be edited here yet because it has HTML.`,
     task_list: msg`This document can't be edited here yet because it has a task list.`,
     tilde_fence: msg`This document can't be edited here yet because it has a code block fenced with ~~~.`,
@@ -69,7 +171,11 @@ export const DocumentMarkdownPreview = ({
     };
   }, [source]);
   const markdownComponents = useMemo(
-    () => ({ img: getMarkdownImagePlugin(resolveImageSource) }),
+    () => ({
+      img: getMarkdownImagePlugin(resolveImageSource),
+      [FRAME_EMBED_COMPONENT_NAME]: FrameEmbed,
+      [FILE_PREVIEW_COMPONENT_NAME]: FilePreviewEmbed,
+    }),
     [resolveImageSource]
   );
 
@@ -92,6 +198,7 @@ export const DocumentMarkdownPreview = ({
             isStreaming={false}
             optimizeForStreaming={false}
             additionalMarkdownComponents={markdownComponents}
+            additionalMarkdownPlugins={MARKDOWN_PLUGINS}
           />
         ) : (
           <pre

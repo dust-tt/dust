@@ -68,8 +68,9 @@ ship behind `co_edition` until M7. The order is the dependency order, not a spri
   (`PodFileTabPreview.tsx` is a third Markdown editor copy); Storybook tests ported to vitest.
 - `.txt` keeps the plain editor. `.md` detection relies on the `text/markdown` content type;
   check what files created by agents and by upload actually carry.
-- The editor supports the Markdown agents write: tables, task lists and tilde fences are
-  refused today, so those files open read-only.
+- The editor supports the Markdown agents write: task lists and tilde fences are refused
+  today, so those files open read-only. Tables open (GFM), except those with a row longer
+  than its header.
 - Outcome: open, edit, reload, close and reopen a `.md` from the conversation panel, the
   dialog and the Pod tab; the bytes on disk are what the editor showed, byte for byte outside
   the body.

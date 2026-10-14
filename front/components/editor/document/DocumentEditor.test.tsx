@@ -10,7 +10,7 @@ import type {
   DocumentProps,
   CollabStatus,
 } from "@app/components/editor/document/types";
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
+import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
@@ -33,7 +33,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -133,10 +133,14 @@ async function renderDocument(
     verifyCommentMessage,
     commentInputExtensions,
     answer,
+    resolveImageSource = NO_IMAGE_SOURCE,
+    readOnly,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
     answer?: SessionAnswer;
+    resolveImageSource?: DocumentProps["resolveImageSource"];
+    readOnly?: boolean;
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -152,7 +156,8 @@ async function renderDocument(
       renderCommentBody={(body) => <p>{body}</p>}
       verifyCommentMessage={verifyCommentMessage}
       commentInputExtensions={commentInputExtensions}
-      resolveImageSource={NO_IMAGE_SOURCE}
+      resolveImageSource={resolveImageSource}
+      readOnly={readOnly}
       collabView={{
         status: "live",
         binding: {
@@ -162,7 +167,7 @@ async function renderDocument(
             awareness: null,
             user: CollabUserFactory.build(),
             comments: session.channel,
-            resolveImageSource: NO_IMAGE_SOURCE,
+            resolveImageSource,
           }),
           connected: true,
           comments: session.channel,
@@ -177,7 +182,7 @@ async function renderDocument(
     }
     return element;
   });
-  return { dom, editor: dom.editor, session };
+  return { dom, editor: dom.editor, session, doc: live.value.doc };
 }
 
 const highlight = (dom: HTMLElement, id: string) => {
@@ -1014,13 +1019,13 @@ describe("Document for a file the editor cannot open", () => {
     );
 
   it("renders the body read-only, without anchors or threads, under the reason", async () => {
-    // A table: valid DFM the editor cannot keep.
+    // A task list: valid DFM the editor cannot keep.
     const { container } = renderRefused(
-      `# Plan\n\nSee :comment-start{id=c1}this:comment-end{id=c1}.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Daph |\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
+      `# Plan\n\nSee :comment-start{id=c1}this:comment-end{id=c1}.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Daph |\n\n- [ ] Review\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This document can't be edited here yet because it has a table."
+      "This document can't be edited here yet because it has a task list."
     );
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Ship" })).toBeInTheDocument();
@@ -1040,8 +1045,7 @@ describe("Document for a file the editor cannot open", () => {
 
   it("logs a refused document once, with its reason and without its content", async () => {
     const warn = vi.spyOn(datadogLogger, "warn");
-    const source =
-      "Intro.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Secret |\n";
+    const source = "Intro.\n\n- [ ] Ship to Secret\n";
 
     // A live document mounts again for each connection.
     renderRefused(source).unmount();
@@ -1051,7 +1055,8 @@ describe("Document for a file the editor cannot open", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(
       {
-        reason: "The Markdown uses formatting the editor cannot keep: a table.",
+        reason:
+          "The Markdown uses formatting the editor cannot keep: a task list.",
       },
       "Document opened read-only"
     );
@@ -1197,6 +1202,149 @@ describe("Document images", () => {
   });
 });
 
+describe("Document image menu", () => {
+  // The width slider measures itself.
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const SOURCE_WITH_IMAGES =
+    "![Chart](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n";
+
+  const renderImages = async ({
+    readOnly = false,
+    initialContent = SOURCE_WITH_IMAGES,
+  } = {}) => {
+    const { dom } = await renderDocument(initialContent, {
+      readOnly,
+      resolveImageSource: (src) => `https://files.test/${src}`,
+    });
+    return dom;
+  };
+
+  const hoverImage = (dom: HTMLElement, name: string) => {
+    const image = within(dom).getByRole("img", { name });
+    fireEvent.mouseOver(image);
+    return image;
+  };
+
+  it("shows when an image is hovered and hides when the pointer leaves it", async () => {
+    const dom = await renderImages();
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+
+    const image = hoverImage(dom, "Chart");
+    expect(screen.getByRole("toolbar", { name: "Image" })).toBeInTheDocument();
+
+    fireEvent.mouseOut(image, { relatedTarget: dom });
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+  });
+
+  it("stays while the pointer moves from the image onto it", async () => {
+    const dom = await renderImages();
+    const image = hoverImage(dom, "Chart");
+    const menu = screen.getByRole("toolbar", { name: "Image" });
+
+    fireEvent.mouseOut(image, { relatedTarget: menu });
+    expect(screen.getByRole("toolbar", { name: "Image" })).toBeInTheDocument();
+  });
+
+  it("removes only the hovered image, as one undoable edit", async () => {
+    const dom = await renderImages();
+    const before: JSONContent = dom.editor.getJSON();
+    hoverImage(dom, "Logo");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+
+    expect(dom.editor.getJSON()).toEqual({
+      ...before,
+      content: before.content?.map((block) => ({
+        ...block,
+        content: block.content?.filter(
+          (node) => !(node.type === "image" && node.attrs?.alt === "Logo")
+        ),
+      })),
+    });
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getJSON()).toEqual(before);
+  });
+
+  it("undoes a resize and a removal right after it one at a time", async () => {
+    const dom = await renderImages({
+      initialContent:
+        "![Chart|400](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n",
+    });
+    hoverImage(dom, "Chart");
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Image width" }), {
+      key: "Home",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+    expect(dom.editor.getMarkdown()).not.toContain("Chart");
+
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|64](pod-abc/chart.png)"
+    );
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|400](pod-abc/chart.png)"
+    );
+  });
+
+  it("resizes the hovered image with the slider, and back to its original size", async () => {
+    const dom = await renderImages({
+      initialContent:
+        "![Chart|400](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n",
+    });
+    hoverImage(dom, "Chart");
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Image width" }), {
+      key: "Home",
+    });
+
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|64](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)"
+    );
+    expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
+      "64px"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Original size" }));
+
+    expect(dom.editor.getMarkdown()).toContain("![Chart](pod-abc/chart.png)");
+    expect(screen.queryByRole("button", { name: "Original size" })).toBeNull();
+    expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
+      ""
+    );
+  });
+
+  it("does not show in a read-only document", async () => {
+    const dom = await renderImages({ readOnly: true });
+
+    hoverImage(dom, "Chart");
+
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+  });
+});
+
 describe("Document Escape inside a host dialog", () => {
   // Radix dialogs prevent the default of every Escape before the document sees it.
   const preventEscape = (event: KeyboardEvent) => {
@@ -1318,5 +1466,301 @@ describe("Document Escape inside a host dialog", () => {
     fireEvent.keyDown(field, { key: "Escape" });
 
     expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+  });
+});
+
+describe("Document tables", () => {
+  const TABLE = "| Name | Count |\n| --- | --- |\n| apple | 3 |\n";
+
+  const cellText = (editor: Editor, text: string) => {
+    let from = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (from === -1 && node.isText && node.text?.includes(text)) {
+        from = pos + (node.text?.indexOf(text) ?? 0);
+      }
+    });
+    return { from, to: from + text.length };
+  };
+
+  it("shows the first row of each table as its column headers, and only it", async () => {
+    const { dom } = await renderDocument(
+      `${TABLE}\n- item\n\n  | Kind | Total |\n  | --- | --- |\n  | fruit | 3 |\n`
+    );
+
+    const headers = dom.querySelectorAll('[role="columnheader"]');
+    expect([...headers].map((cell) => cell.textContent)).toEqual([
+      "Name",
+      "Count",
+      "Kind",
+      "Total",
+    ]);
+    expect(dom.querySelectorAll("td")).toHaveLength(8);
+  });
+
+  it("writes a cell edit to the session as the table's Markdown", async () => {
+    const { editor, doc } = await renderDocument(TABLE);
+
+    act(() => {
+      editor
+        .chain()
+        .setTextSelection(cellText(editor, "apple"))
+        .insertContent("pear | plum")
+        .run();
+    });
+
+    expect(yDocToDfm({ doc, comments: [] })).toEqual(
+      new Ok("| Name | Count |\n| --- | --- |\n| pear \\| plum | 3 |\n")
+    );
+  });
+
+  it("does not split a cell or break its line on Enter", async () => {
+    const { dom, editor } = await renderDocument(TABLE);
+    const before = editor.state.doc;
+
+    act(() => {
+      editor.commands.setTextSelection(cellText(editor, "apple").to);
+    });
+    for (const modifiers of [{}, { shiftKey: true }, { metaKey: true }]) {
+      fireEvent.keyDown(dom, { key: "Enter", ...modifiers });
+    }
+
+    expect(editor.state.doc.eq(before)).toBe(true);
+  });
+
+  it("offers no text style or list menu over a selection in a cell", async () => {
+    const { editor } = await renderDocument(`Intro.\n\n${TABLE}`);
+
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "Intro"));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Text style" })).toBeTruthy()
+    );
+
+    act(() => {
+      editor.commands.setTextSelection(cellText(editor, "apple"));
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Text style" })).toBeNull()
+    );
+    expect(screen.queryByRole("button", { name: "Lists" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Inline code" })).toBeTruthy();
+  });
+});
+
+describe("Document Frame embeds", () => {
+  const SOURCE_WITH_FRAME =
+    'Intro\n\n::embed_frame{path="pod-abc/dashboards/revenue.tsx"}\n\nOutro\n';
+
+  const renderFrames = async (renderFrame?: DocumentProps["renderFrame"]) => {
+    const { container } = render(
+      <DocumentEditor
+        initialContent={SOURCE_WITH_FRAME}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={renderFrame}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows a Frame through the host's renderer", async () => {
+    const dom = await renderFrames((path) => (
+      <iframe title={`Frame ${path}`} />
+    ));
+
+    expect(
+      await within(dom).findByTitle("Frame pod-abc/dashboards/revenue.tsx")
+    ).toBeDefined();
+  });
+
+  it("shows a Frame as its path without a renderer", async () => {
+    const dom = await renderFrames();
+
+    expect(
+      await within(dom).findByText("pod-abc/dashboards/revenue.tsx")
+    ).toBeDefined();
+  });
+
+  it("keeps a Frame's path when its HTML is pasted back", async () => {
+    const dom = await renderFrames();
+    const html = dom.editor.getHTML();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        html
+      );
+    });
+
+    expect(
+      dom.editor
+        .getMarkdown()
+        .match(/::embed_frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
+    ).toHaveLength(2);
+  });
+  it("does not paste a Frame whose path it cannot write", async () => {
+    const dom = await renderFrames();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        '<div data-document-frame=""></div><div data-document-frame="pod-abc/a&#10;b.tsx"></div>'
+      );
+    });
+
+    expect(
+      dom.editor.getJSON().content?.filter((node) => node.type === "frameEmbed")
+    ).toHaveLength(1);
+  });
+
+  it("keeps a Frame mounted when the read-only preview re-renders", async () => {
+    const renderPreview = () => (
+      <DocumentEditor
+        initialContent={`${SOURCE_WITH_FRAME}\n~~~\ncode\n~~~\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={(path) => <iframe title={`Frame ${path}`} />}
+      />
+    );
+    const { rerender } = render(renderPreview());
+    const frame = await screen.findByTitle(
+      "Frame pod-abc/dashboards/revenue.tsx"
+    );
+
+    rerender(renderPreview());
+
+    expect(screen.getByTitle("Frame pod-abc/dashboards/revenue.tsx")).toBe(
+      frame
+    );
+  });
+
+  it("shows in the read-only preview only the Frames the editor reads", async () => {
+    const rejected = [
+      '::embed_frame{path="pod-abc/b.tsx" title="B"}',
+      "::embed_frame{path=pod-abc/c.tsx}",
+      '::embed_frame[D]{path="pod-abc/d.tsx"}',
+      '   ::embed_frame{path="pod-abc/e.tsx"}',
+    ];
+    render(
+      <DocumentEditor
+        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::embed_frame{path="pod-abc/quoted.tsx"}\n\n- ::embed_frame{path="pod-abc/listed.tsx"}\n\n~~~\ncode\n~~~\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={(path) => <iframe title={`Frame ${path}`} />}
+      />
+    );
+
+    await screen.findByTitle("Frame pod-abc/dashboards/revenue.tsx");
+    expect(screen.getByTitle("Frame pod-abc/quoted.tsx")).toBeDefined();
+    expect(screen.getAllByTitle(/^Frame /)).toHaveLength(2);
+    for (const line of rejected) {
+      expect(screen.getByText(line.trim())).toBeDefined();
+    }
+    expect(
+      screen.getByText('::embed_frame{path="pod-abc/listed.tsx"}')
+    ).toBeDefined();
+  });
+});
+
+describe("Document file previews", () => {
+  const SOURCE_WITH_PREVIEWS =
+    'Read :preview_file{path="pod-abc/report.pdf" title="Q3 report"} and :preview_file{path="pod-abc/notes.md"}.\n';
+
+  const renderPreviews = async (
+    renderFilePreview?: DocumentProps["renderFilePreview"]
+  ) => {
+    const { container } = render(
+      <DocumentEditor
+        initialContent={SOURCE_WITH_PREVIEWS}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFilePreview={renderFilePreview}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows each file preview through the host's renderer", async () => {
+    const dom = await renderPreviews((preview) => (
+      <button type="button">{`${preview.title ?? "-"} @ ${preview.path}`}</button>
+    ));
+
+    expect(
+      await within(dom).findByRole("button", {
+        name: "Q3 report @ pod-abc/report.pdf",
+      })
+    ).toBeDefined();
+    expect(
+      within(dom).getByRole("button", { name: "- @ pod-abc/notes.md" })
+    ).toBeDefined();
+  });
+
+  it("shows a file preview as its title or file name without a renderer", async () => {
+    const dom = await renderPreviews();
+
+    expect(await within(dom).findByText("Q3 report")).toBeDefined();
+    expect(within(dom).getByText("notes.md")).toBeDefined();
+  });
+
+  it("keeps a file preview's attributes when its HTML is pasted back", async () => {
+    const dom = await renderPreviews();
+    const html = dom.editor.getHTML();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        html
+      );
+    });
+
+    expect(
+      dom.editor
+        .getMarkdown()
+        .match(
+          /:preview_file\{path="pod-abc\/report\.pdf" title="Q3 report"\}/g
+        )
+    ).toHaveLength(2);
+  });
+
+  it("keeps a file preview mounted when the read-only preview re-renders", async () => {
+    const renderPreview = () => (
+      <DocumentEditor
+        initialContent={`${SOURCE_WITH_PREVIEWS}\n~~~\ncode\n~~~\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFilePreview={(preview) => (
+          <button type="button">{preview.path}</button>
+        )}
+      />
+    );
+    const { rerender } = render(renderPreview());
+    const chip = await screen.findByRole("button", {
+      name: "pod-abc/report.pdf",
+    });
+
+    rerender(renderPreview());
+
+    expect(screen.getByRole("button", { name: "pod-abc/report.pdf" })).toBe(
+      chip
+    );
   });
 });

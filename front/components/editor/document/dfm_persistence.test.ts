@@ -13,6 +13,8 @@ import {
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { FILE_PREVIEW_NODE_TYPE } from "@app/lib/markdown/file_preview";
+import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
@@ -202,11 +204,6 @@ describe("loadDfm", () => {
 
   it.each([
     [
-      "a table",
-      "| a | b |\n|---|---|\n| 1 | 2 |\n",
-      "The Markdown uses formatting the editor cannot keep: a table.",
-    ],
-    [
       "a task list",
       "Intro.\n\n- [ ] todo\n",
       "The Markdown uses formatting the editor cannot keep: a task list.",
@@ -241,11 +238,6 @@ describe("loadDfm", () => {
       "- item\n\n  ~~~\n  code\n  ~~~\n",
       "The Markdown uses formatting the editor cannot keep: a code block fenced with ~~~.",
     ],
-    [
-      "a table in a quote",
-      "> | a | b |\n> |---|---|\n> | 1 | 2 |\n",
-      "The Markdown uses formatting the editor cannot keep: a table.",
-    ],
   ])("refuses %s, naming it", (_, source, reason) => {
     const loaded = loadDfm(source);
 
@@ -255,7 +247,7 @@ describe("loadDfm", () => {
   // Each source makes the editor write one of its own refusals: rewording one without updating
   // the log allowlist fails here instead of silently logging it as invalid DFM.
   it.each([
-    ["an unsupported element", "| a | b |\n|---|---|\n| 1 | 2 |\n"],
+    ["an unsupported element", "Intro.\n\n- [ ] todo\n"],
     ["Markdown that changes when saved", "A\n\n* a\n+ b\n"],
     [
       "an anchor the editor cannot show",
@@ -301,7 +293,7 @@ describe("loadDfm", () => {
     ],
     [
       "Markdown the editor cannot reproduce",
-      "| a | b |\n|---|---|\n| 1 | 2 |\n",
+      "Intro.\n\n- [ ] todo\n",
       "formatting the editor cannot keep",
     ],
     [
@@ -325,6 +317,21 @@ describe("loadDfm", () => {
 });
 
 describe("saveDfm", () => {
+  it.each([
+    [
+      "in one cell",
+      "| a | :comment-start{id=c1}b:comment-end{id=c1} |\n| --- | --- |\n| 1 | 2 |",
+    ],
+    [
+      "across cells",
+      "| :comment-start{id=c1}a | b |\n| --- | --- |\n| 1 | 2:comment-end{id=c1} |",
+    ],
+  ])("writes back a comment %s as it reads", (_, body) => {
+    const source = `${body}\n\n${OPEN_THREAD}`;
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
   it("round-trips a file through load and save", () => {
     const source = `---\ntitle: x\n---\n\n# Title\n\nSome **bold** text.\n\n- one\n- two\n\n${THREAD}`;
 
@@ -551,6 +558,149 @@ describe("saveDfm", () => {
         documentSchema.nodeFromJSON(load(source).content).check()
       ).not.toThrow();
     }
+  });
+
+  it("round-trips Frame embeds with their path", () => {
+    for (const source of [
+      '::embed_frame{path="pod-abc/dashboards/revenue.tsx"}\n',
+      '# Report\n\n::embed_frame{path="conversation-c1/a &amp; b.tsx"}\n\nText.\n',
+      'Intro\n\n::embed_frame{path="pod-abc/x.tsx"}\n\n::embed_frame{path="pod-abc/y.tsx"}\n',
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+      expect(() =>
+        documentSchema.nodeFromJSON(load(source).content).check()
+      ).not.toThrow();
+    }
+  });
+
+  it("round-trips file previews with their attributes", () => {
+    for (const source of [
+      ':preview_file{path="pod-abc/report.pdf"}\n',
+      'See :preview_file{path="pod-abc/report.pdf" title="Q3 report" contentType="application/pdf"} for details.\n',
+      '- :preview_file{path="conversation-c1/a &amp; b.md" title="&quot;A&quot; &amp; B"}\n',
+      ':comment-start{id=c1}Read :preview_file{path="pod-abc/x.pdf"} first.:comment-end{id=c1}\n\n' +
+        OPEN_THREAD,
+      ':preview_file{path="pod-abc/x.pdf" title="" contentType=""}\n',
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+      expect(() =>
+        documentSchema.nodeFromJSON(load(source).content).check()
+      ).not.toThrow();
+    }
+  });
+
+  it("reads a Frame embed only from a line holding the directive alone", () => {
+    for (const source of [
+      'See ::embed_frame{path="pod-abc/x.tsx"} here.\n',
+      'See::embed_frame{path="pod-abc/x.tsx"}\n',
+      '::embed_frame{path="pod-abc/x.tsx" title="X"}\n',
+    ]) {
+      expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
+    }
+  });
+
+  it("writes text that reads as a Frame embed so it reopens as text", () => {
+    const line = '::embed_frame{path="pod-abc/x.tsx"}';
+    for (const paragraph of [
+      [{ type: "text", text: line }],
+      [
+        { type: "text", text: "Intro" },
+        { type: "hardBreak" },
+        { type: "text", text: line },
+      ],
+    ]) {
+      const saved = saveDfm(
+        { frontMatter: null, anchorOrder: [] },
+        { type: "doc", content: [{ type: "paragraph", content: paragraph }] }
+      );
+      if (saved.isErr()) {
+        throw new Error(saved.error);
+      }
+      expect(saved.value).toContain(line.replace("_", "\\_"));
+      expect(JSON.stringify(load(saved.value).content)).not.toContain(
+        "frameEmbed"
+      );
+    }
+  });
+
+  it("reads a Frame line opening a list item as its text", () => {
+    const source = '- ::embed_frame{path="pod-abc/x.tsx"}\n';
+    expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
+    expect(roundTrip(source)).toBe('- ::embed\\_frame{path="pod-abc/x.tsx"}\n');
+  });
+
+  it("reads an image's width after its alt text, and keeps alt text ending like one", () => {
+    for (const source of [
+      "![Chart|400](pod-abc/chart.png)\n",
+      "![|240](pod-abc/chart.png)\n",
+      '![A \\[draft\\] chart|560](<conversation-c1/my chart.png> "Q3")\n',
+      "![Chart\\|2024](pod-abc/chart.png)\n",
+      "![Chart|2024|400](pod-abc/chart.png)\n",
+      "![Chart|0](pod-abc/chart.png)\n",
+      "![C:\\\\|400](pod-abc/chart.png)\n",
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+    }
+
+    const image = (source: string) =>
+      load(source).content.content?.[0].content?.[0].attrs;
+    expect(image("![Chart|400](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "Chart",
+      width: 400,
+    });
+    expect(image("![Chart\\|2024](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "Chart|2024",
+      width: null,
+    });
+    expect(image("![Chart|0](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "Chart|0",
+      width: null,
+    });
+    expect(image("![C:\\\\|400](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "C:\\",
+      width: 400,
+    });
+  });
+
+  it("writes an image's width after its alt text, escaping alt text ending like one", () => {
+    const save = (attrs: Record<string, unknown>) =>
+      saveDfm(
+        { frontMatter: null, anchorOrder: [] },
+        {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "image",
+                  attrs: { src: "pod-abc/chart.png", ...attrs },
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+    expect(save({ alt: "Chart", width: 240 })).toEqual(
+      new Ok("![Chart|240](pod-abc/chart.png)\n")
+    );
+    expect(save({ alt: "Chart|2024", width: null })).toEqual(
+      new Ok("![Chart\\|2024](pod-abc/chart.png)\n")
+    );
+    expect(save({ alt: "C:\\", width: 400 })).toEqual(
+      new Ok("![C:\\\\|400](pod-abc/chart.png)\n")
+    );
+  });
+
+  it("keeps a file preview with another attribute as text", () => {
+    const source =
+      ':preview_file{path="pod-abc/x.pdf" mimeType="application/pdf"}\n';
+
+    const reopened = load(roundTrip(source)).content;
+
+    expect(JSON.stringify(reopened)).not.toContain(FILE_PREVIEW_NODE_TYPE);
+    expect(reopened.content?.[0]?.content?.[0]?.text).toBe(source.trimEnd());
   });
 
   it("refuses content the editor cannot write as Markdown", () => {

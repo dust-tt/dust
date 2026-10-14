@@ -185,29 +185,28 @@ export function PodPageContent({
   );
 
   return (
-    <>
+    // File references and images in any tab open their file through this provider.
+    <FilePreviewProvider owner={owner}>
       <NavTabPillContent value="conversations">
-        <FilePreviewProvider owner={owner}>
-          <PodConversationsTab
-            owner={owner}
-            user={user}
-            conversations={conversations}
-            isConversationsLoading={isConversationsLoading}
-            hasMore={hasMore}
-            loadMore={loadMore}
-            isLoadingMore={isLoadingMore}
-            podInfo={podInfo}
-            isPodEmpty={isPodEmpty}
-            conversationFilter={conversationFilter}
-            onConversationFilterChange={handleConversationFilterChange}
-            hideTriggeredConversations={hideTriggeredConversations}
-            onHideTriggeredConversationsChange={
-              handleHideTriggeredConversationsChange
-            }
-            onSubmit={handleConversationCreation}
-            onNavigateToTasks={() => onTabChange("tasks")}
-          />
-        </FilePreviewProvider>
+        <PodConversationsTab
+          owner={owner}
+          user={user}
+          conversations={conversations}
+          isConversationsLoading={isConversationsLoading}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          isLoadingMore={isLoadingMore}
+          podInfo={podInfo}
+          isPodEmpty={isPodEmpty}
+          conversationFilter={conversationFilter}
+          onConversationFilterChange={handleConversationFilterChange}
+          hideTriggeredConversations={hideTriggeredConversations}
+          onHideTriggeredConversationsChange={
+            handleHideTriggeredConversationsChange
+          }
+          onSubmit={handleConversationCreation}
+          onNavigateToTasks={() => onTabChange("tasks")}
+        />
       </NavTabPillContent>
       <NavTabPillContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />
@@ -244,6 +243,6 @@ export function PodPageContent({
           mutatePodInfo();
         }}
       />
-    </>
+    </FilePreviewProvider>
   );
 }

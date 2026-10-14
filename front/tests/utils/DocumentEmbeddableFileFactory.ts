@@ -12,6 +12,10 @@ export class DocumentEmbeddableFileFactory {
     return { kind: "image", path, name };
   }
 
+  static frame(path: string): DocumentEmbeddableFile {
+    return { kind: "frame", path, name: path.slice(path.lastIndexOf("/") + 1) };
+  }
+
   static files(
     overrides: Partial<DocumentEmbeddableFiles> = {}
   ): DocumentEmbeddableFiles {

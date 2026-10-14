@@ -26,10 +26,20 @@ an element in the host's header bar, to show the comments button there instead.
 
 `loadDfm` in `dfm_persistence.ts` decides. Hosts mount the editor for every Markdown file
 they hand it; a file opens for editing when it is valid DFM, its body is Markdown the editor
-reproduces, and every comment anchor the codec reads is one the editor can highlight. Tables, task lists, HTML, reference links
+reproduces, and every comment anchor the codec reads is one the editor can highlight. Task lists, HTML, reference links
 and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
 them. A refused file is shown as read-only source with the reason. Line endings are not
 preserved: a CRLF file opens and is written back with LF.
+
+## Tables
+
+A GFM table opens as a table whose first row is its header, shown as column headers, at the top
+level, in a list item or in a quote. Each cell holds one paragraph of text, so Enter does
+nothing in a cell, and the text style and list menus are not offered there. Saving writes
+compact rows, `| a | b |` with `---`, `:--`, `:-:` or `--:` per column as the table aligns it,
+and every `|` in a cell escaped, a `|` inside code included. Comments may sit in a cell, span
+cells in reading order, or surround a table. A table is refused when a row has more cells than
+its header, since marked would drop them.
 
 Front matter is kept in an envelope and written back unchanged on save. The editor rewrites
 the body and the comment threads, and only when the codec confirms the result reads back
@@ -63,10 +73,7 @@ Message bodies are Markdown, and the file preview's `renderCommentBody` shows ag
 mention directives in them as mention chips. When a comment posted in the live session mentions
 agents or users, the collab server hands it to a Temporal job
 (`front/lib/api/documents/comment_mentions.ts`, `mentions_queue`), keyed by the document and
-the message so it is posted once. The job posts it as a user message in the document's
-conversation, waiting while an agent runs there: the file's own conversation, or for a pod file
-a conversation created in the pod on first use and found again by path. Mentioned agents then
-answer there and mentioned users are notified, as for any conversation message.
+the message so it is handled once. The job notifies the mentioned users who can read the document. When the message mentions an agent, the job also posts it as a user message in the document's conversation, carrying only that agent's mention, and waits while another agent runs there. That conversation is the file's own conversation, or, for a pod file, a conversation created in the pod on first use and found again by path. The agent answers there.
 
 The new comment and reply fields are small TipTap editors whose content is submitted as Markdown.
 With `commentInputExtensions`, the host adds extensions to them; the file preview adds the
@@ -99,7 +106,10 @@ only when it is one paragraph of text: anything else is refused with the reason.
 ## Images
 
 An image is ordinary Markdown, `![alt](destination "title")`, read as an inline `image` node that
-keeps its alt text, destination and title as written. The editor loads nothing by itself: the
+keeps its alt text, destination and title as written. A width in pixels follows the alt text after
+a pipe, as Obsidian writes it: `![Revenue|400](pod-<id>/charts/revenue.png)`. Other Markdown
+renderers only see it in the alt text. Alt text that itself ends with a pipe and digits is written
+with that pipe escaped, `![Q3\|2024](…)`. The editor loads nothing by itself: the
 host's required `resolveImageSource` turns a destination into the URL to display, and an image it
 does not resolve shows as its alt text. A new resolver applies to images displayed after it, without
 rebuilding the editor. A file the editor refuses shows its images through the same resolver in its
@@ -111,14 +121,40 @@ so an external URL never loads: like any image it does not resolve, it shows as 
 its destination without one, in the editor and in the read-only previews. Users insert one with
 the Image entry of the `/` menu; agents and raw edits write them.
 
+In an editable document, hovering an image shows a menu at its top right with a width slider,
+which previews while dragged and saves on release, a reset to the original size once the image
+has a width, and a remove action.
+
 ## Inserting embeds
 
-With the host's `embeddableFiles`, the `/` menu adds an Image entry. Picking it asks the host to
-load the files and turns the menu into a search over them, by name or path; picking a file
-replaces the `/` with an image of its path whose alt text is the file name. Escape leaves the
-search. The file preview offers the images of the document's own pod or conversation
-(`useDocumentEmbeddableFiles`), and lists that pod's or conversation's files only once Image is
-picked.
+With the host's `embeddableFiles`, the `/` menu adds a Frame and an Image entry. Picking one asks
+the host to load the files and turns the menu into a search over them, by name or path; picking a
+file replaces the `/` with its embed: a `::embed_frame` line, or an image whose alt text is the file
+name. Escape, or the Back entry above the files, returns to the `/` menu. The file preview offers
+the Frames and images of the document's own pod or conversation, Frames only when they have a
+linked file, since only those render (`useDocumentEmbeddableFiles`), and lists that pod's or
+conversation's files only once an entry is picked.
+
+## Frames
+
+A line holding exactly `::embed_frame{path="…"}` embeds a Frame: a `frameEmbed` node on its own line, keeping
+its path. Anything else on the line, another attribute, or the line opening a list item keeps it
+as text. Text reading as such a line saves as `::embed\_frame{…}`, since the editor escapes `_` in
+text, so it reopens as text. The host's optional
+`renderFrame` displays it, in the editor and in the read-only preview; events inside it go to the
+Frame, never the editor. The file preview renders the Frame inline in a 600px high box, after
+loading it from its path through the file API, so only readers of the Frame's
+file see it (`DocumentFrameEmbed`). Without a renderer, or for a path that is not a readable Frame,
+the embed shows its path.
+
+## File previews
+
+A `:preview_file{path="…" title="…" contentType="…"}` directive, as agents write in messages, is
+read as an inline `filePreview` node keeping its three attributes; `title` and `contentType` are
+optional. A directive with any other attribute, or spread over lines, stays text, so a save never
+drops what the editor does not know. The host's optional `renderFilePreview` displays it, in the
+editor and in the read-only preview; the file preview renders the chip agent messages use, which
+opens the file through the file API. Without it, the reference shows as its title or file name.
 
 ## Layout
 
@@ -131,6 +167,10 @@ picked.
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
+| `DocumentTable.ts` | The `table` node, its rows and cells, and its GFM Markdown. |
+| `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `frameEmbed` node, its Markdown, and the host's renderers its view reads. |
+| `DocumentImageMenu.tsx` | The width slider, reset and remove menu over a hovered image. |
+| `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the live status and the agent at work. |

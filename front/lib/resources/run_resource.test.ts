@@ -94,6 +94,7 @@ describe("RunResource service tier usage", () => {
         inferenceProvider: "openai-responses",
         modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
         region: "global",
         usageType: USAGE_TYPE_USER,
         useWorkspaceCredentials: false,
@@ -201,6 +202,7 @@ describe("RunResource region pricing", () => {
         inferenceProvider: "openai-responses",
         modelId: GPT_5_4_MODEL_CONFIG.modelId,
         providerId: GPT_5_4_MODEL_CONFIG.providerId,
+        reasoningEffort: GPT_5_4_MODEL_CONFIG.defaultReasoningEffort,
         region: "eu",
         usageType: USAGE_TYPE_USER,
         useWorkspaceCredentials: false,
@@ -289,6 +291,7 @@ describe("RunResource usage type immutability", () => {
         inferenceProvider: "openai-responses",
         modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
         region: "global",
         usageType: USAGE_TYPE_USER,
         useWorkspaceCredentials: false,
@@ -359,6 +362,7 @@ describe("RunResource credential owner", () => {
         inferenceProvider: "openai-responses",
         modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
         region: "global",
         usageType: USAGE_TYPE_USER,
         useWorkspaceCredentials: true,
@@ -373,6 +377,7 @@ describe("RunResource credential owner", () => {
       modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
       promptTokens: 120,
       providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+      reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
       reasoningTokens: null,
     };
     await run.finalizePendingRunUsage(auth, runUsageModelId, [usage, usage]);
@@ -431,6 +436,7 @@ describe("RunResource inference location", () => {
         inferenceProvider: "openai-responses",
         modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
         region: EUROPE,
         usageType: USAGE_TYPE_USER,
         useWorkspaceCredentials: false,
@@ -445,6 +451,7 @@ describe("RunResource inference location", () => {
       modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
       promptTokens: 120,
       providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+      reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
       reasoningTokens: null,
     };
     await run.finalizePendingRunUsage(auth, runUsageModelId, [usage, usage]);

@@ -103,6 +103,30 @@ describe("ConversationSidePanelProvider history", () => {
     expect(result.current.currentPanel).toBe("files");
   });
 
+  it("keeps the shown panel of the same type when asked, and closing goes back", () => {
+    const { result } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({
+        type: "file_preview",
+        kind: "path",
+        filePath: "pod-p/plan.md",
+      })
+    );
+    act(() =>
+      result.current.openPanel(
+        { type: "file_preview", kind: "path", filePath: "pod-p/report.pdf" },
+        { keepCurrent: true }
+      )
+    );
+
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBe("file_preview");
+    expect(result.current.data).toContain("pod-p/plan.md");
+
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
+  });
+
   it("a Frame refreshed with a new timestamp updates in place", () => {
     const { result } = renderSidePanel();
     act(() =>

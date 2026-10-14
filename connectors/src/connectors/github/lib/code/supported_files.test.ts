@@ -8,4 +8,10 @@ describe("isSupportedFile", () => {
       expect(isSupportedFile(`source${extension}`)).toBe(true);
     }
   });
+
+  it("supports Elixir source and template files", () => {
+    for (const extension of [".ex", ".exs", ".eex", ".heex", ".leex"]) {
+      expect(isSupportedFile(`source${extension}`)).toBe(true);
+    }
+  });
 });

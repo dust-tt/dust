@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr "Add a paragraph"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Back"
+msgstr "Back"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Loading files…"
 msgstr "Loading files…"
 
@@ -167,9 +171,30 @@ msgstr "Resolved ({resolvedCount})"
 msgid "All comments"
 msgstr "All comments"
 
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "toolbar over a hovered image"
+msgid "Image"
+msgstr "Image"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Image width"
+msgstr "Image width"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr "{value} px"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Original size"
+msgstr "Original size"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Remove image"
+msgstr "Remove image"
+
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a table."
-msgstr "This document can't be edited here yet because it has a table."
+msgid "This document can't be edited here because a table row has more cells than its header."
+msgstr "This document can't be edited here because a table row has more cells than its header."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
 msgid "This document can't be edited here yet because it has HTML."
@@ -357,6 +382,19 @@ msgstr "Divider"
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
 msgstr "Separate sections"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding a Frame"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr "Embed a live Frame from the files"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
+msgstr "Choose a Frame"
 
 #: front/components/editor/document/blocks.ts
 msgctxt "slash menu entry embedding an image"

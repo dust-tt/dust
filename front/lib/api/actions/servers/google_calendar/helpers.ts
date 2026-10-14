@@ -7,6 +7,7 @@ import {
   ONE_MINUTE_MS,
   resolveCalendarDate,
 } from "@app/types/shared/utils/date_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { tzOffset } from "@date-fns/tz";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { parseISO } from "date-fns";
@@ -329,7 +330,7 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
       });
     if (meetingLinks.length > 0) {
       lines.push(
-        `Meeting Link${meetingLinks.length > 1 ? "s" : ""}: ${meetingLinks.join(", ")}`
+        `Meeting Link${pluralize(meetingLinks.length)}: ${meetingLinks.join(", ")}`
       );
     }
   }
@@ -688,9 +689,7 @@ export function formatAvailabilitySummary({
 
   if (availabilitySlots.length > maxSlotsToDisplay) {
     lines.push(
-      `  ...and ${availabilitySlots.length - maxSlotsToDisplay} more slot${
-        availabilitySlots.length - maxSlotsToDisplay === 1 ? "" : "s"
-      }.`
+      `  ...and ${availabilitySlots.length - maxSlotsToDisplay} more slot${pluralize(availabilitySlots.length - maxSlotsToDisplay)}.`
     );
   }
 

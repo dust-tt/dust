@@ -1115,6 +1115,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     };
   }
 
+  toInviteeJSON(): Pick<LightWorkspaceType, "sId" | "name" | "locale"> {
+    return {
+      sId: this.blob.sId,
+      name: this.blob.name,
+      locale: this.blob.locale,
+    };
+  }
+
   static async updateByModelIdAndCheckExistence(
     id: ModelId,
     updateValues: ResourceUpdateBlob<WorkspaceModel>,

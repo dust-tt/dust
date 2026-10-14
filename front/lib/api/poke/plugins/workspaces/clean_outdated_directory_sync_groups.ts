@@ -2,6 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
   manifest: {
@@ -107,7 +108,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
         display: "json",
         value: {
           mode: "dry_run",
-          message: `Found ${groupsToDelete.length} group${groupsToDelete.length > 1 ? "s" : ""} that would be deleted`,
+          message: `Found ${groupsToDelete.length} group${pluralize(groupsToDelete.length)} that would be deleted`,
           groups: groupSummary,
           notFound: groupsNotFound,
           note: "No groups were actually deleted. Tick 'execute' to perform the deletion.",

@@ -32,24 +32,29 @@ app.post(
       ...periodQuery
     } = ctx.req.valid("json");
 
-    if (userId && (breakdownBy === "user" || breakdownBy === "group")) {
+    if (
+      userId &&
+      (breakdownBy === "user" ||
+        breakdownBy === "group" ||
+        breakdownBy === "pod")
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message:
-            "Personal consumption analytics do not support user or group breakdowns.",
+            "Personal consumption analytics do not support user, group or pod breakdowns.",
         },
       });
     }
 
-    if (agentId && breakdownBy === "agent") {
+    if (agentId && (breakdownBy === "agent" || breakdownBy === "pod")) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message:
-            "Agent consumption analytics do not support agent breakdowns.",
+            "Agent consumption analytics do not support agent or pod breakdowns.",
         },
       });
     }

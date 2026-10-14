@@ -14,6 +14,7 @@ const BREAKDOWN_LABEL: Record<ConsumptionDimension, string> = {
   agent: "Agents",
   user: "Members",
   group: "Groups",
+  pod: "Pods",
   model: "Models",
   tool: "Tools",
   skill: "Skills",

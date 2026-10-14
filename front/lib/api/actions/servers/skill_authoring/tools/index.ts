@@ -32,6 +32,7 @@ import {
 } from "@app/types/resources_icon_names";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function requireInteractiveUser(
   auth: Authenticator
@@ -576,8 +577,8 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       if (occurrences !== expected) {
         return new Err(
           new MCPError(
-            `Expected ${expected} replacement${expected === 1 ? "" : "s"}, but ` +
-              `\`old_string\` matched ${occurrences} time${occurrences === 1 ? "" : "s"}. ` +
+            `Expected ${expected} replacement${pluralize(expected)}, but ` +
+              `\`old_string\` matched ${occurrences} time${pluralize(occurrences)}. ` +
               "Add more surrounding context to target a single occurrence, or set " +
               "`expected_replacements`."
           )

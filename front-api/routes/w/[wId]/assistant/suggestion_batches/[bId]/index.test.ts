@@ -1217,7 +1217,7 @@ describe("approving agent suggestions", () => {
     await AgentSuggestionFactory.createModel(auth, agent, {
       batchModelId: batch.id,
       suggestion: {
-        modelId: "claude-haiku-4-5-20251001",
+        modelId: "claude-haiku-5-5",
         reasoningEffort: "medium",
       },
     });
@@ -1228,9 +1228,7 @@ describe("approving agent suggestions", () => {
     expect((await response.json()).batch.state).toBe("approved");
 
     const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
-    expect(updated?.modelConfiguration.modelId).toBe(
-      "claude-haiku-4-5-20251001"
-    );
+    expect(updated?.modelConfiguration.modelId).toBe("claude-haiku-5-5");
     expect(updated?.modelConfiguration.reasoningEffort).toBe("medium");
   });
 

@@ -11,6 +11,7 @@ import {
 import { isRunModelLLMUnresponsiveFailureType } from "./run_model_errors";
 
 export const RUN_MODEL_ACTIVITY_NAME = "runModelAndCreateActionsActivity";
+export const RUN_TOOL_ACTIVITY_NAME = "runToolActivity";
 
 function isRunModelActivityFailure(error: unknown): error is ActivityFailure {
   if (!(error instanceof ActivityFailure)) {
@@ -44,6 +45,17 @@ export function isTerminalRunModelTimeout(
 
   return (
     error.cause.timeoutType === TimeoutType.START_TO_CLOSE ||
+    error.cause.timeoutType === TimeoutType.HEARTBEAT
+  );
+}
+
+export function isToolActivityHeartbeatTimeout(
+  error: unknown
+): error is ActivityFailure {
+  return (
+    error instanceof ActivityFailure &&
+    error.activityType === RUN_TOOL_ACTIVITY_NAME &&
+    error.cause instanceof TimeoutFailure &&
     error.cause.timeoutType === TimeoutType.HEARTBEAT
   );
 }

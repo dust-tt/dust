@@ -6,6 +6,7 @@ export type {
   DocumentCommentAvatarSize,
   DocumentEmbeddableFile,
   DocumentEmbeddableFiles,
+  DocumentFilePreview,
   CollabParticipant,
   DocumentProps,
 } from "@app/components/editor/document/types";

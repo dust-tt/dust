@@ -16,6 +16,8 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
 
   declare name: string;
   declare kind: SpaceKind;
+  // Projects (pods) only: the dfs folder holding the pod's files, created on first use.
+  declare dfsObjectId: CreationOptional<string | null>;
 
   // The space's instance-level grants in group_permissions, with the grantee `group` nested.
   declare spaceGrants?: NonAttribute<GroupPermissionModel[]>;
@@ -42,6 +44,10 @@ SpaceModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    dfsObjectId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

@@ -187,12 +187,14 @@ export abstract class LLM<
 
   private getLatencyTelemetryTags({
     surface,
+    reasoningEffort,
   }: {
     surface: "stream" | "batch";
+    reasoningEffort: ReasoningEffort;
   }): string[] {
     return [
       ...this.getTelemetryTags({ surface }),
-      requestedReasoningEffortTag(this.reasoningEffort),
+      requestedReasoningEffortTag(reasoningEffort),
       ...serviceTierTags(this.serviceTier),
     ];
   }
@@ -201,14 +203,19 @@ export abstract class LLM<
     durationMs,
     timeToFirstEventMs,
     timeToFirstTokenMs,
+    reasoningEffort,
     ...outcomeTelemetry
   }: {
     durationMs: number;
     timeToFirstEventMs: number | undefined;
     timeToFirstTokenMs: number | undefined;
+    reasoningEffort: ReasoningEffort;
   } & LLMAttemptOutcomeTelemetry): void {
     const baseTags = this.getTelemetryTags({ surface: "stream" });
-    const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
+    const latencyTags = this.getLatencyTelemetryTags({
+      surface: "stream",
+      reasoningEffort,
+    });
 
     void recordLLMAttempt({
       endpoint: {
@@ -267,6 +274,7 @@ export abstract class LLM<
 
     const { conversation, prompt, specifications, previousMessageId } =
       streamParameters;
+    const reasoningEffort = this.getReasoningEffortInEffect(streamParameters);
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(
@@ -282,7 +290,7 @@ export abstract class LLM<
         input: undefined,
         model: this.modelId,
         modelParameters: {
-          reasoningEffort: this.reasoningEffort,
+          reasoningEffort,
           responseFormat: this.responseFormat ?? "",
           temperature: this.temperature ?? "",
         },
@@ -332,7 +340,7 @@ export abstract class LLM<
         conversation,
         modelId: this.modelId,
         prompt,
-        reasoningEffort: this.reasoningEffort,
+        reasoningEffort,
         responseFormat: this.responseFormat,
         specifications,
         temperature: this.temperature,
@@ -404,7 +412,7 @@ export abstract class LLM<
           durationMs,
           timeToFirstEventMs,
           timeToFirstTokenMs,
-          requestedReasoningEffort: this.reasoningEffort,
+          requestedReasoningEffort: reasoningEffort,
           serviceTier: this.serviceTier,
           surface: "stream",
         });
@@ -423,6 +431,7 @@ export abstract class LLM<
             durationMs,
             timeToFirstEventMs,
             timeToFirstTokenMs,
+            reasoningEffort,
             errorType,
             errorSource,
           });
@@ -462,6 +471,7 @@ export abstract class LLM<
             durationMs,
             timeToFirstEventMs,
             timeToFirstTokenMs,
+            reasoningEffort,
           });
 
           const logContext = {
@@ -632,7 +642,7 @@ export abstract class LLM<
           input: payload,
           model: this.modelId,
           modelParameters: {
-            reasoningEffort: this.reasoningEffort,
+            reasoningEffort: this.getReasoningEffortInEffect(params),
             responseFormat: this.responseFormat ?? "",
             temperature: this.temperature ?? "",
           },
@@ -897,6 +907,14 @@ export abstract class LLM<
     }
   }
 
+  // Effort the request runs at, as reported by telemetry and traces. The top-level effort here;
+  // surfaces that send per-message effort changes report the one in effect for the request.
+  protected getReasoningEffortInEffect(
+    _streamParameters: LLMStreamParameters
+  ): ReasoningEffort {
+    return this.reasoningEffort;
+  }
+
   /**
    * Build the request payload that will be sent to the LLM provider.
    *
@@ -939,6 +957,7 @@ export abstract class LLM<
       inferenceProvider: this.metadata.inferenceProvider,
       modelId: this.modelId,
       providerId: this.modelConfig.providerId,
+      reasoningEffort: this.getReasoningEffortInEffect(streamParameters),
       region: this.metadata.region ?? null,
       usageType,
     });

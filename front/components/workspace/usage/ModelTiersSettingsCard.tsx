@@ -33,41 +33,42 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
   const selectedValue = workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER;
 
   return (
-    <>
-      <div className="heading-base flex items-center gap-1 text-foreground">
-        <Trans>Models tier</Trans>
-        <ModelTiersInfoButton />
-      </div>
-      <SettingsList>
-        <SettingsList.Row
-          title={t`Workspace access`}
-          description={t`Set the highest model tier available to all members of this workspace.`}
-          action={
-            <ModelTierPickerDropdown
-              selectedValue={selectedValue}
-              options={getWorkspaceModelTierOptions(t)}
-              onSelect={async (value) => {
-                await setWorkspaceAllowedModelTier({
-                  tierName: value as ModelsTierName,
-                });
-              }}
-              isLoading={isWorkspaceAllowedModelTiersLoading}
-              isMutating={isWorkspaceAllowedModelTierMutating}
-            />
-          }
-        />
-        <SettingsList.Row
-          title={t`Published agents`}
-          description={t`Allow all members to run published agents even when the agent's model tier is above their own access.`}
-          action={
-            <SliderToggle
-              selected={isRestrictedModelsForPublishedAgentsEnabled}
-              disabled={isRestrictedModelsForPublishedAgentsChanging}
-              onClick={() => void doTogglePublishedAgentsRestrictedModels()}
-            />
-          }
-        />
-      </SettingsList>
-    </>
+    <SettingsList
+      title={
+        <>
+          <Trans>Models tier</Trans>
+          <ModelTiersInfoButton />
+        </>
+      }
+    >
+      <SettingsList.Row
+        title={t`Workspace access`}
+        description={t`Set the highest model tier available to all members of this workspace.`}
+        action={
+          <ModelTierPickerDropdown
+            selectedValue={selectedValue}
+            options={getWorkspaceModelTierOptions(t)}
+            onSelect={async (value) => {
+              await setWorkspaceAllowedModelTier({
+                tierName: value as ModelsTierName,
+              });
+            }}
+            isLoading={isWorkspaceAllowedModelTiersLoading}
+            isMutating={isWorkspaceAllowedModelTierMutating}
+          />
+        }
+      />
+      <SettingsList.Row
+        title={t`Published agents`}
+        description={t`Allow all members to run published agents even when the agent's model tier is above their own access.`}
+        action={
+          <SliderToggle
+            selected={isRestrictedModelsForPublishedAgentsEnabled}
+            disabled={isRestrictedModelsForPublishedAgentsChanging}
+            onClick={() => void doTogglePublishedAgentsRestrictedModels()}
+          />
+        }
+      />
+    </SettingsList>
   );
 }

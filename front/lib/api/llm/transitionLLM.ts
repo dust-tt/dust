@@ -700,6 +700,40 @@ abstract class BaseTransition extends LLM {
     return flaggedConfig;
   }
 
+  // Only the effort changes this model can apply reach the provider (effort-messages-only-raise).
+  private toBaseMessagesWithEffortChanges(
+    conversation: LLMStreamParameters["conversation"]
+  ): BaseMessage[] {
+    return filterRaisingReasoningEfforts(
+      this.modelConfig,
+      conversation.messages.flatMap(toBaseMessages),
+      {
+        effort: this.reasoningEffort,
+        getEffort: (m) => (m.role === "system" ? m.content.effort : null),
+      }
+    );
+  }
+
+  // The effort the request's reply runs at: the last effort change sent before its last user turn
+  // with new input, else the top-level effort. An effort change only applies from the next user
+  // turn with new input, and tool results do not count as such, so a change placed after the last
+  // one does not apply to this reply yet.
+  protected override getReasoningEffortInEffect({
+    conversation,
+  }: LLMStreamParameters): ReasoningEffort {
+    const messages = this.toBaseMessagesWithEffortChanges(conversation);
+    const lastNewInputIndex = messages.findLastIndex(
+      (m) => m.role === "user" && m.type !== "tool_call_result"
+    );
+    const lastEffortChange = messages
+      .slice(0, Math.max(lastNewInputIndex, 0))
+      .findLast((m) => m.role === "system");
+
+    return lastEffortChange?.role === "system"
+      ? lastEffortChange.content.effort
+      : this.reasoningEffort;
+  }
+
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
   //
@@ -717,16 +751,8 @@ abstract class BaseTransition extends LLM {
   ): Payload {
     const { conversation, prompt } = streamParameters;
 
-    // Only the effort changes this model can apply reach the provider (effort-messages-only-raise).
     const baseMessages = withMessageCacheBreakpoints(
-      filterRaisingReasoningEfforts(
-        this.modelConfig,
-        conversation.messages.flatMap(toBaseMessages),
-        {
-          effort: this.reasoningEffort,
-          getEffort: (m) => (m.role === "system" ? m.content.effort : null),
-        }
-      ),
+      this.toBaseMessagesWithEffortChanges(conversation),
       conversation.messages[0],
       { explicitTailBreakpoint }
     );

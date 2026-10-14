@@ -1964,7 +1964,7 @@ describe("agent_sidekick_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-sonnet-4-6",
+            modelId: "claude-sonnet-5-5",
             reasoningEffort: "high",
           },
           analysis: "Upgrading to better model for complex tasks",
@@ -1997,11 +1997,11 @@ describe("agent_sidekick_context tools", () => {
       );
 
       const tool = getToolByName("suggest_model");
-      // claude-sonnet-4-6 does not support reasoningEffort "minimal".
+      // claude-sonnet-5-5 does not support reasoningEffort "minimal".
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-sonnet-4-6",
+            modelId: "claude-sonnet-5-5",
             reasoningEffort: "minimal",
           },
         },
@@ -2013,8 +2013,8 @@ describe("agent_sidekick_context tools", () => {
         expect(result.error.message).toContain(
           'does not support the "minimal" reasoning effort'
         );
-        expect(result.error.message).toContain("none");
-        expect(result.error.message).toContain("claude-sonnet-4-6");
+        expect(result.error.message).toContain("low");
+        expect(result.error.message).toContain("claude-sonnet-5-5");
       }
     });
 
@@ -2075,14 +2075,14 @@ describe("agent_sidekick_context tools", () => {
       );
 
       const tool = getToolByName("suggest_model");
-      // gpt-5.6-sol is in USED_MODEL_CONFIGS but openai is not whitelisted
-      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.6-sol")).toBe(
+      // gpt-6-luna is in USED_MODEL_CONFIGS but openai is not whitelisted
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-6-luna")).toBe(
         true
       );
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "gpt-5.6-sol",
+            modelId: "gpt-6-luna",
           },
         },
         createTestExtra(authenticator)
@@ -2093,7 +2093,7 @@ describe("agent_sidekick_context tools", () => {
         expect(result.error.message).toContain(
           "is not available in this workspace"
         );
-        expect(result.error.message).toContain("gpt-5.6-sol");
+        expect(result.error.message).toContain("gpt-6-luna");
       }
     });
   });

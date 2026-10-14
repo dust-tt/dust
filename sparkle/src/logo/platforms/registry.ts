@@ -34,6 +34,7 @@ import DocLogo from "./Doc";
 import DriveLogo from "./Drive";
 import FathomLogo from "./Fathom";
 import FigmaLogo from "./Figma";
+import FirefliesLogo from "./Fireflies";
 import FirefoxLogo from "./Firefox";
 import FireworksLogo from "./Fireworks";
 import FrameLogo from "./Frame";
@@ -168,6 +169,7 @@ export const PLATFORM_LOGOS = {
   DriveLogo,
   FathomLogo,
   FigmaLogo,
+  FirefliesLogo,
   FirefoxLogo,
   FireworksLogo,
   FrameLogo,

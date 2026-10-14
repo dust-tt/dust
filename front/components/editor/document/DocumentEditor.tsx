@@ -8,6 +8,8 @@ import {
   DocumentCommentsList,
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsList";
+import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentEmbeds";
+import { DocumentImageMenu } from "@app/components/editor/document/DocumentImageMenu";
 import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
   CollabAgentIndicator,
@@ -30,7 +32,7 @@ import type { CommentChannel } from "@app/lib/client/collab/comments";
 import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
-import { lazy, Suspense, useId, useRef } from "react";
+import { lazy, Suspense, useId, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
@@ -43,8 +45,9 @@ const CollabEditor = lazy(
  * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply the
  * document editor's instance, extensions, or toolbar configuration; `commentInputExtensions`
  * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
- * text selection. Block commands MUST require an editable document, and either a typed `/` or the
- * selection toolbar's text style and list menus.
+ * text selection, and image controls a hovered image (see `document-image-menu`). Block commands
+ * MUST require an editable document, and either a typed `/` or the selection toolbar's text
+ * style and list menus.
  * className MUST apply only to the outer container.
  */
 /**
@@ -216,7 +219,7 @@ interface DocumentEditingControlsProps {
   blockMenu: ReturnType<typeof useDocumentBlockMenu>;
 }
 
-/** The formatting toolbar over a selection and the `/` block menu, while editable. */
+/** The formatting toolbar over a selection, the image menu and the `/` block menu, while editable. */
 const DocumentEditingControls = ({
   editor,
   comments,
@@ -228,6 +231,7 @@ const DocumentEditingControls = ({
         editor={editor}
         onComment={comments.canWrite ? comments.startDraft : undefined}
       />
+      <DocumentImageMenu editor={editor} />
       <DocumentBlockMenu editor={editor} menu={blockMenu} />
     </>
   );
@@ -248,10 +252,16 @@ export const DocumentView = ({
   commentInputExtensions,
   resolveImageSource,
   embeddableFiles,
+  renderFrame,
+  renderFilePreview,
   renderCollabParticipants,
   badge,
 }: DocumentViewProps) => {
   const live = collabEditorMode(collabView);
+  const embeds = useMemo(
+    () => ({ renderFrame, renderFilePreview }),
+    [renderFrame, renderFilePreview]
+  );
   const { editor, editable, unsupported, isSavable } = useDocumentEditor({
     initialContent,
     readOnly: readOnly || live.waiting,
@@ -281,11 +291,13 @@ export const DocumentView = ({
 
   if (unsupported !== null) {
     return (
-      <DocumentMarkdownPreview
-        className={className}
-        source={unsupported.source}
-        resolveImageSource={resolveImageSource}
-      />
+      <DocumentEmbedsContext.Provider value={embeds}>
+        <DocumentMarkdownPreview
+          className={className}
+          source={unsupported.source}
+          resolveImageSource={resolveImageSource}
+        />
+      </DocumentEmbedsContext.Provider>
     );
   }
 
@@ -390,7 +402,9 @@ export const DocumentView = ({
           role="presentation"
           onClick={(event) => comments.revealClicked(event.target)}
         >
-          <EditorContent editor={editor} />
+          <DocumentEmbedsContext.Provider value={embeds}>
+            <EditorContent editor={editor} />
+          </DocumentEmbedsContext.Provider>
         </div>
         {editor && (
           <DocumentCommentCard

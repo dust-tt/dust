@@ -29,11 +29,18 @@ const FilePreviewContext = createContext<FilePreviewContextType | null>(null);
 
 interface FilePreviewProviderProps {
   owner: LightWorkspaceType;
+  keepCurrentPanel?: boolean;
   children: ReactNode;
 }
 
+/**
+ * @cc [owner:tdraier,label:product;react] file-preview-keep-current-panel
+ * With `keepCurrentPanel`, a file or Frame opened in the side panel MUST keep the shown panel in
+ * its history (`side-panel-keep-current`), so closing it returns to that panel.
+ */
 export function FilePreviewProvider({
   owner,
+  keepCurrentPanel = false,
   children,
 }: FilePreviewProviderProps) {
   const { t } = useLingui();
@@ -44,15 +51,17 @@ export function FilePreviewProvider({
     (file: PreviewableFile) => {
       if (isFilePreviewableContentType(file.contentType) && hasConversation) {
         if (file.filePath) {
-          openPanel({
-            type: "file_preview",
-            kind: "path",
-            filePath: file.filePath,
-          });
+          openPanel(
+            { type: "file_preview", kind: "path", filePath: file.filePath },
+            { keepCurrent: keepCurrentPanel }
+          );
           return;
         }
         if (file.fileId) {
-          openPanel({ type: "file_preview", kind: "id", fileId: file.fileId });
+          openPanel(
+            { type: "file_preview", kind: "id", fileId: file.fileId },
+            { keepCurrent: keepCurrentPanel }
+          );
           return;
         }
       }
@@ -67,7 +76,7 @@ export function FilePreviewProvider({
         window.open(downloadUrl, "_blank");
       }
     },
-    [hasConversation, openPanel, owner]
+    [hasConversation, keepCurrentPanel, openPanel, owner]
   );
 
   const openFramePreview = useCallback(
@@ -85,9 +94,12 @@ export function FilePreviewProvider({
         return;
       }
 
-      openPanel({ type: "interactive_content", fileId: resolvedFileId });
+      openPanel(
+        { type: "interactive_content", fileId: resolvedFileId },
+        { keepCurrent: keepCurrentPanel }
+      );
     },
-    [openPanel, owner, sendNotification, t]
+    [keepCurrentPanel, openPanel, owner, sendNotification, t]
   );
 
   const contextValue = useMemo(

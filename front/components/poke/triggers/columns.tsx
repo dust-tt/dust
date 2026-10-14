@@ -4,6 +4,7 @@ import { formatCredits } from "@app/lib/client/credits";
 import { formatNumber } from "@app/lib/i18n/format";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LinkWrapper, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -76,10 +77,9 @@ interface ConsumptionCellProps {
 function ConsumptionCell({ trigger }: ConsumptionCellProps) {
   const { credits, runCount } = trigger;
   const creditsLabel = `${formatCredits(credits)} credits`;
-  const runUnit = runCount === 1 ? "run" : "runs";
   const creditsPerRun =
     runCount > 0 ? `${formatCredits(credits / runCount)} credits/run` : "—";
-  const estimatesLabel = `Est. ${formatNumber(runCount)} ${runUnit} · ${creditsPerRun}`;
+  const estimatesLabel = `Est. ${formatNumber(runCount)} run${pluralize(runCount)} · ${creditsPerRun}`;
 
   return (
     <div className="flex min-h-10 w-52 flex-col justify-center overflow-hidden whitespace-nowrap">

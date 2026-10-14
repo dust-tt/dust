@@ -892,10 +892,6 @@ msgid "Invite"
 msgstr ""
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
-msgid "The content of your personal memory may be disclosed to invited users."
-msgstr ""
-
-#: front/components/assistant/conversation/MentionValidationRequired.tsx
 msgid "Decline"
 msgstr ""
 

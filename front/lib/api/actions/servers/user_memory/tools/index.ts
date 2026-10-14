@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   USER_MEMORY_EDIT_TOOL_NAME,
   USER_MEMORY_TOOLS_METADATA,
@@ -13,6 +14,7 @@ import {
   userMemoryPath,
 } from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -38,7 +40,28 @@ async function resolveUserMemoryFile(
 }
 
 const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
-  [USER_MEMORY_EDIT_TOOL_NAME]: async ({ oldStr, newStr }, { auth }) => {
+  [USER_MEMORY_EDIT_TOOL_NAME]: async (
+    { oldStr, newStr },
+    { auth, runContext }
+  ) => {
+    // The memory is redacted when other users take part in the conversation, and the edit output
+    // would disclose it to them.
+    if (isAgentLoopRunContext(runContext)) {
+      const participants = await ConversationResource.listParticipantDetails(
+        auth,
+        runContext.conversation
+      );
+      if (participants.length > 1) {
+        return new Err(
+          new MCPError(
+            "The user's personal memory is not available in conversations with several users, " +
+              "so it cannot be edited here.",
+            { tracked: false }
+          )
+        );
+      }
+    }
+
     const memoryResult = await resolveUserMemoryFile(auth);
     if (memoryResult.isErr()) {
       return memoryResult;

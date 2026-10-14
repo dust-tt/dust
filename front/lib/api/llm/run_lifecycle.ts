@@ -8,6 +8,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import type {
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 
@@ -16,6 +17,7 @@ interface LLMRunLifecycleParameters {
   inferenceProvider: string;
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
+  reasoningEffort: ReasoningEffort;
   region: Region | null;
   usageType: UsageType;
 }
@@ -50,6 +52,7 @@ export class LLMRunLifecycle {
         inferenceProvider: parameters.inferenceProvider,
         modelId: parameters.modelId,
         providerId: parameters.providerId,
+        reasoningEffort: parameters.reasoningEffort,
         region: parameters.region,
         usageType: parameters.usageType,
         useWorkspaceCredentials: usesWorkspaceProvidedCredentials(auth),

@@ -105,6 +105,19 @@ function MessageContent({ message }: MessageContentProps) {
   }
 }
 
+function getMessageLabel(
+  message: ModelMessageTypeMultiActionsWithoutContentFragment
+): string {
+  switch (message.role) {
+    case "function":
+      return `tool_result: ${message.name}`;
+    case "effort_change":
+      return `effort_change: ${message.from} → ${message.effort}`;
+    default:
+      return message.role;
+  }
+}
+
 interface ConversationViewProps {
   conversation: ModelConversationTypeMultiActions;
 }
@@ -120,18 +133,15 @@ function ConversationView({ conversation }: ConversationViewProps) {
     <div className="space-y-2">
       {conversation.messages.map((message, index) => {
         const chipColor = roleChipColors[message.role] ?? "primary";
-        const roleName =
-          message.role === "function"
-            ? `tool_result: ${message.name}`
-            : message.role;
+        const roleName = getMessageLabel(message);
 
         return (
-          <div key={index} className="rounded border p-3">
+          <div key={index} className="flex flex-col gap-2 rounded border p-3">
             <Chip
               color={chipColor}
               size="xs"
               label={roleName}
-              className="mb-2"
+              className="self-start"
             />
             <MessageContent message={message} />
           </div>

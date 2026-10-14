@@ -62,6 +62,7 @@ import type { ModelResolutionMethodType } from "@app/types/assistant/models/type
 import type { WakeUpScheduleConfig } from "@app/types/assistant/wakeups";
 import { ACTIVE_WAKE_UP_STATUSES } from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
+import type { DfsObjectId } from "@app/types/dfs";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1485,6 +1486,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       this.triggerId,
       this.workspaceId
     );
+  }
+
+  /** Stores the ID of the conversation's dfs folder, unless one is already stored. */
+  async setDfsObjectId(
+    auth: Authenticator,
+    dfsObjectId: DfsObjectId
+  ): Promise<void> {
+    await this.update({ dfsObjectId }, undefined, {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      dfsObjectId: null,
+    });
   }
 
   async listParticipantsForConversation(): Promise<

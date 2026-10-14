@@ -3,12 +3,13 @@ import {
   EMBEDS,
   getBlockQuery,
 } from "@app/components/editor/document/blocks";
+import { DOCUMENT_FRAME_NODE_NAME } from "@app/components/editor/document/DocumentFrame";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
 import type {
   DocumentEmbeddableFile,
   DocumentEmbeddableFiles,
 } from "@app/components/editor/document/types";
-import { cn, Icon } from "@dust-tt/sparkle";
+import { ArrowLeft, cn, Icon } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
@@ -30,10 +31,13 @@ interface DocumentBlockMenuItem {
 const matches = (item: DocumentBlockMenuItem, search: string) =>
   `${item.name} ${item.keywords}`.toLowerCase().includes(search);
 
-const embedContent = (file: DocumentEmbeddableFile): JSONContent => ({
-  type: DOCUMENT_IMAGE_NODE_NAME,
-  attrs: { src: file.path, alt: file.name, title: null },
-});
+const embedContent = (file: DocumentEmbeddableFile): JSONContent =>
+  file.kind === "frame"
+    ? { type: DOCUMENT_FRAME_NODE_NAME, attrs: { path: file.path } }
+    : {
+        type: DOCUMENT_IMAGE_NODE_NAME,
+        attrs: { src: file.path, alt: file.name, title: null },
+      };
 
 type BlockQuery = NonNullable<ReturnType<typeof getBlockQuery>>;
 type AtQuery = (
@@ -47,8 +51,13 @@ type DocumentBlockMenuKeyEvent = Pick<
 
 const NAVIGATION_KEYS = new Set(["ArrowDown", "ArrowUp", "Enter"]);
 
-const stepIndex = (index: number, key: string, length: number) =>
-  (index + (key === "ArrowDown" ? 1 : -1) + length) % length;
+// Index -1 is the Back entry, offered first while picking a file.
+const stepIndex = (index: number, key: string, first: number, last: number) => {
+  const count = last - first + 1;
+  return (
+    ((index - first + (key === "ArrowDown" ? 1 : -1) + count) % count) + first
+  );
+};
 
 const buildMenuItems = ({
   t,
@@ -128,12 +137,14 @@ const buildFileItems = ({
 
 /**
  * @cc [owner:tdraier,label:product] document-slash-embeds
- * The `/` menu MUST offer its embed entries, such as Image, only when the host gives embeddable
+ * The `/` menu MUST offer its embed entries, Frame and Image, only when the host gives embeddable
  * files, and MUST ask the host to load them only once one is picked. Picking one MUST turn the menu
  * into a search over the host's files of that kind, by name or path, showing that they load while
  * none has arrived, and picking a file MUST replace the `/` query with an embed of exactly that file's
- * path: for an image, an `image` node with the file name as alt text. Escape or removing the `/`
- * MUST leave the search without inserting anything.
+ * path: for a Frame, a `frameEmbed` node; for an image, an `image` node with the file name as alt
+ * text. Escape or the search's Back entry MUST return to the `/` menu, keeping the `/` and dropping
+ * the search text; Escape on the `/` menu MUST close it, and removing the `/` MUST leave the search.
+ * None of these inserts anything.
  */
 export const useDocumentBlockMenu = (
   editor: Editor | null,
@@ -171,6 +182,16 @@ export const useDocumentBlockMenu = (
     setDismissedQuery(null);
     setHighlight({ queryKey: "", index: 0 });
   };
+  const goBack = () => {
+    if (editor && query) {
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: query.from + 1, to: query.to })
+        .run();
+    }
+    reset();
+  };
   const atQuery: AtQuery = (apply) => () => {
     if (editor && query) {
       apply(editor, query);
@@ -206,13 +227,17 @@ export const useDocumentBlockMenu = (
   const keyOf = (mode: string) =>
     query ? `${mode}:${query.from}:${query.query}` : "";
   const queryKey = keyOf(activePicker?.kind ?? "menu");
+  const canGoBack = activePicker !== null;
+  const firstIndex = canGoBack ? -1 : 0;
+  const lastIndex = Math.max(items.length - 1, firstIndex);
   const activeIndex =
     highlight.queryKey === queryKey
-      ? Math.min(highlight.index, items.length - 1)
-      : 0;
+      ? Math.max(Math.min(highlight.index, lastIndex), firstIndex)
+      : Math.min(0, lastIndex);
   const show = editable && !!query && dismissedQuery !== queryKey;
 
-  const insertBlock = (index: number) => items[index]?.run();
+  const insertBlock = (index: number) =>
+    index === -1 && canGoBack ? goBack() : items[index]?.run();
 
   const highlightBlock = (index: number) => setHighlight({ queryKey, index });
 
@@ -224,12 +249,14 @@ export const useDocumentBlockMenu = (
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      setPicker(null);
-      // Leaving the search dismisses the menu the remaining `/` would show.
+      if (canGoBack) {
+        goBack();
+        return;
+      }
       setDismissedQuery(keyOf("menu"));
       return;
     }
-    if (items.length === 0 || !NAVIGATION_KEYS.has(event.key)) {
+    if (lastIndex < 0 || !NAVIGATION_KEYS.has(event.key)) {
       return;
     }
     event.preventDefault();
@@ -238,7 +265,7 @@ export const useDocumentBlockMenu = (
       insertBlock(activeIndex);
       return;
     }
-    const index = stepIndex(activeIndex, event.key, items.length);
+    const index = stepIndex(activeIndex, event.key, firstIndex, lastIndex);
     highlightBlock(index);
     document
       .getElementById(`${menuId}-${index}`)
@@ -249,7 +276,7 @@ export const useDocumentBlockMenu = (
     menuId,
     items,
     title: pickerEmbed ? t(pickerEmbed.pickerTitle) : null,
-    isPicking: activePicker !== null,
+    isPicking: canGoBack,
     isLoadingFiles: !!pickerEmbed && !!embeddableFiles?.isLoading,
     activeIndex,
     show,
@@ -307,6 +334,31 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
           role="menu"
           aria-label={menu.title ?? t`Add a paragraph`}
         >
+          {menu.isPicking && (
+            <button
+              id={`${menu.menuId}--1`}
+              type="button"
+              role="menuitem"
+              aria-label={t`Back`}
+              data-active={menu.activeIndex === -1}
+              onPointerMove={() => menu.highlightBlock(-1)}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => menu.insertBlock(-1)}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-muted-foreground copy-sm data-[active=true]:bg-hover",
+                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              )}
+            >
+              <Icon visual={ArrowLeft} size="xs" />
+              <Trans>Back</Trans>
+              <kbd
+                aria-hidden="true"
+                className="ml-auto min-w-3.5 rounded border border-border px-0.5 text-center font-sans text-xs leading-tight"
+              >
+                esc
+              </kbd>
+            </button>
+          )}
           {menu.items.map((block, index) => (
             <button
               key={block.key}
@@ -359,7 +411,7 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
           {[
             { keys: ["↑", "↓"], label: t`Navigate` },
             { keys: ["↵"], label: t`Insert` },
-            { keys: ["esc"], label: t`Close` },
+            { keys: ["esc"], label: menu.isPicking ? t`Back` : t`Close` },
           ].map(({ keys, label }) => (
             <span key={label} className="inline-flex items-center gap-1">
               {keys.map((key) => (

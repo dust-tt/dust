@@ -1,3 +1,5 @@
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
+import type { DocumentFilePreview } from "@app/components/editor/document";
 import { DocumentEditor } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -5,12 +7,14 @@ import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CollabParticipantsAvatars } from "@app/components/file_explorer/CollabParticipantsAvatars";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
+import { DocumentFrameEmbed } from "@app/components/file_explorer/DocumentFrameEmbed";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
 import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
 import { useCollabTicket } from "@app/hooks/useCollabTicket";
 import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
@@ -39,7 +43,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { parse } from "csv-parse/browser/esm/sync";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -371,6 +375,20 @@ interface RichMarkdownDocumentProps {
   statusContainer?: HTMLElement | null;
 }
 
+const renderFilePreview = (preview: DocumentFilePreview) => (
+  <FilePreviewBlock
+    path={preview.path}
+    title={preview.title ?? undefined}
+    contentType={preview.contentType ?? undefined}
+  />
+);
+
+/**
+ * @cc [owner:tdraier,label:product;react] rich-document-in-file-preview-provider
+ * The document MUST render inside its own `FilePreviewProvider` with `keepCurrentPanel`: its file
+ * references render as `FilePreviewBlock`, which requires one, and a file opened from them MUST
+ * keep the document in the side panel's history, so closing the file returns to it.
+ */
 function RichMarkdownDocument({
   editor,
   owner,
@@ -403,6 +421,10 @@ function RichMarkdownDocument({
     documentPath: editor.path,
   });
   const resolveImageSource = useResolveMarkdownImageUrl(owner);
+  const renderFrame = useCallback(
+    (path: string) => <DocumentFrameEmbed owner={owner} path={path} />,
+    [owner]
+  );
 
   const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
   const live = user
@@ -419,29 +441,36 @@ function RichMarkdownDocument({
     : undefined;
 
   return (
-    <DocumentEditor
-      initialContent={editor.initialContent}
-      headerControlsContainer={headerControlsContainer}
-      statusContainer={statusContainer}
-      live={live}
-      commentAuthor={
-        user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
-      }
-      verifyCommentMessage={verifyCommentMessage ?? undefined}
-      renderCommentBody={(body) => (
-        <CommentBodyMarkdown owner={owner} body={body} />
-      )}
-      commentInputExtensions={commentInputExtensions}
-      resolveImageSource={resolveImageSource}
-      embeddableFiles={embeddableFiles}
-      renderCommentAuthorAvatar={(author, size) => (
-        <CommentAuthorAvatar owner={owner} author={author} size={size} />
-      )}
-      badge={<CoEditionBadge />}
-      renderCollabParticipants={(participants) => (
-        <CollabParticipantsAvatars owner={owner} participants={participants} />
-      )}
-    />
+    <FilePreviewProvider owner={owner} keepCurrentPanel>
+      <DocumentEditor
+        initialContent={editor.initialContent}
+        headerControlsContainer={headerControlsContainer}
+        statusContainer={statusContainer}
+        live={live}
+        commentAuthor={
+          user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
+        }
+        verifyCommentMessage={verifyCommentMessage ?? undefined}
+        renderCommentBody={(body) => (
+          <CommentBodyMarkdown owner={owner} body={body} />
+        )}
+        commentInputExtensions={commentInputExtensions}
+        resolveImageSource={resolveImageSource}
+        embeddableFiles={embeddableFiles}
+        renderFrame={renderFrame}
+        renderFilePreview={renderFilePreview}
+        renderCommentAuthorAvatar={(author, size) => (
+          <CommentAuthorAvatar owner={owner} author={author} size={size} />
+        )}
+        badge={<CoEditionBadge />}
+        renderCollabParticipants={(participants) => (
+          <CollabParticipantsAvatars
+            owner={owner}
+            participants={participants}
+          />
+        )}
+      />
+    </FilePreviewProvider>
   );
 }
 

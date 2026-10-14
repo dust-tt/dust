@@ -12,7 +12,9 @@ import { makeRunModelLLMError } from "./run_model_errors";
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
+  isToolActivityHeartbeatTimeout,
   RUN_MODEL_ACTIVITY_NAME,
+  RUN_TOOL_ACTIVITY_NAME,
 } from "./workflow_failures";
 
 const LLM_TIMEOUT_MESSAGE =
@@ -122,5 +124,46 @@ describe("workflow failure predicates", () => {
     expect(shouldSwallowWorkflowFailure(nonTerminalFailure)).toBe(false);
     expect(isTerminalRunModelTimeout(unrelatedActivityFailure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(unrelatedActivityFailure)).toBe(false);
+  });
+});
+
+function makeToolActivityTimeout({
+  activityType = RUN_TOOL_ACTIVITY_NAME,
+  timeoutType = TimeoutType.HEARTBEAT,
+}: {
+  activityType?: string;
+  timeoutType?: TimeoutType;
+} = {}) {
+  return new ActivityFailure(
+    "Activity task timed out",
+    activityType,
+    "activity-id",
+    RetryState.MAXIMUM_ATTEMPTS_REACHED,
+    "worker-id",
+    new TimeoutFailure("activity timed out", undefined, timeoutType)
+  );
+}
+
+describe("isToolActivityHeartbeatTimeout", () => {
+  it("matches tool heartbeat timeouts", () => {
+    expect(isToolActivityHeartbeatTimeout(makeToolActivityTimeout())).toBe(
+      true
+    );
+  });
+
+  it("ignores other timeouts, other activities and non-timeout failures", () => {
+    expect(
+      isToolActivityHeartbeatTimeout(
+        makeToolActivityTimeout({ timeoutType: TimeoutType.START_TO_CLOSE })
+      )
+    ).toBe(false);
+    expect(
+      isToolActivityHeartbeatTimeout(
+        makeToolActivityTimeout({ activityType: RUN_MODEL_ACTIVITY_NAME })
+      )
+    ).toBe(false);
+    expect(isToolActivityHeartbeatTimeout(new Error("activity failed"))).toBe(
+      false
+    );
   });
 });

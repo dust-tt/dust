@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
@@ -104,7 +105,7 @@ export function registerFilesGrepTool(server: McpServer) {
 
       let text = matches.join("\n");
       if (capped) {
-        text += `\n\n[Showing ${matches.length} matching line${matches.length === 1 ? "" : "s"} within the output limit. Refine your pattern or use \`files_cat\` with a line offset to read a specific section.]`;
+        text += `\n\n[Showing ${matches.length} matching line${pluralize(matches.length)} within the output limit. Refine your pattern or use \`files_cat\` with a line offset to read a specific section.]`;
       } else {
         text += `\n\n[${matches.length} match${matches.length === 1 ? "" : "es"} found]`;
       }

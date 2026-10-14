@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr "Ajouter un paragraphe"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Back"
+msgstr "Retour"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Loading files…"
 msgstr "Chargement des fichiers…"
 
@@ -167,9 +171,30 @@ msgstr "Résolus ({resolvedCount})"
 msgid "All comments"
 msgstr "Tous les commentaires"
 
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "toolbar over a hovered image"
+msgid "Image"
+msgstr "Image"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Image width"
+msgstr "Largeur de l’image"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr "{value} px"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Original size"
+msgstr "Taille d’origine"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Remove image"
+msgstr "Supprimer l’image"
+
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document can't be edited here yet because it has a table."
-msgstr "Ce document ne peut pas encore être modifié ici, car il contient un tableau."
+msgid "This document can't be edited here because a table row has more cells than its header."
+msgstr "Ce document ne peut pas être modifié ici, car une ligne de tableau a plus de cellules que son en-tête."
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
 msgid "This document can't be edited here yet because it has HTML."
@@ -357,6 +382,19 @@ msgstr "Séparateur"
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
 msgstr "Séparer les sections"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding a Frame"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr "Intégrer un Frame interactif depuis les fichiers"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
+msgstr "Choisir un Frame"
 
 #: front/components/editor/document/blocks.ts
 msgctxt "slash menu entry embedding an image"

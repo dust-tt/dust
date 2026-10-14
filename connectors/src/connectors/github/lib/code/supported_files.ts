@@ -8,7 +8,11 @@ const EXTENSION_WHITELIST = [
   ".jsx",
   ".py",
   ".rb",
+  ".ex", // Elixir source
   ".exs", // Elixir script
+  ".eex", // Embedded Elixir template
+  ".heex", // Phoenix HTML-aware Elixir template
+  ".leex", // Phoenix LiveView legacy template
   ".rs",
   ".go",
   ".swift",

@@ -187,6 +187,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   webflow: "development",
   "bright data": "data",
   swarmia: "development",
+  fireflies: "transcripts",
 };
 
 // Category mapping for connectors

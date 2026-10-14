@@ -6,6 +6,7 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -388,6 +389,99 @@ describe("GET /api/w/:wId/skills/:sId", () => {
         message: "The skill you're trying to access was not found.",
       },
     });
+  });
+});
+
+describe("GET /api/w/:wId/skills/:sId?withRelations=true - usage", () => {
+  async function setupSkillUsage(requestUserRole: MembershipRoleType) {
+    // A different role keeps the skill owner and the requester distinct users.
+    const { workspace, skill, skillOwnerAuth, requestUserAuth } =
+      await setupTest({
+        skillOwnerRole: requestUserRole === "user" ? "admin" : "user",
+        requestUserRole,
+      });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+
+    const linkedAgent = async (
+      auth: Authenticator,
+      overrides: Parameters<typeof AgentConfigurationFactory.createTestAgent>[1]
+    ) => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        overrides
+      );
+      await SkillFactory.linkToAgent(auth, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+      return agent;
+    };
+
+    const visibleAgent = await linkedAgent(skillOwnerAuth, {
+      name: "Visible",
+      scope: "visible",
+    });
+    const othersHiddenAgent = await linkedAgent(skillOwnerAuth, {
+      name: "Others Hidden",
+      scope: "hidden",
+    });
+    const ownHiddenAgent = await linkedAgent(requestUserAuth, {
+      name: "Own Hidden",
+      scope: "hidden",
+    });
+    const restrictedSpaceAgent = await linkedAgent(skillOwnerAuth, {
+      name: "Restricted Space",
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    return {
+      workspace,
+      skill,
+      visibleAgent,
+      othersHiddenAgent,
+      ownHiddenAgent,
+      restrictedSpaceAgent,
+    };
+  }
+
+  async function usageAgentIds(workspace: { sId: string }, sId: string) {
+    const response = await getSkillWithRelations(workspace, sId);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const agentIds = data.skill.relations.usage.agents.map(
+      (agent: { sId: string }) => agent.sId
+    );
+    expect(data.skill.relations.usage.count).toBe(agentIds.length);
+    return agentIds;
+  }
+
+  it("omits hidden agents the member does not edit and agents in spaces they cannot read", async () => {
+    const { workspace, skill, visibleAgent, ownHiddenAgent } =
+      await setupSkillUsage("user");
+
+    expect(await usageAgentIds(workspace, skill.sId)).toEqual([
+      ownHiddenAgent.sId,
+      visibleAgent.sId,
+    ]);
+  });
+
+  it("lists every agent using the skill to an admin", async () => {
+    const {
+      workspace,
+      skill,
+      visibleAgent,
+      othersHiddenAgent,
+      ownHiddenAgent,
+      restrictedSpaceAgent,
+    } = await setupSkillUsage("admin");
+
+    expect(await usageAgentIds(workspace, skill.sId)).toEqual([
+      othersHiddenAgent.sId,
+      ownHiddenAgent.sId,
+      restrictedSpaceAgent.sId,
+      visibleAgent.sId,
+    ]);
   });
 });
 

@@ -591,6 +591,10 @@ msgid "Agents use your memory when answering, so their responses, including in S
 msgstr "Les agents utilisent votre mémoire pour répondre : leurs réponses, y compris dans Slack, peuvent donc en refléter le contenu."
 
 #: front/components/UserSettingsPopover.tsx
+msgid "To keep your memory private, agents won't rely on it in conversations with other participants."
+msgstr "Pour que votre mémoire reste privée, les agents ne s’appuieront pas dessus dans les conversations avec d’autres participants."
+
+#: front/components/UserSettingsPopover.tsx
 msgid "About you"
 msgstr "À propos de vous"
 

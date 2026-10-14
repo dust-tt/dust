@@ -84,11 +84,34 @@ describe("useFilePreviewContext", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "open" }));
 
-    expect(openPanel).toHaveBeenCalledWith({
-      type: "file_preview",
-      kind: "path",
-      filePath: "conversation-c1/report.pdf",
-    });
+    expect(openPanel).toHaveBeenCalledWith(
+      {
+        type: "file_preview",
+        kind: "path",
+        filePath: "conversation-c1/report.pdf",
+      },
+      { keepCurrent: false }
+    );
+  });
+
+  it("keeps the shown panel when asked to", () => {
+    const { openPanel, ui } = withSidePanel(
+      <FilePreviewProvider owner={mockOwner} keepCurrentPanel>
+        <Consumer />
+      </FilePreviewProvider>
+    );
+    render(ui);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+
+    expect(openPanel).toHaveBeenCalledWith(
+      {
+        type: "file_preview",
+        kind: "path",
+        filePath: "conversation-c1/report.pdf",
+      },
+      { keepCurrent: true }
+    );
   });
 
   it("downloads instead of previewing when there is no conversation", () => {

@@ -22,6 +22,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
 import type { SpaceGroupAccessType } from "@app/types/api/spaces";
+import type { DfsObjectId } from "@app/types/dfs";
 import type {
   GrantSpec,
   GrantType,
@@ -554,6 +555,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.baseFetch(auth, {
       where: { kind: "project" },
     });
+  }
+
+  /**
+   * @cc [owner:rfrenoy,label:security] list-accessible-project-spaces
+   * MUST only return project spaces for which `canFetch(auth)` is true, so restricted pods are left
+   * out for callers holding no verb on them.
+   */
+  static async listAccessibleProjectSpaces(
+    auth: Authenticator,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<SpaceResource[]> {
+    const spaces = await this.baseFetch(auth, {
+      where: { kind: "project" },
+      includeDeleted,
+    });
+    return spaces.filter((space) => space.canFetch(auth));
   }
 
   /**
@@ -2351,6 +2368,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isProject() {
     return this.kind === "project";
+  }
+
+  /** Stores the ID of the pod's dfs folder, unless one is already stored. */
+  async setDfsObjectId(
+    auth: Authenticator,
+    dfsObjectId: DfsObjectId
+  ): Promise<void> {
+    await this.update({ dfsObjectId }, undefined, {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      dfsObjectId: null,
+    });
   }
 
   // A regular space or project is restricted when it is member-only: the workspace global group

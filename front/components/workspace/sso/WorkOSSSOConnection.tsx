@@ -57,10 +57,7 @@ export default function WorkOSSSOConnection({
 
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.sso}>
-      <span className="heading-base text-foreground">
-        <Trans>Authentication and access</Trans>
-      </span>
-      <SettingsList>
+      <SettingsList title={<Trans>Authentication and access</Trans>}>
         <SettingsList.Row
           title={
             <>

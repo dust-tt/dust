@@ -36,6 +36,7 @@ const RESPONSE: GetConsumptionFacetsResponse = {
     skill: [],
     source: [],
     trigger: [],
+    pod: [],
   },
 };
 
@@ -85,7 +86,7 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filter: { users: ["another-user"], sources: ["slack"] },
-          dimensions: ["agent", "user", "group"],
+          dimensions: ["agent", "user", "group", "pod"],
         }),
       }
     );
@@ -115,7 +116,7 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filter: { agents: ["another-agent"], sources: ["slack"] },
-          dimensions: ["agent", "user", "model"],
+          dimensions: ["agent", "user", "model", "pod"],
         }),
       }
     );

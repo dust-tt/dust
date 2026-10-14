@@ -66,6 +66,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
     case "source":
     case "group":
     case "trigger":
+    case "pod":
     case "api_key":
       return null;
     default:

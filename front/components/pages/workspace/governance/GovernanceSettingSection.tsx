@@ -1,5 +1,6 @@
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
+import { SettingsList } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 interface GovernanceSettingSectionProps {
@@ -19,13 +20,11 @@ export const GovernanceSettingSection = ({
 }: GovernanceSettingSectionProps) => {
   return (
     <AdminSectionAnchor sectionId={sectionId}>
-      <div className="flex flex-col">
-        <span className="heading-base text-foreground">{label}</span>
-      </div>
-      <div className="w-full rounded-xl border border-border">
+      {/* Rows keep their own dividers so the footer has none above it. */}
+      <SettingsList title={label} className="divide-y-0">
         <div className="divide-y divide-border">{children}</div>
         {footer}
-      </div>
+      </SettingsList>
     </AdminSectionAnchor>
   );
 };

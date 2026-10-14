@@ -6,6 +6,7 @@ import type {
   ZendeskUser,
 } from "@app/lib/api/actions/servers/zendesk/types";
 import type { Result } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
@@ -119,14 +120,14 @@ function formatMinutes(minutes: number | null): string {
   const mins = Math.round(minutes % 60);
 
   if (hours === 0) {
-    return `${mins} minute${mins !== 1 ? "s" : ""}`;
+    return `${mins} minute${pluralize(mins)}`;
   }
 
   if (mins === 0) {
-    return `${hours} hour${hours !== 1 ? "s" : ""}`;
+    return `${hours} hour${pluralize(hours)}`;
   }
 
-  return `${hours} hour${hours !== 1 ? "s" : ""} ${mins} minute${mins !== 1 ? "s" : ""}`;
+  return `${hours} hour${pluralize(hours)} ${mins} minute${pluralize(mins)}`;
 }
 
 export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {

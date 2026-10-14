@@ -1814,6 +1814,10 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
+#: front/components/workspace/member_name_column.tsx
+msgid "Email"
+msgstr ""
+
 #: front/components/workspace/member_spend_limit_helpers.ts
 msgid "Enter a whole number of credits between {minFormatted} and {maxFormatted}."
 msgstr ""

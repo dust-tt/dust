@@ -20,6 +20,7 @@ describe("getUsageFilterCategories", () => {
       "agent",
       "member",
       "group",
+      "pod",
       "model",
       "tool",
       "skill",

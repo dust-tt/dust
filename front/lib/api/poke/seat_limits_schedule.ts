@@ -6,6 +6,7 @@ import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 // A single scheduled phase of a seat-limit configuration, as returned by the
 // read path. Dates are ISO strings for transport; `endAt` (derived server-side)
@@ -117,9 +118,7 @@ export async function setSeatLimitScheduleForSeatType(
 
   await pluginRun.recordResult({
     display: "text",
-    value: `Seat limits for '${seatType}' scheduled (${phases.length} phase${
-      phases.length === 1 ? "" : "s"
-    }).`,
+    value: `Seat limits for '${seatType}' scheduled (${phases.length} phase${pluralize(phases.length)}).`,
   });
 
   return new Ok(undefined);

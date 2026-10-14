@@ -87,6 +87,9 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   // Physical endpoint region used for the inference and provider billing.
   declare region: Region | null;
   declare modelId: string;
+  // Reasoning effort the call ran at: the request's top-level effort, or the last per-message
+  // effort change it carried. Null for rows written by other paths (e.g. batch, app runs).
+  declare reasoningEffort: string | null;
 
   declare promptTokens: number;
   declare completionTokens: number;
@@ -146,6 +149,11 @@ RunUsageModel.init(
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    reasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     promptTokens: {
       type: DataTypes.INTEGER,

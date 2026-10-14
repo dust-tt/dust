@@ -4,6 +4,7 @@ import { postCommentMention } from "@app/lib/api/documents/comment_mentions";
 import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { triggerDocumentCommentMentionNotifications } from "@app/lib/notifications/triggers/document-comment-mention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { CONVERSATION_BUSY_FAILURE_TYPE } from "@app/temporal/mentions_queue/config";
@@ -130,5 +131,26 @@ export async function postDocumentCommentMentionActivity(
       posted.error.message,
       CONVERSATION_BUSY_FAILURE_TYPE
     );
+  }
+}
+
+export async function notifyDocumentCommentMentionsActivity(
+  authType: AuthenticatorType,
+  {
+    documentPath,
+    newMessage,
+  }: {
+    documentPath: string;
+    newMessage: NewCommentMessage;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
+  const notified = await triggerDocumentCommentMentionNotifications(auth, {
+    documentPath,
+    newMessage,
+  });
+  if (notified.isErr()) {
+    throw new Error(notified.error.message);
   }
 }

@@ -59,9 +59,10 @@ const comment = (
   },
 });
 
-const MENTIONING = comment(
-  `Can :mention[dust]{sId=${GLOBAL_AGENTS_SID.DUST}} check this with :mention_user[Yuka]{sId=usr_yuka}?`
-);
+const DUST = `:mention[dust]{sId=${GLOBAL_AGENTS_SID.DUST}}`;
+const YUKA = ":mention_user[Yuka]{sId=usr_yuka}";
+
+const MENTIONING = comment(`Can ${DUST} check this with ${YUKA}?`);
 
 const posted = (rank: number) =>
   new Ok({
@@ -114,10 +115,7 @@ describe("postCommentMention", () => {
       postMock.mock.calls[0];
     expect(conversationResource.sId).toBe(conversation.sId);
     expect(context.origin).toBe("document_comment");
-    expect(mentions).toEqual([
-      { configurationId: GLOBAL_AGENTS_SID.DUST },
-      { type: "user", userId: "usr_yuka" },
-    ]);
+    expect(mentions).toEqual([{ configurationId: GLOBAL_AGENTS_SID.DUST }]);
     expect(content).toBe(
       [
         `Comment in thread \`c1\` of the document \`${documentPath}\`, in this conversation's files:`,
@@ -133,13 +131,13 @@ describe("postCommentMention", () => {
 
     await postCommentMention(memberAuth, {
       documentPath,
-      newMessage: comment("Over to :mention_user[Yuka]{sId=usr_yuka}.", null),
+      newMessage: comment(`Over to ${DUST}.`, null),
     });
 
     expect(postMock.mock.calls[0][1].content).toBe(
       [
         `Comment in thread \`c1\` of the document \`${documentPath}\`, in the pod "${pod.name}":`,
-        "Over to :mention_user[Yuka]{sId=usr_yuka}.",
+        `Over to ${DUST}.`,
       ].join("\n\n")
     );
   });
@@ -216,24 +214,40 @@ describe("postCommentMention", () => {
     expect(notified).toHaveBeenCalledTimes(1);
   });
 
-  it("runs only the first agent mentioned and each mention once", async () => {
+  it("runs only the first agent mentioned, without the users mentioned", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [],
     });
-    const dust = `:mention[dust]{sId=${GLOBAL_AGENTS_SID.DUST}}`;
     const claude = `:mention[claude]{sId=${GLOBAL_AGENTS_SID.CLAUDE_5_SONNET}}`;
-    const yuka = ":mention_user[Yuka]{sId=usr_yuka}";
 
     await postCommentMention(auth, {
       documentPath: `conversation-${conversation.sId}/plan.md`,
-      newMessage: comment(`${dust} ${yuka} ${claude} ${dust} ${yuka}`),
+      newMessage: comment(`${DUST} ${YUKA} ${claude} ${DUST} ${YUKA}`),
     });
 
     expect(postMock.mock.calls[0][1].mentions).toEqual([
       { configurationId: GLOBAL_AGENTS_SID.DUST },
-      { type: "user", userId: "usr_yuka" },
     ]);
+  });
+
+  it("posts nothing, nor creates a conversation, for a comment mentioning only users", async () => {
+    const { pod, memberAuth } = await podMemberAuth();
+    const documentPath = `pod-${pod.sId}/notes.md`;
+
+    const result = await postCommentMention(memberAuth, {
+      documentPath,
+      newMessage: comment(`Over to ${YUKA}.`),
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(postMock).not.toHaveBeenCalled();
+    expect(
+      await ConversationResource.fetchLatestForDocument(memberAuth, {
+        space: pod,
+        documentPath,
+      })
+    ).toBeNull();
   });
 
   it("posts only when the conversation is idle, and waits while it is busy", async () => {

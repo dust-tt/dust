@@ -5,6 +5,7 @@ import type {
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { buildPodSpaceFilter } from "@app/lib/api/analytics/consumption/pods";
 import type {
   ConsumptionFacetScope,
   ConsumptionScopeDimension,
@@ -62,6 +63,7 @@ const EMPTY_FACET_CATALOG: ConsumptionFacetCatalog = {
   skill: [],
   source: [],
   trigger: [],
+  pod: [],
 };
 
 export type ConsumptionFacet = {
@@ -96,6 +98,7 @@ export type ConsumptionFacets = {
     skill: ConsumptionFacet[];
     source: ConsumptionFacet[];
     trigger: ConsumptionFacet[];
+    pod: ConsumptionFacet[];
   };
 };
 
@@ -356,7 +359,10 @@ async function fetchConsumptionFacetsWithoutTracing(
         userId,
         agentId,
         dimension,
-        scopeFilters,
+        scopeFilters:
+          dimension === "pod"
+            ? [...scopeFilters, await buildPodSpaceFilter(auth)]
+            : scopeFilters,
       }),
     }),
     { concurrency: FACET_ES_QUERY_CONCURRENCY }
@@ -433,6 +439,13 @@ async function fetchConsumptionFacetsWithoutTracing(
     catalog.trigger
   );
 
+  const podFacets = await resolveRequestedFacets(
+    auth,
+    "pod",
+    bucketsByDimension,
+    catalog.pod
+  );
+
   return new Ok({
     period,
     facets: {
@@ -445,6 +458,7 @@ async function fetchConsumptionFacetsWithoutTracing(
       skill: skillFacets,
       source: sourceFacets,
       trigger: triggerFacets,
+      pod: podFacets,
     },
   });
 }

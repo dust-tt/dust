@@ -178,11 +178,14 @@ describe("getFilePreviewPlugin", () => {
     fireEvent.click(screen.getByRole("button", { name: "report final.pdf" }));
 
     await waitFor(() => {
-      expect(openPanel).toHaveBeenCalledWith({
-        type: "file_preview",
-        kind: "path",
-        filePath: "conversation-c1/reports/report final.pdf",
-      });
+      expect(openPanel).toHaveBeenCalledWith(
+        {
+          type: "file_preview",
+          kind: "path",
+          filePath: "conversation-c1/reports/report final.pdf",
+        },
+        { keepCurrent: false }
+      );
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -271,10 +274,13 @@ describe("getFilePreviewPlugin", () => {
     fireEvent.click(screen.getByRole("button", { name: "frame.tsx" }));
 
     await waitFor(() => {
-      expect(openPanel).toHaveBeenCalledWith({
-        type: "interactive_content",
-        fileId: "fil_frame",
-      });
+      expect(openPanel).toHaveBeenCalledWith(
+        {
+          type: "interactive_content",
+          fileId: "fil_frame",
+        },
+        { keepCurrent: false }
+      );
     });
     expect(mockClientFetch).toHaveBeenCalledWith(
       "/api/w/w_test_ws/files/path/conversation-c1/frame.tsx?metadata=1",

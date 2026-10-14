@@ -12,7 +12,7 @@ use dfs_api::{
     },
 };
 use dfs_protocol::{
-    ObjectId, ObjectRef,
+    ObjectId, ObjectRef, STAT_MAX_REFERENCES,
     rpc::{
         AllowGrant, CreateSessionRequest, CreateTenantRequest, DenyGrant, ErrorCode, Grant,
         GrantUpdate, ObjectKind, StatRequest, UpdateGrantsRequest, dfs_client::DfsClient, grant,
@@ -283,7 +283,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     for (object_ids, include_metadata, expected) in [
         (vec![], None, ErrorCode::InvalidInput),
         (
-            vec![tenant.root_id.into(); 257],
+            vec![tenant.root_id.into(); STAT_MAX_REFERENCES + 1],
             None,
             ErrorCode::InvalidInput,
         ),
@@ -306,14 +306,14 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     let response = client
         .stat(with_authorization(
             StatRequest {
-                object_ids: vec![tenant.root_id.into(); 256],
+                object_ids: vec![tenant.root_id.into(); STAT_MAX_REFERENCES],
                 include_metadata: Some(false),
             },
             &authorization,
         )?)
         .await?
         .into_inner();
-    assert_eq!(response.results.len(), 256);
+    assert_eq!(response.results.len(), STAT_MAX_REFERENCES);
     for result in &response.results {
         assert_eq!(result, &response.results[0]);
         assert_eq!(
@@ -414,7 +414,7 @@ pub(crate) async fn stat_returns_metadata_and_enforces_response_budget() -> Resu
     for (count, include_metadata, expected_error) in [
         (127, true, None),
         (128, true, Some(ErrorCode::Capacity)),
-        (256, false, None),
+        (STAT_MAX_REFERENCES, false, None),
     ] {
         let result = client
             .stat(with_authorization(

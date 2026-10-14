@@ -1,0 +1,26 @@
+import {
+  buildTools,
+  type ClientToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+
+import {
+  EXCEL_TOOLS_METADATA,
+  NOOP_TOOL_NAME,
+} from "@extension/platforms/excel/tools/metadata";
+import { noopTool } from "@extension/platforms/excel/tools/noopTool";
+import { registerClientTools } from "@extension/shared/lib/mcp_tools";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+/**
+ * Registers all Excel MCP tools with the server
+ * @param server The MCP server to register tools with
+ */
+export function registerAllTools(server: McpServer): void {
+  const handlers: ClientToolHandlers<typeof EXCEL_TOOLS_METADATA> = {
+    [NOOP_TOOL_NAME]: () => noopTool(),
+  };
+
+  const tools = buildTools(EXCEL_TOOLS_METADATA, handlers);
+
+  registerClientTools(server, tools);
+}

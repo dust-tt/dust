@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use dfs_protocol::{
+    STAT_MAX_REFERENCES,
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
@@ -19,6 +20,7 @@ use crate::{
     storage::{
         self, fdb,
         resources::{
+            file::FileResource,
             object::{self, ObjectResource},
             session::SessionResource,
             tenant::TenantResource,
@@ -28,8 +30,6 @@ use crate::{
 
 pub(crate) mod auth;
 mod errors;
-
-const STAT_MAX_OBJECTS: usize = 256;
 
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
@@ -204,7 +204,7 @@ impl Dfs for API {
             object_ids,
             include_metadata,
         } = request.into_inner();
-        if object_ids.is_empty() || object_ids.len() > STAT_MAX_OBJECTS {
+        if object_ids.is_empty() || object_ids.len() > STAT_MAX_REFERENCES {
             return Err(status(ErrorCode::InvalidInput));
         }
         let include_metadata = include_metadata.unwrap_or(false);
@@ -244,9 +244,35 @@ impl Dfs for API {
         Err(status(ErrorCode::Unsupported))
     }
 
+    /**
+     * @cc [owner:spolu,label:api;security] file-read-authorized-snapshot
+     * Read MUST authorize the session through the object's effective mode before reading contents
+     * or revealing its kind. Missing and unreadable objects MUST return NOT_FOUND. Bytes and
+     * attributes MUST come from the same transaction, without optional metadata. Readable
+     * directories MUST return IS_DIRECTORY. Responses MUST fit the encoded message budget.
+     */
     async fn read(&self, request: Request<ReadRequest>) -> Result<Response<ReadData>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let ReadRequest {
+            object_id,
+            offset,
+            length,
+        } = request.into_inner();
+        let response = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            async move {
+                let (file, object) =
+                    FileResource::fetch_for_session(&tx, session, &object_id).await?;
+                file.read(&tx, offset, length)
+                    .await
+                    .map(|data| ReadData { data, object })
+            }
+        })
+        .await?;
+        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+            return Err(status(ErrorCode::Capacity));
+        }
+        Ok(Response::new(response))
     }
 
     async fn read_files(

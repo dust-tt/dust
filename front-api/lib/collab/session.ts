@@ -30,7 +30,10 @@ export interface CollabSession {
   comments: DfmComment[];
   lastSave: CollabSave;
   saveFailed: boolean;
+  /** The connection that last changed the text. */
   lastChangedBy: CollabAccess | undefined;
+  /** The connection that last changed the threads, which saves them when nobody changed the text. */
+  lastCommenter: CollabAccess | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
   pendingMutations: Promise<void>;
 }
@@ -275,9 +278,9 @@ export async function writeSessionSource(
     const threadsChanged =
       JSON.stringify(comments.value) !== JSON.stringify(session.comments);
     session.comments = comments.value;
-    // A change of the threads alone does not go through `onChange`.
-    session.lastChangedBy ??= file;
     if (threadsChanged) {
+      // A change of the threads alone does not go through `onChange`.
+      session.lastCommenter = file;
       document.broadcastStateless(
         serverMessage({ type: "threads", comments: session.comments })
       );

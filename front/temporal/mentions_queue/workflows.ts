@@ -5,6 +5,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   ActivityFailure,
   ApplicationFailure,
+  patched,
   proxyActivities,
   sleep,
 } from "@temporalio/workflow";
@@ -25,6 +26,15 @@ const { postDocumentCommentMentionActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
   retry: {
     maximumAttempts: 1,
+  },
+});
+
+const { notifyDocumentCommentMentionsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "1 minute",
+  retry: {
+    maximumAttempts: 3,
   },
 });
 
@@ -61,6 +71,21 @@ export async function documentCommentMentionWorkflow(
     newMessage: NewCommentMessage;
   }
 ): Promise<void> {
+  // TODO(2026-10-21): replace with deprecatePatch() once no run started before this patch
+  // remains, then remove it a week later.
+  if (patched("notify-document-comment-mentions")) {
+    try {
+      await notifyDocumentCommentMentionsActivity(authType, {
+        documentPath,
+        newMessage,
+      });
+    } catch (error) {
+      if (!(error instanceof ActivityFailure)) {
+        throw error;
+      }
+    }
+  }
+
   for (let attempt = 1; ; attempt++) {
     try {
       await postDocumentCommentMentionActivity(authType, {

@@ -13,6 +13,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -47,7 +48,8 @@ type ConsumptionFacetCatalogSource =
   | "models"
   | "mcp_servers"
   | "skills"
-  | "triggers";
+  | "triggers"
+  | "pods";
 
 function traceFacetCatalogLoad<T>(
   source: ConsumptionFacetCatalogSource,
@@ -196,6 +198,13 @@ async function listConsumptionFacetCatalogWithoutTracing(
     () => TriggerResource.listByWorkspace(auth)
   );
 
+  const pods = await traceFacetCatalogLoad(
+    "pods",
+    "pod",
+    requestedDimensions,
+    () => SpaceResource.listAccessibleProjectSpaces(auth)
+  );
+
   return {
     agent: agents
       .filter((agent) => !isHiddenHelperSubAgentId(agent.sId))
@@ -248,6 +257,11 @@ async function listConsumptionFacetCatalogWithoutTracing(
     trigger: triggers.map((trigger) => ({
       value: trigger.sId,
       label: trigger.name,
+      pictureUrl: null,
+    })),
+    pod: pods.map((pod) => ({
+      value: pod.sId,
+      label: pod.name,
       pictureUrl: null,
     })),
   };

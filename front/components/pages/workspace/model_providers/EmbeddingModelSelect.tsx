@@ -31,47 +31,41 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
   }, [workspace?.defaultEmbeddingProvider]);
 
   return (
-    <>
-      <div className="heading-base text-foreground">
-        <Trans>Embedding provider</Trans>
-      </div>
-      <SettingsList>
-        <SettingsList.Row
-          title={t`Embedding provider`}
-          description={
-            <Trans>
-              Embedding models are used to create numerical representations of
-              your data powering the semantic search capabilities of your
-              agents.
-            </Trans>
-          }
-          action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild disabled>
-                <Button
-                  disabled
-                  tooltip={t`Please contact us if you want to change this setting.`}
-                  isSelect
-                  label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
-                  variant="outline"
-                  size="sm"
+    <SettingsList title={<Trans>Embedding provider</Trans>}>
+      <SettingsList.Row
+        title={t`Embedding provider`}
+        description={
+          <Trans>
+            Embedding models are used to create numerical representations of
+            your data powering the semantic search capabilities of your agents.
+          </Trans>
+        }
+        action={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild disabled>
+              <Button
+                disabled
+                tooltip={t`Please contact us if you want to change this setting.`}
+                isSelect
+                label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
+                variant="outline"
+                size="sm"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {EMBEDDING_PROVIDER_IDS.map((provider) => (
+                <DropdownMenuItem
+                  key={provider}
+                  label={PRETTIFIED_PROVIDER_NAMES[provider]}
+                  onClick={() => {
+                    setEmbeddingProvider(provider);
+                  }}
                 />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {EMBEDDING_PROVIDER_IDS.map((provider) => (
-                  <DropdownMenuItem
-                    key={provider}
-                    label={PRETTIFIED_PROVIDER_NAMES[provider]}
-                    onClick={() => {
-                      setEmbeddingProvider(provider);
-                    }}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
-      </SettingsList>
-    </>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
+    </SettingsList>
   );
 }
