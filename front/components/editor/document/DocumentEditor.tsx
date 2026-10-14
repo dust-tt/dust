@@ -52,7 +52,9 @@ const CollabEditor = lazy(
  * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
  * text selection, image controls a hovered image (see `document-image-menu`), and Frame controls
  * a hovered Frame (see `document-frame-menu`). Block commands MUST require an editable document,
- * and either a typed `/` or the selection toolbar's text style and list menus.
+ * and either a typed `/` or the selection toolbar's text style and list menus; adding or deleting
+ * a table's rows and columns, or the table itself, MAY also come from the toolbar shown while the
+ * cursor is in that table.
  * className MUST apply only to the outer container.
  */
 /**
