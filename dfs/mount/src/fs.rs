@@ -1,8 +1,11 @@
 use crate::{errno::Errno, inodes::Inodes, remote::Remote};
-use dfs_protocol::{ObjectId, ObjectRef, is_valid_name, rpc::ObjectKind};
+use dfs_protocol::{
+    ObjectId, ObjectRef, is_valid_name,
+    rpc::{Attr, ObjectKind},
+};
 use std::{
     collections::HashSet,
-    sync::{Mutex, PoisonError},
+    sync::{Mutex, MutexGuard, PoisonError},
     time::SystemTime,
 };
 
@@ -95,9 +98,11 @@ impl Fs {
         })
     }
 
+    /// Fails with `ENOENT` for an inode the kernel does not know.
     pub async fn getattr(&self, ino: Ino) -> Result<Attributes, Errno> {
         if ino != ROOT_INO {
-            todo!()
+            let object = self.inodes().object(ino).ok_or(Errno::ENOENT)?;
+            return Attributes::from_attr(ino, &self.stat(object).await?);
         }
         Ok(Attributes {
             ino: ROOT_INO,
@@ -119,8 +124,24 @@ impl Fs {
      * An inode number MUST NOT be given to a different object during the life of the mount, even
      * after the kernel forgets it.
      */
-    pub async fn lookup(&self, _parent: Ino, _name: &str) -> Result<Attributes, Errno> {
-        todo!()
+    pub async fn lookup(&self, parent: Ino, name: &str) -> Result<Attributes, Errno> {
+        if parent != ROOT_INO {
+            // Needs the server's `Lookup`, not supported yet.
+            return Err(Errno::EOPNOTSUPP);
+        }
+        let entry = self
+            .root_entries
+            .iter()
+            .find(|entry| entry.folder.name == name)
+            .ok_or(Errno::ENOENT)?;
+        let attr = self.stat(entry.folder.id).await?;
+        // Like the listing, a folder that is not a directory looks missing.
+        if attr.kind() != ObjectKind::Directory {
+            return Err(Errno::ENOENT);
+        }
+        let attributes = Attributes::from_attr(entry.ino, &attr)?;
+        self.inodes().lookup(entry.folder.id);
+        Ok(attributes)
     }
 
     /**
@@ -130,7 +151,8 @@ impl Fs {
      */
     pub async fn readdir(&self, ino: Ino) -> Result<Vec<DirEntry>, Errno> {
         if ino != ROOT_INO {
-            todo!()
+            // Needs the server's `List`, not supported yet.
+            return Err(Errno::EOPNOTSUPP);
         }
         let references: Vec<ObjectRef> = self
             .root_entries
@@ -160,10 +182,17 @@ impl Fs {
      * drop it then. The root and configured folders MUST never be dropped.
      */
     pub fn forget(&self, ino: Ino, count: u64) {
-        self.inodes
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .forget(ino, count);
+        self.inodes().forget(ino, count);
+    }
+
+    /// Must not be held across an `.await`.
+    fn inodes(&self) -> MutexGuard<'_, Inodes> {
+        self.inodes.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    async fn stat(&self, object: ObjectId) -> Result<Attr, Errno> {
+        let mut results = self.remote.stat(&[object.into()]).await?;
+        results.pop().ok_or(Errno::EIO)?
     }
 }
 
@@ -199,6 +228,16 @@ mod tests {
         assert_eq!(root.ino, ROOT_INO);
         assert_eq!(root.kind, Kind::Directory);
         assert_eq!(root.permissions, 0o555);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn unknown_inodes_and_dfs_directories_fail_without_the_server() -> Result<(), Errno> {
+        let fs = new_fs(Vec::new())?;
+        assert_eq!(fs.getattr(ROOT_INO + 1).await, Err(Errno::ENOENT));
+        assert_eq!(fs.lookup(ROOT_INO + 1, "a").await, Err(Errno::EOPNOTSUPP));
+        assert_eq!(fs.readdir(ROOT_INO + 1).await, Err(Errno::EOPNOTSUPP));
+        assert_eq!(fs.lookup(ROOT_INO, "a").await, Err(Errno::ENOENT));
         Ok(())
     }
 

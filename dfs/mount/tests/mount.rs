@@ -51,7 +51,8 @@ fn mount() -> Result<()> {
         stat_returns_one_ordered_result_per_reference(&channel, &tenant).await?;
         stat_fails_with_an_unknown_session_key(&channel, &tenant).await?;
         read_returns_file_ranges(&channel, &tenant).await?;
-        root_lists_readable_folders(&channel, &tenant).await
+        root_lists_readable_folders(&channel, &tenant).await?;
+        root_looks_up_readable_folders(&channel, &tenant).await
     })
 }
 
@@ -254,5 +255,33 @@ async fn root_lists_readable_folders(channel: &Channel, tenant: &Tenant) -> Resu
     let remote = Remote::new(channel.clone(), &"fedcba9876543210".repeat(4))?;
     let result = Fs::new(remote, folders)?.readdir(ROOT_INO).await;
     assert_eq!(result, Err::<Vec<DirEntry>, _>(Errno::EACCES));
+    Ok(())
+}
+
+async fn root_looks_up_readable_folders(channel: &Channel, tenant: &Tenant) -> Result<()> {
+    let fs = Fs::new(
+        tenant.remote(channel).await?,
+        vec![
+            folder("workspace", tenant.root_id),
+            folder("report", tenant.file_id),
+            folder("secret", tenant.unreadable_id),
+            folder("missing", ObjectId::new_v7()),
+        ],
+    )?;
+
+    let workspace = fs.lookup(ROOT_INO, "workspace").await?;
+    assert_eq!(workspace.kind, Kind::Directory);
+    assert_eq!(workspace.permissions, 0o700);
+    assert_eq!(fs.readdir(ROOT_INO).await?[0].ino, workspace.ino);
+    assert_eq!(fs.getattr(workspace.ino).await?, workspace);
+
+    // Like the listing: not a directory, unreadable, missing, and not configured.
+    for name in ["report", "secret", "missing", "other"] {
+        assert_eq!(
+            fs.lookup(ROOT_INO, name).await,
+            Err(Errno::ENOENT),
+            "{name}"
+        );
+    }
     Ok(())
 }
