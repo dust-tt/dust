@@ -1,3 +1,4 @@
+import { checkCollabReadAccess } from "@app/lib/api/collab/access";
 import config from "@app/lib/api/config";
 import {
   ensureSlackNotificationsReady,
@@ -10,10 +11,7 @@ import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
 import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/triggers/conversation-unread";
 import type { DocumentCommentMentionPayloadType } from "@app/lib/notifications/triggers/document-comment-mention";
-import {
-  DocumentCommentMentionPayloadSchema,
-  getReadableDocument,
-} from "@app/lib/notifications/triggers/document-comment-mention";
+import { DocumentCommentMentionPayloadSchema } from "@app/lib/notifications/triggers/document-comment-mention";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   CONVERSATION_UNREAD_TRIGGER_ID,
@@ -82,8 +80,8 @@ async function getConversationChannels(
 
 /**
  * @cc [owner:adrien,label:security] document-comment-mention-readable
- * MUST return only the mentions whose document the subscriber can read when called, and `null`
- * when the subscriber is no longer an active member of the workspace.
+ * MUST return only the mentions whose document `checkCollabReadAccess` opens for the subscriber
+ * when called, and `null` when the subscriber is no longer an active member of the workspace.
  */
 export async function getReadableMentions(
   subscriberId: string,
@@ -100,7 +98,9 @@ export async function getReadableMentions(
       await concurrentExecutor(
         [...new Set(payloads.map((p) => p.documentPath))],
         async (documentPath) =>
-          (await getReadableDocument(auth, documentPath)) ? documentPath : null,
+          (await checkCollabReadAccess(auth, documentPath)).isOk()
+            ? documentPath
+            : null,
         { concurrency: 4 }
       )
     )

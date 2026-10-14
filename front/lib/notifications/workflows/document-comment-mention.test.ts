@@ -4,8 +4,10 @@ import {
   buildDocumentCommentMentionCopy,
   getReadableMentions,
 } from "@app/lib/notifications/workflows/document-comment-mention";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { podScopedPath } from "@app/types/file_system";
@@ -40,9 +42,16 @@ describe("buildDocumentCommentMentionCopy", () => {
 
 describe("getReadableMentions", () => {
   it("keeps only the mentions of documents the subscriber can still read", async () => {
-    const { workspace, user: author } = await createResourceTest({
-      role: "user",
-    });
+    const {
+      workspace,
+      user: author,
+      authenticator,
+    } = await createResourceTest({ role: "user" });
+    await FeatureFlagFactory.basic(authenticator, "co_edition");
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/markdown",
+      size: "10",
+    }));
     const member = await UserFactory.basic();
     const outsider = await UserFactory.basic();
     const stranger = await UserFactory.basic();

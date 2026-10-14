@@ -1,3 +1,4 @@
+import { checkCollabReadAccess } from "@app/lib/api/collab/access";
 import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import { parseScopedPrefix } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
@@ -50,12 +51,11 @@ interface DocumentRouteAndSpace {
 }
 
 /**
- * @cc [owner:adrien,label:security;product] document-comment-mention-access
- * MUST return `null` unless the user of `auth` can read the document at `documentPath`: the pod
- * for a pod document, the conversation for a conversation document. Any other document is never
- * readable.
+ * @cc [owner:adrien,label:product] document-comment-mention-route
+ * MUST return the route that opens the document at `documentPath` and the model id of its space,
+ * or `null` when it is neither a pod nor a conversation document the user of `auth` can read.
  */
-export async function getReadableDocument(
+export async function getDocumentRouteAndSpace(
   auth: Authenticator,
   documentPath: string
 ): Promise<DocumentRouteAndSpace | null> {
@@ -108,7 +108,8 @@ export async function getReadableDocument(
 /**
  * @cc [owner:adrien,label:product;security] document-comment-mention-notification
  * Each user mentioned in a new comment message MUST be notified once, except its author, users
- * who are not active members of the workspace, users who cannot read the document, and users whose
+ * who are not active members of the workspace, users `checkCollabReadAccess` refuses the document
+ * to, and users whose
  * notify condition for the document's space is `never`. The payload MUST carry the document's
  * route and file name, and the author's name, so the immediate channels send without checking
  * access again.
@@ -142,7 +143,7 @@ export async function triggerDocumentCommentMentionNotifications(
     return new Ok(undefined);
   }
 
-  const document = await getReadableDocument(auth, documentPath);
+  const document = await getDocumentRouteAndSpace(auth, documentPath);
   if (!document) {
     return new Ok(undefined);
   }
@@ -157,7 +158,8 @@ export async function triggerDocumentCommentMentionNotifications(
       subscribers,
       async (user) => {
         const userAuth = await getActiveSubscriberAuth(user.sId, workspaceId);
-        return userAuth && (await getReadableDocument(userAuth, documentPath))
+        return userAuth &&
+          (await checkCollabReadAccess(userAuth, documentPath)).isOk()
           ? user
           : null;
       },

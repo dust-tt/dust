@@ -1,13 +1,15 @@
 import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import { Authenticator } from "@app/lib/auth";
 import {
-  getReadableDocument,
+  getDocumentRouteAndSpace,
   triggerDocumentCommentMentionNotifications,
 } from "@app/lib/notifications/triggers/document-comment-mention";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { podScopedPath } from "@app/types/file_system";
@@ -67,12 +69,17 @@ describe("document comment mention notifications", () => {
     });
     expect(added.isOk()).toBe(true);
     documentPath = podScopedPath(pod.sId, "notes/plan.md");
+    await FeatureFlagFactory.basic(authorAuth, "co_edition");
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/markdown",
+      size: "10",
+    }));
 
     triggerBulk.mockReset().mockResolvedValue({ result: [] });
   });
 
   it("links a pod member to the document's folder", async () => {
-    const document = await getReadableDocument(
+    const document = await getDocumentRouteAndSpace(
       await Authenticator.fromUserIdAndWorkspaceId(member.sId, workspace.sId),
       documentPath
     );
@@ -83,7 +90,7 @@ describe("document comment mention notifications", () => {
   });
 
   it("does not give the document to a user outside the pod", async () => {
-    const document = await getReadableDocument(
+    const document = await getDocumentRouteAndSpace(
       await Authenticator.fromUserIdAndWorkspaceId(outsider.sId, workspace.sId),
       documentPath
     );
@@ -137,6 +144,18 @@ describe("document comment mention notifications", () => {
     );
     expect(first).toContain(member.sId);
     expect(second).toBe(first);
+  });
+
+  it("notifies no one about a document that no longer exists", async () => {
+    fileStorageMock.setFileExists(() => false);
+    fileStorageMock.setFileMetadata(() => null);
+
+    await triggerDocumentCommentMentionNotifications(authorAuth, {
+      documentPath,
+      newMessage: newMessage(mention(member)),
+    });
+
+    expect(triggerBulk).not.toHaveBeenCalled();
   });
 
   it("skips users who never want conversation notifications", async () => {
