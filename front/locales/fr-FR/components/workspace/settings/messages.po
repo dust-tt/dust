@@ -369,11 +369,11 @@ msgstr "Les conversations sont envoyées par lots pour réduire les coûts. Les 
 
 #: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx
 msgid "\"Sent via Agent\" Slack footer"
-msgstr "Pied de page Slack « Sent via Agent »"
+msgstr "Bas de page Slack « Sent via Agent »"
 
 #: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx
 msgid "Whether agents can remove the \"Sent via Agent\" footer on Slack messages posted with user credentials"
-msgstr "Détermine si les agents peuvent retirer le pied de page « Sent via Agent » des messages Slack publiés avec les identifiants de l’utilisateur"
+msgstr "Détermine si les agents peuvent retirer le bas de page « Sent via Agent » des messages Slack publiés avec les identifiants de l’utilisateur"
 
 #: front/components/workspace/settings/VoiceTranscriptionToggle.tsx
 msgid "Voice transcription"
