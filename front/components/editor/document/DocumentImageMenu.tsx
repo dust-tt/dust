@@ -40,6 +40,18 @@ const imagePosition = (editor: Editor, image: HTMLImageElement) => {
     : null;
 };
 
+// The image's node view, drawn by ProseMirror rather than React, shows the width while dragged.
+const previewImageWidth = (
+  editor: Editor,
+  pos: number,
+  width: number | null
+) => {
+  const image = editor.view.nodeDOM(pos);
+  if (isDocumentImage(image)) {
+    image.style.width = width !== null ? `${width}px` : "";
+  }
+};
+
 // The collaboration history merges edits made within half a second into one undo step.
 const asOwnUndoStep = (editor: Editor, edit: () => void) => {
   const undoManager: unknown = yUndoPluginKey.getState(
@@ -174,16 +186,16 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
 
   const previewWidth = (nextWidth: number) => {
     setDraftWidth(nextWidth);
-    if (image) {
-      image.style.width = `${nextWidth}px`;
+    if (pos !== null) {
+      previewImageWidth(editor, pos, nextWidth);
     }
   };
 
   // A drag ending on the width it started from commits nothing.
   const endPreview = () => {
     setDraftWidth(null);
-    if (image) {
-      image.style.width = width !== null ? `${width}px` : "";
+    if (pos !== null) {
+      previewImageWidth(editor, pos, width);
     }
   };
 
