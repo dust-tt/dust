@@ -1,4 +1,5 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
@@ -21,6 +22,7 @@ import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { formatDate } from "@app/lib/i18n/format";
+import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { AGENT_MENTION_REGEX } from "@app/lib/mentions/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -29,6 +31,8 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import type { DocumentComment } from "@app/types/assistant/document_comment";
+import { documentCommentOf } from "@app/types/assistant/document_comment";
 import {
   isAgentMention,
   isRichAgentMention,
@@ -38,6 +42,7 @@ import { isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
+  Chip,
   Clock,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -51,6 +56,7 @@ import {
   Edit04,
   Icon,
   Link01,
+  MessageCircle01,
   Toolbar,
   Tooltip,
   Trash01,
@@ -241,6 +247,7 @@ export function UserMessage({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
 
   const isDeleted = message.visibility === "deleted";
+  const documentComment = documentCommentOf(message);
   const isPending = message.visibility === "pending";
   const pendingMessageCount = methods.data
     .get()
@@ -398,6 +405,16 @@ export function UserMessage({
               />
             </div>
           )}
+          {documentComment && !isDeleted && (
+            <div
+              className={cn(
+                "flex",
+                isCurrentUser ? "justify-end" : "mb-1 justify-start"
+              )}
+            >
+              <DocumentCommentChip documentComment={documentComment} />
+            </div>
+          )}
           <ConversationMessageContainer
             messageType={isCurrentUser ? "me" : "user"}
             type="user"
@@ -544,6 +561,30 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
     <Tooltip
       label={<Label message={message} />}
       trigger={<Icon size="xs" visual={Zap} className="h-3.5 w-3.5" />}
+    />
+  );
+}
+
+interface DocumentCommentChipProps {
+  documentComment: DocumentComment;
+}
+
+function DocumentCommentChip({ documentComment }: DocumentCommentChipProps) {
+  const { t } = useLingui();
+  const { openPanel } = useConversationSidePanelContext();
+  const fileName = getFileNameFromScopedPath(documentComment.documentPath);
+  return (
+    <Chip
+      size="mini"
+      icon={MessageCircle01}
+      label={t`Comment on ${fileName}`}
+      onClick={() =>
+        openPanel({
+          type: "file_preview",
+          kind: "path",
+          filePath: documentComment.documentPath,
+        })
+      }
     />
   );
 }

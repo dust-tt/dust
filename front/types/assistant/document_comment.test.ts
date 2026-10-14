@@ -1,4 +1,6 @@
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
+  documentCommentOf,
   parseDocumentCommentMessage,
   serializeDocumentCommentDirective,
 } from "@app/types/assistant/document_comment";
@@ -40,5 +42,29 @@ describe("document comment directive", () => {
         'See :document_comment[x]{id="c1" path="pod-abc/plan.md"}'
       )
     ).toBeNull();
+  });
+
+  it.each<[UserMessageOrigin, boolean]>([
+    ["document_comment", true],
+    ["web", false],
+  ])("finds the comment of a %s message: %s", (origin, found) => {
+    const comment = {
+      commentId: "c1",
+      documentPath: "pod-abc/plan.md",
+      quote: "Ship on Thursday.",
+    };
+    const message = {
+      content: `${serializeDocumentCommentDirective(comment)}\n\nThoughts?`,
+      context: {
+        username: "yuka",
+        fullName: "Yuka",
+        email: null,
+        profilePictureUrl: null,
+        timezone: "UTC",
+        origin,
+      },
+    };
+
+    expect(documentCommentOf(message)).toEqual(found ? comment : null);
   });
 });
