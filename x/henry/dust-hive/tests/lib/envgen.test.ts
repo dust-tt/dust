@@ -59,6 +59,13 @@ describe("envgen", () => {
       expect(content).toContain("fdb.cluster");
     });
 
+    it("exports the dfs master key and front's dfs config", () => {
+      const content = generateEnvSh("test", ports);
+      expect(content).toMatch(/export DFS_MASTER_KEY=[0-9a-f]{64}\n/);
+      expect(content).toContain("export DFS_API_URL=http://127.0.0.1:10501");
+      expect(content).toContain("export DFS_API_MASTER_KEY=$DFS_MASTER_KEY");
+    });
+
     it("exports inter-service URLs", () => {
       const content = generateEnvSh("test", ports);
       expect(content).toContain("export CORE_API=http://localhost:10001");
