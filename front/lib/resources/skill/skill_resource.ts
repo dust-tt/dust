@@ -1405,7 +1405,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns the subset of `names` used by an active skill in the workspace, including skills the
    * caller cannot read. It MUST return only names, never data from those skills.
    */
-  static async areNamesTaken(
+  static async listTakenNames(
     auth: Authenticator,
     names: string[]
   ): Promise<Set<string>> {

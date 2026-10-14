@@ -186,7 +186,7 @@ export async function importSkillsFromFiles(
 
   // Names held by skills the caller cannot read. They can never be updated, so "override" rejects
   // the import like a skill the caller cannot write.
-  const takenNames = await SkillResource.areNamesTaken(auth, uniqueNames);
+  const takenNames = await SkillResource.listTakenNames(auth, uniqueNames);
   const hiddenTakenNames = new Set(
     [...takenNames].filter((name) => !existingSkillsMap.has(name))
   );
