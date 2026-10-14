@@ -26,7 +26,7 @@ import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_a
 import { getCookie } from "hono/cookie";
 import { z } from "zod";
 
-import publicFunctionInvocations from "./functions/[name]/invocations";
+import functions from "./functions";
 import verifyCode from "./verify-code";
 import verifyEmail from "./verify-email";
 
@@ -284,7 +284,7 @@ app.get(
   }
 );
 
-app.route("/functions/:name/invocations", publicFunctionInvocations);
+app.route("/functions", functions);
 app.route("/verify-code", verifyCode);
 app.route("/verify-email", verifyEmail);
 

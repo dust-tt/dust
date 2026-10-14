@@ -1,3 +1,4 @@
+import { createFrameSession } from "@app/lib/api/share/frame_session";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -18,6 +19,7 @@ import type {
 import type { FileShareScope } from "@app/types/files";
 import { frameV2ContentType } from "@app/types/files";
 import { getPodFilesBasePath } from "@app/types/mount_path";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const inputSchema: JSONSchema = { type: "object" };
@@ -140,6 +142,15 @@ export async function shareTestFrame(
   }
 
   return token;
+}
+
+export async function createTestFrameSessionCookie(
+  workspace: LightWorkspaceType,
+  email = "viewer@example.com"
+): Promise<string> {
+  const setCookie = await createFrameSession(workspace, { email });
+
+  return setCookie.split(";")[0];
 }
 
 /**

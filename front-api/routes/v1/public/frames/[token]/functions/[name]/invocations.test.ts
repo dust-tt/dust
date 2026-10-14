@@ -1,13 +1,13 @@
-import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import {
   createTestFrameFunction,
+  createTestFrameSessionCookie,
   makeTestPublicFrameFunction,
 } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -47,15 +47,6 @@ beforeEach(() => {
   vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
 });
 
-async function verifiedViewerCookie(
-  workspace: LightWorkspaceType,
-  email = "viewer@example.com"
-): Promise<string> {
-  const setCookie = await createFrameSession(workspace, { email });
-
-  return setCookie.split(";")[0];
-}
-
 function invoke(token: string, name: string, cookie?: string) {
   return honoApp.request(
     `/api/v1/public/frames/${token}/functions/${name}/invocations`,
@@ -71,14 +62,14 @@ function invoke(token: string, name: string, cookie?: string) {
 }
 
 describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => {
-  it("runs the function for a viewer verified by email", async () => {
+  it("starts an anonymous invocation for a viewer verified by email", async () => {
     const { authenticator, sandboxFunction, token, workspace } =
       await makeTestPublicFrameFunction();
 
     const response = await invoke(
       token,
       "list-todos",
-      await verifiedViewerCookie(workspace)
+      await createTestFrameSessionCookie(workspace)
     );
 
     expect(response.status).toBe(201);
@@ -92,9 +83,15 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     );
     expect(invocation?.origin).toBe("external_session");
     expect(invocation?.userId).toBeNull();
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        invocation: expect.objectContaining({ sId: body.invocation.sId }),
+      })
+    );
   });
 
-  it("runs the function as the signed-in workspace member", async () => {
+  it("starts the invocation as the signed-in workspace member", async () => {
     const { authenticator, sandboxFunction, token } =
       await makeTestPublicFrameFunction();
     vi.mocked(resolveOptionalAuth).mockResolvedValue(authenticator);
@@ -116,6 +113,12 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     );
     expect(invocation?.origin).toBe("delegated");
     expect(invocation?.userId).toBe(authenticator.user()?.id);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        invocation: expect.objectContaining({ sId: body.invocation.sId }),
+      })
+    );
   });
 
   it("refuses a viewer without a verified email", async () => {
@@ -138,7 +141,7 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     const response = await invoke(
       token,
       "list-todos",
-      await verifiedViewerCookie(otherWorkspace)
+      await createTestFrameSessionCookie(otherWorkspace)
     );
 
     expect(response.status).toBe(401);
@@ -152,7 +155,7 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     const response = await invoke(
       token,
       "list-todos",
-      await verifiedViewerCookie(workspace)
+      await createTestFrameSessionCookie(workspace)
     );
 
     expect(response.status).toBe(401);
@@ -166,7 +169,7 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     const response = await invoke(
       token,
       "list-todos",
-      await verifiedViewerCookie(workspace)
+      await createTestFrameSessionCookie(workspace)
     );
 
     expect(response.status).toBe(401);
@@ -180,7 +183,7 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     const response = await invoke(
       token,
       "list-todos",
-      await verifiedViewerCookie(workspace)
+      await createTestFrameSessionCookie(workspace)
     );
 
     expect(response.status).toBe(401);
@@ -199,7 +202,7 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     const response = await invoke(
       token,
       "other-frame-function",
-      await verifiedViewerCookie(workspace)
+      await createTestFrameSessionCookie(workspace)
     );
 
     expect(response.status).toBe(404);
@@ -211,7 +214,7 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     const response = await invoke(
       "unknown-token",
       "list-todos",
-      await verifiedViewerCookie(workspace)
+      await createTestFrameSessionCookie(workspace)
     );
 
     expect(response.status).toBe(404);
