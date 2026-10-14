@@ -302,7 +302,8 @@ describe("AgentMessageConsumptionItemResource", () => {
       records: [completedTool(context.action, context.runUsageModelId)],
       pendingToolItems: [],
     });
-    expect(findAllSpy).not.toHaveBeenCalled();
+    // Only the read of the stored rows: the conflict lookup is skipped.
+    expect(findAllSpy).toHaveBeenCalledTimes(1);
     findAllSpy.mockRestore();
 
     const tools = await listTools(auth, context.agentMessageModelId);
@@ -406,6 +407,54 @@ describe("AgentMessageConsumptionItemResource", () => {
     });
     expect(after.completedAt).toEqual(before.completedAt);
     expect(after.updatedAt).toEqual(before.updatedAt);
+  });
+
+  it("writes nothing when a pass would change no stored row", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+    const inputRow = {
+      itemType: "input" as const,
+      runUsageModelId: context.runUsageModelId,
+      inputTokensCount: 100,
+      grossAttributedCreditAmountMicro: 300_000,
+    };
+    const tool = completedTool(context.action, context.runUsageModelId);
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [inputRow, tool],
+      pendingToolItems: [],
+    });
+    const bulkCreateSpy = vi.spyOn(
+      AgentMessageConsumptionItemModel,
+      "bulkCreate"
+    );
+    const updateSpy = vi.spyOn(AgentMessageConsumptionItemModel, "update");
+
+    // Recomputed values differ, and the tool is seen blocked again: neither changes a stored row.
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [
+        { ...inputRow, inputTokensCount: 101 },
+        { ...tool, directCreditAmountMicro: 3_000_000 },
+      ],
+      pendingToolItems: [],
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: context.conversation,
+      agentMessageModelId: context.agentMessageModelId,
+      attributionVersion: ATTRIBUTION_VERSION,
+      records: [],
+      pendingToolItems: [pendingTool(context.action, context.runUsageModelId)],
+    });
+
+    expect(bulkCreateSpy).not.toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
+    bulkCreateSpy.mockRestore();
+    updateSpy.mockRestore();
   });
 
   it("does not regress a completed tool back to pending", async () => {
