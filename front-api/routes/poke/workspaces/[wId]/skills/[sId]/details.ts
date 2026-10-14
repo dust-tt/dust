@@ -1,4 +1,4 @@
-import { listAgentsUsingSkill } from "@app/lib/api/skills/agents_using_skill";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PokeGetSkillDetails } from "@app/types/api/poke/skills";
@@ -40,7 +40,10 @@ app.get(
       serializedSkill.requestedSpaceIds
     );
 
-    const agentsUsage = await listAgentsUsingSkill(auth, skill);
+    const agents = await AgentResource.listBySkill(auth, skill);
+    const agentsUsage = AgentResource.toAgentsUsageJSON(
+      agents.filter((agent) => agent.status === "active")
+    );
     const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(auth, [
       skill,
     ]);

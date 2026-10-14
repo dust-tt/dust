@@ -1390,6 +1390,24 @@ export class AgentResource
     );
   }
 
+  /**
+   * @cc [owner:avervaet,label:security;product] agents-using-skill-visibility
+   * An agent MUST be returned only if the caller holds a verb on it: a member MUST NOT see an agent
+   * they do not edit that is hidden or requests a space they cannot read.
+   */
+  static async listBySkill(
+    auth: Authenticator,
+    skill: SkillResource
+  ): Promise<AgentResource[]> {
+    const reference = skill.skillReference;
+    return this.listBySkills(
+      auth,
+      "globalSkillId" in reference
+        ? { globalSkillIds: [reference.globalSkillId] }
+        : { customSkillModelIds: [reference.customSkillId] }
+    );
+  }
+
   // Agents whose current version references one of the given skills (custom and/or code-defined).
   static async listBySkills(
     auth: Authenticator,

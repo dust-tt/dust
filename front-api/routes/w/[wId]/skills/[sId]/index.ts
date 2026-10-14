@@ -1,4 +1,3 @@
-import { listAgentsUsingSkill } from "@app/lib/api/skills/agents_using_skill";
 import type { SkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
@@ -11,6 +10,7 @@ import {
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -147,7 +147,10 @@ app.get(
     const serializedSkill = { ...skill.toJSON(auth), isFavorite };
 
     if (withRelations === "true") {
-      const usage = await listAgentsUsingSkill(auth, skill);
+      const agents = await AgentResource.listBySkill(auth, skill);
+      const usage = AgentResource.toAgentsUsageJSON(
+        agents.filter((agent) => agent.status === "active")
+      );
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
       const childSkills = await skill.fetchChildSkills(auth);
