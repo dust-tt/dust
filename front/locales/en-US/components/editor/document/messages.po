@@ -171,6 +171,10 @@ msgstr "Resolved ({resolvedCount})"
 msgid "All comments"
 msgstr "All comments"
 
+#: front/components/editor/document/DocumentEditor.tsx
+msgid "Someone else changed this file while it was open here. Their version was saved as {conflictCopyName}."
+msgstr "Someone else changed this file while it was open here. Their version was saved as {conflictCopyName}."
+
 #: front/components/editor/document/DocumentFrameMenu.tsx
 msgctxt "toolbar over a hovered Frame embedded in a document"
 msgid "Frame"
