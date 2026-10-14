@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 mod directory;
+mod file;
 mod object;
 mod session;
 mod tenant;
@@ -16,6 +17,10 @@ fn resources() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
+        file::reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks().await?;
+        file::reads_preserve_tenant_scope_snapshot_and_attributes().await?;
+        file::reads_validate_kind_length_blocks_and_handle_maximum_offsets().await?;
+        file::block_reads_conflict_with_concurrent_writes().await?;
         directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
         directory::child_creation_retry_returns_the_committed_child().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;

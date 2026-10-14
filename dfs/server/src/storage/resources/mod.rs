@@ -1,4 +1,5 @@
 pub mod directory;
+pub mod file;
 pub mod keys;
 pub mod object;
 mod page;

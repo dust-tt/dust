@@ -6,7 +6,7 @@ use tonic::Status;
 
 use crate::storage::{
     self,
-    resources::{object, session, tenant},
+    resources::{file, object, session, tenant},
 };
 
 #[cfg(test)]
@@ -23,6 +23,21 @@ mod tests;
 //
 // This replaces the original resource or decoding error variant with its API status inside the
 // transaction closure. Resource modules still return typed errors and remain independent of tonic.
+
+impl From<file::Error> for Status {
+    fn from(error: file::Error) -> Self {
+        match error {
+            file::Error::IsDirectory => status(ErrorCode::IsDirectory),
+            file::Error::UnsupportedKind => status(ErrorCode::Unsupported),
+            file::Error::InvalidLength => status(ErrorCode::InvalidInput),
+            file::Error::Object(error) => error.into(),
+            file::Error::InvalidBlock => {
+                tracing::error!(%error, "file read failed");
+                status(ErrorCode::Internal)
+            }
+        }
+    }
+}
 
 // Share the mapping between RPC statuses and individual batch errors.
 impl From<object::Error> for ErrorCode {
