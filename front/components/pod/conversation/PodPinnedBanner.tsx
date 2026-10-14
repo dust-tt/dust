@@ -1,3 +1,5 @@
+import type { FrameOpenSource } from "@app/components/assistant/conversation/interactive_content/frameTracking";
+import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
@@ -16,7 +18,7 @@ import {
   Pin02,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const BANNER_HEIGHT_PX = 280;
@@ -135,9 +137,8 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   const isCollapsed = bannerPreferences.collapsed;
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const showBanner = useCallback(() => {
-    setBannerPreferences({ collapsed: false });
-  }, [setBannerPreferences]);
+  // Last Frame counted as opened in this banner, so the expanded render is counted once per mount.
+  const trackedFileIdRef = useRef<string | null>(null);
 
   const hideBanner = useCallback(() => {
     setBannerPreferences({ collapsed: true });
@@ -156,6 +157,40 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
       framePath: pinnedFramePath,
       disabled: !pinnedFramePath,
     });
+
+  const isRenderable = !!fileId && !!fileContent && !!vizUrl && !isNotFound;
+
+  const trackBannerOpen = useCallback(
+    (source: FrameOpenSource) => {
+      if (!fileId) {
+        return;
+      }
+      trackedFileIdRef.current = fileId;
+      trackFrameOpen({
+        frameId: fileId,
+        origin: { source, uiElement: "pod_pinned_banner" },
+        location: { type: "pod", id: podInfo.sId },
+      });
+    },
+    [fileId, podInfo.sId]
+  );
+
+  useEffect(() => {
+    if (isRenderable && !isCollapsed && trackedFileIdRef.current !== fileId) {
+      trackBannerOpen("auto");
+    }
+  }, [isRenderable, isCollapsed, fileId, trackBannerOpen]);
+
+  // Counted before expanding, so the expanded render is not also counted as an auto open.
+  const showBanner = useCallback(() => {
+    trackBannerOpen("user");
+    setBannerPreferences({ collapsed: false });
+  }, [setBannerPreferences, trackBannerOpen]);
+
+  const openFullscreenFromCollapsed = useCallback(() => {
+    trackBannerOpen("user");
+    setIsFullscreen(true);
+  }, [trackBannerOpen]);
 
   useEffect(() => {
     if (pinnedFramePath && isNotFound) {
@@ -253,7 +288,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
         <PodPinnedBannerCollapsedAffordance
           fileName={unpinLabel ?? t`Frame`}
           onShow={showBanner}
-          onOpenFullscreen={() => setIsFullscreen(true)}
+          onOpenFullscreen={openFullscreenFromCollapsed}
         />
         {fullscreenOverlay}
       </>
