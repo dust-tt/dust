@@ -672,11 +672,14 @@ async function _checkRoleGrants(
         );
       }
     } else if (grantOn === "WORKSPACE") {
-      if (g.privilege !== "READ") {
+      // Shared workspaces only hold editor files (SQL, notebooks, ...). WRITE lets
+      // a role edit those files but grants no access to table data, and Snowsight
+      // grants it when a workspace is shared with "edit" access.
+      if (!["READ", "WRITE"].includes(g.privilege)) {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-read or write grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
