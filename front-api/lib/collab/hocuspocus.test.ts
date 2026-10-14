@@ -255,10 +255,7 @@ describe("createCollabHocuspocus", () => {
     const name = toSessionName(writer.workspaceId, writer.canonicalPath);
     vi.useFakeTimers();
 
-    const editing = await hocuspocus.openDirectConnection(
-      name,
-      writer
-    );
+    const editing = await hocuspocus.openDirectConnection(name, writer);
     await editing.transact((doc) => typeInto(doc, "Edit."));
     hocuspocus.flushPendingStores();
     await vi.advanceTimersByTimeAsync(0);

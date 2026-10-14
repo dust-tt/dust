@@ -75,6 +75,31 @@ describe("useCollabConnection", () => {
     unmount();
   });
 
+  it("reports the server's save state, sent as soon as it connects", async () => {
+    await server.destroy();
+    server = newServer({
+      connected: async ({ connection }) => {
+        connection.sendStateless(
+          JSON.stringify({ type: "save_state", failed: true })
+        );
+      },
+    });
+    await server.listen();
+    const { result, unmount } = renderSession();
+    await waitFor(() => expect(result.current.status).toBe("live"));
+    expect(result.current.saveFailed).toBe(true);
+
+    act(() => {
+      server.hocuspocus.documents
+        .get(DOCUMENT_NAME)
+        ?.broadcastStateless(
+          JSON.stringify({ type: "save_state", failed: false })
+        );
+    });
+    await waitFor(() => expect(result.current.saveFailed).toBe(false));
+    unmount();
+  });
+
   it("takes a fresh connection, with a fresh ticket, when the server closes the document", async () => {
     const tickets = vi.fn(async () => "ticket");
     const { result, unmount } = renderSession(tickets);
