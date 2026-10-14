@@ -286,6 +286,7 @@ describe("storeFramePublication", () => {
         userIdentity: functionArtifacts[0].userIdentity,
         inputSchema: functionArtifacts[0].inputSchema,
         outputSchema: functionArtifacts[0].outputSchema,
+        toolCalls: [],
       },
     ]);
   });
