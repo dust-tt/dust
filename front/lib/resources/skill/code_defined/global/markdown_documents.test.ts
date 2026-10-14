@@ -54,7 +54,7 @@ describe("markdownDocumentsSkill", () => {
     expect(stateFor(null)).toBe("equipped");
   });
 
-  it("explains the document tools and images, and comments only for a comment message", () => {
+  it("explains the document tools and images, and comments only for a comment message, reading the document first", () => {
     const plain = getMarkdownDocumentsInstructions("web");
     const comment = getMarkdownDocumentsInstructions("document_comment");
     const withoutRun = getMarkdownDocumentsInstructions(null);
@@ -86,6 +86,7 @@ describe("markdownDocumentsSkill", () => {
       );
     }
     expect(comment).toContain(REPLY_TOOL);
+    expect(comment).toContain("Before anything else, always read the document");
     expect(plain).not.toContain(REPLY_TOOL);
     expect(withoutRun).not.toContain(REPLY_TOOL);
   });
