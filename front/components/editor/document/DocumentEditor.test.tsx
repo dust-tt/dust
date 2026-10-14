@@ -926,23 +926,34 @@ describe("Document comments", () => {
 
 describe("Document caret on open", () => {
   const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
+  // jsdom lays nothing out; ProseMirror measures ranges when it scrolls to the selection.
+  const layoutStubs = [
+    [Element.prototype, "scrollIntoView", vi.fn()],
+    [Range.prototype, "getClientRects", () => []],
+    [
+      Range.prototype,
+      "getBoundingClientRect",
+      () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 }),
+    ],
+  ] as const;
+  let originals: (PropertyDescriptor | undefined)[] = [];
 
   beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn();
-    Object.defineProperty(Range.prototype, "getClientRects", {
-      configurable: true,
-      value: () => [],
+    originals = layoutStubs.map(([target, key, value]) => {
+      const original = Object.getOwnPropertyDescriptor(target, key);
+      Object.defineProperty(target, key, { configurable: true, value });
+      return original;
     });
-    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
-      configurable: true,
-      value: () => ({
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        width: 0,
-        height: 0,
-      }),
+  });
+
+  afterEach(() => {
+    layoutStubs.forEach(([target, key], i) => {
+      const original = originals[i];
+      if (original) {
+        Object.defineProperty(target, key, original);
+      } else {
+        Reflect.deleteProperty(target, key);
+      }
     });
   });
 

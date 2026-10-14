@@ -10,7 +10,7 @@ import {
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
-import { isEditableTarget } from "@app/hooks/useAppKeyboardShortcuts";
+import { isEditableTarget } from "@app/lib/utils/dom";
 import { rand } from "@app/lib/utils/seeded_random";
 import datadogLogger from "@app/logger/datadogLogger";
 import { cn } from "@dust-tt/sparkle";
