@@ -180,7 +180,8 @@ msgstr ""
 msgid "Frame height"
 msgstr ""
 
-#: front/components/editor/document/DocumentResizeBar.tsx
+#: front/components/editor/document/DocumentFrameMenu.tsx
+#: front/components/editor/document/DocumentImageMenu.tsx
 msgid "{value} px"
 msgstr ""
 

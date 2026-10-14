@@ -3,11 +3,18 @@ import {
   IMAGE_SOURCE_ATTRIBUTE,
   parseImageWidth,
 } from "@app/components/editor/document/DocumentImage";
-import { DocumentResizeBar } from "@app/components/editor/document/DocumentResizeBar";
 import { asOwnUndoStep } from "@app/components/editor/document/undoSteps";
 import { useEditorLayoutVersion } from "@app/components/editor/document/useEditorLayoutVersion";
+import {
+  Button,
+  HoveringBar,
+  ReverseLeft,
+  Slider,
+  Trash01,
+} from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
+import type React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const MIN_IMAGE_WIDTH_PX = 64;
@@ -18,6 +25,9 @@ const isDocumentImage = (
 ): target is HTMLImageElement =>
   target instanceof HTMLImageElement &&
   target.hasAttribute(IMAGE_SOURCE_ATTRIBUTE);
+
+/** Keeps the editor's selection while a control is pressed. */
+const keepSelection = (event: React.MouseEvent) => event.preventDefault();
 
 const imagePosition = (editor: Editor, image: HTMLImageElement) => {
   if (!editor.view.dom.contains(image)) {
@@ -205,22 +215,43 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={(event) => setHovering(event.relatedTarget === image)}
         >
-          <DocumentResizeBar
-            min={MIN_IMAGE_WIDTH_PX}
-            max={maxWidth}
-            size={sliderWidth}
-            sliderLabel={t`Image width`}
-            onPreview={previewWidth}
-            onEndPreview={endPreview}
-            onCommit={setWidth}
-            reset={
-              width !== null
-                ? { label: t`Original size`, onReset: () => setWidth(null) }
-                : undefined
-            }
-            removeLabel={t`Remove image`}
-            onRemove={remove}
-          />
+          <HoveringBar size="xs">
+            <div className="w-28 px-2">
+              <Slider
+                min={MIN_IMAGE_WIDTH_PX}
+                max={maxWidth}
+                value={[sliderWidth]}
+                onValueChange={([nextWidth]) => previewWidth(nextWidth)}
+                onValueCommit={([nextWidth]) => setWidth(nextWidth)}
+                onPointerUp={endPreview}
+                onPointerCancel={endPreview}
+                ariaLabel={t`Image width`}
+                showValueTooltip
+                formatValue={(value) => t`${value} px`}
+              />
+            </div>
+            {width !== null && (
+              <Button
+                size="xs"
+                variant="ghost-secondary"
+                icon={ReverseLeft}
+                tooltip={t`Original size`}
+                aria-label={t`Original size`}
+                onMouseDown={keepSelection}
+                onClick={() => setWidth(null)}
+              />
+            )}
+            <HoveringBar.Separator />
+            <Button
+              size="xs"
+              variant="ghost-secondary"
+              icon={Trash01}
+              tooltip={t`Remove image`}
+              aria-label={t`Remove image`}
+              onMouseDown={keepSelection}
+              onClick={remove}
+            />
+          </HoveringBar>
         </div>
       )}
     </div>
