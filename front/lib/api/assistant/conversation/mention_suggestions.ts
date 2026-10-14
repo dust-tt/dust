@@ -242,7 +242,7 @@ export async function suggestionsOfMentions(
             type: "user" as const,
             id: u.sId,
             label: u.fullName ?? u.username,
-            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+            pictureUrl: u.pictureUrl ?? "",
             description: u.username,
             lastActivityAt: u.lastActivityAt,
             isParticipant: true,

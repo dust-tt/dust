@@ -131,9 +131,8 @@ function TaskRowAssigneeMenu({
               <Avatar
                 size="xs"
                 isRounded
-                visual={
-                  selectedUser.image ?? "/static/humanavatar/anonymous.png"
-                }
+                name={selectedUser.fullName}
+                visual={selectedUser.image}
               />
             ) : (
               User01
@@ -171,9 +170,8 @@ function TaskRowAssigneeMenu({
                     <Avatar
                       size="xxs"
                       isRounded
-                      visual={
-                        member.image ?? "/static/humanavatar/anonymous.png"
-                      }
+                      name={member.fullName}
+                      visual={member.image}
                     />
                   )}
                   label={formatMemberLabel(member)}

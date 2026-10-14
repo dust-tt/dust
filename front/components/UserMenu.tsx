@@ -357,11 +357,8 @@ export function UserMenu({
             <div className="flex gap-2 items-center">
               <Avatar
                 size="sm"
-                visual={
-                  user.image
-                    ? user.image
-                    : "https://gravatar.com/avatar/anonymous?d=mp"
-                }
+                name={user.fullName}
+                visual={user.image}
                 clickable
                 isRounded
               />
