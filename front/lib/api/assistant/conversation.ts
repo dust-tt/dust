@@ -868,12 +868,27 @@ export async function postUserMessage(
     agent: mentionedAgent,
     conversation,
   });
+  // A message posted while an agent runs is likely queued as pending, with no agent message to
+  // bill a routing decision with: route only messages that start a run now.
   let modelResolution = mentionedAgent
     ? await resolveModelForMentionedAgent(auth, {
         agent: mentionedAgent,
         selection: modelSelection,
+        routing: runningAgentMessage
+          ? undefined
+          : {
+              conversation: conversationResource,
+              message: {
+                content,
+                // Same auth method the persisted user message carries, so the decision is
+                // classified like the run it routes.
+                context: { ...context, authMethod: auth.authMethod() },
+                userId: messageUser?.sId ?? null,
+              },
+            },
       })
     : null;
+  const decisionRunId = modelResolution?.decisionRunId;
 
   if (user && modelResolution && mentionedAgent) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
@@ -885,7 +900,8 @@ export async function postUserMessage(
     if (premiumLimitResult.isErr()) {
       return premiumLimitResult;
     }
-    modelResolution = premiumLimitResult.value;
+    // A fair-use downgrade replaces the resolution: keep the decision billed with the message.
+    modelResolution = { ...premiumLimitResult.value, decisionRunId };
   }
 
   // The agent message created for the mention carries its agent's configuration on the wire: only
@@ -1118,6 +1134,10 @@ export async function postUserMessage(
       agentMessages,
       conversation,
       userMessage,
+      routedAgentDecision:
+        mentionedAgent && decisionRunId
+          ? { agentConfigurationId: mentionedAgent.sId, decisionRunId }
+          : undefined,
     });
   } else if (runningAgentMessage && userMessage.visibility === "pending") {
     // Pending path: signal the running agent loop to gracefully stop.

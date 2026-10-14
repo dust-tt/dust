@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import {
   deleteOrLeaveConversation,
   editUserMessage,
@@ -37,6 +38,7 @@ import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -105,6 +107,50 @@ vi.mock(
       typeof import("@app/lib/api/assistant/conversation/content_fragment")
     >()),
     getContentFragmentBlob: vi.fn(),
+  })
+);
+
+const tierRoutingDecision = vi.hoisted(() => ({ basicProbability: 0 }));
+
+vi.mock(
+  "@app/lib/api/llm/selectPreferredEndpointForWorkspace",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/llm/selectPreferredEndpointForWorkspace")
+    >()),
+    selectPreferredSystemOneEndpointForWorkspace: async () => {
+      const { DustOpenAIGptSixLunaGlobalOpenAIDecisionsSystemOne } =
+        await import("@app/lib/llms/system_one/endpoints/openai_gpt_six_luna_global_openai_decisions");
+      const { Ok } = await import("@app/types/shared/result");
+
+      return class extends DustOpenAIGptSixLunaGlobalOpenAIDecisionsSystemOne {
+        override async decide() {
+          const basic = tierRoutingDecision.basicProbability;
+          return new Ok({
+            answers: [
+              {
+                type: "score" as const,
+                name: "minimum_tier",
+                score: 0,
+                confidence: 0,
+                probabilities: [
+                  { label: "basic", value: 0, probability: basic },
+                  { label: "standard", value: 1, probability: 1 - basic },
+                ],
+              },
+            ],
+            usage: {
+              standardInput: 200,
+              cacheHit: 0,
+              cacheCreated: 0,
+              longCacheCreated: 0,
+              shortCacheCreated: 0,
+              totalOutput: 0,
+            },
+          });
+        }
+      };
+    },
   })
 );
 
@@ -2118,6 +2164,80 @@ describe("postUserMessage", () => {
       // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
       expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
+  });
+
+  describe("auto tier routing", () => {
+    async function postToAutoAgent(routingAuth: Authenticator) {
+      const autoAgent = await AgentConfigurationFactory.createTestAgent(
+        routingAuth,
+        { name: "Auto Agent", model: { providerId: "auto", modelId: "auto" } }
+      );
+      const userJson = routingAuth.getNonNullableUser().toJSON();
+
+      return postUserMessage(routingAuth, {
+        conversationResource: await fetchConversationResource(
+          routingAuth,
+          conversation.sId
+        ),
+        content: "Say hi @Auto Agent",
+        mentions: [{ configurationId: autoAgent.sId } satisfies AgentMention],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+    }
+
+    it("runs a routed message on the lower stream and bills the decision with it", async () => {
+      await FeatureFlagFactory.basic(auth, "auto_tier_routing");
+      tierRoutingDecision.basicProbability = 0.9;
+
+      const result = await postToAutoAgent(auth);
+
+      assert(result.isOk(), "expected the message to be posted");
+      const [agentMessage] = result.value.agentMessages;
+      assert(agentMessage, "expected an agent message");
+      expect(agentMessage.modelResolutionMethod).toBe("auto_fast");
+
+      const agentMessageRow = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      });
+      const [decisionRunId] = agentMessageRow?.runIds ?? [];
+      assert(decisionRunId, "expected the decision run on the agent message");
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentLoopArgs: expect.objectContaining({
+            dustRunIds: [decisionRunId],
+          }),
+        })
+      );
+    });
+
+    it("resolves the configured stream without a decision when the flag is off", async () => {
+      tierRoutingDecision.basicProbability = 0.9;
+
+      const result = await postToAutoAgent(auth);
+
+      assert(result.isOk(), "expected the message to be posted");
+      const [agentMessage] = result.value.agentMessages;
+      assert(agentMessage, "expected an agent message");
+      expect(agentMessage.modelResolutionMethod).toBe("auto");
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentLoopArgs: expect.not.objectContaining({
+            dustRunIds: expect.anything(),
+          }),
+        })
+      );
+    });
   });
 
   describe("sub-agent message authorship", () => {

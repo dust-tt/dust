@@ -3,6 +3,8 @@ import { updateConversationRequirements } from "@app/lib/api/assistant/conversat
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
+import type { RouteAutoTierParams } from "@app/lib/api/assistant/tier_routing";
+import { routeAutoTier } from "@app/lib/api/assistant/tier_routing";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -297,15 +299,16 @@ export interface AgentMessageModelResolution {
   decisionRunId?: string;
 }
 
+export type ResolveModelForMentionedAgentParams = {
+  agent: AgentResource;
+  selection?: ModelSelectionType;
+  // When set, an auto agent's message may be routed to a lower tier.
+  routing?: Omit<RouteAutoTierParams, "agent">;
+};
+
 export async function resolveModelForMentionedAgent(
   auth: Authenticator,
-  {
-    agent,
-    selection,
-  }: {
-    agent: AgentResource;
-    selection?: ModelSelectionType;
-  }
+  { agent, selection, routing }: ResolveModelForMentionedAgentParams
 ): Promise<AgentMessageModelResolution> {
   const featureFlags = await getFeatureFlags(auth);
 
@@ -325,11 +328,21 @@ export async function resolveModelForMentionedAgent(
     effectiveSelection = undefined;
   }
 
-  return resolveModel(auth, {
+  const route =
+    routing && !effectiveSelection
+      ? await routeAutoTier(auth, { agent, ...routing })
+      : null;
+
+  const resolution = await resolveModel(auth, {
     selection: effectiveSelection,
     agent,
     featureFlags,
+    streamOverride: route?.streamId,
   });
+
+  return route
+    ? { ...resolution, decisionRunId: route.decisionRunId }
+    : resolution;
 }
 
 export const createAgentMessages = async (
