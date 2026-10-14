@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use dfs_protocol::{
+    STAT_MAX_REFERENCES,
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
@@ -28,8 +29,6 @@ use crate::{
 
 pub(crate) mod auth;
 mod errors;
-
-const STAT_MAX_OBJECTS: usize = 256;
 
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
@@ -204,7 +203,7 @@ impl Dfs for API {
             object_ids,
             include_metadata,
         } = request.into_inner();
-        if object_ids.is_empty() || object_ids.len() > STAT_MAX_OBJECTS {
+        if object_ids.is_empty() || object_ids.len() > STAT_MAX_REFERENCES {
             return Err(status(ErrorCode::InvalidInput));
         }
         let include_metadata = include_metadata.unwrap_or(false);

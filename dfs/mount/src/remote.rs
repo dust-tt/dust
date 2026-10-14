@@ -1,13 +1,9 @@
 use crate::errno::Errno;
 use dfs_protocol::{
-    ObjectRef,
+    ObjectRef, STAT_MAX_REFERENCES,
     rpc::{Attr, Empty, Session, StatRequest, dfs_client::DfsClient},
 };
 use tonic::{Request, metadata::AsciiMetadataValue, transport::Channel};
-
-/// Most references one `Stat` request may carry. Keep in sync with `STAT_MAX_OBJECTS` in
-/// `dfs/server/src/api.rs`, which rejects larger requests.
-const MAX_STAT_REFERENCES: usize = 256;
 
 /// The mount's connection to the dfs server, authenticated with one session key. The caller builds
 /// the channel, TLS included.
@@ -64,7 +60,7 @@ impl Remote {
      */
     pub async fn stat(&self, references: &[ObjectRef]) -> Result<Vec<Result<Attr, Errno>>, Errno> {
         let mut results = Vec::with_capacity(references.len());
-        for chunk in references.chunks(MAX_STAT_REFERENCES) {
+        for chunk in references.chunks(STAT_MAX_REFERENCES) {
             let response = self
                 .client
                 .clone()
