@@ -1,3 +1,4 @@
+import { createUserSubject } from "@app/lib/api/dfs/sessions";
 import type { Authenticator } from "@app/lib/auth";
 import type { DfsClient } from "@app/lib/dfs/client";
 import type { DfsFileSystem } from "@app/lib/dfs/file_system";
@@ -67,7 +68,7 @@ function realId(
  */
 
 /**
- * The folder of `user` (`users/<email>` under the tenant root). A folder created here is only
+ * The folder of `user` (`users/<userSId>` under the tenant root). A folder created here is only
  * accessible to `user`.
  */
 export async function getOrCreateUserFolder(
@@ -81,7 +82,7 @@ export async function getOrCreateUserFolder(
   }
   const folder = await ensureFolder(
     context.fs,
-    userFolderUri(context.rootId, user.email)
+    userFolderUri(context.rootId, user.sId)
   );
   if (folder.isErr()) {
     return folder;
@@ -92,8 +93,11 @@ export async function getOrCreateUserFolder(
       changes: [
         { grant: { type: "deny", mode: 0o6 }, remove: false },
         {
-          // The user subject of dfs sessions.
-          grant: { type: "allow", subject: `u:${user.email}`, mode: 0o6 },
+          grant: {
+            type: "allow",
+            subject: createUserSubject(user),
+            mode: 0o6,
+          },
           remove: false,
         },
       ],

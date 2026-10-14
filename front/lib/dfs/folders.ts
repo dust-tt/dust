@@ -8,12 +8,12 @@ import type { DfsObjectId } from "@app/types/dfs";
  */
 /**
  * @cc [owner:fabiencelier,label:product] folder-layout
- * The URIs MUST follow the layout of `dfs/design-docs/URI.md`: `users/<email>` under the tenant root,
- * `pods/pod-<podSId>` and `conversations/conv-<conversationSId>` under their parent folder. Changing
- * a name orphans the folders already created under the previous one.
+ * The URIs MUST follow the layout of `dfs/design-docs/URI.md`: `users/<userSId>` under the tenant
+ * root, `pods/pod-<podSId>` and `conversations/conv-<conversationSId>` under their parent folder.
+ * Changing a name orphans the folders already created under the previous one.
  */
-export function userFolderUri(rootId: DfsObjectId, email: string): string {
-  return formatDfsUri(rootId, { path: ["users", email] });
+export function userFolderUri(rootId: DfsObjectId, userId: string): string {
+  return formatDfsUri(rootId, { path: ["users", userId] });
 }
 
 export function podFolderUri(userFolderId: DfsObjectId, podId: string): string {

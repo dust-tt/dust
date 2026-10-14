@@ -56,7 +56,7 @@ describe("getOrCreateUserFolder", () => {
     const res = await getOrCreateUserFolder(authenticator, context, user);
 
     expect(res.isOk()).toBe(true);
-    expect(dfs.paths()).toEqual(["/users", `/users/${user.email}`]);
+    expect(dfs.paths()).toEqual(["/users", `/users/${user.sId}`]);
     const stored = await DfsUserFolderResource.fetchByUser(authenticator, user);
     expect(res.isOk() && res.value).toBe(stored?.dfsObjectId);
     expect(transport.calls.map((c) => c.request)).toEqual([
@@ -65,7 +65,7 @@ describe("getOrCreateUserFolder", () => {
         changes: [
           { grant: { deny: { mode: 6 } }, remove: false },
           {
-            grant: { allow: { subject: `u:${user.email}`, mode: 6 } },
+            grant: { allow: { subject: `u:${user.sId}`, mode: 6 } },
             remove: false,
           },
         ],
@@ -93,7 +93,7 @@ describe("getOrCreateUserFolder", () => {
     const { authenticator, user } = await createResourceTest({});
     const { dfs, transport, context } = setup();
     const users = dfs.createDirectory(dfs.rootId, "users");
-    const existing = dfs.createDirectory(users, user.email);
+    const existing = dfs.createDirectory(users, user.sId);
 
     const res = await getOrCreateUserFolder(authenticator, context, user);
 
@@ -113,7 +113,7 @@ describe("getOrCreatePodFolder", () => {
     });
 
     expect(res.isOk()).toBe(true);
-    expect(dfs.paths()).toContain(`/users/${user.email}/pods/pod-${pod.sId}`);
+    expect(dfs.paths()).toContain(`/users/${user.sId}/pods/pod-${pod.sId}`);
     const stored = await SpaceResource.fetchById(authenticator, pod.sId);
     expect(res.isOk() && res.value).toBe(stored?.dfsObjectId);
   });
@@ -128,7 +128,7 @@ describe("getOrCreatePodFolder", () => {
     const res = await getOrCreatePodFolder(authenticator, context, pod);
 
     expect(res.isOk()).toBe(true);
-    expect(dfs.paths()).toContain(`/users/${editor.email}/pods/pod-${pod.sId}`);
+    expect(dfs.paths()).toContain(`/users/${editor.sId}/pods/pod-${pod.sId}`);
   });
 
   it("returns the folder stored by a concurrent call", async () => {
@@ -187,7 +187,7 @@ describe("getOrCreateConversationFolder", () => {
 
     expect(res.isOk()).toBe(true);
     expect(dfs.paths()).toContain(
-      `/users/${user.email}/conversations/conv-${conversation.sId}`
+      `/users/${user.sId}/conversations/conv-${conversation.sId}`
     );
     const stored = await ConversationResource.fetchById(
       authenticator,
@@ -218,7 +218,7 @@ describe("getOrCreateConversationFolder", () => {
 
     expect(res.isOk()).toBe(true);
     expect(dfs.paths()).toContain(
-      `/users/${user.email}/pods/pod-${pod.sId}/conversations/conv-${conversation.sId}`
+      `/users/${user.sId}/pods/pod-${pod.sId}/conversations/conv-${conversation.sId}`
     );
   });
 });

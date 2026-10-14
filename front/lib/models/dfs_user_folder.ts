@@ -4,7 +4,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-// The dfs folder of a user in a workspace's tenant (`users/<email>` under the tenant root). Users
+// The dfs folder of a user in a workspace's tenant (`users/<userSId>` under the tenant root). Users
 // span workspaces and each workspace has its own tenant, so the folder is per workspace and user.
 export class DfsUserFolderModel extends WorkspaceAwareModel<DfsUserFolderModel> {
   declare createdAt: CreationOptional<Date>;
