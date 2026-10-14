@@ -1,11 +1,10 @@
 import type { WhitelistableFeature } from "../../shared/feature_flags";
 import {
   CLAUDE_OPUS_5_5_MODEL_ID,
-  CLAUDE_SONNET_4_6_MODEL_ID,
-  CLAUDE_SONNET_5_MODEL_ID,
+  CLAUDE_SONNET_5_5_MODEL_ID,
 } from "./anthropic";
 import {
-  GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_5_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_8_FLASH_MODEL_ID,
 } from "./google_ai_studio";
@@ -25,7 +24,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "./types";
-import { GROK_3_MINI_MODEL_ID, GROK_4_6_MODEL_ID } from "./xai";
+import { GROK_3_MINI_MODEL_ID, GROK_4_7_MODEL_ID } from "./xai";
 
 // Auto-routing meta-models: sentinels that never name a concrete model but are
 // resolved to one at message-send time by walking an ordered candidate pool (a
@@ -82,7 +81,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_5_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_5_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
@@ -92,7 +91,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "google_ai_studio",
-        modelId: GEMINI_3_1_FLASH_LITE_MODEL_ID,
+        modelId: GEMINI_3_5_FLASH_LITE_MODEL_ID,
         reasoningEffort: "low",
       },
       {
@@ -107,7 +106,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "xai",
-        modelId: GROK_4_6_MODEL_ID,
+        modelId: GROK_4_7_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
@@ -117,7 +116,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_5_MODEL_ID,
         reasoningEffort: "low",
       },
     ],
@@ -129,7 +128,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_5_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_5_MODEL_ID,
         reasoningEffort: "low",
       },
       {
@@ -139,7 +138,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "google_ai_studio",
-        modelId: GEMINI_3_1_FLASH_LITE_MODEL_ID,
+        modelId: GEMINI_3_5_FLASH_LITE_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
@@ -172,7 +171,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       // Basic-tier floor
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_5_MODEL_ID,
         reasoningEffort: "low",
       },
     ],
