@@ -1,3 +1,4 @@
+import { parseIntParam } from "@app/lib/api/pagination";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -21,7 +22,7 @@ const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
 const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
   kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
-  limit: z.string().optional(),
+  limit: z.preprocess(parseIntParam, z.number().int().optional()),
 });
 
 const ParamsSchema = z.object({
@@ -63,23 +64,12 @@ app.get(
 
     const { states, kind, limit } = ctx.req.valid("query");
 
-    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
-    if (parsedLimit !== undefined && isNaN(parsedLimit)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid limit parameter: must be a number",
-        },
-      });
-    }
-
     const suggestions =
       await AgentSuggestionResource.listByAgentConfigurationId(auth, aId, {
         states,
         kind,
         sources: ["sidekick"],
-        limit: parsedLimit,
+        limit,
       });
 
     const skills = await SkillResource.fetchByIds(
