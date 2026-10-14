@@ -86,6 +86,11 @@ const UNANCHORED_MESSAGE = msg`The selected text can no longer take a comment. S
 const UNSAVABLE_MESSAGE = msg`This comment can't be saved in this document. Try shortening or simplifying it.`;
 
 /** The draft's text, shown as its quote and sent as the one agents get. */
+const jumpToComment = (editor: Editor, id: string) => {
+  editor.commands.setActiveComment(id);
+  scrollToCommentHighlight(editor, id);
+};
+
 const getDraftQuote = (doc: Node, draft: DocumentCommentDraft) =>
   doc.textBetween(draft.from, draft.to, " ");
 
@@ -393,8 +398,7 @@ export const useDocumentComments = ({
     if (state.activeId === revealCommentId) {
       return;
     }
-    editor.commands.setActiveComment(revealCommentId);
-    scrollToCommentHighlight(editor, revealCommentId);
+    jumpToComment(editor, revealCommentId);
   }, [editor, revealCommentId, state.activeId, state.draft, state.quotes]);
 
   const onActiveCommentChange = activeComment?.onChange;
@@ -674,9 +678,8 @@ export const useDocumentComments = ({
     },
     /** Activates a thread from the list and scrolls to its text. */
     jumpTo: (id: string) => {
-      select(id);
       if (editor) {
-        scrollToCommentHighlight(editor, id);
+        jumpToComment(editor, id);
       }
     },
     /** Starts a comment on the selection, in a card floating under it. */

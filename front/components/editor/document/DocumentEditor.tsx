@@ -212,10 +212,11 @@ const handleDocumentEscape = (
 export const hasOpenDocumentLayer = (root: ParentNode) =>
   root.querySelector("[data-document-layer]") !== null;
 
-/** The editor's binding to the shared document, and whether it still waits for one. */
+/** The editor's binding to the shared document, and whether it still waits for one or is live. */
 const collabEditorMode = (collabView: DocumentViewProps["collabView"]) => ({
   binding: collabView?.binding ?? undefined,
   waiting: collabView?.binding === null,
+  ready: !collabView || collabView.binding?.connected === true,
 });
 
 interface DocumentEditingControlsProps {
@@ -282,8 +283,7 @@ export const DocumentView = ({
     isSavable,
     verify: verifyCommentMessage,
     live: live.binding?.comments,
-    activeComment:
-      !collabView || collabView.binding?.connected ? activeComment : undefined,
+    activeComment: live.ready ? activeComment : undefined,
   });
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
