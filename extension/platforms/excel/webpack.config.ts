@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import Dotenv from "dotenv-webpack";
+import dotenv from "dotenv";
 import fs from "fs";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
@@ -10,11 +10,12 @@ import type { Configuration as DevServerConfiguration } from "webpack-dev-server
 import WebpackBar from "webpackbar";
 
 import type { Environment } from "../../config/env";
-import { getImportMetaEnv } from "../../config/webpack_env";
+import { getImportMetaEnvFromVars } from "../../config/webpack_env";
 import {
   linguiCatalogRule,
   linguiMacroLoader,
 } from "../../config/webpack_lingui";
+import { getSignInProxy } from "./dev/sign_in_proxy";
 
 const rootDir = path.resolve(__dirname);
 
@@ -31,6 +32,31 @@ const getCommitHash = () => {
   }
 };
 
+const DEV_SERVER_PORT = 3014;
+const DEV_ADD_IN_ORIGIN = `https://localhost:${DEV_SERVER_PORT}`;
+
+// The Dust URLs that the bundle calls. In development, they are replaced by the add-in origin and
+// the dev server proxies them to the local Dust (see `dev/sign_in_proxy.ts`): the Excel WebView
+// blocks plain-HTTP requests from the HTTPS task pane, and the Office dialog loads only HTTPS pages.
+const DUST_URL_ENV_VARS = [
+  "DUST_US_URL",
+  "DUST_EU_URL",
+  "DUST_API_URL_US",
+  "DUST_API_URL_EU",
+  "DUST_API_URL_CELL_00002",
+];
+
+// Replaces `process.env.<KEY>` for each variable, as `dotenv-webpack` does. Bare `process.env` is
+// also replaced: webpack 5 does not polyfill `process`, so any other `process.env.FOO` would throw.
+const defineEnvVars = (vars: Record<string, string>) =>
+  Object.fromEntries([
+    ["process.env", JSON.stringify("MISSING_ENV_VAR")],
+    ...Object.entries(vars).map(([key, value]) => [
+      `process.env.${key}`,
+      JSON.stringify(value),
+    ]),
+  ]);
+
 export const getConfig = async ({
   env,
 }: {
@@ -43,6 +69,33 @@ export const getConfig = async ({
   const version = packageJson.version;
 
   const buildDirPath = resolvePath("./build");
+
+  const fileVars = dotenv.parse(
+    fs.readFileSync(
+      resolvePath(
+        isDevelopment ? "../../.env.development" : "../../.env.production"
+      ),
+      "utf8"
+    )
+  );
+  const envVars = isDevelopment
+    ? {
+        ...fileVars,
+        ...Object.fromEntries(
+          DUST_URL_ENV_VARS.map((key) => [key, DEV_ADD_IN_ORIGIN])
+        ),
+      }
+    : fileVars;
+  if (isDevelopment && !fileVars.WORKOS_AUTHKIT_URL) {
+    throw new Error("WORKOS_AUTHKIT_URL must be set in .env.development.");
+  }
+  const signInProxy = isDevelopment
+    ? getSignInProxy({
+        addInOrigin: DEV_ADD_IN_ORIGIN,
+        dustUrl: fileVars.DUST_US_URL,
+        authKitOrigin: fileVars.WORKOS_AUTHKIT_URL,
+      })
+    : null;
 
   return {
     mode: isDevelopment ? "development" : "production",
@@ -155,13 +208,8 @@ export const getConfig = async ({
         // Expose VITE_* vars on `import.meta.env` so the shared `front`
         // CellContext can resolve the cell API base URL in the webpack
         // build (Vite only injects these in the SPA).
-        "import.meta.env": JSON.stringify(
-          getImportMetaEnv(
-            resolvePath(
-              isDevelopment ? "../../.env.development" : "../../.env.production"
-            )
-          )
-        ),
+        "import.meta.env": JSON.stringify(getImportMetaEnvFromVars(envVars)),
+        ...defineEnvVars(envVars),
       }),
       new WebpackBar({
         name: `DustExcel [${env}]`,
@@ -184,11 +232,6 @@ export const getConfig = async ({
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
       }),
-      new Dotenv({
-        path: isDevelopment
-          ? resolvePath("../../.env.development")
-          : resolvePath("../../.env.production"),
-      }),
       new HtmlWebpackPlugin({
         template: resolvePath("./taskpane.html"),
         filename: "taskpane.html",
@@ -201,8 +244,20 @@ export const getConfig = async ({
       }),
     ],
     devServer: {
-      port: 3014,
+      port: DEV_SERVER_PORT,
       server: "https",
+      ...(signInProxy
+        ? {
+            proxy: signInProxy.proxy,
+            // Uses the certificate that the dev server made for itself.
+            onListening: (devServer) => {
+              const { server } = devServer.options;
+              if (typeof server === "object" && server.options) {
+                signInProxy.startAuthKitMirror(server.options);
+              }
+            },
+          }
+        : {}),
       hot: true,
       client: {
         overlay: {

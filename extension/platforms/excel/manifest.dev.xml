@@ -10,6 +10,10 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Dust"/>
   <Description DefaultValue="Dust in Excel."/>
+  <AppDomains>
+    <!-- The AuthKit mirror of the dev server (see dev/sign_in_proxy.ts). -->
+    <AppDomain>https://localhost:3015</AppDomain>
+  </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>
   </Hosts>

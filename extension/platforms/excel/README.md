@@ -24,6 +24,13 @@ button to open the task pane.
 
 ## Sign-in
 
+In development, the task pane calls Dust on its own origin, and every page of the sign-in stays on
+`https://localhost` (see `dev/sign_in_proxy.ts`): the Excel WebView does not load the staging
+AuthKit host (`*.authkit.app`) and the Office dialog loads only HTTPS pages. The dev server proxies
+`/api`, `/sse` and `/mcp` to the local Dust and `/__wos` to the WorkOS API, and mirrors AuthKit on
+`https://localhost:3015`. Both ports use the dev server certificate
+(`node_modules/.cache/webpack-dev-server/server.pem`), which macOS must trust for Excel desktop.
+
 The task pane makes a PKCE pair and opens an Office dialog on `auth.html`. On the first visit,
 this page goes to `/api/workos/login` with `redirect_uri=<add-in origin>/auth.html`. After
 sign-in, WorkOS goes back to `auth.html` with `code` (or `error`). On this second visit, the page

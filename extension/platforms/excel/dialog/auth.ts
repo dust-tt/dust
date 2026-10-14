@@ -1,6 +1,6 @@
 /// <reference types="office-js" />
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { DUST_US_URL } from "@extension/shared/lib/config";
+import { getLoginUrl } from "@extension/platforms/excel/dialog/loginUrl";
 
 // The only page of the Office auth dialog. It is opened twice:
 // 1. By the task pane, with the PKCE challenge: it goes to the Dust login.
@@ -35,14 +35,7 @@ const getAction = (): AuthPageAction => {
 };
 
 const goToLogin = (codeChallenge: string, organizationId: string | null) => {
-  const loginParams = new URLSearchParams({
-    // This page is also the redirect target of the login.
-    redirect_uri: `${window.location.origin}${window.location.pathname}`,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
-    ...(organizationId ? { organizationId } : {}),
-  });
-  window.location.replace(`${DUST_US_URL}/api/workos/login?${loginParams}`);
+  window.location.replace(getLoginUrl({ codeChallenge, organizationId }));
 };
 
 // Sends `code=<code>` or `error=<error>` to the task pane, which reads it in `openAuthDialog`.

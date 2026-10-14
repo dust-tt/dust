@@ -18,8 +18,15 @@ export function getImportMetaEnv(envPath: string): Record<string, string> {
     ? dotenv.parse(fs.readFileSync(envPath, "utf8"))
     : {};
 
-  const resolve = (key: string): string =>
-    fileVars[key] ?? process.env[key] ?? "";
+  return getImportMetaEnvFromVars(fileVars);
+}
+
+// Same as `getImportMetaEnv`, for a platform that has already parsed (and possibly overridden)
+// the env file.
+export function getImportMetaEnvFromVars(
+  vars: Record<string, string>
+): Record<string, string> {
+  const resolve = (key: string): string => vars[key] ?? process.env[key] ?? "";
 
   const usUrl = resolve("DUST_API_URL_US");
   const euUrl = resolve("DUST_API_URL_EU");
