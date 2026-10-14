@@ -124,6 +124,10 @@ impl Fs {
      * An inode number MUST NOT be given to a different object during the life of the mount, even
      * after the kernel forgets it.
      */
+    /**
+     * @cc [owner:fontanierh,label:coding] lookup-counts-on-success
+     * `lookup` MUST count one lookup of the object if and only if it returns `Ok`.
+     */
     pub async fn lookup(&self, parent: Ino, name: &str) -> Result<Attributes, Errno> {
         if parent != ROOT_INO {
             // Needs the server's `Lookup`, not supported yet.
@@ -146,8 +150,8 @@ impl Fs {
 
     /**
      * @cc [owner:fontanierh,label:product] synthetic-root
-     * The root MUST list only the configured folders that the server reports as readable
-     * directories, and MUST be read-only.
+     * The root MUST list, and `lookup` MUST find, only the configured folders that the server
+     * reports as readable directories, and MUST be read-only.
      */
     pub async fn readdir(&self, ino: Ino) -> Result<Vec<DirEntry>, Errno> {
         if ino != ROOT_INO {
