@@ -138,9 +138,10 @@ function commentMessageContent(
 /**
  * @cc [owner:tdraier,label:product;performance] document-comment-mentions
  * Each new message that mentions agents or users MUST be handed to a durable job keyed by the
- * normalized document path and the message, so it is posted once however often it is handed
- * over, and the caller MUST NOT wait for it to be posted. Messages without mentions MUST NOT be
- * handed over. A failure MUST be logged and MUST NOT fail the caller.
+ * normalized document path and the message, so however often it is handed over, its mentioned
+ * users are notified once and, when it mentions an agent, it is posted once. The caller MUST NOT
+ * wait for that job. Messages without mentions MUST NOT be handed over. A failure MUST be logged
+ * and MUST NOT fail the caller.
  */
 export async function dispatchCommentMentions(
   auth: Authenticator,
