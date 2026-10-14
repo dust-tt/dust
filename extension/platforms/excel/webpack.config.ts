@@ -11,6 +11,8 @@ import webpack from "webpack";
 import type { Configuration as DevServerConfiguration } from "webpack-dev-server";
 import WebpackBar from "webpackbar";
 
+import logger from "@app/logger/logger";
+
 import type { Environment } from "../../config/env";
 import { getImportMetaEnv } from "../../config/webpack_env";
 import {
@@ -35,7 +37,7 @@ const getDevServerHttps = (): DevServerConfiguration["server"] => {
     return { type: "https", options: { key, cert } };
   }
 
-  console.warn(
+  logger.warn(
     "No office-addin-dev-certs found: Excel desktop will reject the certificate of the dev " +
       "server. Run `npx office-addin-dev-certs install`."
   );
@@ -50,7 +52,7 @@ const getCommitHash = () => {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim();
   } catch (e) {
-    console.error(e);
+    logger.error({ error: e }, "Failed to read the git commit hash.");
     return "development";
   }
 };
