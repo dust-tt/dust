@@ -854,6 +854,41 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     ).toBe(billedMessageCreditMicro);
   });
 
+  it("fails when only part of the newest attribution version is reconciled", async () => {
+    const { context } = await setupLlmAndToolConsumptionScenario();
+    await reconcileStoredItems(context);
+    // Evidence written by a later pass that did not reconcile.
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "reasoning",
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: OUTPUT,
+            grossAttributedCreditAmountMicro: 100_000,
+          },
+        ],
+        pendingToolItems: [],
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+    if (!input) {
+      throw new Error("Consumption analytics input was not loaded");
+    }
+
+    expect(() => buildAgentMessageConsumptionAnalyticsDocuments(input)).toThrow(
+      "Only part of the newest attribution version is reconciled"
+    );
+  });
+
   it("associates a tool with every skill that exposes its server", async () => {
     const context = await setupSettledMessage();
     const server = await RemoteMCPServerFactory.create(context.workspace, {

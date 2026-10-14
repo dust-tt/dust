@@ -5,10 +5,10 @@ import type {
 } from "@app/lib/analytics/agent_message_consumption/load";
 import { buildToolConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/tool_documents";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
-import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 export type ConsumptionDocumentsSkipReason =
   | {
@@ -25,13 +25,10 @@ export type ConsumptionDocumentsSkipReason =
       context: Record<string, never>;
     };
 
-/**
- * @cc [owner:sfriquet,label:product;backend] index-latest-reconciled-items
- * The indexed snapshot MUST be the items of the newest attribution version stored for the message
- * that carry a reconciled amount, each credited its stored `reconciledCreditAmountMicro`. Items of
- * older versions and items without a reconciled amount MUST NOT be indexed, and the allocation MUST
- * NOT be recomputed from the message's current bill, usages or actions.
- */
+// The analytics activity only indexes the outcome of the attribution activity that ran before it:
+// the items of the newest attribution version, at their stored reconciled amounts. New usages,
+// actions or a new bill can land between the two activities, so nothing is re-derived here from
+// the message's current state. Current usages and actions only provide metadata for the items.
 function readReconciledConsumption(
   input: AgentMessageConsumptionAnalyticsInput
 ): MessageConsumptionAllocation<BilledRunUsage> | null {
@@ -42,18 +39,24 @@ function readReconciledConsumption(
   const attributionVersion = Math.max(
     ...input.items.map((item) => item.attributionVersion)
   );
-  const reconciledCreditMicroByItem = new Map<
-    AgentMessageConsumptionItemResource,
-    number
-  >();
-  for (const item of input.items) {
-    if (
-      item.attributionVersion === attributionVersion &&
-      item.reconciledCreditAmountMicro !== null
-    ) {
-      reconciledCreditMicroByItem.set(item, item.reconciledCreditAmountMicro);
-    }
+  const latestItems = input.items.filter(
+    (item) => item.attributionVersion === attributionVersion
+  );
+  const reconciledCreditMicroByItem = new Map(
+    latestItems.flatMap((item) =>
+      item.reconciledCreditAmountMicro === null
+        ? []
+        : [[item, item.reconciledCreditAmountMicro] as const]
+    )
+  );
+  if (reconciledCreditMicroByItem.size === 0) {
+    return null;
   }
+  // A successful attribution pass reconciles every item of its version in one transaction.
+  assert(
+    reconciledCreditMicroByItem.size === latestItems.length,
+    "Only part of the newest attribution version is reconciled"
+  );
 
   const items = [...reconciledCreditMicroByItem.keys()];
   const runUsageModelIds = new Set(items.map((item) => item.runUsageId));

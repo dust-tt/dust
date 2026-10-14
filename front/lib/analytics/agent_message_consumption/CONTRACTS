@@ -2,3 +2,9 @@
 Every billed consumption unit of an agent message MUST be indexed whatever the message status,
 including `created` while paused on a user question or a tool approval. A message without a
 `completedAt` is indexed at its `updatedAt`.
+
+@cc [owner:sfriquet,label:product;architecture] index-attribution-outcome-only
+Indexing MUST only project the outcome of the attribution activity that ran before it: the items of
+the newest attribution version, credited their stored `reconciledCreditAmountMicro`. It MUST NOT
+recompute an allocation or derive credits from the message's current bill, usages or actions,
+which can change between the two activities.
