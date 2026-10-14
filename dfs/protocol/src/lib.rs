@@ -16,3 +16,6 @@ pub use reference::ObjectRef;
 
 /// Most references one `Stat` request may carry.
 pub const STAT_MAX_REFERENCES: usize = 256;
+
+/// Most bytes one `Read` request may ask for.
+pub const READ_MAX_BYTES: u32 = 1024 * 1024;

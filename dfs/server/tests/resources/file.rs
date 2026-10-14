@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use dfs_api::storage::{
     self, fdb,
     resources::{
-        file::{self, BLOCK_SIZE_BYTES, FileResource, READ_MAX_BYTES},
+        file::{self, BLOCK_SIZE_BYTES, FileResource},
         keys::tenant_subspace,
         object::ObjectResource,
         session::SessionResource,
@@ -10,7 +10,7 @@ use dfs_api::storage::{
     },
 };
 use dfs_protocol::{
-    ObjectId,
+    ObjectId, READ_MAX_BYTES,
     rpc::{AllowGrant, Grant, ObjectKind, grant},
 };
 use foundationdb::Transaction;

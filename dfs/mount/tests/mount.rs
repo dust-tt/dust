@@ -14,11 +14,11 @@
 use anyhow::{Context, Result};
 use dfs_api::storage::{
     fdb,
-    resources::{object::ObjectResource, tenant::TenantResource},
+    resources::{keys::tenant_subspace, object::ObjectResource, tenant::TenantResource},
 };
 use dfs_mount::{Errno, Remote};
 use dfs_protocol::{
-    ObjectId, ObjectRef,
+    ObjectId, ObjectRef, READ_MAX_BYTES,
     rpc::{
         AllowGrant, CreateSessionRequest, CreateTenantRequest, DenyGrant, Grant, ObjectKind,
         dfs_client::DfsClient, grant,
@@ -29,6 +29,8 @@ use tonic::{Request, transport::Channel};
 
 const MASTER_KEY: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const SUBJECT: &str = "u:mount-test";
+/// The content of the readable file, stored in its first block.
+const FILE_CONTENT: &[u8] = b"hello";
 /// More than one `Stat` request can carry.
 const MANY_REFERENCES: usize = 300;
 
@@ -47,7 +49,8 @@ fn mount() -> Result<()> {
         let channel = serve().await?;
         let tenant = Tenant::create(&channel).await?;
         stat_returns_one_ordered_result_per_reference(&channel, &tenant).await?;
-        stat_fails_with_an_unknown_session_key(&channel, &tenant).await
+        stat_fails_with_an_unknown_session_key(&channel, &tenant).await?;
+        read_returns_file_ranges(&channel, &tenant).await
     })
 }
 
@@ -68,8 +71,8 @@ fn with_authorization<T>(message: T, authorization: &str) -> Result<Request<T>> 
     Ok(request)
 }
 
-/// A tenant whose root `SUBJECT` can read and write, holding a file `SUBJECT` can read and one it
-/// cannot.
+/// A tenant whose root `SUBJECT` can read and write, holding a file `SUBJECT` can read, with
+/// `FILE_CONTENT`, and one it cannot.
 struct Tenant {
     key: String,
     root_id: ObjectId,
@@ -105,7 +108,16 @@ impl Tenant {
         file.parent_id = Some(tenant.root_id);
         file.name = "report.txt".to_owned();
         file.kind = ObjectKind::File;
+        file.size = FILE_CONTENT.len() as u64;
         file.create(&tx, &[]).await?;
+        tx.set(
+            &tenant_subspace(&tenant.tenant_id).pack(&(
+                "block",
+                file.object_id.as_bytes().as_slice(),
+                0_u64,
+            )),
+            FILE_CONTENT,
+        );
         let mut unreadable = ObjectResource::new_root(&resource)?;
         unreadable.object_id = ObjectId::new_v7();
         unreadable.parent_id = Some(tenant.root_id);
@@ -179,5 +191,30 @@ async fn stat_fails_with_an_unknown_session_key(channel: &Channel, tenant: &Tena
     let remote = Remote::new(channel.clone(), &"fedcba9876543210".repeat(4))?;
     let result = remote.stat(&[tenant.root_id.into()]).await;
     assert!(matches!(result, Err(Errno::EACCES)));
+    Ok(())
+}
+
+async fn read_returns_file_ranges(channel: &Channel, tenant: &Tenant) -> Result<()> {
+    let remote = tenant.remote(channel).await?;
+
+    let read = remote.read(tenant.file_id, 1, 3).await?;
+    assert_eq!(read.data, &FILE_CONTENT[1..4]);
+    assert_eq!(read.object.id, tenant.file_id.into());
+    assert_eq!(read.object.size, FILE_CONTENT.len() as u64);
+    // Reads stop at the end of the file.
+    let read = remote.read(tenant.file_id, 2, 10).await?;
+    assert_eq!(read.data, &FILE_CONTENT[2..]);
+    let end = FILE_CONTENT.len() as u64;
+    assert!(remote.read(tenant.file_id, end, 10).await?.data.is_empty());
+
+    for (object, length, expected) in [
+        (tenant.file_id, READ_MAX_BYTES + 1, Errno::EINVAL),
+        (tenant.root_id, 1, Errno(libc::EISDIR)),
+        (tenant.unreadable_id, 1, Errno::ENOENT),
+        (ObjectId::new_v7(), 1, Errno::ENOENT),
+    ] {
+        let result = remote.read(object, 0, length).await;
+        assert_eq!(result.err(), Some(expected), "reading {object}");
+    }
     Ok(())
 }
