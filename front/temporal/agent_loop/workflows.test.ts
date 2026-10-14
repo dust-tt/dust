@@ -4,12 +4,19 @@ import {
   runSandboxChildToolWorkflow,
 } from "@app/temporal/agent_loop/workflows";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import {
+  ActivityFailure,
+  RetryState,
+  TimeoutFailure,
+  TimeoutType,
+} from "@temporalio/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   deprecatePatch,
   patched,
   checkCreditsActivity,
+  claimToolActivityNeverStartedActivity,
   finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
@@ -27,6 +34,7 @@ const {
   deprecatePatch: vi.fn(),
   patched: vi.fn(),
   checkCreditsActivity: vi.fn(),
+  claimToolActivityNeverStartedActivity: vi.fn(),
   finalizeCreditSpendCheckpointPausedAgentLoopActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
@@ -62,8 +70,10 @@ vi.mock("@temporalio/workflow", () => {
     },
     defineSignal: (name: string) => name,
     deprecatePatch,
+    isCancellation: () => false,
     log: {
       error: workflowLogError,
+      warn: vi.fn(),
     },
     patched,
     proxyActivities: (options: {
@@ -71,6 +81,7 @@ vi.mock("@temporalio/workflow", () => {
       retry?: { maximumAttempts?: number };
     }) => ({
       checkCreditsActivity,
+      claimToolActivityNeverStartedActivity,
       compactionActivity: unusedActivity,
       compactionCleanupActivity: unusedActivity,
       ensureConversationTitleActivity: unusedActivity,
@@ -111,7 +122,9 @@ vi.mock("@temporalio/workflow", () => {
     startChild: vi.fn(),
     workflowInfo: vi.fn(() => ({
       memo: {},
+      runId: "run-id",
       searchAttributes: {},
+      workflowId: "workflow-id",
     })),
   };
 });
@@ -136,6 +149,21 @@ const agentLoopArgs: AgentLoopArgsWithTiming = {
   userMessageOrigin: "web",
   userMessageVersion: 0,
 };
+
+function makeToolHeartbeatTimeout() {
+  return new ActivityFailure(
+    "Activity task timed out",
+    "runToolActivity",
+    "3",
+    RetryState.MAXIMUM_ATTEMPTS_REACHED,
+    "worker-id",
+    new TimeoutFailure(
+      "activity Heartbeat timeout",
+      undefined,
+      TimeoutType.HEARTBEAT
+    )
+  );
+}
 
 describe("runSandboxChildToolWorkflow", () => {
   beforeEach(() => {
@@ -274,6 +302,161 @@ describe("runSandboxChildToolWorkflow", () => {
     ).rejects.toBe(error);
 
     expect(finalizeErroredSandboxChildToolActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe("never started tool activity rescheduling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    patched.mockReturnValue(true);
+    claimToolActivityNeverStartedActivity.mockResolvedValue(true);
+    finalizeErroredSandboxChildToolActivity.mockResolvedValue(undefined);
+  });
+
+  it("reschedules a no_retry tool activity that never started", async () => {
+    runToolActivity
+      .mockRejectedValueOnce(makeToolHeartbeatTimeout())
+      .mockResolvedValueOnce({ deferredEvents: [] });
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledTimes(2);
+    expect(patched).toHaveBeenCalledWith("retry-never-started-tool-activity");
+    expect(claimToolActivityNeverStartedActivity).toHaveBeenCalledWith({
+      workflowId: "workflow-id",
+      runId: "run-id",
+      activityId: "3",
+    });
+    expect(finalizeErroredSandboxChildToolActivity).not.toHaveBeenCalled();
+  });
+
+  it("reschedules at most once", async () => {
+    runToolActivity.mockRejectedValue(makeToolHeartbeatTimeout());
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledTimes(2);
+    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledOnce();
+  });
+
+  it("does not reschedule a tool activity that claimed its start", async () => {
+    claimToolActivityNeverStartedActivity.mockResolvedValue(false);
+    runToolActivity.mockRejectedValue(makeToolHeartbeatTimeout());
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledOnce();
+    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledOnce();
+  });
+
+  it("rethrows the tool heartbeat timeout when the claim fails", async () => {
+    const heartbeatTimeout = makeToolHeartbeatTimeout();
+    claimToolActivityNeverStartedActivity.mockRejectedValue(
+      new Error("redis down")
+    );
+    runToolActivity.mockRejectedValue(heartbeatTimeout);
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledOnce();
+    expect(workflowLogError).toHaveBeenCalledWith(
+      "Sandbox child tool activity failed.",
+      { actionModelId: 123, error: heartbeatTimeout }
+    );
+  });
+
+  it("does not reschedule when replaying without the patch marker", async () => {
+    patched.mockImplementation(
+      (patchId) => patchId !== "retry-never-started-tool-activity"
+    );
+    runToolActivity.mockRejectedValue(makeToolHeartbeatTimeout());
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledOnce();
+    expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
+    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledOnce();
+  });
+
+  it("does not claim for failures other than tool heartbeat timeouts", async () => {
+    runToolActivity.mockRejectedValue(new Error("activity failed"));
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledOnce();
+    expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
+    expect(patched).not.toHaveBeenCalledWith(
+      "retry-never-started-tool-activity"
+    );
+  });
+
+  it("reschedules a no_retry tool activity of the agent loop that never started", async () => {
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+    });
+    runToolActivityWithExplicitCancellation
+      .mockRejectedValueOnce(makeToolHeartbeatTimeout())
+      .mockResolvedValueOnce({ deferredEvents: [] });
+    checkCreditsActivity.mockResolvedValue({
+      shouldStop: true,
+      reason: "credits_exhausted",
+    });
+    finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(runToolActivityWithExplicitCancellation).toHaveBeenCalledTimes(2);
+    expect(
+      runRetryableToolActivityWithExplicitCancellation
+    ).not.toHaveBeenCalled();
   });
 });
 

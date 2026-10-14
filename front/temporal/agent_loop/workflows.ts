@@ -15,6 +15,7 @@ import type * as ongoingAgentLoopActivities from "@app/temporal/agent_loop/activ
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
+import type * as toolActivityStartMarkerActivities from "@app/temporal/agent_loop/activities/tool_activity_start_marker";
 import {
   MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
@@ -24,6 +25,7 @@ import { waitForAllPromises } from "@app/temporal/agent_loop/lib/wait_for_all_pr
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
+  isToolActivityHeartbeatTimeout,
 } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
@@ -49,6 +51,7 @@ import {
   ActivityCancellationType,
   CancellationScope,
   deprecatePatch,
+  isCancellation,
   log,
   patched,
   proxyActivities,
@@ -128,6 +131,72 @@ const { runToolActivity: runRetryableToolActivityWithExplicitCancellation } =
       maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
     },
   });
+
+const { claimToolActivityNeverStartedActivity } = proxyActivities<
+  typeof toolActivityStartMarkerActivities
+>({
+  startToCloseTimeout: "1 minute",
+  retry: {
+    maximumAttempts: 5,
+  },
+});
+
+/**
+ * @cc [owner:tdraier,label:error-handling;concurrency] retry-never-started-once
+ * The tool activity MUST be rescheduled at most once, and only after a `runToolActivity` heartbeat
+ * timeout for which `claimToolActivityNeverStartedActivity` returned true. Any other failure, or a
+ * failure of the rescheduled attempt, MUST be rethrown unchanged; a non-cancellation failure of the
+ * claim MUST rethrow the original timeout. Relies on every agent loop worker running
+ * `runToolActivity`'s `claim-start-before-work`.
+ */
+async function runNonRetryableToolActivity(
+  runActivity: typeof runToolActivity,
+  authType: AuthenticatorType,
+  activityArgs: Parameters<typeof runToolActivity>[1]
+): Promise<ToolExecutionResult> {
+  try {
+    return await runActivity(authType, activityArgs);
+  } catch (err) {
+    if (
+      !isToolActivityHeartbeatTimeout(err) ||
+      err.activityId === undefined ||
+      !patched("retry-never-started-tool-activity")
+    ) {
+      throw err;
+    }
+
+    const { workflowId, runId } = workflowInfo();
+    const logContext = {
+      actionId: activityArgs.actionId,
+      activityId: err.activityId,
+      workspaceId: authType.workspaceId,
+    };
+    let neverStarted: boolean;
+    try {
+      neverStarted = await claimToolActivityNeverStartedActivity({
+        workflowId,
+        runId,
+        activityId: err.activityId,
+      });
+    } catch (claimErr) {
+      if (isCancellation(claimErr)) {
+        throw claimErr;
+      }
+      log.error("Failed to claim tool activity as never started.", {
+        ...logContext,
+        error: claimErr,
+      });
+      throw err;
+    }
+    if (!neverStarted) {
+      log.warn("Tool activity timed out after it started.", logContext);
+      throw err;
+    }
+
+    log.warn("Rescheduling tool activity that never started.", logContext);
+    return runActivity(authType, activityArgs);
+  }
+}
 
 const { publishDeferredEventsActivity } = proxyActivities<
   typeof publishDeferredEventsActivities
@@ -583,12 +652,16 @@ async function executeStepIteration({
   deprecatePatch("wait-for-all-tool-activities-before-finalization");
   const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
     retryPolicy === "no_retry"
-      ? runToolActivityWithExplicitCancellation(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
+      ? runNonRetryableToolActivity(
+          runToolActivityWithExplicitCancellation,
+          authType,
+          {
+            actionId,
+            runAgentArgs: agentLoopArgs,
+            step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+          }
+        )
       : runRetryableToolActivityWithExplicitCancellation(authType, {
           actionId,
           runAgentArgs: agentLoopArgs,
@@ -654,7 +727,11 @@ export async function runSandboxChildToolWorkflow({
           toolResult = await runRetryableToolActivity(authType, activityArgs);
           break;
         case "no_retry":
-          toolResult = await runToolActivity(authType, activityArgs);
+          toolResult = await runNonRetryableToolActivity(
+            runToolActivity,
+            authType,
+            activityArgs
+          );
           break;
         default:
           assertNever(retryPolicy);
