@@ -3,7 +3,9 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { validatePublicModelSelection } from "@app/lib/api/assistant/conversation/model_selection";
 import config from "@app/lib/api/config";
+import { mcpModelSelectionInputSchema } from "@app/lib/api/mcp_server/tools/conversations/model_selection";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -35,6 +37,7 @@ const inputSchema = {
     .describe(
       `Agent name to mention and trigger when posting the first message. Defaults to "${DEFAULT_AGENT_NAME}". Pass null explicitly to post without triggering any agent. Only used when message is provided.`
     ),
+  modelSelection: mcpModelSelectionInputSchema,
 };
 
 export function registerConversationsCreateTool(server: McpServer) {
@@ -42,10 +45,10 @@ export function registerConversationsCreateTool(server: McpServer) {
     server,
     "create_conversation",
     {
-      description: `Create a new conversation in the current workspace. Optionally pass podId to create it in a Pod, and message to post the first user message in the same call (triggers the "${DEFAULT_AGENT_NAME}" agent by default; pass agentName: null to post without triggering any agent).`,
+      description: `Create a new conversation in the current workspace. Optionally pass podId to create it in a Pod, and message to post the first user message in the same call (triggers the "${DEFAULT_AGENT_NAME}" agent by default; pass agentName: null to post without triggering any agent). Optionally pass modelSelection to override the agent's default model and reasoning effort for that first message.`,
       inputSchema,
     },
-    async (auth, { title, podId, message, agentName }) => {
+    async (auth, { title, podId, message, agentName, modelSelection }) => {
       let resolvedSpaceModelId: number | null = null;
       let podName: string | null = null;
 
@@ -93,6 +96,14 @@ export function registerConversationsCreateTool(server: McpServer) {
       if (message) {
         const user = auth.user();
 
+        const modelSelectionRes = await validatePublicModelSelection(
+          auth,
+          modelSelection
+        );
+        if (modelSelectionRes.isErr()) {
+          return mcpError(modelSelectionRes.error.api_error.message);
+        }
+
         let mentions: { configurationId: string }[] = [];
         if (agentName !== null) {
           const matchedAgentId = await resolveAgentIdByName(auth, agentName);
@@ -118,6 +129,7 @@ export function registerConversationsCreateTool(server: McpServer) {
             lastTriggerRunAt: null,
           },
           skipToolsValidation: false,
+          modelSelection: modelSelectionRes.value,
         });
 
         if (messageRes.isErr()) {
