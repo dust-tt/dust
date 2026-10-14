@@ -131,7 +131,7 @@ export const GROK_4_6_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "xAI's Grok 4.6 model for coding and long-running agentic work (256k context, reasoning, vision).",
   shortDescription: "xAI's previous flagship model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
