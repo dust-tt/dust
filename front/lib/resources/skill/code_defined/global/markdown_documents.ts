@@ -50,7 +50,7 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
 People read your answers to comments in the document's threads rather than in this conversation.
 
-**Answering a comment.** A message that opens with \`:document_comment[<commented passage>]{id="<thread id>" path="<path>"}\` is a new comment left in that thread of that document, on the passage in brackets; the comment follows. Read the document with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\` for context. The thread itself, with its earlier messages, is in the \`:::annotations\` block at the end of what it returns, under \`::comment{id=<thread id> …}\`, one \`::message{author=… name=… at=…}\` line per message. Then answer with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME)}\`, passing that path and that thread id as \`comment_id\`, so your answer shows in the document.
+**Answering a comment.** A message that opens with \`:document_comment[<commented passage>]{id="<thread id>" path="<path>"}\` is a new comment left in that thread of that document, on the passage in brackets; the comment follows. Before anything else, always read the document with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\`, even when the comment seems clear on its own: the message holds only the new comment, and what it refers to is often in the thread's earlier messages. Never answer a comment without reading them first. The thread, with its earlier messages, is in the \`:::annotations\` block at the end of what it returns, under \`::comment{id=<thread id> …}\`, one \`::message{author=… name=… at=…}\` line per message. Then answer with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME)}\`, passing that path and that thread id as \`comment_id\`, so your answer shows in the document.
 
 Write like a reviewer in the margin: short, about the passage, no headings.
 
@@ -85,8 +85,8 @@ export const getMarkdownDocumentsInstructions = (
  * `:preview_file` directive the editor reads, and to read and
  * change an existing document only with the `documents` tools, never the file tools; and, if and
  * only if the run's user message has that origin, how to read the `document_comment` directive
- * that opens it, answer the message and find the thread it omits in the document. It MUST bring
- * the user mention tools they name.
+ * that opens it, answer the message, and to always read the document first, where it finds the
+ * thread the message omits, before answering. It MUST bring the user mention tools they name.
  */
 export const markdownDocumentsSkill = {
   sId: "markdown_documents",
