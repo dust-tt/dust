@@ -330,4 +330,65 @@ describe("useAgentFromSearchParam", () => {
     );
     expect(replaceMock).not.toHaveBeenCalled();
   });
+
+  it("does not mirror a previous Pod's selected agent into the URL when mirrorToUrl is false", () => {
+    // Cross-Pod switch: app-level selection still holds Pod A's agent while the
+    // destination Pod URL has no ?agent=. Mirroring would fake a deep link and
+    // override Pod B's configured default (tasks#11106).
+    setUrl("");
+    searchParamHolder.current = null;
+    selectedSingleAgentHolder.current = makeMention("pod_a_default");
+
+    renderHook(() => useAgentFromSearchParam("w_1", { mirrorToUrl: false }));
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(setSelectedAgent).not.toHaveBeenCalled();
+  });
+
+  it("still applies an intentional ?agent= deep link when mirrorToUrl is false", async () => {
+    setUrl("?agent=agent_deep");
+    searchParamHolder.current = "agent_deep";
+    agentConfigurationHolder.current = makeAgentConfiguration("agent_deep");
+
+    renderHook(() => useAgentFromSearchParam("w_1", { mirrorToUrl: false }));
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    expect(setSelectedAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent_deep", type: "agent" })
+    );
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("does not rewrite the URL after applying ?agent= when mirrorToUrl is false", async () => {
+    setUrl("?agent=agent_1#conversations");
+    searchParamHolder.current = "agent_1";
+    agentConfigurationHolder.current = makeAgentConfiguration("agent_1");
+
+    const { rerender } = renderHook(() =>
+      useAgentFromSearchParam("w_1", { mirrorToUrl: false })
+    );
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    selectedSingleAgentHolder.current = makeMention("agent_1");
+    rerender();
+
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps an intentional ?agent= on reload without mirroring a different selection", async () => {
+    // Reload with ?agent= still present: apply it, leave the URL alone so a
+    // subsequent reload keeps the intentional deep link.
+    setUrl("?agent=agent_1");
+    searchParamHolder.current = "agent_1";
+    agentConfigurationHolder.current = makeAgentConfiguration("agent_1");
+    selectedSingleAgentHolder.current = makeMention("pod_default");
+
+    renderHook(() => useAgentFromSearchParam("w_1", { mirrorToUrl: false }));
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    expect(setSelectedAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent_1" })
+    );
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
 });
