@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import CopyPlugin from "copy-webpack-plugin";
 import dotenv from "dotenv";
 import DotenvPlugin from "dotenv-webpack";
 import fs from "fs";
@@ -68,7 +69,10 @@ export const getConfig = async ({
   );
   const version = packageJson.version;
 
-  const buildDirPath = resolvePath("./build");
+  // Production builds go straight into the shared Office origin, served under `/excel/`.
+  const buildDirPath = isDevelopment
+    ? resolvePath("./build")
+    : resolvePath("../../office/dist/excel");
 
   const envPath = resolvePath(
     isDevelopment ? "../../.env.development" : "../../.env.production"
@@ -109,6 +113,9 @@ export const getConfig = async ({
       chunkFilename: isDevelopment
         ? "[id].chunk.js"
         : "assets/[id].[contenthash].chunk.js",
+      assetModuleFilename: isDevelopment
+        ? "[hash][ext][query]"
+        : "assets/[hash][ext][query]",
       publicPath: isDevelopment ? "/" : "/excel/",
     },
     resolve: {
@@ -237,6 +244,18 @@ export const getConfig = async ({
         filename: "auth.html",
         chunks: ["auth"],
       }),
+      ...(isDevelopment
+        ? []
+        : [
+            new CopyPlugin({
+              patterns: [
+                {
+                  from: resolvePath("./manifest.prod.xml"),
+                  to: "manifest.xml",
+                },
+              ],
+            }),
+          ]),
     ],
     devServer: {
       port: DEV_SERVER_PORT,
