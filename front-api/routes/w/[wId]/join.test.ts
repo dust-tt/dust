@@ -61,6 +61,7 @@ describe("GET /api/w/:wId/join", () => {
     const data = (await response.json()) as {
       onboardingType: string;
       workspace: { sId: string };
+      workspaceLocale: string;
       signInUrl: string;
     };
     expect(data.onboardingType).toBe("email_invite");
@@ -68,6 +69,7 @@ describe("GET /api/w/:wId/join", () => {
       sId: workspace.sId,
       name: workspace.name,
     });
+    expect(data.workspaceLocale).toBe(workspace.locale);
     expect(data.signInUrl).toBeDefined();
   });
 

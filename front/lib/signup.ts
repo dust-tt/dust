@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { SupportedLocale } from "@app/types/locale";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export type OnboardingType =
@@ -9,6 +10,7 @@ export type OnboardingType =
 export type GetJoinResponseBody = {
   onboardingType: OnboardingType;
   workspace: Pick<LightWorkspaceType, "sId" | "name">;
+  workspaceLocale: SupportedLocale;
   signInUrl: string;
   userExists: boolean;
 };
