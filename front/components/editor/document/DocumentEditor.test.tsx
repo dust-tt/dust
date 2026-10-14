@@ -1364,3 +1364,127 @@ describe("Document tables", () => {
     expect(editor.state.doc.eq(before)).toBe(true);
   });
 });
+
+describe("Document Frame embeds", () => {
+  const SOURCE_WITH_FRAME =
+    'Intro\n\n::embed_frame{path="pod-abc/dashboards/revenue.tsx"}\n\nOutro\n';
+
+  const renderFrames = async (renderFrame?: DocumentProps["renderFrame"]) => {
+    const { container } = render(
+      <DocumentEditor
+        initialContent={SOURCE_WITH_FRAME}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={renderFrame}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows a Frame through the host's renderer", async () => {
+    const dom = await renderFrames((path) => (
+      <iframe title={`Frame ${path}`} />
+    ));
+
+    expect(
+      await within(dom).findByTitle("Frame pod-abc/dashboards/revenue.tsx")
+    ).toBeDefined();
+  });
+
+  it("shows a Frame as its path without a renderer", async () => {
+    const dom = await renderFrames();
+
+    expect(
+      await within(dom).findByText("pod-abc/dashboards/revenue.tsx")
+    ).toBeDefined();
+  });
+
+  it("keeps a Frame's path when its HTML is pasted back", async () => {
+    const dom = await renderFrames();
+    const html = dom.editor.getHTML();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        html
+      );
+    });
+
+    expect(
+      dom.editor
+        .getMarkdown()
+        .match(/::embed_frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
+    ).toHaveLength(2);
+  });
+  it("does not paste a Frame whose path it cannot write", async () => {
+    const dom = await renderFrames();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        '<div data-document-frame=""></div><div data-document-frame="pod-abc/a&#10;b.tsx"></div>'
+      );
+    });
+
+    expect(
+      dom.editor.getJSON().content?.filter((node) => node.type === "frameEmbed")
+    ).toHaveLength(1);
+  });
+
+  it("keeps a Frame mounted when the read-only preview re-renders", async () => {
+    const renderPreview = () => (
+      <DocumentEditor
+        initialContent={`${SOURCE_WITH_FRAME}\n~~~\ncode\n~~~\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={(path) => <iframe title={`Frame ${path}`} />}
+      />
+    );
+    const { rerender } = render(renderPreview());
+    const frame = await screen.findByTitle(
+      "Frame pod-abc/dashboards/revenue.tsx"
+    );
+
+    rerender(renderPreview());
+
+    expect(screen.getByTitle("Frame pod-abc/dashboards/revenue.tsx")).toBe(
+      frame
+    );
+  });
+
+  it("shows in the read-only preview only the Frames the editor reads", async () => {
+    const rejected = [
+      '::embed_frame{path="pod-abc/b.tsx" title="B"}',
+      "::embed_frame{path=pod-abc/c.tsx}",
+      '::embed_frame[D]{path="pod-abc/d.tsx"}',
+      '   ::embed_frame{path="pod-abc/e.tsx"}',
+    ];
+    render(
+      <DocumentEditor
+        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::embed_frame{path="pod-abc/quoted.tsx"}\n\n- ::embed_frame{path="pod-abc/listed.tsx"}\n\n~~~\ncode\n~~~\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={(path) => <iframe title={`Frame ${path}`} />}
+      />
+    );
+
+    await screen.findByTitle("Frame pod-abc/dashboards/revenue.tsx");
+    expect(screen.getByTitle("Frame pod-abc/quoted.tsx")).toBeDefined();
+    expect(screen.getAllByTitle(/^Frame /)).toHaveLength(2);
+    for (const line of rejected) {
+      expect(screen.getByText(line.trim())).toBeDefined();
+    }
+    expect(
+      screen.getByText('::embed_frame{path="pod-abc/listed.tsx"}')
+    ).toBeDefined();
+  });
+});

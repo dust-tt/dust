@@ -4,7 +4,8 @@ import { useRef } from "react";
 
 interface PodFrameVisualizationProps {
   owner: LightWorkspaceType;
-  spaceId: string;
+  spaceId?: string;
+  conversationId?: string | null;
   fileContent: string;
   vizUrl: string;
   identifier: string;
@@ -23,6 +24,7 @@ interface PodFrameVisualizationProps {
 export function PodFrameVisualization({
   owner,
   spaceId,
+  conversationId = null,
   fileContent,
   vizUrl,
   identifier,
@@ -43,7 +45,7 @@ export function PodFrameVisualization({
         complete: true,
         identifier,
       }}
-      conversationId={null}
+      conversationId={conversationId}
       spaceId={spaceId}
       framePackageRoot={
         framePath && framePath.includes("/")

@@ -5,6 +5,7 @@ import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CollabParticipantsAvatars } from "@app/components/file_explorer/CollabParticipantsAvatars";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
+import { DocumentFrameEmbed } from "@app/components/file_explorer/DocumentFrameEmbed";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -39,7 +40,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { parse } from "csv-parse/browser/esm/sync";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -403,6 +404,10 @@ function RichMarkdownDocument({
     documentPath: editor.path,
   });
   const resolveImageSource = useResolveMarkdownImageUrl(owner);
+  const renderFrame = useCallback(
+    (path: string) => <DocumentFrameEmbed owner={owner} path={path} />,
+    [owner]
+  );
 
   const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
   const live = user
@@ -434,6 +439,7 @@ function RichMarkdownDocument({
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
       embeddableFiles={embeddableFiles}
+      renderFrame={renderFrame}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

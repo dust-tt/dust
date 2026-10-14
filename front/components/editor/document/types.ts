@@ -52,6 +52,8 @@ export interface DocumentProps {
   resolveImageSource: (src: string) => string | null;
   /** Files the `/` menu offers to embed. Without them, it offers no image. */
   embeddableFiles?: DocumentEmbeddableFiles;
+  /** Renders the Frame a `::embed_frame` line embeds, from its path. Without it, the embed shows its path. */
+  renderFrame?: (path: string) => ReactNode;
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
   badge?: ReactNode;
   /** Renders the users in the live session, the current one first, such as an avatar stack. */
