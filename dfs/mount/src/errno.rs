@@ -1,5 +1,6 @@
 use dfs_protocol::rpc::{ErrorCode, ErrorDetails};
 use prost::Message;
+use std::fmt;
 use tonic::Status;
 
 /// A POSIX error number, as the kernel expects it in a FUSE reply.
@@ -18,6 +19,14 @@ impl Errno {
     pub const EINVAL: Self = Self(libc::EINVAL);
     pub const EOPNOTSUPP: Self = Self(libc::EOPNOTSUPP);
 }
+
+impl fmt::Display for Errno {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "errno {}", self.0)
+    }
+}
+
+impl std::error::Error for Errno {}
 
 impl From<ErrorCode> for Errno {
     fn from(code: ErrorCode) -> Self {

@@ -1,9 +1,12 @@
 use crate::errno::Errno;
 use dfs_protocol::{
     ObjectRef,
-    rpc::{Attr, Empty, Session, dfs_client::DfsClient},
+    rpc::{Attr, Empty, Session, StatRequest, dfs_client::DfsClient},
 };
 use tonic::{Request, metadata::AsciiMetadataValue, transport::Channel};
+
+/// Most references one `Stat` request may carry.
+const MAX_STAT_REFERENCES: usize = 256;
 
 /// The mount's connection to the dfs server, authenticated with one session key. The caller builds
 /// the channel, TLS included.
@@ -55,10 +58,32 @@ impl Remote {
 
     /**
      * @cc [owner:fontanierh,label:api] stat-batch
-     * `stat` MUST return exactly one result per reference, in the same order, however many
-     * references it gets.
+     * On success, `stat` MUST return exactly one result per reference, in the same order, however
+     * many references it gets.
      */
-    pub async fn stat(&self, _references: &[ObjectRef]) -> Result<Vec<Result<Attr, Errno>>, Errno> {
-        todo!()
+    pub async fn stat(&self, references: &[ObjectRef]) -> Result<Vec<Result<Attr, Errno>>, Errno> {
+        let mut results = Vec::with_capacity(references.len());
+        for chunk in references.chunks(MAX_STAT_REFERENCES) {
+            let response = self
+                .client
+                .clone()
+                .stat(self.request(StatRequest {
+                    object_ids: chunk.to_vec(),
+                    include_metadata: None,
+                }))
+                .await?
+                .into_inner();
+            if response.results.len() != chunk.len() {
+                return Err(Errno::EIO);
+            }
+            results.extend(response.results.into_iter().map(|result| {
+                match (result.object, result.error) {
+                    (Some(attr), None) => Ok(attr),
+                    (None, Some(error)) => Err(error.code().into()),
+                    _ => Err(Errno::EIO),
+                }
+            }));
+        }
+        Ok(results)
     }
 }
