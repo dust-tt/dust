@@ -134,6 +134,8 @@ interface DocumentViewProps extends DocumentProps {
       extensions: AnyExtension[];
       connected: boolean;
       comments: CommentChannel;
+      /** Places the caret at the document's start when it first turns editable. */
+      focusOnOpen?: boolean;
     } | null;
   };
 }

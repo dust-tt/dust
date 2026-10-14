@@ -10,6 +10,7 @@ import {
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
+import { isEditableTarget } from "@app/hooks/useAppKeyboardShortcuts";
 import { rand } from "@app/lib/utils/seeded_random";
 import datadogLogger from "@app/logger/datadogLogger";
 import { cn } from "@dust-tt/sparkle";
@@ -21,6 +22,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -33,6 +35,8 @@ interface UseDocumentEditorProps {
     extensions: AnyExtension[];
     /** Editing pauses while the connection is down. */
     connected: boolean;
+    /** Places the caret at the document's start when it first turns editable. */
+    focusOnOpen?: boolean;
   };
   resolveImageSource: DocumentProps["resolveImageSource"];
 }
@@ -71,6 +75,12 @@ const logRefusal = (reason: string, source: string) => {
  * A local or remote edit MUST NOT set the hook's state, and MUST NOT make the hook serialize the
  * document; only an `isSavable` call does. Re-rendering with unchanged props MUST NOT hand
  * `useEditor` an option of a new identity, which reapplies every option to the view.
+ */
+/**
+ * @cc [owner:PopDaph,label:product;react] document-caret-on-open
+ * With `live.focusOnOpen`, the editor MUST take focus with its caret at the document's start the
+ * first time it is editable, unless an input, textarea, select or editable element has focus then.
+ * It MUST NOT take focus again afterwards.
  */
 export const useDocumentEditor = ({
   initialContent,
@@ -153,6 +163,18 @@ export const useDocumentEditor = ({
       editor.setEditable(editable, false);
     }
   }, [editor, editable]);
+
+  const focusOnOpen = live?.focusOnOpen ?? false;
+  const openedRef = useRef(false);
+  useEffect(() => {
+    if (!editor || !editable || !focusOnOpen || openedRef.current) {
+      return;
+    }
+    openedRef.current = true;
+    if (!isEditableTarget(document.activeElement)) {
+      editor.commands.focus("start");
+    }
+  }, [editor, editable, focusOnOpen]);
 
   const isSavable = useCallback(
     (document: JSONContent) =>

@@ -5,7 +5,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 
-function isEditableTarget(target: EventTarget | null): boolean {
+export function isEditableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||

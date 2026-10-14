@@ -136,6 +136,7 @@ async function renderDocument(
     resolveImageSource = NO_IMAGE_SOURCE,
     readOnly,
     renderFrame,
+    focusOnOpen,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
@@ -143,6 +144,7 @@ async function renderDocument(
     resolveImageSource?: DocumentProps["resolveImageSource"];
     readOnly?: boolean;
     renderFrame?: DocumentProps["renderFrame"];
+    focusOnOpen?: boolean;
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -174,6 +176,7 @@ async function renderDocument(
           }),
           connected: true,
           comments: session.channel,
+          focusOnOpen,
         },
       }}
     />
@@ -918,6 +921,59 @@ describe("Document comments", () => {
     );
     const { from, to } = field.editor.state.selection;
     expect(field.editor.state.doc.textBetween(from, to)).toBe("gentle");
+  });
+});
+
+describe("Document caret on open", () => {
+  const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () => [],
+    });
+    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+      }),
+    });
+  });
+
+  it("places the caret at the document's start", async () => {
+    const { dom, editor } = await renderDocument("# Title\n\nBody.\n", {
+      focusOnOpen: true,
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(dom));
+    expect(editor.state.selection.from).toBe(1);
+  });
+
+  it("leaves focus in a field the user is typing in", async () => {
+    const field = document.createElement("textarea");
+    document.body.append(field);
+    field.focus();
+    try {
+      await renderDocument("# Title\n", { focusOnOpen: true });
+      await act(nextTick);
+
+      expect(document.activeElement).toBe(field);
+    } finally {
+      field.remove();
+    }
+  });
+
+  it("does not take focus without focusOnOpen", async () => {
+    const { dom } = await renderDocument("# Title\n");
+    await act(nextTick);
+
+    expect(document.activeElement).not.toBe(dom);
   });
 });
 
