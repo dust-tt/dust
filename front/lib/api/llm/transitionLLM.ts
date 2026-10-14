@@ -714,13 +714,20 @@ abstract class BaseTransition extends LLM {
     );
   }
 
-  // The last effort change sent with the request, else the top-level effort.
+  // The effort the request's reply runs at: the last effort change sent before its last user turn
+  // with new input, else the top-level effort. An effort change only applies from the next user
+  // turn with new input, and tool results do not count as such, so a change placed after the last
+  // one does not apply to this reply yet.
   protected override getReasoningEffortInEffect({
     conversation,
   }: LLMStreamParameters): ReasoningEffort {
-    const lastEffortChange = this.toBaseMessagesWithEffortChanges(
-      conversation
-    ).findLast((m) => m.role === "system");
+    const messages = this.toBaseMessagesWithEffortChanges(conversation);
+    const lastNewInputIndex = messages.findLastIndex(
+      (m) => m.role === "user" && m.type !== "tool_call_result"
+    );
+    const lastEffortChange = messages
+      .slice(0, Math.max(lastNewInputIndex, 0))
+      .findLast((m) => m.role === "system");
 
     return lastEffortChange?.role === "system"
       ? lastEffortChange.content.effort
