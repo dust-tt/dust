@@ -365,10 +365,6 @@ msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters."
 msgstr "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "- Optional"
-msgstr "- Optional"
-
-#: front/components/UserSettingsPopover.tsx
 msgid "Personal Information"
 msgstr "Personal Information"
 
