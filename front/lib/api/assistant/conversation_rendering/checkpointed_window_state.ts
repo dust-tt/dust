@@ -157,6 +157,7 @@ const persistedMessageBaseSchema = z.discriminatedUnion("role", [
   z
     .object({
       role: z.literal("effort_change"),
+      from: z.enum(ORDERED_REASONING_EFFORTS),
       effort: z.enum(ORDERED_REASONING_EFFORTS),
       tokenCount: tokenCountSchema,
     })
