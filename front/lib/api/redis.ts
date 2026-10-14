@@ -87,6 +87,7 @@ export type RedisUsageTagsType =
   | "poke_cache_invalidation"
   | "poke_cache_lookup"
   | "public_api_limits"
+  | "public_frame_invocation_results"
   | "rate_limiter"
   | "reasoning_generation"
   | "retry_agent_message"
