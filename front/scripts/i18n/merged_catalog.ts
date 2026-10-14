@@ -48,6 +48,19 @@ export async function compileMergedCatalog(
   return { source, dependencies };
 }
 
+/**
+ * @cc [owner:ykmsd,label:performance] merged-catalog-own-chunk
+ * Given a module id, MUST return `catalog-{locale}` for a `front/locales/{locale}.catalog` import
+ * and `undefined` for any other module, so that bundlers using it as `manualChunks` emit each
+ * merged catalog alone in its chunk, without code that would get a new hash on every copy change.
+ */
+export function mergedCatalogChunkName(id: string): string | undefined {
+  if (!MERGED_CATALOG_FILE_REGEX.test(id)) {
+    return undefined;
+  }
+  return `catalog-${path.basename(id).replace(MERGED_CATALOG_FILE_REGEX, "")}`;
+}
+
 export function linguiMergedCatalogPlugin(): Plugin {
   return {
     name: "lingui-merged-catalog",
