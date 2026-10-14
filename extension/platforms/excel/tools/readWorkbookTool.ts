@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { checkSteps } from "@extension/platforms/excel/tools/checkSteps";
 import {
   parseExpression,
   type Step,
@@ -41,17 +42,6 @@ function isReadTarget(value: unknown): value is ReadTarget {
     isLoadableClientObject(value) ||
     value instanceof OfficeExtension.ClientResult
   );
-}
-
-/**
- * TODO(office_addin): check each step against an allowlist of the read-only properties and
- * methods of the Office.js Excel API. Until then, every step is accepted.
- *
- * TODO(office_addin): check the `load` step with the allowlist. An expression that gives an
- * object must end with `load(...)` with one argument, and `load` must be the last step.
- */
-function checkSteps(steps: Step[]): Result<undefined, string> {
-  return new Ok(undefined);
 }
 
 /**
@@ -104,7 +94,10 @@ function resolveTarget(
 ): Result<ReadTarget, string> {
   let current: unknown = workbook;
   for (const step of steps) {
-    // `Reflect.get` needs an object. After the allowlist check, this check does not fail.
+    // Each step must start from an Office.js object. `checkSteps` already refuses `constructor`,
+    // so `workbook.constructor.constructor('code')` cannot reach `Function`. This check is a
+    // second protection: a step cannot run on a JavaScript function or another value that a
+    // property gives, such as `workbook.context`. Also, `Reflect.get` needs an object.
     if (!(current instanceof OfficeExtension.ClientObject)) {
       return new Err(
         `cannot get "${step.name}" on a value that is not an Office.js object.`
@@ -149,6 +142,18 @@ function queueReads(
     const target = resolveTarget(workbook, steps);
     if (target.isErr()) {
       return new Err(`Read ${index}: ${target.error}`);
+    }
+    // An Office.js object is empty until it is loaded. A `ClientResult`, as from `getCount()`,
+    // has nothing to load. `checkSteps` makes sure that `load` can only be the last step.
+    // Example: `workbook.getSelectedRange()` gives this error.
+    const lastStep = steps[steps.length - 1];
+    if (
+      target.value instanceof OfficeExtension.ClientObject &&
+      lastStep?.name !== "load"
+    ) {
+      return new Err(
+        `Read ${index}: end the expression with load(...), for example load(['address', 'values']).`
+      );
     }
     queued.push(target.value);
   }
