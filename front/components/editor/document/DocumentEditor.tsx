@@ -91,6 +91,11 @@ const CollabEditor = lazy(
  * its activity MUST show before the participants, wherever the comments button shows, and not
  * with the save and live statuses.
  */
+/**
+ * @cc [owner:adrien,label:product] document-active-comment-after-sync
+ * A live document MUST NOT open `activeComment` nor report its changes until its session is
+ * live, so the thread opens once, in the editor that stays, with its reply field.
+ */
 export const DocumentEditor = (props: DocumentProps) =>
   props.live ? (
     <Suspense
@@ -277,7 +282,8 @@ export const DocumentView = ({
     isSavable,
     verify: verifyCommentMessage,
     live: live.binding?.comments,
-    activeComment,
+    activeComment:
+      !collabView || collabView.binding?.connected ? activeComment : undefined,
   });
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
