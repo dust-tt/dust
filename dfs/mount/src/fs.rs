@@ -1,6 +1,10 @@
-use crate::{errno::Errno, remote::Remote};
-use dfs_protocol::ObjectId;
-use std::time::SystemTime;
+use crate::{errno::Errno, inodes::Inodes, remote::Remote};
+use dfs_protocol::{ObjectId, is_valid_name};
+use std::{
+    collections::HashSet,
+    sync::{Mutex, PoisonError},
+    time::SystemTime,
+};
 
 /// A FUSE inode number. dfs object IDs are 128 bits, so the mount gives each object a 64-bit number.
 pub type Ino = u64;
@@ -42,13 +46,41 @@ pub struct Folder {
 
 /// The filesystem served by the mount, independent of the FUSE library. Inode numbers come from
 /// and go back to the kernel; everything else is fetched from the dfs server.
-pub struct Fs {}
+pub struct Fs {
+    #[expect(
+        dead_code,
+        reason = "used by `getattr`, `lookup` and `readdir`, not implemented yet"
+    )]
+    remote: Remote,
+    #[expect(
+        dead_code,
+        reason = "used by `lookup` and `readdir`, not implemented yet"
+    )]
+    folders: Vec<Folder>,
+    inodes: Mutex<Inodes>,
+}
 
 impl Fs {
-    /// Fails with `EINVAL` if a folder name is not a valid basename, or if a name or a folder
-    /// appears twice: a directory must not have two names.
-    pub fn new(_remote: Remote, _folders: Vec<Folder>) -> Result<Self, Errno> {
-        todo!()
+    /// A directory must not have two names, so each folder appears once.
+    /**
+     * @cc [owner:fontanierh,label:product] valid-folders
+     * `new` MUST fail with `EINVAL` unless every folder name is a valid object name, no name appears
+     * twice, and no folder ID appears twice.
+     */
+    pub fn new(remote: Remote, folders: Vec<Folder>) -> Result<Self, Errno> {
+        let mut names = HashSet::new();
+        let mut ids = HashSet::new();
+        for folder in &folders {
+            if !is_valid_name(&folder.name) || !names.insert(&folder.name) || !ids.insert(folder.id)
+            {
+                return Err(Errno::EINVAL);
+            }
+        }
+        Ok(Self {
+            remote,
+            folders,
+            inodes: Mutex::new(Inodes::new()),
+        })
     }
 
     pub async fn getattr(&self, _ino: Ino) -> Result<Attributes, Errno> {
@@ -81,7 +113,51 @@ impl Fs {
      * The mount MUST keep an object until the kernel has forgotten every lookup of it, and MUST
      * drop it then. The root MUST never be dropped.
      */
-    pub fn forget(&self, _ino: Ino, _count: u64) {
-        todo!()
+    pub fn forget(&self, ino: Ino, count: u64) {
+        self.inodes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .forget(ino, count);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tonic::transport::Channel;
+
+    fn folder(name: &str, id: ObjectId) -> Folder {
+        Folder {
+            name: name.to_owned(),
+            id,
+        }
+    }
+
+    fn new_fs(folders: Vec<Folder>) -> Result<Fs, Errno> {
+        let channel = Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        Fs::new(Remote::new(channel, &"0".repeat(64))?, folders)
+    }
+
+    #[tokio::test]
+    async fn new_accepts_distinct_folders() -> Result<(), Errno> {
+        new_fs(vec![
+            folder("conversation", ObjectId::new_v7()),
+            folder("project", ObjectId::new_v7()),
+        ])?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn new_rejects_invalid_or_repeated_folders() {
+        let id = ObjectId::new_v7();
+        for folders in [
+            vec![folder("", id)],
+            vec![folder("..", id)],
+            vec![folder("a/b", id)],
+            vec![folder("a", id), folder("a", ObjectId::new_v7())],
+            vec![folder("a", id), folder("b", id)],
+        ] {
+            assert_eq!(new_fs(folders).err(), Some(Errno::EINVAL));
+        }
     }
 }
