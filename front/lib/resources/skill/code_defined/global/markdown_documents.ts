@@ -21,25 +21,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
-
-/** The line that opens the user message posted for a document comment. */
-export const documentCommentMessageHeading = ({
-  commentId,
-  documentPath,
-  location,
-}: {
-  commentId: string;
-  documentPath: string;
-  location: string;
-}) =>
-  `Comment in thread \`${commentId}\` of the document \`${documentPath}\`, in ${location}:`;
-
-const COMMENT_MESSAGE_HEADING_PATTERN =
-  /^Comment in thread `[^`\n]+` of the document `/;
-
-/** Whether `content` opens as a `documentCommentMessageHeading` does, up to the document path. */
-export const isDocumentCommentMessage = (content: string) =>
-  COMMENT_MESSAGE_HEADING_PATTERN.test(content);
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isDocumentCommentOrigin } from "@app/types/assistant/document_comment";
 
 const MARKDOWN_DOCUMENTS_INSTRUCTIONS = `
 Markdown documents (\`.md\`) in the conversation's or pod's files open in an editor where people read and edit them, and discuss passages in comment threads.
@@ -67,7 +50,7 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
 People read your answers to comments in the document's threads rather than in this conversation.
 
-**Answering a comment.** A message that opens with "Comment in thread \`<thread id>\` of the document \`<path>\`" was left in that thread; it gives the commented passage and the new comment. Read the document with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\` for context. The thread itself, with its earlier messages, is in the \`:::annotations\` block at the end of what it returns, under \`::comment{id=<thread id> …}\`, one \`::message{author=… name=… at=…}\` line per message. Then answer with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME)}\`, passing that path and that thread id as \`comment_id\`, so your answer shows in the document.
+**Answering a comment.** A message that opens with \`:document_comment[<commented passage>]{id="<thread id>" path="<path>"}\` is a new comment left in that thread of that document, on the passage in brackets; the comment follows. Read the document with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\` for context. The thread itself, with its earlier messages, is in the \`:::annotations\` block at the end of what it returns, under \`::comment{id=<thread id> …}\`, one \`::message{author=… name=… at=…}\` line per message. Then answer with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME)}\`, passing that path and that thread id as \`comment_id\`, so your answer shows in the document.
 
 Write like a reviewer in the margin: short, about the passage, no headings.
 
@@ -83,29 +66,27 @@ Write like a reviewer in the margin: short, about the passage, no headings.
 **Mentioning people.** Mention a user only to ask for their input or tell them something they need to act on, never just to address the person you answer. A mention reads \`:mention_user[Name]{sId=<user id>}\`; for someone in the thread, take both from their message line, \`author=user:<user id> name="Name"\`. For anyone else, find them with \`${getPrefixedToolName(USER_MENTIONS_SERVER_NAME, SEARCH_AVAILABLE_USERS_TOOL_NAME)}\` and get the mention with \`${getPrefixedToolName(USER_MENTIONS_SERVER_NAME, GET_MENTION_MARKDOWN_TOOL_NAME)}\`. Do not mention agents in comments.
 `;
 
-/** The skill's instructions for a run whose user message is `userMessageContent`. */
 export const getMarkdownDocumentsInstructions = (
-  userMessageContent: string | null
+  origin: UserMessageOrigin | null
 ) =>
-  userMessageContent !== null && isDocumentCommentMessage(userMessageContent)
+  isDocumentCommentOrigin(origin)
     ? MARKDOWN_DOCUMENTS_INSTRUCTIONS + DOCUMENT_COMMENTS_INSTRUCTIONS
     : MARKDOWN_DOCUMENTS_INSTRUCTIONS;
 
 /**
  * @cc [owner:tdraier,label:product] markdown-documents-skill
  * In workspaces with `co_edition`, the skill MUST be enabled, its instructions in the system
- * prompt from the first step, in an agent run whose user message opens as
- * `documentCommentMessageHeading` does, up to the document path (``Comment in thread `<id>` of
- * the document ` ``), and MUST be offered to agents to enable in every other agent run, including
+ * prompt from the first step, in an agent run whose user message has the `document_comment`
+ * origin, and MUST be offered to agents to enable in every other agent run, including
  * when skills are resolved without the run's user message. It MUST NOT be offered by itself in
  * other workspaces. Its instructions MUST tell agents how to write a document the editor can open,
  * how to embed an image by the file path `resolveDocumentImageSource` displays, how to embed a
  * Frame with the `::embed_frame` line the editor reads, how to reference a file with the
  * `:preview_file` directive the editor reads, and to read and
  * change an existing document only with the `documents` tools, never the file tools; and, if and
- * only if the run's user message opens as that heading does, how to recognize and answer that
- * message and find the thread it omits in the document. It MUST bring the user mention tools
- * they name.
+ * only if the run's user message has that origin, how to read the `document_comment` directive
+ * that opens it, answer the message and find the thread it omits in the document. It MUST bring
+ * the user mention tools they name.
  */
 export const markdownDocumentsSkill = {
   sId: "markdown_documents",
@@ -120,7 +101,7 @@ export const markdownDocumentsSkill = {
     "opens and how to embed generated or attached images and Frames, and reference files.",
   fetchInstructions: async (_auth, { agentLoopData }) =>
     getMarkdownDocumentsInstructions(
-      agentLoopData?.userMessage.content ?? null
+      agentLoopData?.userMessage.context.origin ?? null
     ),
   mcpServers: [{ name: USER_MENTIONS_SERVER_NAME }],
   exposeInstructions: true,
@@ -129,7 +110,7 @@ export const markdownDocumentsSkill = {
   isRestricted: async (auth: Authenticator) =>
     !(await hasFeatureFlag(auth, "co_edition")),
   getAutoEnabledOrEquippedForAgentLoop: ({ userMessage }) =>
-    userMessage && isDocumentCommentMessage(userMessage.content)
+    isDocumentCommentOrigin(userMessage?.context.origin ?? null)
       ? "enabled"
       : "equipped",
 } as const satisfies GlobalSkillDefinition;
