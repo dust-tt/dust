@@ -1,3 +1,4 @@
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -61,6 +62,7 @@ describe("GET /api/w/:wId/join", () => {
     const data = (await response.json()) as {
       onboardingType: string;
       workspace: { sId: string };
+      workspaceLocale: string;
       signInUrl: string;
     };
     expect(data.onboardingType).toBe("email_invite");
@@ -68,7 +70,25 @@ describe("GET /api/w/:wId/join", () => {
       sId: workspace.sId,
       name: workspace.name,
     });
+    expect(data.workspaceLocale).toBe("en-US");
     expect(data.signInUrl).toBeDefined();
+  });
+
+  it("returns the workspace locale", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    await workspaceResource?.updateWorkspaceSettings({ locale: "fr-FR" });
+
+    const invitation = await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "test@example.com",
+    });
+    const token = getMembershipInvitationToken(invitation.toJSON());
+
+    const response = await joinRequest(workspace.sId, { t: token });
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as { workspaceLocale: string };
+    expect(data.workspaceLocale).toBe("fr-FR");
   });
 
   it("returns 404 for an invite token belonging to another workspace", async () => {
