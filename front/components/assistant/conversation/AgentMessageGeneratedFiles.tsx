@@ -93,6 +93,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             ...(file.updatedAt !== undefined
               ? { timestamp: String(file.updatedAt) }
               : {}),
+            openedFrom: { source: "user", uiElement: "message_frame_card" },
           });
         };
 

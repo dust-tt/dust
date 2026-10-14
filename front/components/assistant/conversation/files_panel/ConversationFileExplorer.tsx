@@ -233,7 +233,11 @@ export function ConversationFileExplorer({
 
   const onOpenInteractive = useCallback(
     (entry: { fileId: string }) =>
-      openPanel({ type: "interactive_content", fileId: entry.fileId }),
+      openPanel({
+        type: "interactive_content",
+        fileId: entry.fileId,
+        openedFrom: { source: "user", uiElement: "conversation_files_panel" },
+      }),
     [openPanel]
   );
 

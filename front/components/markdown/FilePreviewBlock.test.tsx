@@ -278,6 +278,7 @@ describe("getFilePreviewPlugin", () => {
         {
           type: "interactive_content",
           fileId: "fil_frame",
+          openedFrom: { source: "user", uiElement: "file_citation" },
         },
         { keepCurrent: false }
       );
