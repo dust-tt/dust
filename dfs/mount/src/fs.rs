@@ -125,7 +125,8 @@ impl Fs {
 
     /**
      * @cc [owner:fontanierh,label:product] synthetic-root
-     * The root MUST list only configured folders, and MUST be read-only.
+     * The root MUST list only the configured folders that the server reports as readable
+     * directories, and MUST be read-only.
      */
     pub async fn readdir(&self, ino: Ino) -> Result<Vec<DirEntry>, Errno> {
         if ino != ROOT_INO {
