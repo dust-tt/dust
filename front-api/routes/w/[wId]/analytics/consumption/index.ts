@@ -16,6 +16,7 @@ import topApiKeys from "./top-api-keys";
 import topConversations from "./top-conversations";
 import topGroups from "./top-groups";
 import topModels from "./top-models";
+import topPods from "./top-pods";
 import topReasoningEfforts from "./top-reasoning-efforts";
 import topSkills from "./top-skills";
 import topSources from "./top-sources";
@@ -50,6 +51,7 @@ export function createWorkspaceConsumptionRoutes() {
   app.route("/export-raw", exportRawRoute);
   app.route("/top-agents", topAgents);
   app.route("/top-groups", topGroups);
+  app.route("/top-pods", topPods);
   app.route("/top-users", topUsers);
 
   return app;

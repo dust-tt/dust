@@ -1,4 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { buildPodSpaceFilter } from "@app/lib/api/analytics/consumption/pods";
 import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionGroupBucket,
@@ -206,7 +207,11 @@ async function fetchTimeseriesBreakdown(
 ): Promise<Result<ConsumptionTimeseriesData, ElasticsearchError>> {
   const field = CONSUMPTION_DIMENSION_FIELDS[breakdownBy];
 
-  const rankingResult = await fetchTopDimensions(query, {
+  const rankingQuery =
+    breakdownBy === "pod"
+      ? { bool: { filter: [query, await buildPodSpaceFilter(auth)] } }
+      : query;
+  const rankingResult = await fetchTopDimensions(rankingQuery, {
     field,
     limit: breakdownCount,
     metric: scope.metric,

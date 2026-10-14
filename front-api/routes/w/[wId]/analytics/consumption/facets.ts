@@ -50,10 +50,10 @@ const app = consumptionAnalyticsApp();
  *                 description: Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs.
  *               dimensions:
  *                 type: array
- *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions, and the agent route omits the agent dimension.
+ *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user, group and pod dimensions, and the agent route omits agent and pod dimensions.
  *                 items:
  *                   type: string
- *                   enum: [agent, user, api_key, group, model, tool, skill, source]
+ *                   enum: [agent, user, api_key, group, model, tool, skill, source, trigger, pod]
  *               filter:
  *                 type: object
  *                 description: Map of consumption dimensions to selected values.
@@ -91,6 +91,18 @@ const app = consumptionAnalyticsApp();
  *                     type: array
  *                     items:
  *                       type: string
+ *                   triggers:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   pods:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   tags:
+ *                     type: array
+ *                     items:
+ *                       type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -114,7 +126,7 @@ const app = consumptionAnalyticsApp();
  *                       format: date-time
  *                 facets:
  *                   type: object
- *                   required: [agent, user, api_key, group, model, tool, skill, source]
+ *                   required: [agent, user, api_key, group, model, tool, skill, source, trigger, pod]
  *                   properties:
  *                     agent:
  *                       type: array
@@ -145,6 +157,14 @@ const app = consumptionAnalyticsApp();
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
  *                     source:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
+ *                     trigger:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
+ *                     pod:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
@@ -182,11 +202,14 @@ app.post(
       scope,
       dimensions: userId
         ? (dimensions ?? CONSUMPTION_SCOPE_DIMENSIONS).filter(
-            (dimension) => dimension !== "user" && dimension !== "group"
+            (dimension) =>
+              dimension !== "user" &&
+              dimension !== "group" &&
+              dimension !== "pod"
           )
         : agentId
           ? (dimensions ?? CONSUMPTION_SCOPE_DIMENSIONS).filter(
-              (dimension) => dimension !== "agent"
+              (dimension) => dimension !== "agent" && dimension !== "pod"
             )
           : dimensions,
       userId,

@@ -10,6 +10,7 @@ import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/t
 import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
+import { fetchConsumptionTopPods } from "@app/lib/api/analytics/consumption/top_pods";
 import { fetchConsumptionTopReasoningEfforts } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
 import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
@@ -21,6 +22,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -776,6 +778,25 @@ describe("consumption top rankings", () => {
     expect(
       options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
     ).toBe("agent_message_id");
+  });
+
+  it("ranks pods only, leaving other spaces out of the ranking", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const pod = await SpaceFactory.project(workspace);
+    const regularSpace = await SpaceFactory.regular(workspace);
+    mockLabels({});
+    mockAggs({ buckets: [], totalCount: 0, totalMicro: 0, filtered: true });
+
+    await fetchConsumptionTopPods(auth, { period: PERIOD, limit: 10 });
+
+    const [, options] = rankingSearchCall();
+    expect(options?.aggregations?.ranking?.filter).toEqual({
+      terms: { space_id: [pod.sId] },
+    });
+    expect(
+      options?.aggregations?.ranking?.filter?.terms?.space_id
+    ).not.toContain(regularSpace.sId);
   });
 
   it("narrows the scope with the requested filter", async () => {

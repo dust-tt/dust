@@ -557,6 +557,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   /**
+   * @cc [owner:rfrenoy,label:security] list-accessible-project-spaces
+   * MUST only return project spaces for which `canFetch(auth)` is true, so restricted pods are left
+   * out for callers holding no verb on them.
+   */
+  static async listAccessibleProjectSpaces(
+    auth: Authenticator,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<SpaceResource[]> {
+    const spaces = await this.baseFetch(auth, {
+      where: { kind: "project" },
+      includeDeleted,
+    });
+    return spaces.filter((space) => space.canFetch(auth));
+  }
+
+  /**
    * @cc [owner:aubin-tchoi,label:product] readable-before-limit
    * Pagination MUST apply to spaces the caller can read. Filtering read access after
    * the SQL `limit` under-fills pages (including empty pages) when unreadable Pods sort

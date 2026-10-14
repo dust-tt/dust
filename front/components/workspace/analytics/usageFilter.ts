@@ -21,6 +21,7 @@ export const USAGE_FILTER_CATEGORIES = [
   "agent",
   "member",
   "group",
+  "pod",
   "model",
   "tool",
   "skill",
@@ -33,11 +34,12 @@ export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 
 const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
   USAGE_FILTER_CATEGORIES.filter(
-    (category) => category !== "member" && category !== "group"
+    (category) =>
+      category !== "member" && category !== "group" && category !== "pod"
   );
 
 const AGENT_USAGE_FILTER_CATEGORIES = USAGE_FILTER_CATEGORIES.filter(
-  (category) => category !== "agent"
+  (category) => category !== "agent" && category !== "pod"
 );
 
 export function getUsageFilterCategories(
@@ -65,6 +67,7 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   skill: "Skill",
   source: "Source",
   trigger: "Trigger",
+  pod: "Pod",
   api_key: "API key",
 };
 
@@ -123,6 +126,10 @@ export interface UsageFilterTriggerOption extends UsageFilterOptionBase {
   kind: "trigger";
 }
 
+export interface UsageFilterPodOption extends UsageFilterOptionBase {
+  kind: "pod";
+}
+
 export interface UsageFilterApiKeyOption extends UsageFilterOptionBase {
   kind: "api_key";
 }
@@ -136,6 +143,7 @@ export type UsageFilterOption =
   | UsageFilterToolOption
   | UsageFilterSkillOption
   | UsageFilterTriggerOption
+  | UsageFilterPodOption
   | UsageFilterApiKeyOption;
 
 export interface UsageFilterGroup {
@@ -168,6 +176,7 @@ export const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   skill: [],
   source: [],
   trigger: [],
+  pod: [],
   api_key: [],
 };
 
@@ -234,6 +243,7 @@ export function resolveUsageFilter(
     skill: resolveCategory(filter.skill, facetOptions.skill),
     source: resolveCategory(filter.source, facetOptions.source),
     trigger: resolveCategory(filter.trigger, facetOptions.trigger),
+    pod: resolveCategory(filter.pod, facetOptions.pod),
     api_key: resolveCategory(filter.api_key, facetOptions.api_key),
   };
 
@@ -254,6 +264,7 @@ export function usageFilterToIds(filter: UsageFilter): UsageFilterIds {
     skill: filter.skill?.map(({ id }) => id),
     source: filter.source?.map(({ id }) => id),
     trigger: filter.trigger?.map(({ id }) => id),
+    pod: filter.pod?.map(({ id }) => id),
     api_key: filter.api_key?.map(({ id }) => id),
   };
 }
@@ -278,6 +289,7 @@ export function usageFilterToSelection(
     skill: toSelectionLabels(filter.skill),
     source: toSelectionLabels(filter.source),
     trigger: toSelectionLabels(filter.trigger),
+    pod: toSelectionLabels(filter.pod),
     api_key: toSelectionLabels(filter.api_key),
   };
 }
@@ -405,6 +417,8 @@ function usageFilterOptionFromAttributionRow(
       };
     case "trigger":
       return { ...baseOption, kind: "trigger" };
+    case "pod":
+      return { ...baseOption, kind: "pod" };
     case "api_key":
       return { ...baseOption, kind: "api_key" };
     default:
@@ -433,6 +447,8 @@ function addUsageFilterOption(
       return selectAllUsageFilterOptions(filter, "source", [option]);
     case "trigger":
       return selectAllUsageFilterOptions(filter, "trigger", [option]);
+    case "pod":
+      return selectAllUsageFilterOptions(filter, "pod", [option]);
     case "api_key":
       return selectAllUsageFilterOptions(filter, "api_key", [option]);
     default:

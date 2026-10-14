@@ -251,6 +251,23 @@ describe("resolveDimensionLabels", () => {
     );
   });
 
+  it("labels pods with their name", async () => {
+    const { user, workspace, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id, {
+      name: "Marketing pod",
+    });
+
+    const labels = await resolveDimensionLabels(authenticator, "pod", [
+      pod.sId,
+      "vlt_unknown",
+    ]);
+
+    expect(labels.get(pod.sId)?.name).toBe("Marketing pod");
+    expect(labels.get("vlt_unknown")?.name).toBe("vlt_unknown");
+  });
+
   it("labels models with their maker and tier", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const model = getSupportedModelConfigs().find(

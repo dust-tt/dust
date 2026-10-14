@@ -85,6 +85,7 @@ import {
   DEFAULT_CONSUMPTION_DIMENSION,
   getConsumptionAttributionDimensions,
   isConsumptionAttributionDimension,
+  isConsumptionDimension,
 } from "./consumptionDimensions";
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
@@ -1008,13 +1009,13 @@ export function ConsumptionAttributionTableView({
   );
   const [isConversationSelected, setIsConversationSelected] = useState(false);
   const isPersonal = analyticsScope.kind === "personal";
-  const activeDimension =
-    isPersonal && (dimension === "user" || dimension === "group")
-      ? DEFAULT_CONSUMPTION_DIMENSION
-      : dimension;
+  const visibleDimensions = getConsumptionAttributionDimensions(analyticsScope);
+  const activeDimension = visibleDimensions.includes(dimension)
+    ? dimension
+    : (visibleDimensions.find(isConsumptionDimension) ??
+      DEFAULT_CONSUMPTION_DIMENSION);
   const attributionDimension: ConsumptionAttributionDimension =
     isPersonal && isConversationSelected ? "conversation" : activeDimension;
-  const visibleDimensions = getConsumptionAttributionDimensions(analyticsScope);
 
   const exportBody: ConsumptionExportBody = {
     period: period.kind,
