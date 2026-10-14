@@ -16,6 +16,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ComponentType, ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 interface StatusRowProps {
   /** The row's controls, side by side: the live status, the comments toggle. */
@@ -118,6 +119,25 @@ export const CollabAgentIndicator = ({
   );
 };
 
+// Every keystroke waits one round trip to sync: only a longer wait shows as saving.
+export const SAVING_DISPLAY_DELAY_MS = 1000;
+
+/** Whether `active` has stayed true for `delayMs`; false again as soon as it is not. */
+function useActiveFor(active: boolean, delayMs: number): boolean {
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    const timeout = setTimeout(() => setElapsed(true), delayMs);
+    return () => {
+      clearTimeout(timeout);
+      setElapsed(false);
+    };
+  }, [active, delayMs]);
+  return active && elapsed;
+}
+
 type StatusIconState = "saved" | "saving" | "disconnected";
 
 const STATUS_ICONS: Record<
@@ -163,17 +183,24 @@ interface DocumentStatusIconProps {
 /**
  * @cc [owner:tdraier,label:product] document-status-icon
  * Shown next to the host's file name instead of the status badge, a live document's status MUST
- * be one icon with its state as label and tooltip: a green check once live with every change
- * synced; an orange spinning arrow circle while changes wait to sync, or while connecting; a red
- * disconnected icon when the live session is lost or refused. A document without a live session
- * MUST show no icon.
+ * be one icon with its state as label and tooltip: a green check once live, unless changes have
+ * waited to sync for `SAVING_DISPLAY_DELAY_MS`; an orange spinning arrow circle from then until
+ * they are synced, or while connecting; a red disconnected icon when the live session is lost or
+ * refused. A document without a live session MUST show no icon.
  */
 export const DocumentStatusIcon = ({ live }: DocumentStatusIconProps) => {
   const { t } = useLingui();
+  const syncingForAWhile = useActiveFor(
+    live?.syncing ?? false,
+    SAVING_DISPLAY_DELAY_MS
+  );
   if (!live) {
     return null;
   }
-  const { state, label } = statusIcon(live);
+  const { state, label } = statusIcon({
+    status: live.status,
+    syncing: syncingForAWhile,
+  });
   const { icon, className } = STATUS_ICONS[state];
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 text-muted-foreground copy-xs">
