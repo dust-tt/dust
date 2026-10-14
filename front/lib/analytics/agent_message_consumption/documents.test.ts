@@ -1,7 +1,6 @@
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -9,7 +8,6 @@ import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -18,6 +16,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
+import { AgentMessageConsumptionItemFactory } from "@app/tests/utils/AgentMessageConsumptionItemFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -228,66 +227,12 @@ async function setupLlmAndToolConsumptionScenario(
   };
 }
 
-// Mirrors the attribution activity, which reconciles the stored items before they are indexed. A
-// version that does not reconcile keeps its previously reconciled amounts.
-async function reconcileStoredItems(
-  context: SettledMessageContext
-): Promise<void> {
-  const creditContext =
-    await ConversationResource.fetchAgentMessageCreditContext(context.auth, {
-      agentMessageId: context.agentMessage.sId,
-    });
-  if (!creditContext) {
-    throw new Error("Agent message credit context was not found");
-  }
-  const dustRunIds = [...new Set(creditContext.runIds ?? [])];
-  const runs = await RunResource.listByDustRunIds(context.auth, {
-    dustRunIds,
-  });
-  const usages = await RunResource.listRunUsagesForRuns(context.auth, {
-    includeUnavailable: true,
-    runs,
-  });
-  const actions = await AgentMCPActionResource.listByAgentMessageIds(
-    context.auth,
-    [context.agentMessageModelId]
-  );
-  const items = (
-    await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-      context.auth,
-      {
-        agentMessageModelIds: [context.agentMessageModelId],
-        maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      }
-    )
-  ).filter(
-    (item) =>
-      item.attributionVersion === AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION
-  );
-  const allocationResult = buildLatestMessageConsumptionAllocation({
-    actions,
-    billedCredits: creditContext.previousCostCredits,
-    dustRunIds,
-    items,
-    runs,
-    usages,
-  });
-  if (allocationResult.isErr()) {
-    return;
-  }
-  await AgentMessageConsumptionItemResource.setReconciledCreditAmounts(
-    context.auth,
-    {
-      reconciledCreditAmountByItem:
-        allocationResult.value.reconciledCreditAmounts.byItem,
-    }
-  );
-}
-
 async function buildDocuments(
   context: SettledMessageContext
 ): Promise<AgentMessageConsumptionAnalyticsData[] | null> {
-  await reconcileStoredItems(context);
+  await AgentMessageConsumptionItemFactory.reconcileStoredItems(context.auth, {
+    agentMessageId: context.agentMessage.sId,
+  });
   const input = await loadAgentMessageConsumptionAnalyticsInput(context.auth, {
     agentMessageId: context.agentMessage.sId,
   });
@@ -703,7 +648,12 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       }
     );
 
-    await reconcileStoredItems(context);
+    await AgentMessageConsumptionItemFactory.reconcileStoredItems(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
 
     const { run: unbilledRun } = await RunFactory.createWithUsage(
       context.auth,
@@ -756,7 +706,12 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
   it("indexes the reconciled snapshot when the bill grew after its reconciliation", async () => {
     const { billedMessageCreditMicro, context } =
       await setupLlmAndToolConsumptionScenario();
-    await reconcileStoredItems(context);
+    await AgentMessageConsumptionItemFactory.reconcileStoredItems(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
 
     // A later model call is reported and billed, but no attribution pass has reconciled it yet.
     const { run: laterRun } = await RunFactory.createWithUsage(context.auth, {
@@ -855,7 +810,12 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
 
   it("fails when only part of the newest attribution version is reconciled", async () => {
     const { context } = await setupLlmAndToolConsumptionScenario();
-    await reconcileStoredItems(context);
+    await AgentMessageConsumptionItemFactory.reconcileStoredItems(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
     // Evidence written by a later pass that did not reconcile.
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(
       context.auth,

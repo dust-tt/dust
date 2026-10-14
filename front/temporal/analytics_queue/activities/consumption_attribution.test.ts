@@ -3,11 +3,11 @@ import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
 import {
   storeAgentMessageConsumptionAnalyticsActivity,
   storeAgentMessageConsumptionAttributionForMessageActivity,
 } from "@app/temporal/analytics_queue/activities/consumption_attribution";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentMessageRef } from "@app/types/assistant/agent_run";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,18 +34,17 @@ vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishConversationRelatedEvent: vi.fn(),
 }));
 
-const authType = {} as AuthenticatorType;
+let authType: AuthenticatorType;
 const message: AgentMessageRef = {
   agentMessageId: "agent_message_1",
   conversationId: "conversation_1",
 };
 
 describe("storeAgentMessageConsumptionAttributionForMessageActivity", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    vi.spyOn(Authenticator, "fromJSON").mockResolvedValue({
-      getNonNullableWorkspace: () => ({ sId: "workspace_1" }),
-    } as Authenticator);
+    const { authenticator } = await createResourceTest({});
+    authType = authenticator.toJSON();
   });
 
   it("publishes the settled credit cost after attribution is ready", async () => {
@@ -105,11 +104,10 @@ describe("storeAgentMessageConsumptionAttributionForMessageActivity", () => {
 });
 
 describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    vi.spyOn(Authenticator, "fromJSON").mockResolvedValue({
-      getNonNullableWorkspace: () => ({ sId: "workspace_1" }),
-    } as Authenticator);
+    const { authenticator } = await createResourceTest({});
+    authType = authenticator.toJSON();
   });
 
   it("completes when indexing succeeds", async () => {
@@ -146,7 +144,15 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
 
   it("throws an Error naming the skip reason when the documents do not add up", async () => {
     vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
-      new Err({ code: "empty_documents", context: {} })
+      new Err({
+        code: "credit_mismatch",
+        context: {
+          attributionVersion: 10,
+          indexedCreditMicro: 4_000_000,
+          reconciledCreditMicro: 5_000_000,
+          documentCount: 2,
+        },
+      })
     );
 
     await expect(
@@ -155,7 +161,7 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
       })
     ).rejects.toThrow(
       new Error(
-        "[ConsumptionAnalytics] Consumption documents skipped: empty_documents {}"
+        '[ConsumptionAnalytics] Consumption documents skipped: credit_mismatch {"attributionVersion":10,"indexedCreditMicro":4000000,"reconciledCreditMicro":5000000,"documentCount":2}'
       )
     );
   });

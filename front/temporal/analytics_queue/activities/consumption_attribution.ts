@@ -7,9 +7,9 @@ import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { AgentMessageRef } from "@app/types/assistant/agent_run";
 
-async function storeAgentMessageConsumptionAttribution(
+export async function storeAgentMessageConsumptionAttributionForMessageActivity(
   authType: AuthenticatorType,
-  message: AgentMessageRef
+  { message }: { message: AgentMessageRef }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
@@ -47,13 +47,6 @@ async function storeAgentMessageConsumptionAttribution(
       },
     });
   }
-}
-
-export async function storeAgentMessageConsumptionAttributionForMessageActivity(
-  authType: AuthenticatorType,
-  { message }: { message: AgentMessageRef }
-): Promise<void> {
-  await storeAgentMessageConsumptionAttribution(authType, message);
 }
 
 /** Builds and bulk-upserts every billed consumption unit for one agent message. */
