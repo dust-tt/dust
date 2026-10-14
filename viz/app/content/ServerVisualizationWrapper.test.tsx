@@ -27,6 +27,32 @@ function streamedBody(bytes: number): ReadableStream<Uint8Array> {
   });
 }
 
+function trackedChunkedBody(
+  bytes: number,
+  tracker: { liveBytes: number; peakLiveBytes: number }
+): ReadableStream<Uint8Array> {
+  let pulledBytes = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (pulledBytes === bytes) {
+        controller.close();
+        return;
+      }
+      const chunkBytes = Math.min(MB, bytes - pulledBytes);
+      pulledBytes += chunkBytes;
+      tracker.liveBytes += chunkBytes;
+      tracker.peakLiveBytes = Math.max(
+        tracker.peakLiveBytes,
+        tracker.liveBytes
+      );
+      controller.enqueue(new Uint8Array(chunkBytes));
+    },
+    cancel() {
+      tracker.liveBytes -= pulledBytes;
+    },
+  });
+}
+
 function stubFetch(files: Record<string, () => Response>) {
   vi.stubGlobal(
     "fetch",
@@ -87,20 +113,25 @@ describe("ServerSideVisualizationWrapper prefetch budget", () => {
     expect(files).toEqual([]);
   });
 
-  it("stops prefetching once the total budget is spent", async () => {
-    mocks.extractFileRefs.mockReturnValue([
-      { type: "fileId", fileId: "fil_1" },
-      { type: "fileId", fileId: "fil_2" },
-      { type: "fileId", fileId: "fil_3" },
-    ]);
-    stubFetch({
-      fil_1: () => new Response(streamedBody(19 * MB)),
-      fil_2: () => new Response(streamedBody(19 * MB)),
-      fil_3: () => new Response(streamedBody(19 * MB)),
-    });
+  it("aborts reads that would exceed the total budget and keeps only files that fit", async () => {
+    const fileIds = ["fil_1", "fil_2", "fil_3", "fil_4"];
+    mocks.extractFileRefs.mockReturnValue(
+      fileIds.map((fileId): FileRef => ({ type: "fileId", fileId }))
+    );
+    const tracker = { liveBytes: 0, peakLiveBytes: 0 };
+    stubFetch(
+      Object.fromEntries(
+        fileIds.map((fileId) => [
+          fileId,
+          () => new Response(trackedChunkedBody(19 * MB, tracker)),
+        ])
+      )
+    );
 
     const files = await renderPrefetchedFiles();
 
     expect(files).toHaveLength(2);
+    // Allows one read-ahead chunk per concurrent stream plus the chunk that crosses the budget.
+    expect(tracker.peakLiveBytes).toBeLessThanOrEqual(55 * MB);
   });
 });

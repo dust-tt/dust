@@ -4,12 +4,12 @@ export async function concurrentExecutor<T, V>(
   { concurrency }: { concurrency: number }
 ): Promise<V[]> {
   const results: V[] = new Array(items.length);
-  const queue = items.map((item, index) => ({ item, index }));
+  let nextIndex = 0;
 
   async function worker() {
-    let work;
-    while ((work = queue.shift())) {
-      results[work.index] = await iterator(work.item, work.index);
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await iterator(items[index], index);
     }
   }
 

@@ -16,10 +16,12 @@ const PREFETCH_CONCURRENCY = 4;
 
 /**
  * @cc [owner:tdraier,label:performance] prefetch-size-budget
- * A single render MUST NOT buffer more than `MAX_PREFETCHED_FILE_BYTES` for one file nor more than
- * `MAX_PREFETCHED_TOTAL_BYTES` across all fetched files, including nested frames. A file exceeding
- * either limit MUST be skipped (left out of the returned files) and its body read aborted, rather
- * than failing the render.
+ * A single render MUST NOT hold more than `MAX_PREFETCHED_FILE_BYTES` of raw response body for one
+ * file nor, at any time, more than `MAX_PREFETCHED_TOTAL_BYTES` of raw response body across all
+ * fetched files, including nested frames. Bytes of a skipped file are released and stop counting.
+ * The caps count raw body bytes, not the concatenated or base64-encoded copies of accepted files. A
+ * file exceeding either limit MUST be skipped (left out of the returned files) and its body read
+ * aborted, rather than failing the render.
  */
 async function prefetchFileRefs(
   code: string,
@@ -51,7 +53,7 @@ async function prefetchFileRefs(
     for (;;) {
       const { done, value } = await reader.read();
       if (done) {
-        return Buffer.concat(chunks);
+        return Buffer.concat(chunks, readBytes);
       }
       readBytes += value.byteLength;
       remainingBytes -= value.byteLength;
