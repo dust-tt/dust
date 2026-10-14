@@ -34,6 +34,7 @@ import {
 import {
   saveAllSessions,
   createCollabHocuspocus,
+  SAVE_RETRY_DELAY_MS,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
 import {
@@ -213,6 +214,104 @@ describe("createCollabHocuspocus", () => {
     expect(hocuspocus.getDocumentsCount()).toBe(1);
   });
 
+  it("tells every connection when a save fails, retries it, and tells them once it saves", async () => {
+    vi.mocked(saveCollabSession).mockResolvedValueOnce(
+      new Err("This file changed since it was loaded.")
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await collabAccess(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    const document = hocuspocus.documents.get(DOCUMENT_NAME);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    const broadcast = vi.spyOn(document, "broadcastStateless");
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    expect(saveCollabSession).toHaveBeenCalledTimes(1);
+    expect(broadcast).toHaveBeenLastCalledWith(saveState(true));
+
+    await vi.advanceTimersByTimeAsync(SAVE_RETRY_DELAY_MS - 1);
+    expect(saveCollabSession).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(saveCollabSession).toHaveBeenCalledTimes(2);
+    expect(broadcast).toHaveBeenLastCalledWith(saveState(false));
+    expect(broadcast).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses agent writes and comment commands while saves fail, and tells who joins", async () => {
+    vi.mocked(saveCollabSession).mockResolvedValue(
+      new Err("This file changed since it was loaded.")
+    );
+    vi.mocked(applyCommentRequest).mockClear();
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await collabAccess(true);
+    const name = toSessionName(writer.workspaceId, writer.canonicalPath);
+    vi.useFakeTimers();
+
+    const editing = await hocuspocus.openDirectConnection(
+      name,
+      writer
+    );
+    await editing.transact((doc) => typeInto(doc, "Edit."));
+    hocuspocus.flushPendingStores();
+    await vi.advanceTimersByTimeAsync(0);
+    const document = hocuspocus.documents.get(name);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    const read = await readSessionSource(hocuspocus, name);
+    const base = read.isOk() && read.value.open ? read.value.source : "";
+
+    expect(
+      await writeSessionSource(hocuspocus, {
+        file: writer,
+        base,
+        source: `${base}\n\nMore.`,
+      })
+    ).toEqual(new Ok("unsaved"));
+
+    const request = new Request("http://localhost/api/collab");
+    const socket = { send: vi.fn(), close: vi.fn(), readyState: 1 };
+    const joining = new Connection(socket, request, document, "s1", writer);
+    const sent = vi.spyOn(joining, "sendStateless");
+    await hocuspocus.hooks("connected", {
+      connection: joining,
+      context: writer,
+      documentName: name,
+      instance: hocuspocus,
+      request,
+      requestHeaders: request.headers,
+      requestParameters: new URLSearchParams(),
+      socketId: "s1",
+      connectionConfig: { readOnly: false, isAuthenticated: true },
+      providerVersion: null,
+    });
+    expect(sent).toHaveBeenCalledWith(saveState(true));
+
+    await hocuspocus.hooks("onStateless", {
+      connection: joining,
+      document,
+      documentName: name,
+      payload: JSON.stringify({
+        type: "command",
+        requestId: "r1",
+        command: { type: "add", commentId: "c9", body: "Hi." },
+      }),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toHaveBeenLastCalledWith(
+      JSON.stringify({ type: "refused", requestId: "r1", error: "unavailable" })
+    );
+    expect(applyCommentRequest).not.toHaveBeenCalled();
+  });
+
   it("saves through the last writer when a reader disconnects", async () => {
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);
@@ -254,6 +353,10 @@ describe("createCollabHocuspocus", () => {
     expect(hocuspocus.getDocumentsCount()).toBe(1);
   });
 });
+
+function saveState(failed: boolean) {
+  return JSON.stringify({ type: "save_state", failed });
+}
 
 async function ticketFor(auth: Authenticator, path: string) {
   const ticket = await mintCollabTicket(auth, path);

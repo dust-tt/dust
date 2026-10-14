@@ -4,7 +4,9 @@ import type {
 } from "@app/components/editor/document/types";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
 import { createCommentChannel } from "@app/lib/client/collab/comments";
+import { onStatelessMessage } from "@app/lib/client/collab/messages";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { saveStateMessageSchema } from "@app/types/collab";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
@@ -41,10 +43,13 @@ export function useCollabConnection(
   status: CollabStatus;
   /** Since when the shown connection has changes the server has not confirmed, or null. */
   syncingSinceMs: number | null;
+  /** The server failed to save the document, as it last told the current connection. */
+  saveFailed: boolean;
 } {
   const [connection, setConnection] = useState<CollabConnection | null>(null);
   const [status, setStatus] = useState<CollabStatus>("connecting");
   const [syncingSinceMs, setSyncingSinceMs] = useState<number | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const shownRef = useRef<CollabConnection | null>(null);
   // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
@@ -68,6 +73,7 @@ export function useCollabConnection(
       setConnection(null);
       setStatus("connecting");
       setSyncingSinceMs(null);
+      setSaveFailed(false);
     },
     [url, documentName, userId, getTicket]
   );
@@ -111,6 +117,7 @@ export function useCollabConnection(
       if (synced) {
         setStatus("offline");
         setSyncingSinceMs(null);
+        setSaveFailed(false);
       }
       const delay = Math.min(
         RECONNECT_DELAY_MS * 2 ** failuresRef.current,
@@ -160,6 +167,14 @@ export function useCollabConnection(
       },
     });
 
+    // Listening before the connection opens: the server tells a connection joining while saves
+    // fail as soon as it is connected, before it has synced.
+    onStatelessMessage(provider, saveStateMessageSchema, ({ failed }) => {
+      if (!closed) {
+        setSaveFailed(failed);
+      }
+    });
+
     return () => {
       clearTimeout(retry);
       // The shown connection outlives its effect: it closes once replaced, or on unmount.
@@ -174,5 +189,5 @@ export function useCollabConnection(
     return () => connection?.close();
   }, [connection]);
 
-  return { connection, status, syncingSinceMs };
+  return { connection, status, syncingSinceMs, saveFailed };
 }

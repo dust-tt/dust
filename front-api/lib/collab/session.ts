@@ -30,6 +30,9 @@ export interface CollabSession {
   comments: DfmComment[];
   lastSave: CollabSave;
   saveFailed: boolean;
+  /** The next save retried while saves fail, and how many were retried since the last success. */
+  saveRetry: ReturnType<typeof setTimeout> | undefined;
+  saveRetries: number;
   /** The connection that last changed the text. */
   lastChangedBy: CollabAccess | undefined;
   /** The connection that last changed the threads, which saves them when nobody changed the text. */
@@ -172,7 +175,8 @@ export function showAgentActivity(
  * take its turn among the document's comment commands, answering `closed` if the document unloaded
  * meanwhile, and a write that fails MUST NOT hold the later ones. A write whose turn has not come
  * within `COLLAB_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
- * retries a change that lands later; so MUST a write once `saveAllSessions` was called.
+ * retries a change that lands later; so MUST a write once `saveAllSessions` was called. While the
+ * session's last save failed, a write MUST answer `unsaved` and change nothing, at its turn.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
  * editing right before it is applied; it MUST be announced as reading again if the change is then
@@ -216,6 +220,9 @@ export async function writeSessionSource(
     // Unloaded while it waited for its turn: a reload reads the file into a new document.
     if (document.isDestroyed) {
       return new Ok("closed");
+    }
+    if (session.saveFailed) {
+      return new Ok("unsaved");
     }
     const current = yDocToDfm({ doc: document, comments: session.comments });
     if (current.isErr()) {
@@ -295,8 +302,6 @@ export async function writeSessionSource(
       lastContext: file,
       lastTransactionOrigin: undefined,
     });
-    // TODO(co-edition): refuse writes while `session.saveFailed`: an accepted write only lives
-    // in memory until a save succeeds, and is lost if none ever does.
     return new Ok("written");
   };
 

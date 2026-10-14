@@ -146,3 +146,14 @@ export const agentEditMessageSchema = z.object({
 });
 
 export type AgentEditMessage = z.infer<typeof agentEditMessageSchema>;
+
+/**
+ * Whether the collab server fails to save a live document to its file. Sent to every editor when
+ * it changes, and to each editor that connects while saves fail.
+ */
+export const saveStateMessageSchema = z.object({
+  type: z.literal("save_state"),
+  failed: z.boolean(),
+});
+
+export type SaveStateMessage = z.infer<typeof saveStateMessageSchema>;
