@@ -2,7 +2,7 @@ import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplo
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import { frameV2ContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { describe, expect, it } from "vitest";
 
 const virtualScopeRoots = [
@@ -316,6 +316,149 @@ describe("getFileExplorerPipeline search", () => {
 
     expect(sortedNodes.map((n) => n.path)).toEqual([
       "conversation/reports/q1/summary.txt",
+    ]);
+  });
+});
+
+describe("getFileExplorerPipeline type filters", () => {
+  it("keeps the folder hierarchy for All", () => {
+    const files = [
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/dashboard.html", "dashboard.html", {
+          contentType: frameContentType,
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(mountFile("pod-p1/notes.txt"), "pod"),
+    ];
+
+    const { sortedNodes, filterCounts } = getFileExplorerPipeline({
+      activeFilter: "all",
+      contentNodes: [],
+      currentFolderPath: "",
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+
+    expect(sortedNodes.map((n) => n.path)).toEqual(["conversation", "pod"]);
+    expect(filterCounts.frames).toBe(1);
+    // Built tree folders only (synthetic empty scope roots are hierarchical-only).
+    expect(filterCounts.folders).toBe(2); // pod, pod/apps
+  });
+
+  it("lists nested Frames flat when the Frames filter is active", () => {
+    const files = [
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/dashboard.html", "dashboard.html", {
+          contentType: frameContentType,
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(mountFile("pod-p1/notes.txt"), "pod"),
+    ];
+
+    const { sortedNodes } = getFileExplorerPipeline({
+      activeFilter: "frames",
+      contentNodes: [],
+      currentFolderPath: "",
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+
+    expect(sortedNodes.map((n) => n.path)).toEqual(["pod/apps/dashboard.html"]);
+  });
+
+  it("lists nested folders flat when the Folders filter is active", () => {
+    const files = [
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/nested/notes.txt", "notes.txt"),
+        "pod"
+      ),
+    ];
+
+    const { sortedNodes } = getFileExplorerPipeline({
+      activeFilter: "folders",
+      contentNodes: [],
+      currentFolderPath: "",
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+
+    // Sorted by name: apps, nested, pod.
+    expect(sortedNodes.map((n) => n.path)).toEqual([
+      "pod/apps",
+      "pod/apps/nested",
+      "pod",
+    ]);
+  });
+
+  it("intersects a type filter with search", () => {
+    const files = [
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/status.html", "status.html", {
+          contentType: frameContentType,
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/dashboard.html", "dashboard.html", {
+          contentType: frameContentType,
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(
+        mountFile("pod-p1/status.txt", "status.txt"),
+        "pod"
+      ),
+    ];
+
+    const { sortedNodes } = getFileExplorerPipeline({
+      activeFilter: "frames",
+      contentNodes: [],
+      currentFolderPath: "",
+      files,
+      searchQuery: "status",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+
+    expect(sortedNodes.map((n) => n.path)).toEqual(["pod/apps/status.html"]);
+  });
+
+  it("lists collapsed Frame packages under Frames", () => {
+    const files = [
+      withVirtualExplorerPath(
+        frameManifest("pod-p1/apps/status/manifest.json"),
+        "pod"
+      ),
+      withVirtualExplorerPath(mountFile("pod-p1/apps/status/index.tsx"), "pod"),
+    ];
+
+    const { sortedNodes, filterCounts } = getFileExplorerPipeline({
+      activeFilter: "frames",
+      contentNodes: [],
+      currentFolderPath: "",
+      displayFramePackages: true,
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+
+    expect(filterCounts.frames).toBe(1);
+    expect(sortedNodes).toMatchObject([
+      {
+        contentType: frameV2ContentType,
+        isDirectory: false,
+        name: "status",
+        path: "pod/apps/status",
+      },
     ]);
   });
 });
