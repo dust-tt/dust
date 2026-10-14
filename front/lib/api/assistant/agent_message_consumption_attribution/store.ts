@@ -759,8 +759,9 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
 /**
  * @cc [owner:sfriquet,label:product;backend] unbilled-unavailable-calls-skipped
  * When the message's `costCredits` is null and every one of its run usages is `unavailable`, the
- * result MUST be `Ok` with no consumption update, and no item MUST be written. A null
- * `costCredits` alongside a reported run usage MUST fail with `no_billed_credits`.
+ * result MUST be `Ok` with no consumption update, and no item MUST be written. For a message
+ * with a tracked status, a null `costCredits` alongside a reported run usage MUST fail with
+ * `no_billed_credits`.
  */
 /**
  * @cc [owner:sfriquet,label:product;backend] failed-reconciliation-keeps-evidence

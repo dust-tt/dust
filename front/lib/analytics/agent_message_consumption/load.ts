@@ -199,7 +199,8 @@ async function loadAnalyticsUser({
 /**
  * @cc [owner:sfriquet,label:product;backend] unbilled-unavailable-calls-not-indexed
  * A message whose `costCredits` is null and whose billed run usages are all `unavailable` MUST
- * return null. A null `costCredits` alongside a reported billed run usage MUST NOT return null.
+ * return null. For a message with a tracked status, a null `costCredits` alongside a reported
+ * billed run usage MUST NOT return null.
  */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
