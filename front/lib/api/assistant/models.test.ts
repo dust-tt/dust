@@ -19,7 +19,11 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
+import {
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import {
   GPT_5_4_MINI_MODEL_CONFIG,
@@ -352,6 +356,30 @@ describe("resolveModel", () => {
       modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
       reasoningEffort: "high",
     });
+  });
+
+  it("walks the overriding stream and attributes the resolution to it", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const resolveStreamModelSpy = vi.spyOn(enabledModels, "resolveStreamModel");
+
+    const { modelResolutionMethod } = await resolveModel(auth, {
+      agent: makeAgent(auth, {
+        providerId: AUTO_COMPLEX_MODEL_ID,
+        modelId: AUTO_COMPLEX_MODEL_ID,
+      }),
+      featureFlags: [],
+      streamOverride: AUTO_FAST_MODEL_ID,
+    });
+
+    expect(resolveStreamModelSpy).toHaveBeenCalledWith(
+      expect.any(Array),
+      AUTO_FAST_MODEL_ID,
+      expect.any(Set),
+      []
+    );
+    expect(modelResolutionMethod).toBe(AUTO_FAST_MODEL_ID);
   });
 
   it("prefers the synthetic fallback model only for allowlisted workspaces", async () => {
