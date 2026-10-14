@@ -3,31 +3,25 @@ import { z } from "zod";
 
 export const READ_WORKBOOK_TOOL_NAME = "read_workbook";
 
-const READ_WORKBOOK_TOOL_DESCRIPTION = `Reads data from the Excel workbook the user has open, with the Office.js Excel API.
+const MAX_EXPRESSION_LENGTH = 1_000;
 
-Each read gives an Office.js expression that starts at \`workbook\` (as in \`context.workbook\`), and the properties to load on the object it gives. The reads are sent to Excel in one batch; the result is a JSON array with one loaded object per read, in the same order. Only read operations are allowed.
+const READ_WORKBOOK_TOOL_DESCRIPTION = `Reads data from the Excel workbook that the user has open.
 
-Example — list the worksheets, read the selection and read a range in one call:
+Each read is an Office.js Excel expression that starts with \`workbook\`. End the expression with \`load(...)\` to give the properties to return. Do not add \`load(...)\` after a method that gives a value, for example \`getCount()\`. The result has one item for each read, in the same order.
+
+Example:
 { "reads": [
-  { "expression": "workbook.worksheets", "load": ["name"] },
-  { "expression": "workbook.getSelectedRange()", "load": ["address", "values"] },
-  { "expression": "workbook.worksheets.getItem('Sheet1').getRange('A1:C10')", "load": ["values", "formulas", "numberFormat"] },
+  { "expression": "workbook.worksheets.load('name')" },
+  { "expression": "workbook.worksheets.getItem('Sheet1').getRange('A1:C10').load(['address', 'values', 'format/fill/color'])" },
   { "expression": "workbook.tables.getCount()" }
-] }
-
-Methods such as \`getCount()\` or \`getCellProperties(...)\` give a value directly: omit \`load\` for those.
-
-On a large sheet, load the address of the used range first, then read the values in blocks.`;
+] }`;
 
 const readSchema = z.object({
   expression: z
     .string()
-    .describe("An Office.js expression that starts at `workbook`."),
-  load: z
-    .array(z.string())
-    .nullish()
+    .max(MAX_EXPRESSION_LENGTH)
     .describe(
-      "The properties to load on the object the expression gives. Omit it for methods that give a value directly, such as getCount() or getCellProperties(...)."
+      "An Office.js Excel expression that starts with `workbook`. Use only properties and method calls with literal arguments. Do not use `context`, `await` or `sync()`."
     ),
 });
 
@@ -42,7 +36,9 @@ export const EXCEL_TOOLS_METADATA = [
         .array(readSchema)
         .min(1)
         .max(MAX_READS)
-        .describe("The reads to run, in one batch."),
+        .describe(
+          "The reads to run. They are sent to Excel together, in one sync."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
