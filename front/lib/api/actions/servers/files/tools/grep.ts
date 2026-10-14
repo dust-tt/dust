@@ -21,6 +21,7 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
@@ -113,7 +114,7 @@ export async function grepHandler(
 
   let text = matches.join("\n");
   if (capped) {
-    text += `\n\n[Showing ${matches.length} matching line${matches.length === 1 ? "" : "s"} within the output limit. Refine your pattern or use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` with a line offset to read a specific section.]`;
+    text += `\n\n[Showing ${matches.length} matching line${pluralize(matches.length)} within the output limit. Refine your pattern or use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` with a line offset to read a specific section.]`;
   } else {
     text += `\n\n[${matches.length} match${matches.length === 1 ? "" : "es"} found]`;
   }

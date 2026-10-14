@@ -7,6 +7,7 @@ import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import type { CoreAPISearchNodesResponse } from "@app/types/core/core_api";
 import type { ConnectorProvider } from "@app/types/data_source";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -30,7 +31,7 @@ function formatTimestamp(timestamp: number): string {
     return `${formattedDate} (${diffDays} days ago)`;
   } else if (diffDays < 30) {
     const weeks = Math.floor(diffDays / 7);
-    return `${formattedDate} (${weeks} week${weeks > 1 ? "s" : ""} ago)`;
+    return `${formattedDate} (${weeks} week${pluralize(weeks)} ago)`;
   } else {
     return formattedDate;
   }

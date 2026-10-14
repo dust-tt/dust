@@ -32,6 +32,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { splitFrameEntryScopedPath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
@@ -159,10 +160,9 @@ export async function createInteractiveContentTools(
         referencedFilesChangeNotice,
       } = result.value;
 
-      const pluralS = replacementCount === 1 ? "" : "s";
       let responseText =
         `File '${fileResource.sId}' updated successfully. Made ` +
-        `${replacementCount} replacement${pluralS}`;
+        `${replacementCount} replacement${pluralize(replacementCount)}`;
 
       responseText += formatValidationWarningsForLLM(warnings);
       if (referencedFilesChangeNotice) {

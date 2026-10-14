@@ -3,6 +3,7 @@ import type {
   CursorAgentSummary,
   CursorRun,
 } from "@app/lib/api/actions/servers/cursor_cloud_agents/schemas";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function optionalLine(label: string, value: unknown): string | null {
   return value === undefined || value === null || value === ""
@@ -44,7 +45,7 @@ export function renderAgentList(
     return "No Cursor Cloud Agents found.";
   }
   return [
-    `Found ${agents.length} Cursor Cloud Agent${agents.length === 1 ? "" : "s"}.`,
+    `Found ${agents.length} Cursor Cloud Agent${pluralize(agents.length)}.`,
     "",
     ...agents.map(
       (agent) =>
@@ -87,7 +88,7 @@ export function renderRunList(runs: CursorRun[], nextCursor?: string): string {
     return "No runs found for this Cursor Cloud Agent.";
   }
   return [
-    `Found ${runs.length} run${runs.length === 1 ? "" : "s"}.`,
+    `Found ${runs.length} run${pluralize(runs.length)}.`,
     "",
     ...runs.map(
       (run) =>

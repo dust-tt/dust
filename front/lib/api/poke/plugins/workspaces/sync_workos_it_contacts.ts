@@ -2,6 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { syncWorkOSITContacts } from "@app/lib/api/workos/it_contacts";
 import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export const syncWorkOSITContactsPlugin = createPlugin({
   manifest: {
@@ -45,7 +46,7 @@ export const syncWorkOSITContactsPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Synced ${emails.length} admin${emails.length === 1 ? "" : "s"} as WorkOS IT contacts: ${parts.join("; ")}.`,
+      value: `Synced ${emails.length} admin${pluralize(emails.length)} as WorkOS IT contacts: ${parts.join("; ")}.`,
     });
   },
 });

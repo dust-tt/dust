@@ -2,6 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export const contactAdminsPlugin = createPlugin({
   manifest: {
@@ -51,7 +52,7 @@ export const contactAdminsPlugin = createPlugin({
 
     return new Ok({
       display: "textWithLink",
-      value: `Found ${adminEmails.length} admin${adminEmails.length === 1 ? "" : "s"}: ${adminEmails.join(", ")}`,
+      value: `Found ${adminEmails.length} admin${pluralize(adminEmails.length)}: ${adminEmails.join(", ")}`,
       link: gmailComposeUrl.toString(),
       linkText: "Contact Admins",
     });

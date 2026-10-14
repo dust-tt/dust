@@ -20,6 +20,7 @@ import {
 } from "@app/lib/api/actions/servers/cursor_cloud_agents/rendering";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function textResult(text: string): ToolHandlerResult {
   return new Ok([{ type: "text" as const, text }]);
@@ -208,7 +209,7 @@ export function createCursorCloudAgentsTools(
         return textResult(
           result.value.items.length
             ? [
-                `Found ${result.value.items.length} artifact${result.value.items.length === 1 ? "" : "s"}.`,
+                `Found ${result.value.items.length} artifact${pluralize(result.value.items.length)}.`,
                 "",
                 ...result.value.items.map(
                   (artifact) =>
@@ -279,7 +280,7 @@ export function createCursorCloudAgentsTools(
           ? apiError("list Cursor models", result.error)
           : textResult(
               [
-                `Found ${result.value.items.length} Cursor model${result.value.items.length === 1 ? "" : "s"}.`,
+                `Found ${result.value.items.length} Cursor model${pluralize(result.value.items.length)}.`,
                 "",
                 ...result.value.items.map(
                   (model) =>
