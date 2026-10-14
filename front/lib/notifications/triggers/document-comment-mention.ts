@@ -53,7 +53,8 @@ interface DocumentRouteAndSpace {
 /**
  * @cc [owner:adrien,label:product] document-comment-mention-route
  * MUST return the route that opens the document at `documentPath` and the model id of its space,
- * or `null` when it is neither a pod nor a conversation document the user of `auth` can read.
+ * or `null` when it is neither a pod nor a conversation document. It MUST NOT decide any
+ * recipient's access, which `checkCollabReadAccess` does.
  */
 export async function getDocumentRouteAndSpace(
   auth: Authenticator,
@@ -68,7 +69,7 @@ export async function getDocumentRouteAndSpace(
   switch (scope.kind) {
     case "pod": {
       const pod = await SpaceResource.fetchById(auth, scope.id);
-      if (!pod || !auth.can("read", pod)) {
+      if (!pod) {
         return null;
       }
       const relPath = parseCanonicalScopedPath(documentPath)?.relPath ?? "";
@@ -76,7 +77,7 @@ export async function getDocumentRouteAndSpace(
       return {
         route: getPodRoute(
           workspaceId,
-          pod.sId,
+          scope.id,
           "files",
           folder ? `path=${encodeURIComponent(folder)}` : undefined
         ),
@@ -93,7 +94,7 @@ export async function getDocumentRouteAndSpace(
         [SIDE_PANEL_HASH_PARAM]: documentPath,
       });
       return {
-        route: `${getConversationRoute(workspaceId, conversation.sId)}#?${hash}`,
+        route: `${getConversationRoute(workspaceId, scope.id)}#?${hash}`,
         spaceModelId: conversation.spaceId,
       };
     }

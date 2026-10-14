@@ -78,24 +78,13 @@ describe("document comment mention notifications", () => {
     triggerBulk.mockReset().mockResolvedValue({ result: [] });
   });
 
-  it("links a pod member to the document's folder", async () => {
-    const document = await getDocumentRouteAndSpace(
-      await Authenticator.fromUserIdAndWorkspaceId(member.sId, workspace.sId),
-      documentPath
-    );
+  it("links to the document's folder in its pod", async () => {
+    const document = await getDocumentRouteAndSpace(authorAuth, documentPath);
 
-    expect(document?.route).toBe(
-      `/w/${workspace.sId}/pods/${pod.sId}?path=notes#files`
-    );
-  });
-
-  it("does not give the document to a user outside the pod", async () => {
-    const document = await getDocumentRouteAndSpace(
-      await Authenticator.fromUserIdAndWorkspaceId(outsider.sId, workspace.sId),
-      documentPath
-    );
-
-    expect(document).toBeNull();
+    expect(document).toEqual({
+      route: `/w/${workspace.sId}/pods/${pod.sId}?path=notes#files`,
+      spaceModelId: pod.id,
+    });
   });
 
   it("notifies mentioned readers only, once each", async () => {
