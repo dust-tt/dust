@@ -25,7 +25,7 @@ function SkeletonSection({ labelWidth, rows }: SkeletonSectionProps) {
         <LoadingBlock className="h-5 w-5 rounded-md" />
         <LoadingBlock className={cn("h-6", labelWidth)} />
       </div>
-      <div className="w-full divide-y divide-border rounded-xl border border-border">
+      <div className="w-full divide-y divide-border rounded-2xl border border-border">
         {Array.from({ length: rows }).map((_, i) => (
           <SkeletonRow key={i} />
         ))}

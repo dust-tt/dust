@@ -194,41 +194,36 @@ export function UsageProgrammaticLimitCard({
   };
 
   return (
-    <>
-      <span className="heading-base text-foreground">
-        <Trans>Programmatic usage</Trans>
-      </span>
-      <SettingsList>
-        <SettingsList.Row
-          title={t`Programmatic monthly limit`}
-          description={
-            <Trans>
-              Maximum credits allowed for programmatic usage per month.{" "}
-              <strong>Set to 0 to block all programmatic access.</strong>
-            </Trans>
-          }
-          action={
-            <div className="w-52">
-              <InputWithSave
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder={t`No access`}
-                value={currentLimit === 0 ? "" : formatNumber(currentLimit)}
-                unit={currentLimit === 0 && !isEditing ? undefined : t`credits`}
-                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
-                formatValue={(value) =>
-                  value ? formatNumber(Number(value)) : value
-                }
-                onSave={handleSaveLimit}
-                onFocus={() => setIsEditing(true)}
-                onBlur={() => setIsEditing(false)}
-                disabled={isProgrammaticUsageLimitLoading}
-              />
-            </div>
-          }
-        />
-        {hasSelfImprovement && <SelfImprovingSkillsCapsSection owner={owner} />}
-      </SettingsList>
-    </>
+    <SettingsList title={<Trans>Programmatic usage</Trans>}>
+      <SettingsList.Row
+        title={t`Programmatic monthly limit`}
+        description={
+          <Trans>
+            Maximum credits allowed for programmatic usage per month.{" "}
+            <strong>Set to 0 to block all programmatic access.</strong>
+          </Trans>
+        }
+        action={
+          <div className="w-52">
+            <InputWithSave
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder={t`No access`}
+              value={currentLimit === 0 ? "" : formatNumber(currentLimit)}
+              unit={currentLimit === 0 && !isEditing ? undefined : t`credits`}
+              normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+              formatValue={(value) =>
+                value ? formatNumber(Number(value)) : value
+              }
+              onSave={handleSaveLimit}
+              onFocus={() => setIsEditing(true)}
+              onBlur={() => setIsEditing(false)}
+              disabled={isProgrammaticUsageLimitLoading}
+            />
+          </div>
+        }
+      />
+      {hasSelfImprovement && <SelfImprovingSkillsCapsSection owner={owner} />}
+    </SettingsList>
   );
 }

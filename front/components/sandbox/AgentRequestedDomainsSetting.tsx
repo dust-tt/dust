@@ -86,10 +86,7 @@ export function AgentRequestedDomainsSetting() {
       </Dialog>
 
       <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.agentDomains}>
-        <div className="heading-base text-foreground">
-          <Trans>Agent-requested domains</Trans>
-        </div>
-        <SettingsList>
+        <SettingsList title={<Trans>Agent-requested domains</Trans>}>
           <SettingsList.Row
             title={<Trans>Agent-requested domains</Trans>}
             description={

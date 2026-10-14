@@ -63,17 +63,14 @@ export function UsageNotificationsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground">
-          <Trans>Notifications</Trans>
-        </span>
-        <Page.P variant="secondary">
+      <SettingsList
+        title={<Trans>Notifications</Trans>}
+        description={
           <Trans>
             Customize when and how you receive usage-based notifications.
           </Trans>
-        </Page.P>
-      </div>
-      <SettingsList>
+        }
+      >
         <SettingsList.Row
           title={t`Workspace credit pool threshold alert`}
           description={

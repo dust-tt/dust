@@ -173,10 +173,7 @@ export function AutoJoinToggle({
         description={t`You cannot enable auto-join with the free plan. Upgrade your plan to invite other members.`}
       />
       <Page.Vertical gap="sm" align="stretch">
-        <span className="heading-base text-foreground">
-          <Trans>Joining the workspace</Trans>
-        </span>
-        <SettingsList>
+        <SettingsList title={<Trans>Joining the workspace</Trans>}>
           <SettingsList.Row
             title={t`Auto-join Workspace`}
             description={

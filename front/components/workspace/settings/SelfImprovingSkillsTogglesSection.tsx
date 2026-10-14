@@ -33,10 +33,7 @@ export function SelfImprovingSkillsTogglesSection({
     <AdminSectionAnchor
       sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.settings}
     >
-      <div className="heading-base text-foreground">
-        <Trans>Self-improving skills</Trans>
-      </div>
-      <SettingsList>
+      <SettingsList title={<Trans>Self-improving skills</Trans>}>
         <SettingsList.Row
           title={t`Allow self-improving skills`}
           description={t`Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models.`}
