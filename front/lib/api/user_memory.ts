@@ -48,8 +48,8 @@ export async function getUserMemory(
  * When the conversation's `memoryFilePath` is null, the authenticated user's `MEMORY.md` MUST be
  * copied server side in GCS to the conversation metadata path
  * `conversation_metadata-{cId}/MEMORY.md` before that path is recorded; when the user has no
- * memory file, nothing is copied and the path is still recorded. Once recorded, the path MUST be
- * returned unchanged and nothing is copied.
+ * memory file or the conversation has more than one participant, nothing is copied and the path is
+ * still recorded. Once recorded, the path MUST be returned unchanged and nothing is copied.
  */
 export async function ensureConversationMemoryFile(
   auth: Authenticator,
@@ -86,14 +86,22 @@ export async function ensureConversationMemoryFile(
     conversationId: conversation.sId,
     rel: MEMORY_FILE_NAME,
   });
-  const copyResult = await fsResult.value.copy({
-    src: userMemoryPath(user.sId),
-    dest: memoryFilePath,
-  });
-  // A user without memory has no file to copy: the path is still recorded, so the conversation
-  // keeps having no memory file instead of copying one created later.
-  if (copyResult.isErr() && copyResult.error.code !== "not_found") {
-    return copyResult;
+  // With several participants, the memory would be redacted right away and the placeholder would
+  // claim it was shown earlier: nothing is copied and the path is still recorded.
+  const participants = await ConversationResource.listParticipantDetails(
+    auth,
+    conversation
+  );
+  if (participants.length <= 1) {
+    const copyResult = await fsResult.value.copy({
+      src: userMemoryPath(user.sId),
+      dest: memoryFilePath,
+    });
+    // A user without memory has no file to copy: the path is still recorded, so the conversation
+    // keeps having no memory file instead of copying one created later.
+    if (copyResult.isErr() && copyResult.error.code !== "not_found") {
+      return copyResult;
+    }
   }
 
   await conversationResource.updateMemoryFilePath(auth, memoryFilePath);
@@ -105,7 +113,7 @@ export async function ensureConversationMemoryFile(
  * @cc [owner:aubin-tchoi,label:product;performance] read-from-conversation-memory-file
  * The returned content MUST be read from the conversation's memory file, at the path returned by
  * `ensureConversationMemoryFile`, never from the live user memory. It is null when there is no
- * file, i.e. there was no memory to copy when the path was recorded.
+ * file, i.e. nothing was copied when the path was recorded.
  */
 export async function readConversationMemoryFile(
   auth: Authenticator,
