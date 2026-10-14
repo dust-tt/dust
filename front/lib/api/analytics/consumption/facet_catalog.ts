@@ -124,12 +124,6 @@ function toolFacetCatalogEntries(
 }
 
 /** Lists current workspace entities that can be selected as consumption filters. */
-/**
- * @cc [owner:rfrenoy,label:security] pod-catalog-all-groups-analytics-only
- * The pod catalog lists every pod of the workspace, including restricted ones, regardless of the
- * caller's membership. The pod dimension MUST only be requested for callers who can read every
- * group's analytics, so personal and agent analytics MUST NOT request it.
- */
 async function listConsumptionFacetCatalogWithoutTracing(
   auth: Authenticator,
   requestedDimensions: ConsumptionScopeDimension[] | null = null
@@ -208,7 +202,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
     "pods",
     "pod",
     requestedDimensions,
-    () => SpaceResource.listProjectSpaces(auth)
+    () => SpaceResource.listAccessibleProjectSpaces(auth)
   );
 
   return {

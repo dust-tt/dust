@@ -60,7 +60,7 @@ const SEARCH_PLACEHOLDER: Record<UsageFilterCategory, MessageDescriptor> = {
   agent: msg`Search agents`,
   member: msg`Search members`,
   group: msg`Search groups`,
-  pod: msg`Search pods`,
+  pod: msg`Search Pods`,
   model: msg`Search models`,
   tool: msg`Search tools`,
   skill: msg`Search skills`,

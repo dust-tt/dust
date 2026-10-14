@@ -7,12 +7,14 @@ import type { estypes } from "@elastic/elasticsearch";
  * @cc [owner:rfrenoy,label:product] pod-dimension-project-spaces-only
  * Conversations can belong to non-project spaces, so `space_id` is not always a pod. Rankings,
  * breakdowns and facets of the pod dimension MUST apply this filter so they only key on project
- * spaces of the workspace, deleted ones included. A workspace without pods MUST match nothing.
+ * spaces the caller can fetch, deleted ones included: no series, row or facet MUST be keyed on any
+ * other space, and a caller who can fetch no pod gets none. Unkeyed totals, such as the timeseries
+ * fallback when no pod has usage, are not restricted.
  */
 export async function buildPodSpaceFilter(
   auth: Authenticator
 ): Promise<estypes.QueryDslQueryContainer> {
-  const pods = await SpaceResource.listProjectSpaces(auth, {
+  const pods = await SpaceResource.listAccessibleProjectSpaces(auth, {
     includeDeleted: true,
   });
   if (pods.length === 0) {

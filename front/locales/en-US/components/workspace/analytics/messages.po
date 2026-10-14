@@ -134,8 +134,8 @@ msgid "Search groups"
 msgstr "Search groups"
 
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
-msgid "Search pods"
-msgstr "Search pods"
+msgid "Search Pods"
+msgstr "Search Pods"
 
 #: front/components/workspace/analytics/UsageFilterPanel.tsx
 msgid "Search models"

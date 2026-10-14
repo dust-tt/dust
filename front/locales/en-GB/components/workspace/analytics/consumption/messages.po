@@ -355,6 +355,10 @@ msgid "Groups"
 msgstr ""
 
 #: front/components/workspace/analytics/consumption/consumptionDimensions.ts
+msgid "Pods"
+msgstr ""
+
+#: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Models"
 msgstr ""
 

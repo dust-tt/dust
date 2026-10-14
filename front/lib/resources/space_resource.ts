@@ -549,13 +549,27 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listProjectSpaces(
-    auth: Authenticator,
-    { includeDeleted }: { includeDeleted?: boolean } = {}
+    auth: Authenticator
   ): Promise<SpaceResource[]> {
     return this.baseFetch(auth, {
       where: { kind: "project" },
+    });
+  }
+
+  /**
+   * @cc [owner:rfrenoy,label:security] list-accessible-project-spaces
+   * MUST only return project spaces for which `canFetch(auth)` is true, so restricted pods are left
+   * out for callers holding no verb on them.
+   */
+  static async listAccessibleProjectSpaces(
+    auth: Authenticator,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<SpaceResource[]> {
+    const spaces = await this.baseFetch(auth, {
+      where: { kind: "project" },
       includeDeleted,
     });
+    return spaces.filter((space) => space.canFetch(auth));
   }
 
   /**
