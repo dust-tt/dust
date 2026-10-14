@@ -11,8 +11,10 @@ NODE_ENV=development npx concurrently \
   "nodemon --exec 'tsx ./start_worker.ts --workers agent_loop_batch agent_loop_interactive agent_loop_programmatic agent_loop_schedules' \
     --watch 'temporal/agent_loop' \
     --watch 'temporal/project_todo' \
-    --watch 'lib/api' \
+    --watch 'lib/api/assistant' \
     --watch 'lib/actions' \
+    --watch 'lib/api/mcp' \
+    --watch 'lib/api/actions' \
     --watch 'lib/resources/skill/global' \
     --ext 'ts,js' \
     --signal 'SIGTERM' \
