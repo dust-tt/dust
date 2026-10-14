@@ -39,16 +39,17 @@ const UPSERT_DEBOUNCE_TIME_MS: u64 = 10_000;
 // Drop them once they exceed this age.
 const MAX_UPSERT_AGE_MS: u64 = 60 * 60 * 1_000; // 1 hour
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct TableUpsertActivityData {
     pub time: u64,
     pub project_id: i64,
     pub data_source_id: String,
     pub table_id: String,
-    // Number of times we've tried and failed to process this entry. Bumped on each
-    // failed attempt and used to ensure we never drop an entry that has never been
-    // tried (e.g. after the worker was down longer than MAX_UPSERT_AGE_MS). Existing
-    // entries written before this field existed default to 0.
+    // Number of times we've started processing this entry without completing it. Bumped before
+    // each attempt, so that an attempt killed mid-way (e.g. the process OOMs) still counts, and
+    // used to ensure we never drop an entry that has never been tried (e.g. after the worker was
+    // down longer than MAX_UPSERT_AGE_MS). Existing entries written before this field existed
+    // default to 0.
     #[serde(default)]
     pub attempts: u32,
 }
@@ -90,16 +91,24 @@ impl TableUpsertsBackgroundWorker {
         table_data: &TableUpsertActivityData,
     ) -> Result<(), anyhow::Error> {
         let files =
-            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
+            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_files_for_table(&table)
                 .await?;
-        let rows =
-            GoogleCloudStorageBackgroundProcessingStore::get_deduped_rows_from_all_files(&files)
+        // Only a bounded batch of the oldest files is merged per pass; the rest are left for the
+        // next passes so memory use doesn't grow with the number of queued files.
+        let (rows, batch_file_count) =
+            GoogleCloudStorageBackgroundProcessingStore::get_deduped_rows_from_next_batch(&files)
                 .await?;
+        let batch_files: Vec<String> = files[..batch_file_count]
+            .iter()
+            .map(|file| file.name.clone())
+            .collect();
+        let remaining_file_count = files.len() - batch_file_count;
         info!(
             project_id = table_data.project_id,
             data_source_id = table_data.data_source_id,
             table_id = table_data.table_id,
-            file_count = files.len(),
+            file_count = batch_file_count,
+            remaining_file_count,
             row_count = rows.len(),
             "TableUpsertsBackgroundWorker: Processing upserts"
         );
@@ -137,12 +146,29 @@ impl TableUpsertsBackgroundWorker {
             }
         }
 
-        let _: () = self
-            .redis_conn
-            .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
-            .await?;
+        if remaining_file_count == 0 {
+            let _: () = self
+                .redis_conn
+                .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
+                .await?;
+        } else {
+            // Keep the entry (and its age anchor) so the next pass picks up the remaining files,
+            // but reset attempts since this pass succeeded.
+            let progressed_data = TableUpsertActivityData {
+                attempts: 0,
+                ..table_data.clone()
+            };
+            let _: () = self
+                .redis_conn
+                .hset(
+                    REDIS_TABLE_UPSERT_HASH_NAME,
+                    key,
+                    serde_json::to_string(&progressed_data)?,
+                )
+                .await?;
+        }
 
-        GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
+        GoogleCloudStorageBackgroundProcessingStore::delete_files(&batch_files).await?;
 
         Ok(())
     }
@@ -263,6 +289,22 @@ impl TableUpsertsBackgroundWorker {
                     );
                     now = utils::now();
 
+                    // Record the attempt before processing so that, once this entry exceeds the
+                    // max age, it gets dropped instead of being retried forever, even if
+                    // processing kills the process (e.g. OOM) before it can record a failure. We
+                    // keep `time` unchanged so the age anchor is preserved. Successful processing
+                    // removes the entry or resets attempts, and new activity from the producer
+                    // overwrites this entry and resets attempts to 0.
+                    table_data.attempts += 1;
+                    let _: () = self
+                        .redis_conn
+                        .hset(
+                            REDIS_TABLE_UPSERT_HASH_NAME,
+                            &key,
+                            serde_json::to_string(&table_data)?,
+                        )
+                        .await?;
+
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
                     if let Err(e) = self.process_table(&table, &key, &table_data).await {
@@ -270,20 +312,6 @@ impl TableUpsertsBackgroundWorker {
                             table_id = table.table_id(),
                             "TableUpsertsBackgroundWorker: Failed to process table: {}", e
                         );
-
-                        // Record the failed attempt so that, once this entry exceeds the max
-                        // age, it gets dropped instead of being retried forever. We keep `time`
-                        // unchanged so the age anchor is preserved. New activity from the
-                        // producer will overwrite this entry and reset attempts to 0.
-                        table_data.attempts += 1;
-                        let _: () = self
-                            .redis_conn
-                            .hset(
-                                REDIS_TABLE_UPSERT_HASH_NAME,
-                                &key,
-                                serde_json::to_string(&table_data)?,
-                            )
-                            .await?;
                     }
 
                     lock_manager.unlock(&lock).await;
