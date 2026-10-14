@@ -6,6 +6,7 @@ import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 import type {
+  SaveStateMessage,
   CollabAgent,
   AgentActivity,
   AgentEditMessage,
@@ -30,8 +31,8 @@ export interface CollabSession {
   comments: DfmComment[];
   lastSave: CollabSave;
   saveFailed: boolean;
-  /** The next save retried while saves fail, and how many were retried since the last success. */
-  saveRetry: ReturnType<typeof setTimeout> | undefined;
+  /** The save retried next while saves fail, and how many were retried since the last success. */
+  saveRetryTimer: ReturnType<typeof setTimeout> | undefined;
   saveRetries: number;
   /** The connection that last changed the text. */
   lastChangedBy: CollabAccess | undefined;
@@ -40,6 +41,13 @@ export interface CollabSession {
   graceTimer: ReturnType<typeof setTimeout> | undefined;
   pendingMutations: Promise<void>;
 }
+
+// A failed save is retried after this delay, doubled at each failure up to the maximum.
+export const SAVE_RETRY_DELAY_MS = 30 * 1000;
+const SAVE_RETRY_MAX_DELAY_MS = 5 * 60 * 1000;
+
+export const saveStateMessage = (failed: boolean) =>
+  JSON.stringify({ type: "save_state", failed } satisfies SaveStateMessage);
 
 export const serverMessage = (message: CommentServerMessage) =>
   JSON.stringify(message);
@@ -323,4 +331,58 @@ export async function writeSessionSource(
     return new Ok("busy");
   }
   return written;
+}
+
+/**
+ * Records whether `document`'s last save failed, tells its connections when that changes, and
+ * while saves fail, schedules a retry.
+ */
+export function recordSaveResult(
+  hocuspocus: Hocuspocus<CollabAccess>,
+  document: Document,
+  failed: boolean
+): void {
+  const session = getSession(document);
+  if (!session) {
+    return;
+  }
+  if (session.saveFailed !== failed) {
+    session.saveFailed = failed;
+    document.broadcastStateless(saveStateMessage(failed));
+  }
+  if (!failed) {
+    clearTimeout(session.saveRetryTimer);
+    session.saveRetryTimer = undefined;
+    session.saveRetries = 0;
+    return;
+  }
+  if (session.saveRetryTimer !== undefined) {
+    return;
+  }
+  const delay = Math.min(
+    SAVE_RETRY_DELAY_MS * 2 ** session.saveRetries,
+    SAVE_RETRY_MAX_DELAY_MS
+  );
+  session.saveRetries++;
+  session.saveRetryTimer = setTimeout(() => {
+    session.saveRetryTimer = undefined;
+    // Unloaded, it has nothing left to save; shutting down, `saveAllSessions` saves it.
+    if (document.isDestroyed || isStoppingWrites(hocuspocus)) {
+      return;
+    }
+    // Not awaited: `onStoreDocument` logs a failure and schedules the next retry.
+    void hocuspocus.storeDocumentHooks(
+      document,
+      {
+        clientsCount: document.getConnectionsCount(),
+        document,
+        documentName: document.name,
+        instance: hocuspocus,
+        // The store hook saves through the last writer it recorded, not this context.
+        lastContext: undefined,
+        lastTransactionOrigin: undefined,
+      },
+      true
+    );
+  }, delay);
 }

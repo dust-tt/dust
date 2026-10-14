@@ -117,8 +117,10 @@ export function useCollabConnection(
       if (synced) {
         setStatus("offline");
         setSyncingSinceMs(null);
-        setSaveFailed(false);
       }
+      // The next connection is told again if saves still fail: a connection lost before it synced
+      // may have been told they failed, and no one tells it once they recover.
+      setSaveFailed(false);
       const delay = Math.min(
         RECONNECT_DELAY_MS * 2 ** failuresRef.current,
         MAX_RECONNECT_DELAY_MS

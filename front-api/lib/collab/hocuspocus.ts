@@ -14,10 +14,7 @@ import {
 } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
-import type {
-  CommentRequestErrorCode,
-  SaveStateMessage,
-} from "@app/types/collab";
+import type { CommentRequestErrorCode } from "@app/types/collab";
 import {
   commentClientMessageSchema,
   parseSessionName,
@@ -27,15 +24,14 @@ import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { authenticateConnection } from "@front-api/lib/collab/connection_access";
-import type { CollabSession } from "@front-api/lib/collab/session";
 import {
   getSession,
-  isStoppingWrites,
+  recordSaveResult,
+  saveStateMessage,
   serverMessage,
   startSession,
   stopWrites,
 } from "@front-api/lib/collab/session";
-import type { Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
 
 import { z } from "zod";
@@ -46,12 +42,6 @@ const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 // to `STORE_MAX_DEBOUNCE_MS` plus `STORE_DEBOUNCE_MS` of edits; a shutdown saves them first.
 const STORE_DEBOUNCE_MS = 5 * 1000;
 const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
-// A failed save is retried after this delay, doubled at each failure up to the maximum.
-export const SAVE_RETRY_DELAY_MS = 30 * 1000;
-const SAVE_RETRY_MAX_DELAY_MS = 5 * 60 * 1000;
-
-const saveStateMessage = (failed: boolean) =>
-  JSON.stringify({ type: "save_state", failed } satisfies SaveStateMessage);
 
 const refusedMessage = (requestId: string, error: CommentRequestErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
@@ -81,57 +71,6 @@ function logUnexpected(
     );
     throw err;
   };
-}
-
-/**
- * Records whether `document`'s last save failed, tells its connections when that changes, and
- * while saves fail, schedules a retry.
- */
-function recordSave(
-  hocuspocus: Hocuspocus<CollabAccess>,
-  document: Document,
-  session: CollabSession,
-  failed: boolean
-): void {
-  if (session.saveFailed !== failed) {
-    session.saveFailed = failed;
-    document.broadcastStateless(saveStateMessage(failed));
-  }
-  if (!failed) {
-    clearTimeout(session.saveRetry);
-    session.saveRetry = undefined;
-    session.saveRetries = 0;
-    return;
-  }
-  if (session.saveRetry !== undefined) {
-    return;
-  }
-  const delay = Math.min(
-    SAVE_RETRY_DELAY_MS * 2 ** session.saveRetries,
-    SAVE_RETRY_MAX_DELAY_MS
-  );
-  session.saveRetries++;
-  session.saveRetry = setTimeout(() => {
-    session.saveRetry = undefined;
-    // Unloaded, it has nothing left to save; shutting down, `saveAllSessions` saves it.
-    if (document.isDestroyed || isStoppingWrites(hocuspocus)) {
-      return;
-    }
-    // Not awaited: `onStoreDocument` logs a failure and schedules the next retry.
-    void hocuspocus.storeDocumentHooks(
-      document,
-      {
-        clientsCount: document.getConnectionsCount(),
-        document,
-        documentName: document.name,
-        instance: hocuspocus,
-        // The store hook saves through the last writer it recorded, not this context.
-        lastContext: undefined,
-        lastTransactionOrigin: undefined,
-      },
-      true
-    );
-  }, delay);
 }
 
 /**
@@ -215,7 +154,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         comments: content.comments,
         lastSave,
         saveFailed: false,
-        saveRetry: undefined,
+        saveRetryTimer: undefined,
         saveRetries: 0,
         lastChangedBy: undefined,
         lastCommenter: undefined,
@@ -244,12 +183,18 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       if (!session || !writer) {
         return;
       }
+      // A failure is an error once, then each retry that fails again only a warning.
+      const level = session.saveRetries === 0 ? "error" : "warn";
       if (writer.canWrite !== true) {
-        recordSave(instance, document, session, true);
-        logger.error(
-          { documentName, workspaceId: writer.workspaceId },
+        logger[level](
+          {
+            documentName,
+            workspaceId: writer.workspaceId,
+            retries: session.saveRetries,
+          },
           "Collab document changed without a writer"
         );
+        recordSaveResult(instance, document, true);
         throw new Error("The document was changed without a writer.");
       }
 
@@ -261,7 +206,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           session.lastSave
         );
       } catch (err) {
-        recordSave(instance, document, session, true);
+        recordSaveResult(instance, document, true);
         return logUnexpected(
           { documentName, workspaceId: writer.workspaceId },
           "Collab save failed"
@@ -271,19 +216,20 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         // TODO(co-edition): a revision conflict never recovers. `session.lastSave` only moves on
         // success, so once another writer changes the file every later save conflicts too,
         // the document stays loaded and its edits never reach the file.
-        recordSave(instance, document, session, true);
-        logger.error(
+        logger[level](
           {
             documentName,
             workspaceId: writer.workspaceId,
             reason: saved.error,
+            retries: session.saveRetries,
           },
           "Collab save failed"
         );
+        recordSaveResult(instance, document, true);
         throw new Error(saved.error);
       }
       session.lastSave = saved.value;
-      recordSave(instance, document, session, false);
+      recordSaveResult(instance, document, false);
     },
 
     async onDisconnect({ instance, document }) {
@@ -303,9 +249,8 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       session.graceTimer = setTimeout(() => {
         session.graceTimer = undefined;
         document.removeDirectConnection();
-        // Unloading would drop the edits the file does not have.
-        // TODO(co-edition): retry the failed save; until the next edit, its edits only live
-        // in memory.
+        // Unloading would drop the edits the file does not have. The retried save unloads it once
+        // it succeeds, with no grace period left.
         if (!session.saveFailed) {
           void instance.unloadDocument(document);
         }
@@ -313,9 +258,8 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     },
 
     // A connection joining while saves fail learns it here, the others when it changes.
-    async connected({ connection, documentName, instance }) {
-      const document = instance.documents.get(documentName);
-      if (document && getSession(document)?.saveFailed) {
+    async connected({ connection }) {
+      if (getSession(connection.document)?.saveFailed) {
         connection.sendStateless(saveStateMessage(true));
       }
     },
