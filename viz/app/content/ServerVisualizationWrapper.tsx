@@ -1,4 +1,5 @@
 import { ServerVisualizationWrapperClient } from "@viz/app/content/ServerVisualizationWrapperClient";
+import { concurrentExecutor } from "@viz/app/lib/async_utils";
 import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import type { VizCatalog } from "@viz/app/lib/i18n/catalogs";
 import logger from "@viz/app/lib/logger";
@@ -11,6 +12,7 @@ const FRAME_MIME_TYPES = new Set([
 
 const MAX_PREFETCHED_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_PREFETCHED_TOTAL_BYTES = 50 * 1024 * 1024;
+const PREFETCH_CONCURRENCY = 4;
 
 /**
  * @cc [owner:tdraier,label:performance] prefetch-size-budget
@@ -66,8 +68,9 @@ async function prefetchFileRefs(
     const refs = extractFileRefs(text);
     const results: PreFetchedFile[] = [];
 
-    await Promise.all(
-      refs.map(async (ref) => {
+    await concurrentExecutor(
+      refs,
+      async (ref) => {
         // The files endpoint accepts the "conversation/" and "pod/" prefixes (and
         // their canonical "conversation-{id}/" / "pod-{id}/" forms), but not the
         // legacy "project/" prefix, which older frame code may still reference and
@@ -147,7 +150,8 @@ async function prefetchFileRefs(
         } catch (_err) {
           logger.error({ key }, "Failed to fetch file ref");
         }
-      })
+      },
+      { concurrency: PREFETCH_CONCURRENCY }
     );
 
     return results;
