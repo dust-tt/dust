@@ -1,7 +1,7 @@
 import {
   SAVING_DISPLAY_DELAY_MS,
   useShowSaving,
-} from "@app/components/editor/document/DocumentSaveStatus";
+} from "@app/components/editor/document/useShowSaving";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -46,6 +46,17 @@ describe("useShowSaving", () => {
       act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS / 2));
     }
     expect(result.current).toBe(false);
+  });
+
+  it("waits the delay for changes already waiting when a new connection goes live", () => {
+    const { result, rerender } = renderShowSaving();
+
+    // A connection goes live with its own sync messages not yet confirmed.
+    rerender({ syncingSinceMs: 1 });
+    expect(result.current).toBe(false);
+
+    act(() => vi.advanceTimersByTime(SAVING_DISPLAY_DELAY_MS));
+    expect(result.current).toBe(true);
   });
 
   it("waits the delay again for the changes after a slow sync", () => {

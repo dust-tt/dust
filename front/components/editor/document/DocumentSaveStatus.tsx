@@ -1,5 +1,4 @@
 import type { CollabStatus } from "@app/components/editor/document/types";
-import { useDebouncedValue } from "@app/hooks/useDebounce";
 import type { AgentEvent } from "@app/lib/client/collab/agents";
 import type { AgentActivity } from "@app/types/collab";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -119,25 +118,6 @@ export const CollabAgentIndicator = ({
   );
 };
 
-// Every keystroke waits one round trip to sync: only a longer wait shows as saving.
-export const SAVING_DISPLAY_DELAY_MS = 1000;
-
-/**
- * @cc [owner:tdraier,label:product] document-saving-delay
- * Changes MUST show as saving only once they have waited `SAVING_DISPLAY_DELAY_MS` since
- * `syncingSinceMs`, the start of their wait, and MUST stop as soon as they are synced: a wait that
- * ended MUST NOT shorten the next one's delay. A wait already started when the hook mounts shows
- * at once, so it MUST be mounted where the connection starts, not per shared document.
- */
-export function useShowSaving(syncingSinceMs: number | null): boolean {
-  // The start of the wait, not a boolean: a wait that ended leaves no delay behind for the next.
-  const { debouncedValue } = useDebouncedValue(
-    syncingSinceMs,
-    SAVING_DISPLAY_DELAY_MS
-  );
-  return syncingSinceMs !== null && debouncedValue === syncingSinceMs;
-}
-
 type StatusIconState = "saved" | "saving" | "disconnected";
 
 const STATUS_ICONS: Record<
@@ -155,10 +135,10 @@ const STATUS_ICONS: Record<
 /** The icon state and its label, from where the live session stands. */
 const statusIcon = ({
   status,
-  syncing,
+  showSaving,
 }: {
   status: CollabStatus;
-  syncing: boolean;
+  showSaving: boolean;
 }): { state: StatusIconState; label: MessageDescriptor } => {
   switch (status) {
     case "connecting":
@@ -168,7 +148,7 @@ const statusIcon = ({
     case "refused":
       return { state: "disconnected", label: msg`Live editing unavailable` };
     case "live":
-      return syncing
+      return showSaving
         ? { state: "saving", label: msg`Saving…` }
         : { state: "saved", label: msg`Saved` };
     default:
@@ -177,7 +157,7 @@ const statusIcon = ({
 };
 
 interface DocumentStatusIconProps {
-  live?: { status: CollabStatus; syncing: boolean };
+  live?: { status: CollabStatus; showSaving: boolean };
 }
 
 /**
