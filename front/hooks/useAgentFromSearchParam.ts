@@ -5,12 +5,28 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import { useContext, useEffect, useRef } from "react";
 
+export type UseAgentFromSearchParamOptions = {
+  /**
+   * When true (default), picker changes on a new conversation are written back
+   * to `?agent=` so the URL stays shareable. Pod pages pass false: the param is
+   * consumed as an intentional deep link only, and must not be mirrored from the
+   * app-level selected agent (which would leak the previous Pod's default).
+   */
+  mirrorToUrl?: boolean;
+};
+
 /**
  * Keeps the ?agent= search param and the input bar's selected agent in sync on the new
  * conversation page so the URL can always be shared. The param wins on arrival, the
  * picker wins afterwards.
+ *
+ * On Pod pages (`mirrorToUrl: false`), only the URL→composer direction runs so an
+ * implicit/default selection cannot become sticky URL state.
  */
-export function useAgentFromSearchParam(workspaceId: string) {
+export function useAgentFromSearchParam(
+  workspaceId: string,
+  { mirrorToUrl = true }: UseAgentFromSearchParamOptions = {}
+) {
   const router = useAppRouter();
   const agent = useSearchParam("agent");
   const user = useSearchParam("user");
@@ -97,6 +113,12 @@ export function useAgentFromSearchParam(workspaceId: string) {
   // Composer to URL. On a new conversation, once the URL agent has been applied, a picker
   // change is mirrored into the url param "agent" so the address bar always reflects the selected agent.
   useEffect(() => {
+    // Pod pages consume ?agent= but must not write it back — the selected agent is
+    // app-scoped and would otherwise leak across Pods as a fake deep link.
+    if (!mirrorToUrl) {
+      return;
+    }
+
     // Block while ?user= is active, or after a user deep-link until an agent is
     // explicitly chosen (suppressDefaultAgent). Applying ?agent= clears suppress
     // via setSelectedSingleAgent, so mirroring resumes for that selection.
@@ -132,6 +154,7 @@ export function useAgentFromSearchParam(workspaceId: string) {
     isAgentConfigurationError,
     isSynced,
     isUserParamActive,
+    mirrorToUrl,
     router,
     selectedSingleAgent,
     suppressDefaultAgent,

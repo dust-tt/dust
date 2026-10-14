@@ -1,7 +1,8 @@
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
-import { useSearchParam } from "@app/lib/platform";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { isStaleMirroredDefaultAgentParam } from "@app/lib/utils/stale_agent_search_param";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -66,6 +67,7 @@ const useHandleMentions = ({
   isStickyMentionsLoading,
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
+  const router = useAppRouter();
   const {
     selectedSingleAgent,
     setSelectedSingleAgent,
@@ -86,6 +88,12 @@ const useHandleMentions = ({
   // stickyMentions or the @Dust fallback.
   const externalAgentSetRef = useRef(false);
 
+  // After the configured default has resolved once, a later change (Pod switch or
+  // settings update) must re-apply the new default and drop a mirrored ?agent=
+  // that still names the previous default.
+  const prevDefaultAgentIdRef = useRef<string | null | undefined>(undefined);
+  const hasResolvedDefaultRef = useRef(false);
+
   useEffect(() => {
     const currentId = conversation?.sId ?? null;
     if (currentId !== prevConversationIdRef.current) {
@@ -93,6 +101,42 @@ const useHandleMentions = ({
       externalAgentSetRef.current = false;
       setSuppressDefaultAgent(false);
       setSelectedSingleAgent(null);
+    }
+
+    let ignoreStaleAgentSearchParam = false;
+    if (!conversation && !isAgentBuilder && !isDefaultAgentLoading) {
+      const previousDefaultAgentId = prevDefaultAgentIdRef.current;
+      const defaultAgentChanged =
+        hasResolvedDefaultRef.current &&
+        previousDefaultAgentId !== defaultAgentId;
+
+      if (defaultAgentChanged) {
+        // Allow step 3 to replace a selection that came from the old default /
+        // a mirrored URL param. Intentional deep links ( ?agent= ≠ old default )
+        // still hit the agentSearchParam early-return below.
+        externalAgentSetRef.current = false;
+        if (
+          isStaleMirroredDefaultAgentParam({
+            agentSearchParam,
+            previousDefaultAgentId,
+            nextDefaultAgentId: defaultAgentId,
+            hasResolvedDefault: true,
+          })
+        ) {
+          ignoreStaleAgentSearchParam = true;
+          const params = new URLSearchParams(window.location.search);
+          if (params.has("agent")) {
+            params.delete("agent");
+            const queryString = params.toString();
+            void router.replace(
+              `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`
+            );
+          }
+        }
+      }
+
+      hasResolvedDefaultRef.current = true;
+      prevDefaultAgentIdRef.current = defaultAgentId;
     }
 
     // An external source (URL param) already set the agent — do not override.
@@ -111,7 +155,13 @@ const useHandleMentions = ({
     // or @dust here races that path and can overwrite the custom agent in the URL.
     // This must win over suppressDefaultAgent so Cmd+K → agent still applies after
     // a prior member deep-link (existing composer content is kept).
-    if (agentSearchParam && !conversation && !isAgentBuilder) {
+    // Skip when the param is a mirrored previous default after a settings/Pod change.
+    if (
+      agentSearchParam &&
+      !conversation &&
+      !isAgentBuilder &&
+      !ignoreStaleAgentSearchParam
+    ) {
       return;
     }
 
@@ -174,6 +224,7 @@ const useHandleMentions = ({
     setSuppressDefaultAgent,
     defaultAgentId,
     isDefaultAgentLoading,
+    router,
   ]);
 
   useEffect(() => {

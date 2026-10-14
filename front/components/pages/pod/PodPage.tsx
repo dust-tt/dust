@@ -66,8 +66,10 @@ export function PodPage() {
 
   // Consume ?user= before ?agent= so a user deep-link wins and clears any agent.
   useUserFromSearchParam(owner.sId);
-  // Consume ?agent=: fetch agent and set it in the pod input bar (one-shot; no URL mirror).
-  useAgentFromSearchParam(owner.sId);
+  // Consume ?agent= as an intentional deep link only. Do not mirror the selected
+  // agent back into the URL — that selection is app-scoped and would otherwise
+  // override the next Pod's configured default (tasks#11106 / #11254).
+  useAgentFromSearchParam(owner.sId, { mirrorToUrl: false });
 
   const {
     spaceInfo: podInfo,
