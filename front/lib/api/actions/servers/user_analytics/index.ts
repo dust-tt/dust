@@ -26,6 +26,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const DAYS = 30;
@@ -192,7 +193,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
             type: "text" as const,
             text:
               `Usage for the ${jobTypeLabel} job type is not available: it has ` +
-              `${cohort.userCount} user${cohort.userCount === 1 ? "" : "s"} — ` +
+              `${cohort.userCount} user${pluralize(cohort.userCount)} — ` +
               `fewer than the ${MIN_USERS_FOR_ANONYMITY} required ` +
               "to keep individual usage anonymous.",
           },
@@ -271,7 +272,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
           type: "text" as const,
           text:
             "Workspace activity is not available: only " +
-            `${activeUserCount} user${activeUserCount === 1 ? "" : "s"} ` +
+            `${activeUserCount} user${pluralize(activeUserCount)} ` +
             `active in the last ${DAYS} days, below the ` +
             `${MIN_USERS_FOR_ANONYMITY}-user minimum required to keep ` +
             "individual activity anonymous.",

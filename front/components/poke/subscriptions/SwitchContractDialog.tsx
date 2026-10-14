@@ -37,6 +37,7 @@ import { BILLABLE_SEAT_TYPES } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
 import { SwitchContractBodySchema } from "@app/types/poke/switch_contract";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -1952,7 +1953,7 @@ export default function SwitchContractDialog({
                                                 0) * committedSeatCount
                                             )} ${resolvedCurrency.toUpperCase()}`
                                           : ""
-                                      } (× ${committedSeatCount} committed seat${committedSeatCount === 1 ? "" : "s"}).`
+                                      } (× ${committedSeatCount} committed seat${pluralize(committedSeatCount)}).`
                                     : "No committed seats yet — set a seat commitment above, or this grant resolves to nothing."}
                                 </span>
                               )}

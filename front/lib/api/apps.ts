@@ -8,6 +8,7 @@ import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 type AppDeploymentCheck = {
@@ -28,7 +29,7 @@ export async function softDeleteApp(
     return new Err(
       new Error(
         "Cannot delete app in use by " +
-          `agent${agentNames.length > 1 ? "s" : ""}: ${agentNames.join(", ")}.`
+          `agent${pluralize(agentNames.length)}: ${agentNames.join(", ")}.`
       )
     );
   }

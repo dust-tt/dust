@@ -17,6 +17,7 @@ import {
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export const toggleFeatureFlagPlugin = createPlugin({
   manifest: {
@@ -142,9 +143,8 @@ export const toggleFeatureFlagPlugin = createPlugin({
         "Ensured MCP server views after enabling feature flags."
       );
 
-      const viewLabel = createdViewsCount === 1 ? "view" : "views";
       actions.push(
-        `MCP server views ensured for all enabled auto tools (created ${createdViewsCount} ${viewLabel}).`
+        `MCP server views ensured for all enabled auto tools (created ${createdViewsCount} view${pluralize(createdViewsCount)}).`
       );
     }
 

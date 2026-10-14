@@ -5,6 +5,7 @@ import { usePokeTables } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DataSourceType } from "@app/types/data_source";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -113,7 +114,7 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
         <div className="rounded-lg border p-4">
           <h4 className="mb-3 text-lg font-semibold">Select Tables</h4>
           <div className="text-sm text-gray-600">
-            {totalTables} table{totalTables !== 1 ? "s" : ""} available
+            {totalTables} table{pluralize(totalTables)} available
           </div>
           <div className="mt-4 max-h-96 space-y-2 overflow-y-auto">
             {tables.length > 0 ? (
@@ -195,7 +196,7 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
             <h4 className="mb-3 text-lg font-semibold">Results</h4>
             <div className="mb-2 text-sm text-gray-600">
               {queryResult.results.length} row
-              {queryResult.results.length !== 1 ? "s" : ""} returned
+              {pluralize(queryResult.results.length)} returned
             </div>
             {queryResult.results.length > 0 ? (
               <div className="overflow-x-auto">

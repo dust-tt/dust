@@ -1,6 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export const softDeleteConversationPlugin = createPlugin({
   manifest: {
@@ -66,7 +67,7 @@ export const softDeleteConversationPlugin = createPlugin({
       display: "text",
       value: `Conversation ${conversationId} soft-deleted successfully.
 
-Removed ${destroyedCount} participant${destroyedCount !== 1 ? "s" : ""}:
+Removed ${destroyedCount} participant${pluralize(destroyedCount)}:
   - ${emailList}
 
 The conversation can be restored using the restore-conversation plugin.`,
