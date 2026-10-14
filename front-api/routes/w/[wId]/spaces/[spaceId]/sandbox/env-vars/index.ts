@@ -8,6 +8,7 @@ import type {
   GetSandboxEnvVarsResponseBody,
   PostSandboxEnvVarsResponseBody,
 } from "@app/types/api/sandbox/env_vars";
+import { EgressPolicyDomainError } from "@app/types/sandbox/egress_policy";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -75,7 +76,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "sandbox_env_var_invalid",
           message: [
             parsedName.isErr() ? `name: ${parsedName.error}` : null,
             parsedValue.isErr() ? `value: ${parsedValue.error}` : null,
@@ -101,7 +102,10 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type:
+            result.error instanceof EgressPolicyDomainError
+              ? "egress_domain_invalid"
+              : "invalid_request_error",
           message: result.error.message,
         },
       });

@@ -112,7 +112,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "feature_not_enabled",
           message: "Skill suggestions are not available in this workspace.",
         },
       });
@@ -138,7 +138,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "agent_suggestion_not_found",
             message:
               "One or more skill suggestions do not belong to the specified skill configuration.",
           },
@@ -153,7 +153,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_suggestion_not_reviewable",
           message: `The following skill suggestions are not available: ${unavailableSuggestionIds.join(", ")}.`,
         },
       });
@@ -168,7 +168,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_suggestion_batch_incomplete",
           message: updateRes.error.message,
         },
       });

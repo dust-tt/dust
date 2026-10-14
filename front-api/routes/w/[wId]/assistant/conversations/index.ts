@@ -28,6 +28,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
+import { contentFragmentErrorToApiError } from "@front-api/lib/api/assistant/conversation/content_fragment_errors";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -279,7 +280,7 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "invalid_request_error",
+            type: "mcp_server_access_denied",
             message:
               "User does not have access to the client-side MCP servers.",
           },
@@ -378,13 +379,7 @@ app.post(
 
       for (const r of newContentFragmentsRes) {
         if (r.isErr()) {
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: r.error.message,
-            },
-          });
+          return apiError(ctx, contentFragmentErrorToApiError(r.error));
         }
 
         newContentFragments.push(r.value);

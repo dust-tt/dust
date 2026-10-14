@@ -409,7 +409,7 @@
             "description": "Invalid request body (missing fields, invalid dates, range exceeds 30 days)"
           },
           "403": {
-            "description": "The workspace does not have access to the consumption export API, or the API key has no\nadmin scope and the export is not restricted to groups whose analytics it can read.\n"
+            "description": "The API key has no admin scope and the export is not restricted to groups whose\nanalytics it can read.\n"
           },
           "429": {
             "description": "Rate limit exceeded (60 requests per minute per workspace)"
@@ -808,7 +808,8 @@
                 "type": "object",
                 "properties": {
                   "userFavorite": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Favorites the agent for the calling user. Requires a user; rejected with 400 when authenticated with a workspace API key."
                   },
                   "agent": {
                     "type": "object",
@@ -977,7 +978,7 @@
             }
           },
           "400": {
-            "description": "Bad Request. Invalid or missing parameters."
+            "description": "Bad Request. Invalid or missing parameters, or userFavorite sent with a workspace API key."
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
@@ -3889,7 +3890,7 @@
                       "skip",
                       "override"
                     ],
-                    "description": "Conflict handling strategy. Defaults to error."
+                    "description": "Strategy applied when a skill with the same name already exists in the workspace. error rejects the whole import, skip skips the skill and reports it in skipped, override updates the existing skill. Defaults to error."
                   },
                   "editors": {
                     "type": "array",
@@ -7200,7 +7201,7 @@
     "/api/w/{wId}/assistant/conversations/{cId}/consumption": {
       "get": {
         "summary": "Get a conversation credit attribution",
-        "description": "Returns the latest stable credits billed for completed messages belonging directly to a conversation, plus an additive attribution reconciled exclusively through model input rows. In-progress messages are included after they reach a terminal state.",
+        "description": "Returns the latest stable credits billed for completed messages belonging directly to a conversation, plus an additive attribution of that bill, split by the recorded cost of each LLM call. In-progress messages are included after they reach a terminal state.",
         "tags": [
           "Private Conversations"
         ],
@@ -7396,6 +7397,20 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "transport",
+            "required": false,
+            "description": "Use poll for JSON event batches with a wait of up to 25 seconds.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sse",
+                "poll"
+              ],
+              "default": "sse"
+            }
           }
         ],
         "security": [
@@ -7410,6 +7425,29 @@
               "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/PrivateConversationStreamEnvelope"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "events",
+                    "lastEventId"
+                  ],
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "description": "Serialized event envelope containing eventId and data."
+                      }
+                    },
+                    "lastEventId": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Cursor of the last event read, including events filtered from the response. Pass it as lastEventId on the next poll. For an empty batch, preserves the supplied cursor, or null when no cursor was supplied."
+                    }
+                  }
                 }
               }
             }
@@ -7833,7 +7871,7 @@
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.",
+                      "description": "Additive attribution of totalBilledCredits, split by the recorded cost of each LLM call. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7846,7 +7884,7 @@
                         },
                         "agentWorkCredits": {
                           "type": "number",
-                          "description": "Non-tool work for the originating message after assigning billing reconciliation exclusively to model input rows."
+                          "description": "Non-tool work for the originating message, split by the recorded cost of each LLM call."
                         },
                         "tools": {
                           "type": "array",
@@ -7877,7 +7915,7 @@
                               },
                               "attributedCredits": {
                                 "type": "number",
-                                "description": "Share of total billed credits after input-only reconciliation. Run-agent tools include their sub-agent subtree's bill."
+                                "description": "Share of total billed credits, split by the recorded cost of each LLM call. Run-agent tools include their sub-agent subtree's bill."
                               },
                               "directCredits": {
                                 "type": "number"
@@ -8035,6 +8073,20 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "transport",
+            "required": false,
+            "description": "Use poll for JSON event batches with a wait of up to 25 seconds.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sse",
+                "poll"
+              ],
+              "default": "sse"
+            }
           }
         ],
         "security": [
@@ -8050,67 +8102,7 @@
                 "schema": {
                   "$ref": "#/components/schemas/PrivateAgentMessageStreamEnvelope"
                 }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      }
-    },
-    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events/poll": {
-      "get": {
-        "summary": "Poll message events",
-        "deprecated": true,
-        "description": "Deprecated on 2026-09-24; use the equivalent endpoint under /api/sse. Wait up to 25 seconds for events after the supplied Redis stream event ID. Returns an empty array when a non-terminal message has no newer events, or a serialized end-of-stream event when the message has ended with no newer events. A closed channel may return before the timeout.",
-        "tags": [
-          "Private Events"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "cId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "mId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "lastEventId",
-            "required": false,
-            "description": "Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history. Passing the synthetic end-of-stream ID returns the end-of-stream event immediately.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Message events retrieved successfully",
-            "content": {
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PrivateAgentMessageEventsPollResponse"
@@ -8118,14 +8110,8 @@
               }
             }
           },
-          "400": {
-            "description": "The requested message is not an agent message"
-          },
           "401": {
             "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Conversation or message not found"
           }
         }
       }
@@ -11505,7 +11491,7 @@
           },
           "attributedCredits": {
             "type": "number",
-            "description": "Share of billed credits after reconciling exclusively through model input rows."
+            "description": "Share of billed credits, split by the recorded cost of each LLM call."
           },
           "directCredits": {
             "type": "number"
@@ -11535,7 +11521,7 @@
           },
           "attributedCredits": {
             "type": "number",
-            "description": "Model attribution after reconciling exclusively through its input rows."
+            "description": "Model attribution, split by the recorded cost of each LLM call."
           }
         }
       },
@@ -11566,7 +11552,7 @@
           },
           "agentWorkCredits": {
             "type": "number",
-            "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+            "description": "Agent work's share of the bill, split by the recorded cost of each LLM call."
           },
           "tools": {
             "type": "array",
@@ -11584,7 +11570,7 @@
       },
       "PrivateConversationConsumptionDetails": {
         "type": "object",
-        "description": "Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.",
+        "description": "Additive attribution of the authoritative bill, split by the recorded cost of each LLM call. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.",
         "required": [
           "agentWorkCredits",
           "tools",
@@ -11594,7 +11580,7 @@
         "properties": {
           "agentWorkCredits": {
             "type": "number",
-            "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+            "description": "Agent work's share of the bill, split by the recorded cost of each LLM call."
           },
           "tools": {
             "type": "array",

@@ -97,9 +97,9 @@ msgstr "Error deleting conversation."
 msgid "Message has been deleted successfully."
 msgstr "Message has been deleted successfully."
 
-#: front/hooks/useDfmCommentSignatures.ts
-msgid "Commenting is unavailable."
-msgstr "Commenting is unavailable."
+#: front/hooks/useDiscoveryHomepageOptIn.ts
+msgid "Could not switch homepage"
+msgstr "Could not switch homepage"
 
 #: front/hooks/useDismissFeedback.ts
 msgid "Failed to mark feedback as seen."
@@ -300,12 +300,12 @@ msgstr "Failed to cancel your subscription."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
-msgid "Subscription cancelled"
-msgstr "Subscription cancelled"
+msgid "Subscription canceled"
+msgstr "Subscription canceled"
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
-msgid "Your subscription has been cancelled."
-msgstr "Your subscription has been cancelled."
+msgid "Your subscription has been canceled."
+msgstr "Your subscription has been canceled."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 msgid "Reactivation failed"

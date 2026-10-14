@@ -25,7 +25,7 @@ const ICONS = {
 const meta = {
   title: "Actions/Button",
   component: Button,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
@@ -99,6 +99,7 @@ const meta = {
       control: "text",
     },
   },
+  args: { label: "Button" },
   render: (args) => <Button {...args} />,
 } satisfies Meta<typeof Button>;
 

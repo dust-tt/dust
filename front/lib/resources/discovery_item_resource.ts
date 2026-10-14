@@ -433,7 +433,15 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   ): Promise<
     Result<
       ResolvedDiscoveryItem,
-      DustError<"invalid_request_error" | "group_not_found" | "unauthorized">
+      DustError<
+        // The pinned item itself is malformed: position, type or id.
+        | "invalid_request_error"
+        | "discovery_pin_target_not_found"
+        | "discovery_pin_target_not_readable_by_group"
+        | "discovery_pin_group_not_supported"
+        | "group_not_found"
+        | "unauthorized"
+      >
     >
   > {
     const validation = validatePinnedItem(item);
@@ -465,7 +473,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     ) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "discovery_pin_target_not_found",
           "Pinned discovery items must reference an active visible agent or an active skill in this workspace."
         )
       );
@@ -476,7 +484,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     if (!groupCanReadTarget) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "discovery_pin_target_not_readable_by_group",
           "This group can't open this agent or skill. In Space settings, add the group to each restricted space it uses, or pin it for a group that already has access."
         )
       );
@@ -498,7 +506,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       if (group.kind === "regular_auto") {
         return new Err(
           new DustError(
-            "invalid_request_error",
+            "discovery_pin_group_not_supported",
             "Pinned discovery items cannot target regular_auto groups."
           )
         );
@@ -533,7 +541,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       if (!resolved) {
         return new Err(
           new DustError(
-            "invalid_request_error",
+            "discovery_pin_target_not_found",
             "Pinned discovery items must reference an active visible agent or an active skill in this workspace."
           )
         );

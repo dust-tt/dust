@@ -63,7 +63,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "skill_archived",
         message: "This skill is archived; its editors cannot be changed.",
       },
     });
@@ -222,7 +222,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
 
     expect(response.status).toBe(400);
     const { error } = await response.json();
-    expect(error.type).toBe("invalid_request_error");
+    expect(error.type).toBe("skill_last_editor_removed");
     expect(error.message).toContain("without any editor");
 
     const editorsResponse = await get(workspace, skill.sId);
@@ -296,7 +296,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
 
     expect(response.status).toBe(400);
     const { error } = await response.json();
-    expect(error.type).toBe("invalid_request_error");
+    expect(error.type).toBe("skill_editors_missing_space_access");
     expect(error.message).toContain("do not have access");
 
     // The editor list is unchanged.

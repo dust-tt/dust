@@ -167,7 +167,7 @@
  *           type: integer
  *         attributedCredits:
  *           type: number
- *           description: Share of billed credits after reconciling exclusively through model input rows.
+ *           description: Share of billed credits, split by the recorded cost of each LLM call.
  *         directCredits:
  *           type: number
  *         pending:
@@ -188,7 +188,7 @@
  *           type: string
  *         attributedCredits:
  *           type: number
- *           description: Model attribution after reconciling exclusively through its input rows.
+ *           description: Model attribution, split by the recorded cost of each LLM call.
  *     PrivateConversationConsumptionAgentDetails:
  *       type: object
  *       required:
@@ -211,7 +211,7 @@
  *           type: number
  *         agentWorkCredits:
  *           type: number
- *           description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *           description: Agent work's share of the bill, split by the recorded cost of each LLM call.
  *         tools:
  *           type: array
  *           items:
@@ -222,7 +222,7 @@
  *             $ref: '#/components/schemas/PrivateConversationConsumptionModelDetails'
  *     PrivateConversationConsumptionDetails:
  *       type: object
- *       description: Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.
+ *       description: Additive attribution of the authoritative bill, split by the recorded cost of each LLM call. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.
  *       required:
  *         - agentWorkCredits
  *         - tools
@@ -231,7 +231,7 @@
  *       properties:
  *         agentWorkCredits:
  *           type: number
- *           description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *           description: Agent work's share of the bill, split by the recorded cost of each LLM call.
  *         tools:
  *           type: array
  *           items:

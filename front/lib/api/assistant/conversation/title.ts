@@ -186,7 +186,8 @@ const specifications: AgentActionSpecification[] = [
       properties: {
         conversation_title: {
           type: "string",
-          description: "A short title that summarizes the conversation.",
+          description:
+            "A 2-5 word keyword title for the conversation, without stop words.",
         },
       },
       required: ["conversation_title"],
@@ -209,8 +210,11 @@ async function generateConversationTitle(
   const { model, reasoningEffort } = fastModel;
 
   let prompt =
-    "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
-    "The title should capture the main topic or request without being too generic.";
+    "Generate a very short conversation title (2-5 words) based on the user's message and context. " +
+    "Use keywords only: drop articles, prepositions, pronouns and filler words unless strictly " +
+    "needed for meaning. Capture the specific topic or request, not a generic description. " +
+    "No punctuation, no quotes, no trailing period. Write it in the language of the conversation. " +
+    'Examples: "Q3 Sales Forecast Review", "Python CSV Parsing Bug", "Paris Offsite Planning".';
   if (conversation.triggerId) {
     prompt +=
       " The conversation was triggered either on a schedule or programmatically.";

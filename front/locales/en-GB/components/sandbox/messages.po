@@ -1,0 +1,508 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/sandbox/AgentRequestedDomainsSetting.tsx
+msgid "Allow agents to request additional domains?"
+msgstr ""
+
+#: front/components/sandbox/AgentRequestedDomainsSetting.tsx
+msgid "When enabled, any agent running in the Computer can ask the user to allow additional domains during the conversation. Each request is approval-gated, but a non-admin user in this workspace can grant network access to a domain you have not pre-approved. Domains added this way last only for the current Computer."
+msgstr ""
+
+#: front/components/sandbox/AgentRequestedDomainsSetting.tsx
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/sandbox/AgentRequestedDomainsSetting.tsx
+msgid "Enable"
+msgstr ""
+
+#: front/components/sandbox/AgentRequestedDomainsSetting.tsx
+msgid "Agent-requested domains"
+msgstr ""
+
+#: front/components/sandbox/AgentRequestedDomainsSetting.tsx
+msgid "Applies to every Computer in this workspace, across all Pods. Allow agents to ask for additional domains, one approval per domain, during the conversation. When disabled, agents cannot request new domains and rely only on the allowed domains configured per scope below."
+msgstr ""
+
+#: front/components/sandbox/ComputerNetworkSection.tsx
+msgid "Network"
+msgstr ""
+
+#: front/components/sandbox/ComputerNetworkSection.tsx
+msgid "Select the Workspace or one or more Pods to view and edit network access."
+msgstr ""
+
+#: front/components/sandbox/DomainInputForm.tsx
+msgid "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai."
+msgstr ""
+
+#: front/components/sandbox/DomainInputForm.tsx
+msgid "Domain"
+msgstr ""
+
+#: front/components/sandbox/DomainInputForm.tsx
+msgid "e.g. api.openai.com or *.mistral.ai"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "Request domain"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Add domain"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "This domain is already allowed."
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "This domain has already been requested."
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "Will be requested as {domain}."
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "Will be saved as {domain}."
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Pending approval"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Approve"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "Add {domain} to the allowlist"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+msgid "Reject {domain}"
+msgstr ""
+
+#: front/components/sandbox/EgressDomainListEditor.tsx
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Remove {domain}"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Will be added to the Workspace, inherited by all Pods, as {domain}."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Will be added to the {podCount, plural, one {# selected Pod} other {# selected Pods}} as {domain}."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Add {domain} to the Workspace"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Add {domain} to {podName}"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Reject {domain} for the Workspace"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Reject {domain} for {podName}"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Inherited from the Workspace — select the Workspace to remove it."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Failed to load"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Network settings could not be loaded."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "No domains are currently allowed in the selected scopes."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Workspace"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Remove Workspace domain"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "{removeTargetDomain} is a Workspace domain, inherited by every Pod and running Computer. Removing it here drops it from the Workspace and from {removeTargetPodNames}. This cannot be undone."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "{removeTargetDomain} is a Workspace domain, inherited by every Pod and running Computer. Removing it here drops it from the Workspace. This cannot be undone."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Remove"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Allowed domains"
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "Domains allowed across the selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "This domain is already allowed workspace-wide."
+msgstr ""
+
+#: front/components/sandbox/MultiPodNetworkSection.tsx
+msgid "This domain is already allowed in every selected Pod."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Uppercase letters, digits and underscores. Up to 64 characters after the prefix."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Value is required."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Values cannot contain NUL bytes."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Values cannot exceed 32 KiB."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "HTTPS secret values cannot contain ASCII control bytes."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "HTTPS secret values cannot exceed {maxKiB} KiB."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "HTTPS secrets require at least one allowed domain."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Environment variables for every Computer in this workspace. Values cannot be viewed after saving. Changes apply to new Computers."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers. Workspace admins manage these variables."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Encrypted; injected only into outbound HTTPS requests to allowlisted domains."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Plain, non-sensitive environment variables."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Use exact domains such as api.openai.com or wildcards such as *.mistral.ai."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Will be saved as {domains}."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "A variable with this suffix already exists as {existingName}."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "A variable with this name already exists. Saving will replace its value."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "This name can be saved."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "{valueBytes} / {maxBytes} bytes. ASCII control bytes are not allowed."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "{valueBytes} / {maxBytes} bytes. Multiline values are allowed."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "The Computer environment variables could not be loaded."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Unknown"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Updated {updatedAgo} by {updatedBy}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Promote {envVarName} to HTTPS secret"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Edit allowed domains for {envVarName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Replace value of {envVarName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Delete {envVarName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "HTTPS secrets ({httpsSecretPrefix})"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Add secret"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "No HTTPS secrets yet."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Config ({configPrefix})"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Add variable"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "No config variables yet."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Replace variable"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "The {namePrefix} prefix is reserved and cannot be removed."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "e.g. api.openai.com, *.mistral.ai"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Value"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Paste the secret value"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Replace"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Promote {configureDomainsEnvVarName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Allowed domains for {configureDomainsEnvVarName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Promotion only takes effect on next wake"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Running Computers keep the previous {SANDBOX_ENV_VAR_PREFIX}-prefixed value in their env until they are restarted. New Computers will receive the promoted secret only via egress-time substitution to the allowed domains."
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Promote"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Delete {envVarToDeleteName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Are you sure you want to delete <0>{envVarToDeleteName}</0>?"
+msgstr ""
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Delete"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "All scopes"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Select scope"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Workspace + {podName}"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Workspace + {podCount, plural, one {# Pod} other {# Pods}}"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "All Pods"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "{podCount, plural, one {# Pod} other {# Pods}}"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Loading"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Failed to load Pods"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "No Pods with their own policy"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "No matching Pods"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Pods"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Search Pods"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgctxt "clear the selection"
+msgid "Clear all"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Select all"
+msgstr ""
+
+#: front/components/sandbox/SandboxScopeSelector.tsx
+msgid "Reset"
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Domain cannot be empty."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Domain cannot be empty."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Domain must be {maxLength} characters or less."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Domain must be {maxLength} characters or less."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "IP addresses are not supported."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: IP addresses are not supported."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Use an exact domain such as api.github.com or a wildcard such as *.github.com."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Use an exact domain such as api.github.com or a wildcard such as *.github.com."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Domain must have a top-level label containing a letter."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Domain must have a top-level label containing a letter."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Wildcard domains must include a suffix."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Wildcard domains must include a suffix."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Wildcards must use the form *.example.com."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Wildcards must use the form *.example.com."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com."
+msgstr ""
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com."
+msgstr ""

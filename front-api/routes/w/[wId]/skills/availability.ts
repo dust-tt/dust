@@ -68,7 +68,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_not_custom",
           message: `Only custom skills can have their availability changed: ${invalidSkillIds.join(", ")}.`,
         },
       });

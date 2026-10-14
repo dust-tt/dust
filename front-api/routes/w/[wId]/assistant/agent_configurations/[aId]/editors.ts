@@ -181,11 +181,18 @@ app.patch(
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
         case "user_already_member":
+          return apiError(ctx, {
+            status_code: 409,
+            api_error: {
+              type: "user_already_agent_editor",
+              message: updateRes.error.message,
+            },
+          });
         case "user_not_member":
           return apiError(ctx, {
             status_code: 409,
             api_error: {
-              type: "invalid_request_error",
+              type: "user_not_agent_editor",
               message: updateRes.error.message,
             },
           });

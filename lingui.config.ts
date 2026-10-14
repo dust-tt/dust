@@ -2,7 +2,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@lingui/cli";
 import { formatter } from "@lingui/format-po";
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "./front/types/locale";
+import {
+  CATALOG_FALLBACK_LOCALES,
+  CATALOG_LOCALES,
+  DEFAULT_LOCALE,
+} from "./front/types/locale";
 
 const SOURCE_DIRECTORIES = ["front/components", "front/hooks", "front/lib"];
 const EXCLUDED_DIRECTORIES = new Set(["front/components/poke", "node_modules"]);
@@ -46,7 +50,7 @@ function listTranslatedDirectories(directory: string): string[] {
 export default defineConfig({
   sourceLocale: DEFAULT_LOCALE,
   locales: [...CATALOG_LOCALES],
-  fallbackLocales: { default: DEFAULT_LOCALE },
+  fallbackLocales: { ...CATALOG_FALLBACK_LOCALES, default: DEFAULT_LOCALE },
   catalogs: [
     ...SOURCE_DIRECTORIES.flatMap(listTranslatedDirectories).map(
       (directory) => ({
@@ -68,10 +72,15 @@ export default defineConfig({
       ],
       exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.test.tsx"],
     },
-    // The Slack bot has a single catalog of its own: see `connectors/src/connectors/slack/CONTRACTS`.
+    // The Slack and Teams bots share a single catalog: see `connectors/src/connectors/slack/CONTRACTS`
+    // and `connectors/src/api/webhooks/CONTRACTS`.
     {
       path: "<rootDir>/connectors/locales/{locale}/messages",
-      include: ["<rootDir>/connectors/src/connectors/slack"],
+      include: [
+        "<rootDir>/connectors/src/connectors/slack",
+        "<rootDir>/connectors/src/api/webhooks/teams",
+        "<rootDir>/connectors/src/api/webhooks/webhook_teams.ts",
+      ],
       exclude: ["**/node_modules/**", "**/*.test.ts"],
     },
   ],

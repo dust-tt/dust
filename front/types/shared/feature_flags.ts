@@ -40,11 +40,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "davidebbo",
   },
-  frame_documents: {
+  frames_v2_public_functions: {
     description:
-      "Expose editable Document guidance and examples in the Frame skill. Superseded by dust_documents (co-edition): do not roll out to other workspaces.",
+      "Let Frames v2 declare public functions that anonymous visitors of a public share can call (requires frames_v2_functions)",
     stage: "dust_only",
-    owner: "flvndvd",
+    owner: "achilleburah",
   },
   advanced_notion_management: {
     description:
@@ -139,11 +139,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "spolu",
   },
-  disable_computer_feature: {
-    description: "Disable all Computer sandbox features for this workspace",
-    stage: "self_serve",
-    owner: "fontanierh",
-  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "ask_owner",
@@ -208,9 +203,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  standard_stream_gpt_6_luna_medium: {
+  standard_stream_gpt_6_luna_high: {
     description:
-      "Route the Standard model tier to GPT 6 Luna at medium reasoning first, to test it as the Standard baseline",
+      "Route the Standard model tier to GPT 6 Luna at high reasoning first, to test it as the Standard baseline",
     stage: "dust_only",
     owner: "Nils-Fedrigo",
   },
@@ -440,12 +435,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "sfriquet",
   },
-  consumption_export_api: {
-    description:
-      "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
-    stage: "ask_owner",
-    owner: "sfriquet",
-  },
   agent_message_consumption_writes: {
     description:
       "Write agent-message consumption items and outbox events as usage is incurred. Shadow mode keeps existing billing.",
@@ -465,13 +454,19 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   localisation: {
     description: "Workspace and user language settings for the product UI",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "sfriquet",
   },
   co_edition: {
     description: "Collaborative editing features",
     stage: "dust_only",
     owner: "PopDaph",
+  },
+  self_configuration_tool: {
+    description:
+      "Let @dust raise its own reasoning effort mid-conversation on Claude models that support per-message effort",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
@@ -511,18 +506,11 @@ export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
 
-const DISABLE_COMPUTER_FEATURE =
-  "disable_computer_feature" as const satisfies WhitelistableFeature;
-
-export function isComputerFeatureEnabled(
-  featureFlags: WhitelistableFeature[]
-): boolean {
-  return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
-}
-
 const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
 const FRAMES_V2_FUNCTIONS_FEATURE =
   "frames_v2_functions" as const satisfies WhitelistableFeature;
+const FRAMES_V2_PUBLIC_FUNCTIONS_FEATURE =
+  "frames_v2_public_functions" as const satisfies WhitelistableFeature;
 const DISABLE_FRAMES_V2_FEATURE =
   "disable_frames_v2" as const satisfies WhitelistableFeature;
 
@@ -553,6 +541,20 @@ export function isFramesV2FunctionsEnabled(
   return (
     featureFlags.includes(FRAMES_V2_FEATURE) &&
     featureFlags.includes(FRAMES_V2_FUNCTIONS_FEATURE)
+  );
+}
+
+/**
+ * @cc [owner:achilleburah,label:product;security] frames-v2-public-functions-requires-frames-v2-functions
+ * Public Frame functions MUST be reported enabled only when Frame functions are enabled (see
+ * isFramesV2FunctionsEnabled) and frames_v2_public_functions is on.
+ */
+export function isFramesV2PublicFunctionsEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    isFramesV2FunctionsEnabled(featureFlags) &&
+    featureFlags.includes(FRAMES_V2_PUBLIC_FUNCTIONS_FEATURE)
   );
 }
 

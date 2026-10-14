@@ -1,3 +1,7 @@
+import {
+  getAgentDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { isDustProvidedSkill } from "@app/lib/skill";
 import type {
   AgentSearchFilters,
@@ -6,6 +10,7 @@ import type {
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
+import type { MessageDescriptor } from "@lingui/core";
 
 type DiscoverAgentSearchResult = SearchAgentsResponseBody["agents"][number];
 
@@ -99,10 +104,13 @@ export function getItemName(item: CatalogItem): string {
   return item.kind === "agent" ? item.agent.name : item.skill.name;
 }
 
-export function getItemDescription(item: CatalogItem): string {
+export function getItemDescription(
+  t: (descriptor: MessageDescriptor) => string,
+  item: CatalogItem
+): string {
   return item.kind === "agent"
-    ? item.agent.description
-    : item.skill.userFacingDescription;
+    ? getAgentDisplayDescription(t, item.agent)
+    : getSkillDisplayDescription(t, item.skill);
 }
 
 export function toSearchAgentCatalogItem(

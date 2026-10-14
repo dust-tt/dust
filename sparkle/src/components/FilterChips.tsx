@@ -23,22 +23,29 @@ function selectedButtonProps(
   }
 }
 
-export interface FilterChipProps {
-  /** Chip text; omit it (with an `icon`) for an icon-only chip. */
-  label?: string;
+export type FilterChipProps = {
   /** Leading icon. */
   icon?: ButtonProps["icon"];
   /** Whether this chip is selected. */
   isSelected?: boolean;
   /** Selected look: `primary` fills the chip, `secondary` uses the lighter selected background. */
   variant?: FilterChipVariant;
-  /** Tooltip label; required for icon-only chips. */
-  tooltip?: string;
   /** When true, the chip cannot be selected. */
   disabled?: boolean;
   /** Called on click; the caller owns the selection and toggles it. For a non-interactive badge use Chip. */
   onClick: () => void;
-}
+} & (
+  | {
+      /** Chip text; omit it (with an `icon`) for an icon-only chip. */
+      label: string;
+      tooltip?: string;
+    }
+  | {
+      label?: undefined;
+      /** Tooltip label; required for icon-only chips. */
+      tooltip: string;
+    }
+);
 
 /**
  * A single filter chip whose selection is controlled by the caller. Selected
@@ -47,20 +54,18 @@ export interface FilterChipProps {
  * @summary Controlled single filter chip.
  */
 export function FilterChip({
-  label,
   icon,
   isSelected = false,
   variant = "primary",
-  tooltip,
   disabled = false,
   onClick,
+  ...nameProps
 }: FilterChipProps) {
   return (
     <Button
       size="xs"
-      label={label}
       icon={icon}
-      tooltip={tooltip}
+      {...nameProps}
       disabled={disabled}
       aria-pressed={isSelected}
       onClick={onClick}

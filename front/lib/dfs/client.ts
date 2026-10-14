@@ -7,7 +7,6 @@ import {
   encodeSearchRequest,
   encodeUint32,
   encodeUint64,
-  encodeVersionCheck,
   WireOperationBatchSchema,
   WireEmptySchema,
   WireGrantPageSchema,
@@ -18,7 +17,6 @@ import {
   WireSessionSchema,
   WireAttrBatchSchema,
   WireTenantSchema,
-  WireValidationBatchSchema,
 } from "@app/lib/dfs/codec";
 import { DfsGrpcTransport } from "@app/lib/dfs/grpc_transport";
 import type { DfsMethod, DfsWireMessage } from "@app/lib/dfs/proto";
@@ -41,8 +39,6 @@ import type {
   DfsSession,
   DfsAttrBatch,
   DfsTenant,
-  DfsValidationBatch,
-  DfsVersionCheck,
 } from "@app/types/dfs";
 import { DfsError, isDfsObjectId } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
@@ -93,9 +89,8 @@ function attrMatchesTarget(
  */
 /**
  * @cc [owner:fabiencelier,label:api] per-item-errors-in-results
- * Per-item failures of batch calls (`stat`, `lookup`, `readFiles`, `validate`, `apply`) MUST be
- * returned in
- * the corresponding result entry, in request order, and MUST NOT fail the whole call.
+ * Per-item failures of batch calls (`stat`, `lookup`, `readFiles`, `apply`) MUST be returned in the
+ * corresponding result entry, in request order, and MUST NOT fail the whole call.
  */
 /**
  * @cc [owner:fabiencelier,label:api;error-handling] batch-results-match-inputs
@@ -367,19 +362,6 @@ export class DfsClient {
             r.objectId === objectIds[i] &&
             (r.status !== "ok" || r.object.id === objectIds[i])
         )
-    );
-  }
-
-  async validate({
-    checks,
-  }: {
-    checks: DfsVersionCheck[];
-  }): Promise<Result<DfsValidationBatch, DfsError>> {
-    return this.callMatching(
-      "Validate",
-      () => ({ checks: checks.map(encodeVersionCheck) }),
-      WireValidationBatchSchema,
-      ({ results }) => results.length === checks.length
     );
   }
 

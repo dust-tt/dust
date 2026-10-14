@@ -43,7 +43,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "agent_already_exists",
               message: restoredResult.error.message,
             },
           });

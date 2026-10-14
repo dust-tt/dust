@@ -160,7 +160,7 @@ describe("POST /api/w/:wId/credentials/check_bigquery_locations", () => {
     const data = (await response.json()) as {
       error: { type: string; message: string };
     };
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("bigquery_locations_check_failed");
     expect(data.error.message).toBe(
       "Failed to check BigQuery locations: BigQuery boom"
     );

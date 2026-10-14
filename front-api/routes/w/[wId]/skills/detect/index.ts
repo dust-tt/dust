@@ -52,10 +52,11 @@ app.post(
     const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
     const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
     if (clientResult.isErr()) {
+      // Parsing the URL the user entered is the only way to fail here.
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_github_repository_url_invalid",
           message: clientResult.error.message,
         },
       });
@@ -71,7 +72,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_repository_url_invalid",
               message: error.message,
             },
           });
@@ -87,7 +88,7 @@ app.post(
           return apiError(ctx, {
             status_code: 401,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_auth_error",
               message: error.message,
             },
           });
@@ -97,7 +98,7 @@ app.post(
             {
               status_code: 500,
               api_error: {
-                type: "invalid_request_error",
+                type: "skill_github_api_error",
                 message: error.message,
               },
             },
@@ -107,7 +108,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_import_invalid",
               message: error.message,
             },
           });
@@ -122,7 +123,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skills_not_detected",
           message:
             "No skills found in this repository. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).",
         },

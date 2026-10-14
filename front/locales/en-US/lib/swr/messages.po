@@ -722,8 +722,8 @@ msgid "{memberName}'s seat will change to {seatName} at the next credit refresh.
 msgstr "{memberName}'s seat will change to {seatName} at the next credit refresh."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s scheduled seat change has been cancelled."
-msgstr "{memberName}'s scheduled seat change has been cancelled."
+msgid "{memberName}'s scheduled seat change has been canceled."
+msgstr "{memberName}'s scheduled seat change has been canceled."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
@@ -1513,6 +1513,10 @@ msgid "Please try again."
 msgstr "Please try again."
 
 #: front/lib/swr/user.ts
+msgid "Error completing onboarding"
+msgstr "Error completing onboarding"
+
+#: front/lib/swr/user.ts
 msgid "Profile updated"
 msgstr "Profile updated"
 
@@ -1537,8 +1541,8 @@ msgid "Failed to cancel wake-up"
 msgstr "Failed to cancel wake-up"
 
 #: front/lib/swr/wakeups.ts
-msgid "Wake-up cancelled"
-msgstr "Wake-up cancelled"
+msgid "Wake-up canceled"
+msgstr "Wake-up canceled"
 
 #: front/lib/swr/webhook_source.ts
 msgid "Failed to create webhook source"
@@ -1621,5 +1625,5 @@ msgid "Checkout failed"
 msgstr "Checkout failed"
 
 #: front/lib/swr/workspaces.ts
-msgid "Could not initialise the payment form. Please try again."
-msgstr "Could not initialise the payment form. Please try again."
+msgid "Could not initialize the payment form. Please try again."
+msgstr "Could not initialize the payment form. Please try again."

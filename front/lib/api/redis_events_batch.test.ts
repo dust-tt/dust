@@ -39,4 +39,34 @@ describe("getRedisEventsBatch", () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it("resolves to an empty batch when the Redis connection resets", async () => {
+    const unsubscribe = vi.fn();
+    subscribe.mockResolvedValue({ history: [], unsubscribe });
+    readEventsAfter.mockRejectedValue(
+      Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" })
+    );
+    await expect(
+      getRedisEventsBatch({
+        channel: "test",
+        origin: "test",
+        lastEventId: "1-0",
+        signal: new AbortController().signal,
+      })
+    ).resolves.toEqual([]);
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("propagates other Redis read failures", async () => {
+    subscribe.mockResolvedValue({ history: [], unsubscribe: vi.fn() });
+    readEventsAfter.mockRejectedValue(new Error("WRONGTYPE"));
+    await expect(
+      getRedisEventsBatch({
+        channel: "test",
+        origin: "test",
+        lastEventId: "1-0",
+        signal: new AbortController().signal,
+      })
+    ).rejects.toThrow("WRONGTYPE");
+  });
 });

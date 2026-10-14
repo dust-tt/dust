@@ -16,7 +16,7 @@ import {
   renameWorkspace,
   updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
-import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -25,7 +25,6 @@ import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { WhitelistableModelMakerIdSchema } from "@app/types/assistant/models/providers";
 import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import { SUPPORTED_LOCALES } from "@app/types/locale";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -426,7 +425,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "non_regional_models_in_use",
               message: `${incompatibleAgentIds.length} active agent(s) use a non-regional model. Update them first.`,
             },
           });
@@ -656,7 +655,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "redirect_uri_invalid",
               message: validation.error.message,
             },
           });
@@ -814,17 +813,6 @@ app.post(
         },
       });
     } else if ("sandboxAllowAgentEgressRequests" in body) {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!isComputerFeatureEnabled(featureFlags)) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message: "Computer is disabled for this workspace.",
-          },
-        });
-      }
-
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
         ...previousMetadata,
@@ -932,7 +920,7 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "feature_flag_not_found",
+            type: "feature_not_enabled",
             message:
               "The workspace default agent feature is not enabled for this workspace.",
           },
@@ -950,7 +938,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "agent_configuration_not_found",
               message: `Agent "${body.workspaceDefaultAgentId}" was not found or is not usable by the authenticated user.`,
             },
           });
@@ -1026,7 +1014,7 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "feature_flag_not_found",
+            type: "feature_not_enabled",
             message:
               "The localisation feature is not enabled for this workspace.",
           },

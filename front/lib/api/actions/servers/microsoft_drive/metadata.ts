@@ -177,12 +177,16 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = [
         ),
       offset: z
         .number()
+        .int()
+        .min(0)
         .default(0)
         .describe(
           "Character offset to start reading from (for pagination). Defaults to 0."
         ),
       limit: z
         .number()
+        .int()
+        .min(1)
         .default(MAX_CONTENT_SIZE)
         .describe(
           `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`

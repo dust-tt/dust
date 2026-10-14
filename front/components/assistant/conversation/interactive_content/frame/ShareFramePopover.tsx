@@ -66,8 +66,7 @@ export function ShareFramePopover({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          label={isMobile ? undefined : t`Share`}
-          tooltip={isMobile ? t`Share` : undefined}
+          {...(isMobile ? { tooltip: t`Share` } : { label: t`Share` })}
           icon={fileShare ? SHARE_SCOPE_ICONS[fileShare.scope] : Upload01}
           isLoading={isFileShareLoading}
         />

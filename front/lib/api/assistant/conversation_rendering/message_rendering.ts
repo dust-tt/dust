@@ -126,6 +126,13 @@ function renderAgentSteps(
       for (const { enabledSkillMessages } of step.actions) {
         messages.push(...enabledSkillMessages);
       }
+      // Parallel effort changes in one step count once: the last one applies.
+      const effortChangeMessage = step.actions.findLast(
+        (a) => a.effortChangeMessage !== null
+      )?.effortChangeMessage;
+      if (effortChangeMessage) {
+        messages.push(effortChangeMessage);
+      }
     }
   }
 
@@ -158,7 +165,7 @@ export async function renderAllMessages(
     enabledSkills: EnabledSkill[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
-  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+  const capabilities = getAttachmentCapabilityContext(conversation);
   const messages: ModelMessageTypeMultiActions[] = [];
   const enabledSkillById = new Map(
     enabledSkills.map((skill) => [skill.sId, skill])

@@ -1,4 +1,5 @@
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import logger from "@app/logger/logger";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -28,9 +29,10 @@ import {
   getConversationEventsBatch,
 } from "@app/lib/api/assistant/pubsub";
 
-describe.each(["", "/poll"])(
+describe.each(["", "?transport=sse", "/poll", "?transport=poll"])(
   "GET /api/sse/w/[wId]/assistant/conversations/[cId]/events%s",
   (suffix) => {
+    const polling = suffix.includes("poll");
     function getEvents(workspaceId: string, conversationId: string) {
       return honoApp.request(
         `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/events${suffix}`
@@ -39,6 +41,7 @@ describe.each(["", "/poll"])(
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(logger, "info").mockImplementation(() => undefined);
     });
 
     it("returns 404 when the conversation does not exist", async () => {
@@ -69,10 +72,28 @@ describe.each(["", "/poll"])(
       const response = await getEvents(workspace.sId, conversation.sId);
 
       expect(response.status).toBe(200);
-      const payloads: string[] = suffix
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: !polling }),
+        "Processed request"
+      );
+      const payloads: string[] = polling
         ? (await response.json()).events
         : parseSseDataPayloads(await response.text());
       expect(payloads.map((p) => JSON.parse(p).data.title)).toEqual(["hello"]);
     });
   }
 );
+
+describe("conversation event transport validation", () => {
+  it("rejects an unsupported transport before reading events", async () => {
+    const { workspace } = await createPrivateApiMockRequest();
+    vi.clearAllMocks();
+    const response = await honoApp.request(
+      `/api/sse/w/${workspace.sId}/assistant/conversations/conv_unknown/events?transport=unknown`
+    );
+
+    expect(response.status).toBe(400);
+    expect(getConversationEvents).not.toHaveBeenCalled();
+    expect(getConversationEventsBatch).not.toHaveBeenCalled();
+  });
+});

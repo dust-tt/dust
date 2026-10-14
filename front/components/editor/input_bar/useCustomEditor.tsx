@@ -685,7 +685,9 @@ const useCustomEditor = ({
       return;
     }
     editor.setOptions({
+      // Since TipTap 3.31.4, editorProps without attributes reset the editor's class.
       editorProps: {
+        ...editor.options.editorProps,
         handleKeyDown: (view, event) => {
           const submitMessageKey = localStorage.getItem("submitMessageKey");
           const isCmdEnterForSubmission =

@@ -114,7 +114,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_not_supported",
           message: `Unsupported model: ${model.providerId}/${model.modelId}.`,
         },
       });

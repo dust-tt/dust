@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { SlideshowGrid } from "@viz/components/dust/slideshow/SlideshowGrid";
 import { SlideThumbnail } from "@viz/components/dust/slideshow/SlideThumbnail";
 import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
@@ -316,6 +317,7 @@ type SlideshowProps = PropsWithChildren<{
 }>;
 
 function SlideshowRoot({ children, className }: SlideshowProps) {
+  const { t } = useLingui();
   const slides = validateSlideChildren(children);
   const slideshowRef = React.useRef<HTMLElement>(null);
 
@@ -367,16 +369,19 @@ function SlideshowRoot({ children, className }: SlideshowProps) {
   if (slides.length === 0) {
     return (
       <div className="@container h-full w-full flex items-center justify-center">
-        <div className="text-muted-foreground">No slides available</div>
+        <div className="text-muted-foreground">{t`No slides available`}</div>
       </div>
     );
   }
+
+  const slideNumber = activeIndex + 1;
+  const total = slides.length;
 
   return (
     <div
       className={cn("@container h-screen w-full", className)}
       role="region"
-      aria-label="Slideshow"
+      aria-label={t`Slideshow`}
       onMouseMove={resetHideTimer}
       onClick={resetHideTimer}
     >
@@ -385,7 +390,7 @@ function SlideshowRoot({ children, className }: SlideshowProps) {
           ref={slideshowRef}
           className="relative flex h-full w-full items-center justify-center overflow-hidden bg-background [&:fullscreen]:h-screen [&:fullscreen]:w-screen [&:fullscreen]:bg-background"
           aria-live="polite"
-          aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
+          aria-label={t`Slide ${slideNumber} of ${total}`}
         >
           {slides[activeIndex]}
           <SlideshowGrid

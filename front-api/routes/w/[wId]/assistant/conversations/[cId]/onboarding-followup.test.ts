@@ -1,11 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
@@ -84,7 +86,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     expect(response.status).toBe(200);
     const contents = await listUserMessageContents(auth, conversation);
     expect(contents).toHaveLength(1);
-    expect(contents[0]).toContain("You MUST respond in fr.");
+    expect(contents[0]).toContain("You MUST respond in French.");
   });
 
   it("returns 404 for another member's onboarding conversation the caller can view", async () => {
@@ -111,6 +113,61 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
 
     expect(response.status).toBe(404);
     expect(await listUserMessageContents(auth, conversation)).toEqual([]);
+  });
+
+  it("uses Accept-Language even when the user has a saved locale", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "POST",
+    });
+    await FeatureFlagFactory.basic(auth, "localisation");
+    await auth
+      .getNonNullableUser()
+      .setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
+    const conversation = await createOnboardingConversation(auth, workspace);
+
+    const response = await postFollowUp(workspace, conversation.sId, {
+      "Accept-Language": "de-DE,de;q=0.9",
+    });
+
+    expect(response.status).toBe(200);
+    const contents = await listUserMessageContents(auth, conversation);
+    expect(contents).toHaveLength(1);
+    expect(contents[0]).toContain("You MUST respond in German.");
+  });
+
+  it("strips the quality parameter from a weighted, regionless Accept-Language", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "POST",
+    });
+    const conversation = await createOnboardingConversation(auth, workspace);
+
+    const response = await postFollowUp(workspace, conversation.sId, {
+      "Accept-Language": "fr;q=1.0,en;q=0.8",
+    });
+
+    expect(response.status).toBe(200);
+    const contents = await listUserMessageContents(auth, conversation);
+    expect(contents).toHaveLength(1);
+    expect(contents[0]).toContain("You MUST respond in French.");
+  });
+
+  it("adds no language instruction for English", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "POST",
+    });
+    const conversation = await createOnboardingConversation(auth, workspace);
+
+    const response = await postFollowUp(workspace, conversation.sId, {
+      "Accept-Language": "en-US,en;q=0.9",
+    });
+
+    expect(response.status).toBe(200);
+    const contents = await listUserMessageContents(auth, conversation);
+    expect(contents).toHaveLength(1);
+    expect(contents[0]).not.toContain("You MUST respond in");
   });
 
   it("drops an Accept-Language value that is not a bare language code", async () => {

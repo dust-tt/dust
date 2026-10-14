@@ -5,7 +5,9 @@ import type {
   ScopedWorkspaceUserIdentity,
   WorkspaceUserIdentity,
 } from "@app/types/assistant/visualization";
+import { DEFAULT_LOCALE, isSupportedLocale } from "@app/types/locale";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react";
 import { forwardRef, useContext } from "react";
 
 interface WorkspaceAuthIdentity {
@@ -45,12 +47,17 @@ export function getAuthenticatedFrameUserIdentity(
 
 interface AuthenticatedVisualizationActionIframeProps extends Omit<
   VisualizationActionIframeProps,
-  "canInvokeFunctions" | "scopedUserIdentity" | "viewer"
+  "canInvokeFunctions" | "locale" | "scopedUserIdentity" | "viewer"
 > {
   isPodEditor?: boolean;
   isPodMember?: boolean;
 }
 
+/**
+ * @cc [owner:ykmsd,label:product] authenticated-frame-follows-active-locale
+ * The Frame MUST receive front's active UI locale (`i18n.locale`, as set by `UserLocaleSync`), or
+ * `DEFAULT_LOCALE` when that locale is not a `SupportedLocale` (pseudo-locale).
+ */
 export const AuthenticatedVisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   AuthenticatedVisualizationActionIframeProps
@@ -59,6 +66,7 @@ export const AuthenticatedVisualizationActionIframe = forwardRef<
   ref
 ) {
   const authContext = useContext(AuthContext);
+  const { i18n } = useLingui();
   const scopedUserIdentity = getAuthenticatedFrameUserIdentity(
     authContext,
     props.workspaceId,
@@ -70,6 +78,7 @@ export const AuthenticatedVisualizationActionIframe = forwardRef<
     <VisualizationActionIframe
       {...props}
       ref={ref}
+      locale={isSupportedLocale(i18n.locale) ? i18n.locale : DEFAULT_LOCALE}
       canInvokeFunctions={scopedUserIdentity !== undefined}
       scopedUserIdentity={scopedUserIdentity}
       viewer={

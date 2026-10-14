@@ -12,12 +12,11 @@ back to the translated default only when `undefined` (``{label ?? t`Load more`}`
 hardcoded English default value.
 
 @cc [owner:ykmsd,label:product] sparkle-formats-through-format-module
-Code under `src/` (excluding `src/stories/`, `src/lib/i18n/` and the deprecated
-`src/components/Document/`) MUST format user-visible numbers, dates and relative times with the
-functions of `src/lib/i18n/format.ts` (adding the missing one there), passing the locale of
-`useFormatLocale` unless the consumer provided one. It MUST NOT call `Intl` formatters or
+Code under `src/` (excluding `src/stories/` and `src/lib/i18n/`) MUST format user-visible
+numbers, dates and relative times with the functions of `src/lib/i18n/format.ts` (adding the
+missing one there), passing the locale of `useFormatLocale` unless the consumer provided one. It MUST NOT call `Intl` formatters or
 `toLocaleString`, `toLocaleDateString` and `toLocaleTimeString` directly: those ignore the format
-locale of `SparkleI18nProvider` (e.g. `en-GB`, which renders the `en-US` catalog).
+locale of `SparkleI18nProvider` (e.g. `fr-FR` while the catalog is `en-US`).
 
 @cc [owner:tdraier,notify:tdraier,label:coding] generated-icon-modules-never-hand-edited
 The TSX modules and `index.ts` files under `src/icons/v2-stroke/`, `src/logo/dust/` and

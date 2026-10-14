@@ -6,6 +6,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import logger from "@app/logger/logger";
 import type { DfsObjectId } from "@app/types/dfs";
+import { DfsTenantError } from "@app/types/dfs";
 import { DfsTenantCredentialsSchema } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
@@ -84,7 +85,9 @@ export class DfsTenantResource extends BaseResource<DfsTenantModel> {
     return blob ? new DfsTenantResource(DfsTenantModel, blob.get()) : null;
   }
 
-  async getTenantKey(auth: Authenticator): Promise<Result<string, Error>> {
+  async getTenantKey(
+    auth: Authenticator
+  ): Promise<Result<string, DfsTenantError>> {
     assert(
       this.workspaceId === auth.getNonNullableWorkspace().id,
       "Dfs tenant does not belong to the authenticated workspace."
@@ -94,7 +97,8 @@ export class DfsTenantResource extends BaseResource<DfsTenantModel> {
     });
     if (credential.isErr()) {
       return new Err(
-        new Error(
+        new DfsTenantError(
+          "tenant_key_unavailable",
           `Failed to fetch the dfs tenant key: ${credential.error.message}`
         )
       );
@@ -103,7 +107,12 @@ export class DfsTenantResource extends BaseResource<DfsTenantModel> {
       credential.value.credential.content
     );
     if (!content.success) {
-      return new Err(new Error("Invalid dfs tenant credential content."));
+      return new Err(
+        new DfsTenantError(
+          "tenant_key_unavailable",
+          "Invalid dfs tenant credential content."
+        )
+      );
     }
     return new Ok(content.data.tenant_key);
   }

@@ -1,3 +1,4 @@
+import { getSkillDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -44,7 +45,7 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
             return (
               <Tooltip
                 key={s.sId}
-                label={s.userFacingDescription}
+                label={getSkillDisplayDescription(t, s)}
                 trigger={
                   <div className="flex flex-row items-center gap-2">
                     <SkillAvatar size="xs" />

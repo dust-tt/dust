@@ -103,6 +103,7 @@ const implementation: UntypedServiceImplementation = {
             size: "0",
             mode: 0o700,
             attrVersion: "1",
+            grantsVersion: "7",
           }),
         },
       ],
@@ -189,12 +190,18 @@ describe("DfsGrpcTransport", () => {
     });
     expect(lookup.isOk() && lookup.value.results[0]).toMatchObject({
       status: "ok",
-      object: { id: ROOT_ID, name: "docs", kind: "directory" },
+      object: {
+        id: ROOT_ID,
+        name: "docs",
+        kind: "directory",
+        storeVersion: BigInt("42"),
+      },
     });
     expect(lookup.isOk() && lookup.value.results[0]).toMatchObject({
       object: {
         mode: 0o700,
         attrVersion: BigInt("1"),
+        grantsVersion: BigInt("7"),
       },
     });
 

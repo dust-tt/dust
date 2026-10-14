@@ -642,7 +642,7 @@ export async function upsertDocument({
     );
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "embedding_api_key_missing",
         MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
       )
     );
@@ -1082,7 +1082,12 @@ export async function createDataSourceFolder(
 }
 
 type DataSourceCreationError = Omit<DustError, "code"> & {
-  code: "invalid_request_error" | "plan_limit_error" | "internal_server_error";
+  code:
+    | "data_source_name_not_allowed"
+    | "data_source_already_exists"
+    | "embedding_api_key_missing"
+    | "plan_limit_error"
+    | "internal_server_error";
   dataSourceError?: CoreAPIError;
 };
 
@@ -1110,14 +1115,14 @@ export async function createDataSourceWithoutProvider(
   if (name.startsWith("managed-")) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "data_source_name_not_allowed",
       message: "The data source name cannot start with `managed-`.",
     });
   }
   if (!isDataSourceNameValid(name)) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "data_source_name_not_allowed",
       message: "Data source names cannot be empty.",
     });
   }
@@ -1151,7 +1156,7 @@ export async function createDataSourceWithoutProvider(
       if (dataSources.some((ds) => ds.name === name)) {
         return new Err({
           name: "dust_error",
-          code: "invalid_request_error",
+          code: "data_source_already_exists",
           message: "Data source with that name already exist.",
         });
       }
@@ -1179,12 +1184,11 @@ export async function createDataSourceWithoutProvider(
           { error: normalizeError(err) },
           "Failed to get LLM credentials to create data source"
         );
-        return new Err(
-          new DustError(
-            "invalid_request_error",
-            MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
-          )
-        );
+        return new Err({
+          name: "dust_error",
+          code: "embedding_api_key_missing",
+          message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+        });
       }
 
       const dustDataSource = await coreAPI.createDataSource({

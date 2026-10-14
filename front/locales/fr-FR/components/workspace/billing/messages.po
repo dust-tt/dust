@@ -421,7 +421,7 @@ msgid "Active"
 msgstr "Actif"
 
 #: front/components/workspace/billing/SubscriptionStatusChip.tsx
-msgid "Cancelled"
+msgid "Canceled"
 msgstr "Annulé"
 
 #: front/components/workspace/billing/SubscriptionStatusChip.tsx

@@ -308,7 +308,7 @@ describe("POST /api/w/:wId/groups", () => {
     });
 
     expect(response.status).toBe(409);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("group_already_exists");
   });
 
   it("returns 400 when name is missing or empty", async () => {
@@ -488,7 +488,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
 
     expect(response.status).toBe(400);
     const { error } = await response.json();
-    expect(error.type).toBe("invalid_request_error");
+    expect(error.type).toBe("last_group_member_cannot_be_removed");
 
     const members = await group.getActiveMembers(auth);
     expect(members.map((m) => m.sId)).toEqual([user.sId]);
@@ -593,7 +593,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     });
 
     expect(response.status).toBe(409);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("group_already_exists");
   });
 
   it("returns 404 when a member id does not belong to the workspace", async () => {

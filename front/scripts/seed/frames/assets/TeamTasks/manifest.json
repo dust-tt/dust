@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Shared task list stored in a Frame database, one function per identity policy.",
+  "uiEntryPoint": "index.tsx",
+  "databases": [
+    {
+      "name": "tasks",
+      "schema": "databases/tasks.db.ts"
+    }
+  ],
+  "functions": [
+    {
+      "name": "list-tasks",
+      "description": "List every task.",
+      "entryPoint": "functions/list-tasks.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "add-task",
+      "description": "Add a task.",
+      "entryPoint": "functions/add-task.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "toggle-task",
+      "description": "Mark a task done or not done.",
+      "entryPoint": "functions/toggle-task.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    },
+    {
+      "name": "delete-task",
+      "description": "Delete a task. Author only.",
+      "entryPoint": "functions/delete-task.ts",
+      "executionMode": "fast",
+      "defaultStake": "never_ask"
+    }
+  ]
+}

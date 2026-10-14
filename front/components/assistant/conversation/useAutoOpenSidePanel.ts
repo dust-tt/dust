@@ -1,17 +1,8 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
-import { useConversationMessageAction } from "@app/hooks/conversations";
-import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  SET_FILES_SIDE_PANEL_TOOL_NAME,
-} from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { FILES_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { isFrameContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import uniqBy from "lodash/uniqBy";
@@ -22,52 +13,6 @@ interface UseAutoOpenSidePanelProps {
   agentMessage: AgentMessageWithStreaming;
 }
 
-function isSetFilesSidePanelAction(
-  action: Pick<AgentMCPActionWithOutputType, "internalMCPServerName"> & {
-    toolName: string | null;
-  }
-): boolean {
-  return (
-    action.internalMCPServerName === CONVERSATION_SIDE_PANEL_SERVER_NAME &&
-    action.toolName === SET_FILES_SIDE_PANEL_TOOL_NAME
-  );
-}
-
-function getFilesSidePanelVisibility(
-  actions: readonly AgentMCPActionWithOutputType[]
-): boolean | undefined {
-  let latestAction: AgentMCPActionWithOutputType | undefined;
-
-  for (const action of actions) {
-    if (
-      isSetFilesSidePanelAction(action) &&
-      action.status === "succeeded" &&
-      typeof action.params.visible === "boolean" &&
-      (!latestAction || action.updatedAt > latestAction.updatedAt)
-    ) {
-      latestAction = action;
-    }
-  }
-
-  return typeof latestAction?.params.visible === "boolean"
-    ? latestAction.params.visible
-    : undefined;
-}
-
-function getLatestFilesSidePanelActionId(
-  agentMessage: AgentMessageWithStreaming
-): string | null {
-  let actionId: string | null = null;
-
-  for (const step of agentMessage.activitySteps) {
-    if (step.type === "action" && isSetFilesSidePanelAction(step)) {
-      actionId = step.actionId;
-    }
-  }
-
-  return actionId;
-}
-
 /**
  * Auto-opens the appropriate side panel when the agent generates files.
  *
@@ -75,35 +20,29 @@ function getLatestFilesSidePanelActionId(
  *   1. Interactive content (Frame/slideshow) — opens the interactive content drawer.
  *   2. Regular files — opens the file explorer, but only when no interactive
  *      content is being opened for this message.
- *
- * Returns the completed interactive files so callers can render the content panel.
  */
 export function useAutoOpenSidePanel({
   isLastMessage,
   agentMessage,
 }: UseAutoOpenSidePanelProps) {
-  const { openPanel, closePanel, currentPanel } =
-    useConversationSidePanelContext();
-  const { workspace } = useAuth();
-  const conversationId = useActiveConversationId();
+  const {
+    openPanel,
+    currentPanel,
+    data: panelData,
+    wasAutoOpenDismissedForFileId,
+  } = useConversationSidePanelContext();
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const isPanelOverlay = isMobile || clientType === "extension";
 
-  // Track the last opened fileId to prevent double-opening glitch.
-  //
-  // Problem: Progress notifications and generated files represent the same content but have
-  // different hash formats:
-  // - Progress notifications: "fileId@updatedAt" (includes timestamp for real-time refresh)
-  // - Generated files: "fileId" (no updatedAt)
-  //
-  // Without tracking, the hook would open the drawer twice:
-  // 1. Progress phase: opens with "fileId@timestamp"
-  // 2. Completion phase: progress clears, opens again with "fileId"
-  //
-  // Solution: Track opened fileIds to prevent progress→generated blinks while still
-  // allowing generated→progress refreshes (when file is updated with new timestamp).
+  // Last Frame fileId opened this message, and whether that open came from a
+  // progress notification. Progress and generatedFiles use different revision
+  // strings (`publicationId` vs `File.updatedAt`); after progress we must not
+  // remount with the completed revision (blink), but a later completed open
+  // with a new `updatedAt` while the panel still shows the same file must
+  // refresh (republish).
   const lastOpenedFileIdRef = React.useRef<string | null>(null);
+  const lastOpenedFromProgressRef = React.useRef(false);
 
   // Track which message sId last triggered file-panel auto-open to open only once per message.
   const autoOpenedFilesForRef = React.useRef<string | null>(null);
@@ -143,25 +82,10 @@ export function useAutoOpenSidePanel({
     [agentMessage.generatedFiles]
   );
 
-  const filesSidePanelVisibilityFromActions = getFilesSidePanelVisibility(
-    agentMessage.actions
-  );
-  const filesSidePanelActionId = getLatestFilesSidePanelActionId(agentMessage);
-  const { action: filesSidePanelAction } = useConversationMessageAction({
-    conversationId: conversationId ?? "",
-    workspaceId: workspace.sId,
-    messageId: agentMessage.sId,
-    actionId: conversationId ? filesSidePanelActionId : null,
-  });
-  const filesSidePanelVisibility =
-    filesSidePanelVisibilityFromActions ??
-    getFilesSidePanelVisibility(
-      filesSidePanelAction ? [filesSidePanelAction] : []
-    );
-
   // Reset interactive tracking when the message changes.
   React.useEffect(() => {
     lastOpenedFileIdRef.current = null;
+    lastOpenedFromProgressRef.current = false;
   }, [agentMessage.sId]);
 
   // Single effect with explicit priority: interactive content (1) > file explorer (2).
@@ -174,9 +98,9 @@ export function useAutoOpenSidePanel({
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
-        // Soft notifications (sandbox publish) refresh an open Frame panel but
-        // must not steal focus from another panel such as the file explorer.
-        // Explicit open_frame / create / edit omit autoOpen and always open.
+        // Soft notifications refresh an open Frame panel but must not steal
+        // focus from another panel such as the file explorer. Explicit create /
+        // edit omit autoOpen and always open.
         if (
           firstFile.autoOpen === false &&
           currentPanel != null &&
@@ -184,7 +108,21 @@ export function useAutoOpenSidePanel({
         ) {
           return;
         }
+        // User closed this Frame earlier in the session — do not reopen it, even
+        // for a republish. Still refresh if the panel is already showing it.
+        const panelShowingThisFile =
+          currentPanel === "interactive_content" &&
+          !!panelData &&
+          (panelData === firstFile.fileId ||
+            panelData.startsWith(`${firstFile.fileId}@`));
+        if (
+          wasAutoOpenDismissedForFileId(firstFile.fileId) &&
+          !panelShowingThisFile
+        ) {
+          return;
+        }
         lastOpenedFileIdRef.current = firstFile.fileId;
+        lastOpenedFromProgressRef.current = true;
         openPanel({
           type: "interactive_content",
           fileId: firstFile.fileId,
@@ -196,25 +134,61 @@ export function useAutoOpenSidePanel({
 
     if (completedInteractiveFiles.length > 0 && isLastMessage) {
       const [firstFile] = completedInteractiveFiles;
-      if (
-        firstFile?.fileId &&
-        lastOpenedFileIdRef.current !== firstFile.fileId
-      ) {
+      if (!firstFile?.fileId) {
+        return;
+      }
+
+      const revision =
+        firstFile.updatedAt !== undefined
+          ? String(firstFile.updatedAt)
+          : undefined;
+      const nextHash = revision
+        ? `${firstFile.fileId}@${revision}`
+        : firstFile.fileId;
+      const panelShowingThisFile =
+        currentPanel === "interactive_content" &&
+        !!panelData &&
+        (panelData === firstFile.fileId ||
+          panelData.startsWith(`${firstFile.fileId}@`));
+
+      if (panelShowingThisFile && panelData === nextHash) {
         lastOpenedFileIdRef.current = firstFile.fileId;
-        openPanel({ type: "interactive_content", fileId: firstFile.fileId });
+        return;
       }
-      return;
-    }
 
-    if (isLastMessage && filesSidePanelVisibility === false) {
-      if (currentPanel === FILES_SIDE_PANEL_TYPE) {
-        closePanel();
+      if (lastOpenedFileIdRef.current === firstFile.fileId) {
+        // Keep the progress hash; do not remount with File.updatedAt.
+        if (lastOpenedFromProgressRef.current && panelShowingThisFile) {
+          return;
+        }
+        // Republish while open: same file, newer completed revision.
+        if (panelShowingThisFile && revision && panelData !== nextHash) {
+          lastOpenedFromProgressRef.current = false;
+          openPanel({
+            type: "interactive_content",
+            fileId: firstFile.fileId,
+            timestamp: revision,
+          });
+          return;
+        }
+        // Opened earlier this message; user navigated away — don't force reopen.
+        return;
       }
-      return;
-    }
 
-    if (isLastMessage && filesSidePanelVisibility === true) {
-      openPanel({ type: FILES_SIDE_PANEL_TYPE });
+      if (
+        wasAutoOpenDismissedForFileId(firstFile.fileId) &&
+        !panelShowingThisFile
+      ) {
+        return;
+      }
+
+      lastOpenedFileIdRef.current = firstFile.fileId;
+      lastOpenedFromProgressRef.current = false;
+      openPanel({
+        type: "interactive_content",
+        fileId: firstFile.fileId,
+        ...(revision ? { timestamp: revision } : {}),
+      });
       return;
     }
 
@@ -234,14 +208,12 @@ export function useAutoOpenSidePanel({
     completedInteractiveFiles,
     interactiveFilesFromProgress,
     regularGeneratedFiles,
-    filesSidePanelVisibility,
     isLastMessage,
     agentMessage.sId,
     openPanel,
-    closePanel,
     currentPanel,
+    panelData,
     isPanelOverlay,
+    wasAutoOpenDismissedForFileId,
   ]);
-
-  return { interactiveFiles: completedInteractiveFiles };
 }

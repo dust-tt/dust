@@ -54,5 +54,5 @@ export function useUserLocale({ owner }: UseUserLocaleProps) {
     }
   };
 
-  return { userLocale, isSaving, doUpdateUserLocale };
+  return { userLocale, isSaving, doUpdateUserLocale, mutateAuthContext };
 }

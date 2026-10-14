@@ -177,21 +177,6 @@ const config = {
       email: "support@dust.tt",
     };
   },
-  getInvitationEmailTemplate: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
-    );
-  },
-  getInvitationReminderEmailTemplate: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SENDGRID_INVITATION_REMINDER_EMAIL_TEMPLATE_ID"
-    );
-  },
-  getGenericEmailTemplate: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SENDGRID_GENERIC_EMAIL_TEMPLATE_ID"
-    );
-  },
   getStripePublishableKey: (): string => {
     // Using process.env here to make sure the function is usable on the client side.
     if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
@@ -350,6 +335,14 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
+  // `DFS_API_URL` is the dfs gRPC server URL (`http://host:port`, or `https://` for TLS).
+  getDfsAPIConfig: (): { url: string } => {
+    return { url: EnvironmentConfig.getEnvVariable("DFS_API_URL") };
+  },
+  // Only needed to create tenants.
+  getDfsMasterKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DFS_API_MASTER_KEY");
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
@@ -432,12 +425,6 @@ const config = {
   },
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
-  },
-  getOAuthShopifyClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SHOPIFY_CLIENT_ID");
-  },
-  getOAuthShopifyClientSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SHOPIFY_CLIENT_SECRET");
   },
   getOAuthFreshserviceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
@@ -658,6 +645,10 @@ const config = {
       "DUST_MCP_SERVER_CREDENTIALS_SECRET"
     );
   },
+  // Shared by every cell, unlike the secrets above, so one cell can decrypt what another staged.
+  getRelocationTransportSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("RELOCATION_TRANSPORT_SECRET");
+  },
   // E2B Sandbox.
   getE2BSandboxConfig: (): {
     apiKey: string;
@@ -762,9 +753,6 @@ const config = {
   },
   getDustWebhooksPublicUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
-  },
-  getConvertAPIKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("CONVERTAPI_API_KEY");
   },
   getImgproxyUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("IMGPROXY_URL");

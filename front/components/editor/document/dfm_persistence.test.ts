@@ -226,6 +226,26 @@ describe("loadDfm", () => {
       "Intro.\n\n  ```\n  code\n  ```\n",
       "The Markdown uses formatting the editor cannot keep: an indented code fence.",
     ],
+    [
+      "a task list nested in an ordered list",
+      "1. one\n   - [ ] todo\n",
+      "The Markdown uses formatting the editor cannot keep: a task list.",
+    ],
+    [
+      "HTML in a quote",
+      "> Intro.\n>\n> <div>x</div>\n",
+      "The Markdown uses formatting the editor cannot keep: HTML.",
+    ],
+    [
+      "a tilde fence in a list item",
+      "- item\n\n  ~~~\n  code\n  ~~~\n",
+      "The Markdown uses formatting the editor cannot keep: a code block fenced with ~~~.",
+    ],
+    [
+      "a table in a quote",
+      "> | a | b |\n> |---|---|\n> | 1 | 2 |\n",
+      "The Markdown uses formatting the editor cannot keep: a table.",
+    ],
   ])("refuses %s, naming it", (_, source, reason) => {
     const loaded = loadDfm(source);
 
@@ -312,6 +332,15 @@ describe("saveDfm", () => {
 
     expect(saved).toBe(source);
     expect(parseDfm(saved).isOk()).toBe(true);
+  });
+
+  it.each([
+    "Intro.\n\n1. one\n2. two\n\nAfter.\n",
+    "3. three\n4. four\n",
+    "1. one\n   1. nested\n2. two\n",
+    "- a\n- b\n\n1. c\n",
+  ])("round-trips ordered lists: %j", (source) => {
+    expect(roundTrip(source)).toBe(source);
   });
 
   it("saves underlined text and opens it underlined again", () => {

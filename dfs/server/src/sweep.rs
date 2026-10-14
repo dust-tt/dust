@@ -1,10 +1,13 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use anyhow::Result;
 use ring::rand::{SecureRandom, SystemRandom};
 use tokio::time::sleep;
 
-use crate::storage::{fdb, resources::session::SessionResource};
+use crate::{
+    clock,
+    storage::{fdb, resources::session::SessionResource},
+};
 
 const SESSION_SWEEP_MIN_INTERVAL_MS: u64 = 1_000;
 const SESSION_SWEEP_MAX_INTERVAL_MS: u64 = 60_000;
@@ -42,10 +45,7 @@ async fn sweep() -> Result<()> {
     sleep(Duration::from_millis(jitter_ms)).await;
 
     // Keep the cutoff fixed and commit batches without another delay until the index is drained.
-    let now_ms: u64 = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_millis()
-        .try_into()?;
+    let now_ms = clock::now_ms()?;
     let cutoff_ms = now_ms.saturating_sub(SESSION_SWEEP_GRACE_PERIOD_MS);
     let mut processed_entries = 0;
     let mut revoked_sessions = 0;

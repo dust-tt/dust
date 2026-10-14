@@ -24,7 +24,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "You can only star Pods.",
         },
       });

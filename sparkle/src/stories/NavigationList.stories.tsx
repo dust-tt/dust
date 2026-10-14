@@ -26,11 +26,10 @@ import {
 
 const meta = {
   title: "Navigation/NavigationList",
-  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {
-        component: `A vertical list of navigation entries for sidebars, built from composable parts. **NavigationListItem** renders each entry with a \`label\`, optional \`icon\` or \`avatar\`, \`selected\` state, \`status\` (\`idle\`, \`unread\`, \`blocked\`, \`error\`), \`count\` badge, \`hasActivity\` dot, and a \`moreMenu\` slot (typically a **DropdownMenu** triggered by **NavigationListItemAction**). Group entries with **NavigationListLabel** / **NavigationListCompactLabel** (both support \`isSticky\`) or wrap them in a **NavigationListCollapsibleSection** (\`type\` \`collapse\` or \`static\`, with \`defaultOpen\`, \`visibleItems\`, and an \`action\` slot).
+        component: `A vertical list of navigation entries for sidebars, built from composable parts. **NavigationListItem** renders each entry with a \`label\`, optional \`icon\` or \`avatar\`, \`selected\` state, \`status\` (\`idle\`, \`unread\`, \`blocked\`, \`error\`, \`generating\`), \`count\` badge, \`hasActivity\` dot, and a \`moreMenu\` slot (typically a **DropdownMenu** triggered by **NavigationListItemAction**). Group entries with **NavigationListLabel** / **NavigationListCompactLabel** (both support \`isSticky\`) or wrap them in a **NavigationListCollapsibleSection** (\`type\` \`collapse\` or \`static\`, with \`defaultOpen\`, \`visibleItems\`, and an \`action\` slot).
 
 **When to use**
 - For the primary sidebar navigation of an app — conversations, projects, spaces, agents.

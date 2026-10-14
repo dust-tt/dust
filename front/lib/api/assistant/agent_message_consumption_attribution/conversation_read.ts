@@ -126,7 +126,11 @@ export async function getConversationConsumption(
     ...new Set(billedMessages.flatMap((message) => message.dustRunIds)),
   ];
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+  // Unavailable usages carry the tool items of the calls they emitted (see `isUnavailableRunUsage`).
+  const usages = await RunResource.listRunUsagesForRuns(auth, {
+    includeUnavailable: true,
+    runs,
+  });
 
   const messageDetails: MessageDetailsEntry[] = billedMessages.map(
     (message) => ({

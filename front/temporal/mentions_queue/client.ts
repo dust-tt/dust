@@ -1,4 +1,4 @@
-import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
+import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";

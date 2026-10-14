@@ -639,24 +639,12 @@ msgid "Unexpected error. Please try again."
 msgstr "Erreur inattendue. Réessayez."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
-msgid "Captcha verification failed. Please try again."
-msgstr "La vérification captcha a échoué. Réessayez."
-
-#: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Too many verification attempts. Please try again in {waitMinutes, plural, one {# minute} other {# minutes}}."
 msgstr "Trop de tentatives de vérification. Réessayez dans {waitMinutes, plural, one {# minute} other {# minutes}}."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
-msgid "Failed to send code"
-msgstr "Impossible d’envoyer le code"
-
-#: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Please enter the full 6-digit code."
 msgstr "Saisissez le code complet à 6 chiffres."
-
-#: front/components/pages/onboarding/VerifyPage.tsx
-msgid "Invalid code"
-msgstr "Code non valide"
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Network error. Please try again."

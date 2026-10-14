@@ -22,7 +22,7 @@ app.get(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "feature_flag_not_found",
+          type: "feature_not_enabled",
           message: "Shared usage limits are not available for this workspace.",
         },
       });

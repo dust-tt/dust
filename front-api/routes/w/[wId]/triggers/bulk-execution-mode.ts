@@ -39,7 +39,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "bulk_automation_limit_exceeded",
               message: triggersResult.error.message,
             },
           });

@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dust</title>
+    <!--
+      Office.js sets `history.replaceState` and `history.pushState` to null. The shared UI uses
+      them, so they are cached before Office.js loads and restored after, as Microsoft recommends:
+      https://learn.microsoft.com/en-us/office/dev/add-ins/develop/referencing-the-javascript-api-for-office-library-from-its-cdn#officejs-specific-web-api-behavior
+    -->
+    <script type="text/javascript">
+      window._historyCache = {
+        replaceState: window.history.replaceState,
+        pushState: window.history.pushState,
+      };
+    </script>
+    <script
+      type="text/javascript"
+      src="https://officeapis.public.onecdn.static.microsoft/1/office.js"
+    ></script>
+    <script type="text/javascript">
+      window.history.replaceState = window._historyCache.replaceState;
+      window.history.pushState = window._historyCache.pushState;
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

@@ -4,7 +4,6 @@ import {
   VIZ_SLIDESHOW_MIME_TYPE,
 } from "@app/lib/api/actions/servers/common/viz/instructions";
 import {
-  FILES_CAT_ACTION_NAME,
   FILES_EDIT_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
   FILES_MOVE_ACTION_NAME,
@@ -30,10 +29,6 @@ import {
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_EDIT_ACTION_NAME
-);
-const FILES_CAT_TOOL = getPrefixedToolName(
-  FILES_SERVER_NAME,
-  FILES_CAT_ACTION_NAME
 );
 const FILES_LIST_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
@@ -99,34 +94,6 @@ After a Frame is created, its source file is already mounted in the Computer at 
 2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it), e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 
 If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file.
-
-${PUBLISH_PARAGRAPH}
-`;
-
-// Files-tools variant, used when the conversation has the file system but no Computer. The
-// model edits the Frame's source through the files server, then republishes.
-const UPDATING_SECTION_FILES_FIRST = `\
-### Updating Existing Files (edit the source, then publish):
-
-After a Frame is created, its source file is available to your file tools at \`conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is available at its current path instead. To update the Frame:
-1. Read the source with \`${FILES_CAT_TOOL}\` if you need the current content. If you are unsure of the exact path, list the directory with \`${FILES_LIST_TOOL}\` or resolve the Frame's file id with \`${FILES_RESOLVE_TOOL}\`.
-2. Make targeted edits with \`${FILES_EDIT_TOOL}\`, replacing only the text that changes. Do not rewrite the whole file for partial changes.
-3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it).
-
-If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file.
-
-Example, updating one value of an existing Frame:
-\`\`\`
-${FILES_EDIT_TOOL}({
-  path: "conversation-<conversationId>/Dashboard.tsx",
-  old_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\"];",
-  new_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\", \\"APAC\\"];",
-})
-${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  path: "conversation-<conversationId>/Dashboard.tsx",
-})
-\`\`\`
 
 ${PUBLISH_PARAGRAPH}
 `;
@@ -318,7 +285,7 @@ ${FILES_EDIT_TOOL}({
 // Then publish the Frame so the fixes reach the rendered version.`;
 
 const buildInstructions = (variant: InstructionsVariant) =>
-  `${interactiveContentProseBeforeAuthoring(variant)}\n${buildInteractiveContentAuthoringProseV2({ hasFramesV2: false, hasDocuments: false, hasFunctions: false })}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+  `${interactiveContentProseBeforeAuthoring(variant)}\n${buildInteractiveContentAuthoringProseV2({ hasFramesV2: false, hasFunctions: false })}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
 
 // Legacy conversations (no conversation file system): the Frame's source is not reachable by
 // path, so the model updates Frames through the retrieve and file-id edit tools. Legacy Pod
@@ -336,22 +303,15 @@ const joinPodSections = (sections: string[]): string =>
   sections.length > 0 ? `${sections.join("\n")}\n` : "";
 
 /**
- * Instructions for a conversation that has the file system.
- *
- * `hasComputer` picks how the Frame's source is edited (in the Computer mount, or through the
- * files server). `isPod` adds the Pod app layout.
+ * Instructions for a conversation that has the file system. `isPod` adds the Pod app layout.
  */
 export const buildInteractiveContentInstructions = ({
-  hasComputer,
   isPod,
 }: {
-  hasComputer: boolean;
   isPod: boolean;
 }): string =>
   buildInstructions({
-    updatingSection: hasComputer
-      ? UPDATING_SECTION_COMPUTER_FIRST
-      : UPDATING_SECTION_FILES_FIRST,
+    updatingSection: UPDATING_SECTION_COMPUTER_FIRST,
     validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
     podSections: joinPodSections(isPod ? [POD_APP_SECTION] : []),
   });

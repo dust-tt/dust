@@ -16,14 +16,14 @@ import {
   scrollToCommentHighlight,
   withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { suggestionBlock } from "@app/lib/markdown/dfm";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
-  LiveCommentCommand,
-  LiveCommentErrorCode,
+  CommentRequest,
+  CommentRequestErrorCode,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -43,14 +43,8 @@ interface UseDocumentCommentsProps {
   author: DfmAuthor | undefined;
   /** Whether the document, as TipTap JSON, would save. */
   isSavable: (document: JSONContent) => boolean;
-  /** Has the server write and sign a new message; without it, messages are built locally. */
-  sign?: (
-    commentId: string,
-    thread: DfmMessage[],
-    body: string
-  ) => Promise<Result<DfmMessage, string>>;
   verify?: DfmMessageVerifier;
-  live?: LiveCommentChannel;
+  live?: CommentChannel;
 }
 
 interface Verification {
@@ -89,13 +83,6 @@ const UNAVAILABLE_MESSAGE = msg`Commenting is unavailable.`;
 const UNANCHORED_MESSAGE = msg`The selected text can no longer take a comment. Select other text to comment.`;
 const UNSAVABLE_MESSAGE = msg`This comment can't be saved in this document. Try shortening or simplifying it.`;
 
-const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
-  a?.author.kind === b?.author.kind &&
-  a?.author.id === b?.author.id &&
-  a?.author.name === b?.author.name &&
-  a?.createdAt === b?.createdAt &&
-  a?.body === b?.body;
-
 /** The draft's text, shown as its quote and sent as the one agents get. */
 const getDraftQuote = (doc: Node, draft: DocumentCommentDraft) =>
   doc.textBetween(draft.from, draft.to, " ");
@@ -131,7 +118,7 @@ const verificationKey = (comment: DfmComment, index: number) =>
     comment.messages[index],
   ]);
 
-/** Where comment changes go: the session when live, otherwise the document's threads. */
+/** Comment changes, sent to the live session. */
 interface CommentCommands {
   add: (id: string, body: string) => Promise<Result<DfmComment, string>>;
   reply: (thread: DfmComment, body: string) => Promise<Result<void, string>>;
@@ -173,8 +160,8 @@ export interface CommentsFocusRequest {
 
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-authoring
- * Starting, submitting, replying to, resolving and deleting comments MUST require canComment
- * and an author. A pending draft MUST be cancelled when commenting becomes unavailable. New
+ * Starting, submitting, replying to, resolving and deleting comments MUST require canComment,
+ * an author and a live session. A pending draft MUST be cancelled when commenting becomes unavailable. New
  * comments and replies MUST carry the current author and creation time, and MUST be refused
  * with a reason, leaving the document unchanged, when the codec cannot write the thread or the
  * document would no longer save with it.
@@ -214,7 +201,7 @@ export interface CommentsFocusRequest {
  * Markdown, so applying it unchanged leaves the text as it is.
  */
 /**
- * @cc [owner:tdraier,label:product] document-live-comment-commands
+ * @cc [owner:tdraier,label:product] collab-editor-comment-requests
  * With `live`, posting, replying to, resolving and deleting comments MUST go through the session
  * and MUST NOT change the threads in the document, which only the session sends, with two
  * exceptions: a new thread MUST be anchored to the draft once the session created it, and deleting
@@ -233,7 +220,6 @@ export const useDocumentComments = ({
   canComment,
   author,
   isSavable,
-  sign,
   verify,
   live,
 }: UseDocumentCommentsProps) => {
@@ -285,7 +271,7 @@ export const useDocumentComments = ({
   const latestVerification = useRef<Verification | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLElement>(null);
-  const canWrite = canComment && author !== undefined;
+  const canWrite = canComment && author !== undefined && live !== undefined;
   // Stable identity matters: the markers re-measure the DOM whenever this array changes.
   const unresolved = useMemo(
     () => comments.filter((comment) => comment.status === "open"),
@@ -372,7 +358,7 @@ export const useDocumentComments = ({
     requestFocus(id);
   };
 
-  const liveErrorMessage = (code: LiveCommentErrorCode): string => {
+  const liveErrorMessage = (code: CommentRequestErrorCode): string => {
     switch (code) {
       case "unavailable":
         return t(UNAVAILABLE_MESSAGE);
@@ -389,19 +375,13 @@ export const useDocumentComments = ({
   };
 
   // A live document keeps marks whose thread is gone; the session drops them when it saves.
-  const wouldSave = (document: Node): boolean => {
-    const json = document.toJSON();
-    return isSavable(
-      live
-        ? withoutOrphanCommentMarks(
-            json,
-            new Set(getDocumentComments(document).map(({ id }) => id))
-          )
-        : json
+  const wouldSave = (document: Node): boolean =>
+    isSavable(
+      withoutOrphanCommentMarks(
+        document.toJSON(),
+        new Set(getDocumentComments(document).map(({ id }) => id))
+      )
     );
-  };
-
-  const writtenAsChecked = !sign && !live;
 
   /**
    * Refuses a new message to `thread`, or a new thread `commentId`, before anyone writes it: when
@@ -415,10 +395,10 @@ export const useDocumentComments = ({
     thread: DfmComment | undefined,
     body: string
   ): Result<void, string> => {
-    const local = localMessage(writer, body);
-    const message = writtenAsChecked
-      ? local
-      : { ...local, signature: ED25519_BASE64URL_SIGNATURE_PLACEHOLDER };
+    const message = {
+      ...localMessage(writer, body),
+      signature: ED25519_BASE64URL_SIGNATURE_PLACEHOLDER,
+    };
     const added = withMessage(commentId, thread, message);
     if (!isWritableThread(added)) {
       return new Err(t(UNSAVABLE_MESSAGE));
@@ -434,89 +414,12 @@ export const useDocumentComments = ({
     return wouldSave(next) ? new Ok(undefined) : new Err(t(UNSAVABLE_MESSAGE));
   };
 
-  /**
-   * The message to add to `thread`, or to a new thread `commentId`: written by the server when a
-   * signer is set and checked again as written, otherwise built here.
-   */
-  const writeMessage = async (
-    writer: DfmAuthor,
-    commentId: string,
-    thread: DfmComment | undefined,
-    body: string
-  ): Promise<Result<DfmMessage, string>> => {
-    if (!sign) {
-      return new Ok(localMessage(writer, body));
-    }
-    const signed = await sign(commentId, thread?.messages ?? [], body);
-    if (
-      signed.isOk() &&
-      !isWritableThread(withMessage(commentId, thread, signed.value))
-    ) {
-      return new Err(t(UNSAVABLE_MESSAGE));
-    }
-    return signed;
-  };
-
-  const documentCommands = (
-    editor: Editor,
-    writer: DfmAuthor
-  ): CommentCommands => ({
-    add: async (id, body) => {
-      const written = await writeMessage(writer, id, undefined, body);
-      return written.isOk()
-        ? new Ok({ id, status: "open", messages: [written.value] })
-        : written;
-    },
-    reply: async (thread, body) => {
-      const written = await writeMessage(writer, thread.id, thread, body);
-      if (written.isErr()) {
-        return written;
-      }
-      if (!editor.isEditable) {
-        return new Err(t(UNAVAILABLE_MESSAGE));
-      }
-      // The reply is signed after the thread's last message; it must still follow that one.
-      const current = getDocumentComments(editor.state.doc).find(
-        (comment) => comment.id === thread.id
-      );
-      if (!current) {
-        return new Err(t(DELETED_MESSAGE));
-      }
-      if (
-        current.messages.length !== thread.messages.length ||
-        !sameMessage(current.messages.at(-1), thread.messages.at(-1))
-      ) {
-        return new Err(t(THREAD_CHANGED_MESSAGE));
-      }
-      const next = previewDocument(editor, (chain) =>
-        chain.replyToComment(thread.id, written.value)
-      );
-      if (!next) {
-        return new Err(t(DELETED_MESSAGE));
-      }
-      if (!writtenAsChecked && !wouldSave(next)) {
-        return new Err(t(UNSAVABLE_MESSAGE));
-      }
-      editor.commands.replyToComment(thread.id, written.value);
-      return new Ok(undefined);
-    },
-    setResolved: async (id, resolved) => {
-      editor.commands.setCommentResolved(id, resolved);
-      return new Ok(undefined);
-    },
-    remove: async (id) => {
-      editor.commands.deleteComment(id);
-      return new Ok(undefined);
-    },
-    discard: () => undefined,
-  });
-
   const sessionCommands = (
     editor: Editor,
-    channel: LiveCommentChannel
+    channel: CommentChannel
   ): CommentCommands => {
     const sendForReason = async (
-      command: LiveCommentCommand
+      command: CommentRequest
     ): Promise<Result<void, string>> => {
       const sent = await channel.send(command);
       return sent.isOk()
@@ -576,9 +479,6 @@ export const useDocumentComments = ({
     };
   };
 
-  const commandsFor = (editor: Editor, writer: DfmAuthor): CommentCommands =>
-    live ? sessionCommands(editor, live) : documentCommands(editor, writer);
-
   /** Anchors a created thread to the draft. */
   const anchorToDraft = (
     editor: Editor,
@@ -594,7 +494,7 @@ export const useDocumentComments = ({
     if (!draft || !next) {
       return new Err(t(UNANCHORED_MESSAGE));
     }
-    if (!writtenAsChecked && !wouldSave(next)) {
+    if (!wouldSave(next)) {
       return new Err(t(UNSAVABLE_MESSAGE));
     }
     editor.chain().addComment(comment).focus().setTextSelection(draft.to).run();
@@ -748,7 +648,7 @@ export const useDocumentComments = ({
       editor?.commands.cancelCommentDraft();
     },
     submitDraft: async (body: string): Promise<Result<void, string>> => {
-      if (!canWrite || !editor || !author || !state.draft) {
+      if (!canWrite || !editor || !author || !live || !state.draft) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const id = uuidv4();
@@ -756,7 +656,7 @@ export const useDocumentComments = ({
       if (checked.isErr()) {
         return checked;
       }
-      const commands = commandsFor(editor, author);
+      const commands = sessionCommands(editor, live);
       const created = await commands.add(id, body);
       if (created.isErr()) {
         return created;
@@ -772,14 +672,14 @@ export const useDocumentComments = ({
     },
     reply: async (id: string, body: string): Promise<Result<void, string>> => {
       const thread = comments.find((comment) => comment.id === id);
-      if (!canWrite || !editor || !author || !thread) {
+      if (!canWrite || !editor || !author || !live || !thread) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const checked = checkNewMessage(editor, author, id, thread, body);
       if (checked.isErr()) {
         return checked;
       }
-      return commandsFor(editor, author).reply(thread, body);
+      return sessionCommands(editor, live).reply(thread, body);
     },
     /** Resolves or reopens, then focuses the given thread or the list heading. */
     setResolved: async (
@@ -787,10 +687,13 @@ export const useDocumentComments = ({
       resolved: boolean,
       focusNext: string | null
     ): Promise<Result<void, string>> => {
-      if (!canWrite || !editor || !author) {
+      if (!canWrite || !editor || !live) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
-      const done = await commandsFor(editor, author).setResolved(id, resolved);
+      const done = await sessionCommands(editor, live).setResolved(
+        id,
+        resolved
+      );
       if (done.isOk()) {
         requestFocus(focusNext);
       }
@@ -822,7 +725,7 @@ export const useDocumentComments = ({
             (comment) => comment.id === id
           )
         : undefined;
-      if (!canWrite || !editor || !author || thread?.status !== "open") {
+      if (!canWrite || !editor || !live || thread?.status !== "open") {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
       const content = parseInlineMarkdown(suggestion);
@@ -852,7 +755,10 @@ export const useDocumentComments = ({
       ) {
         return new Err(t(UNAPPLICABLE_MESSAGE));
       }
-      const resolved = await commandsFor(editor, author).setResolved(id, true);
+      const resolved = await sessionCommands(editor, live).setResolved(
+        id,
+        true
+      );
       if (resolved.isErr()) {
         const reason = resolved.error;
         return new Err(
@@ -867,10 +773,10 @@ export const useDocumentComments = ({
       id: string,
       focusNext: string | null
     ): Promise<Result<void, string>> => {
-      if (!canWrite || !editor || !author) {
+      if (!canWrite || !editor || !live) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
-      const done = await commandsFor(editor, author).remove(id);
+      const done = await sessionCommands(editor, live).remove(id);
       if (done.isOk()) {
         requestFocus(focusNext);
       }

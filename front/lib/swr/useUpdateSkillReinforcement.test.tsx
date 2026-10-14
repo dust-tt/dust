@@ -8,7 +8,7 @@ import useSWR, { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 
 describe("useUpdateSkillReinforcement", () => {
-  it("refreshes settings without refreshing skill lists or search results", async () => {
+  it("refreshes settings without refreshing skill search results", async () => {
     const { workspace } = await createResourceTest({});
     const skillsUrl = `/api/w/${workspace.sId}/skills`;
     const requestFetcher = vi.fn<FetcherFn>().mockResolvedValue({});
@@ -30,7 +30,6 @@ describe("useUpdateSkillReinforcement", () => {
         ...useUpdateSkillReinforcement({ owner: workspace }),
         settings: useSWR(`${skillsUrl}/reinforcement_settings`, listFetcher)
           .data,
-        skills: useSWR(`${skillsUrl}?withRelations=true`, listFetcher).data,
         search: useSWR(
           [`${skillsUrl}/search`, { query: "", offset: 0 }],
           listFetcher
@@ -43,7 +42,7 @@ describe("useUpdateSkillReinforcement", () => {
       { wrapper }
     );
     await waitFor(() => {
-      expect(listFetcher).toHaveBeenCalledTimes(4);
+      expect(listFetcher).toHaveBeenCalledTimes(3);
       expect(result.current.settings).toBe("initial");
     });
     listFetcher.mockResolvedValue("updated");
@@ -56,8 +55,7 @@ describe("useUpdateSkillReinforcement", () => {
     });
 
     await waitFor(() => expect(result.current.settings).toBe("updated"));
-    expect(listFetcher).toHaveBeenCalledTimes(5);
-    expect(result.current.skills).toBe("initial");
+    expect(listFetcher).toHaveBeenCalledTimes(4);
     expect(result.current.search).toBe("initial");
     expect(result.current.otherSettings).toBe("initial");
     expect(requestFetcher).toHaveBeenCalledWith(

@@ -11,21 +11,13 @@ export type VerifyCodeResponse = {
   verified: true;
 };
 
-// Error response.
+// Error types returned by the verification endpoints, all registered in `API_ERROR_TYPES`.
 export type VerificationErrorType =
   | "rate_limit_error"
-  | "invalid_request_error"
+  | "phone_number_not_accepted"
   | "verification_error"
   | "phone_already_used_error"
   | "invalid_captcha";
-
-export type VerificationErrorResponse = {
-  error: {
-    type: VerificationErrorType;
-    message: string;
-    retryAfterSeconds?: number; // Unix timestamp (seconds).
-  };
-};
 
 // Persona Phone Risk Report types.
 export const LINE_TYPES = [

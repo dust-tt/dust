@@ -36,7 +36,7 @@ export async function screenshotInteractiveContentFile(
 
   if (!isFrameContentType(file.contentType)) {
     return new Err({
-      type: "invalid_request",
+      type: "not_frame",
       message: "Only Frame files can be exported as PNG.",
     });
   }
@@ -53,7 +53,7 @@ export async function screenshotInteractiveContentFile(
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
     return new Err({
-      type: "invalid_request",
+      type: "not_shareable",
       message: "File is not shareable.",
     });
   }

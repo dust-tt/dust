@@ -1,7 +1,6 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { isDustErrorWithCode } from "@app/lib/error";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import {
   isContentFragmentInput,
@@ -160,7 +159,7 @@ app.post(
 
     if (contentFragmentRes.isErr()) {
       const { error } = contentFragmentRes;
-      const isLocked = isDustErrorWithCode(error, "conversation_locked");
+      const isLocked = error.code === "conversation_locked";
       return apiError(ctx, {
         status_code: isLocked ? 409 : 400,
         api_error: {

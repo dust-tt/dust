@@ -609,6 +609,8 @@ type PostProvisionCtx = {
   body: SwitchContractBody;
 };
 
+export const RECURRING_FREE_CREDIT_NAME_PREFIX = "Recurring free credit: ";
+
 // Combine net payment terms, initial credits commit, seat commitment commits,
 // and seat rate overrides into a single v2.contracts.edit call.
 async function stepContractEdits({
@@ -659,7 +661,7 @@ async function stepContractEdits({
       starting_at: floorToHourISO(alignedStart),
       applicable_product_tags: ["usage"],
       recurrence_frequency: "MONTHLY",
-      name: `Recurring free credit: ${formatNumber(body.recurringFreeCredit)} AWU/month`,
+      name: `${RECURRING_FREE_CREDIT_NAME_PREFIX}${formatNumber(body.recurringFreeCredit)} AWU/month`,
     });
   }
 

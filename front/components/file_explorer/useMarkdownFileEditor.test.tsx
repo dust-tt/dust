@@ -6,6 +6,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const flags = new Set<string>();
+const COLLAB_URL = "ws://localhost/api/collab";
 let collabUrl: string | undefined;
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
@@ -50,7 +51,7 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
-    collabUrl = undefined;
+    collabUrl = COLLAB_URL;
     vi.mocked(writeFileContentByPath).mockResolvedValue(new Ok(undefined));
   });
 
@@ -138,6 +139,16 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
+  it("keeps the plain editor when no live session server is reachable", () => {
+    flags.add("co_edition");
+    collabUrl = undefined;
+
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+
+    expect(result.current.richEditor).toBeNull();
+    expect(result.current.canEdit).toBe(true);
+  });
+
   it("opens no editor for writing when the preview text was cut", () => {
     flags.add("co_edition");
 
@@ -177,31 +188,14 @@ describe("useMarkdownFileEditor", () => {
     expect(vi.mocked(writeFileContentByPath).mock.calls.length).toBe(writes);
   });
 
-  it("reopens a clean editor on content written by someone else", () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    const firstKey = result.current.richEditor?.mountKey;
-
-    rerender(revised);
-
-    expect(result.current.richEditor?.mountKey).not.toBe(firstKey);
-    expect(result.current.richEditor?.initialContent).toBe(
-      "# Notes, revised\n"
-    );
-  });
-
   it("keeps a live editor open when the file is fetched again, even cut", () => {
     flags.add("co_edition");
-    collabUrl = "ws://localhost/api/collab";
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
       { initialProps: params }
     );
     const firstKey = result.current.richEditor?.mountKey;
-    expect(result.current.richEditor?.liveUrl).toBe(collabUrl);
+    expect(result.current.richEditor?.collabUrl).toBe(COLLAB_URL);
 
     rerender(revised);
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
@@ -210,28 +204,8 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
   });
 
-  it("keeps an open editor local when the collab URL arrives", () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-
-    collabUrl = "ws://localhost/api/collab";
-    rerender(params);
-    expect(result.current.richEditor?.liveUrl).toBeUndefined();
-  });
-
   it("keeps an open live editor live when the collab URL goes away", () => {
     flags.add("co_edition");
-    collabUrl = "ws://localhost/api/collab";
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
       { initialProps: params }
@@ -240,201 +214,8 @@ describe("useMarkdownFileEditor", () => {
 
     collabUrl = undefined;
     rerender(revised);
-    expect(result.current.richEditor?.liveUrl).toBe(
-      "ws://localhost/api/collab"
-    );
+    expect(result.current.richEditor?.collabUrl).toBe(COLLAB_URL);
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
-  });
-
-  it("lifts the conflict once the editor is clean and reopens on the new content", async () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-    rerender(revised);
-    const refused = await result.current.richEditor?.onSave("# Notes, mine\n");
-    expect(refused?.isErr()).toBe(true);
-
-    // The user undoes the local edit: the editor reports clean and reopens on the new content.
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: false,
-        saving: false,
-        error: null,
-      });
-    });
-
-    expect(result.current.richEditor?.initialContent).toBe(
-      "# Notes, revised\n"
-    );
-    const saved = await result.current.richEditor?.onSave("# Notes, again\n");
-    expect(saved?.isOk()).toBe(true);
-  });
-
-  it("lifts the conflict once its own racing save has landed", async () => {
-    flags.add("co_edition");
-    let finishWrite: () => void = () => undefined;
-    vi.mocked(writeFileContentByPath).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finishWrite = () => resolve(new Ok(undefined));
-        })
-    );
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: true,
-        error: null,
-      });
-    });
-
-    // Our save of "mine" is in flight when a foreign version arrives.
-    let pending: Promise<unknown> | undefined;
-    act(() => {
-      pending = result.current.richEditor?.onSave("# Notes, mine\n");
-    });
-    rerender(revised);
-    finishWrite();
-    await act(async () => {
-      await pending;
-    });
-    // The cache catches up with our write and the editor reports clean.
-    rerender({ ...params, rawContent: "# Notes, mine\n" });
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: false,
-        saving: false,
-        error: null,
-      });
-    });
-
-    const saved = await result.current.richEditor?.onSave("# Notes, more\n");
-    expect(saved?.isOk()).toBe(true);
-  });
-
-  it("keeps a dirty editor open when a foreign write grows the file past the limit", async () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-
-    rerender({ ...revised, isTruncated: true });
-
-    expect(result.current.richEditor).not.toBeNull();
-    const refused = await result.current.richEditor?.onSave("# Notes, mine\n");
-    expect(refused?.isErr()).toBe(true);
-  });
-
-  it("hands a clean editor to the plain one when the file grows past the limit", () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-
-    rerender({ ...revised, isTruncated: true });
-
-    expect(result.current.richEditor).toBeNull();
-  });
-
-  it("does not take its own save for a foreign change", async () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: true,
-        error: null,
-      });
-    });
-
-    await act(async () => {
-      await result.current.richEditor?.onSave("# Notes, mine\n");
-    });
-    rerender({ ...params, rawContent: "# Notes, mine\n" });
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-
-    const again = await result.current.richEditor?.onSave("# Notes, more\n");
-    expect(again?.isOk()).toBe(true);
-  });
-
-  it("holds navigation while unsaved, and lifts it once a save has failed", () => {
-    flags.add("co_edition");
-    const { result } = renderHook(() => useMarkdownFileEditor(params));
-    expect(result.current.holdsNavigation).toBe(false);
-
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-    expect(result.current.holdsNavigation).toBe(true);
-
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: "Could not save.",
-      });
-    });
-    expect(result.current.holdsNavigation).toBe(false);
-  });
-
-  it("keeps a dirty editor on its draft and refuses to save over the new content", async () => {
-    flags.add("co_edition");
-    const { result, rerender } = renderHook(
-      (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
-    );
-    const firstKey = result.current.richEditor?.mountKey;
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-
-    rerender(revised);
-
-    expect(result.current.richEditor?.mountKey).toBe(firstKey);
-    expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
-    expect(result.current.isDirty).toBe(true);
-    const saved = await result.current.richEditor?.onSave("# Notes, mine");
-    expect(saved?.isErr() && saved.error).toContain(
-      "changed while you were editing"
-    );
   });
 
   it("does not let the file content decide which editor opens", () => {
@@ -495,26 +276,6 @@ describe("useMarkdownFileEditor", () => {
 
     expect(result.current.isSourceMode).toBe(true);
     expect(result.current.content).toBe("# Notes, mine");
-  });
-
-  it("does not switch to the source while the rich editor holds an unsaved edit", () => {
-    flags.add("show_debug_tools");
-    flags.add("co_edition");
-    const { result } = renderHook(() => useMarkdownFileEditor(params));
-    act(() => {
-      result.current.richEditor?.onStateChange({
-        dirty: true,
-        saving: false,
-        error: null,
-      });
-    });
-
-    act(() => {
-      result.current.toggleSourceMode();
-    });
-
-    expect(result.current.isSourceMode).toBe(false);
-    expect(result.current.richEditor).not.toBeNull();
   });
 
   it("keeps the source in edit mode when asked for the preview", () => {

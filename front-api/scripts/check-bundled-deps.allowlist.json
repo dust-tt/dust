@@ -52,7 +52,6 @@
   "ajv-formats",
   "cheerio",
   "contentful",
-  "convertapi",
   "cron-parser",
   "cronstrue",
   "csv-parse",

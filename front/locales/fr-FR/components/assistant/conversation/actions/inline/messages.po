@@ -22,11 +22,11 @@ msgid "Errored after {duration}"
 msgstr "Erreur après {duration}"
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
-msgid "Cancelled after {duration}, without tools."
+msgid "Canceled after {duration}, without tools."
 msgstr "Annulé après {duration}, sans outils."
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
-msgid "Cancelled after {duration}"
+msgid "Canceled after {duration}"
 msgstr "Annulé après {duration}"
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
@@ -38,11 +38,11 @@ msgid "Completed in {duration}"
 msgstr "Terminé en {duration}"
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
-msgid "Cancelled, without tools."
+msgid "Canceled, without tools."
 msgstr "Annulé, sans outils."
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
-msgid "Cancelled"
+msgid "Canceled"
 msgstr "Annulé"
 
 #: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx

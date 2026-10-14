@@ -6,7 +6,6 @@ import { InfoCircle } from "@sparkle/icons";
 const meta: Meta<typeof NotificationButton> = {
   title: "Feedback & Status/NotificationButton",
   component: NotificationButton,
-  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {
@@ -59,6 +58,7 @@ export const GhostWithHighCount: Story = {
       icon: InfoCircle,
       size: "sm",
       variant: "ghost",
+      tooltip: "Warnings",
     },
     counterProps: {
       value: 99,

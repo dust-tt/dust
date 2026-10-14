@@ -1,5 +1,6 @@
 import { withFlexProcessing } from "@app/lib/api/llm/flex_processing";
 import { LLM } from "@app/lib/api/llm/llm";
+import { filterRaisingReasoningEfforts } from "@app/lib/api/llm/per_message_reasoning_effort";
 import { withConciseOpenAIReasoningSummary } from "@app/lib/api/llm/reasoning_summary";
 import type {
   BatchDeletionOutcome,
@@ -289,6 +290,14 @@ export function toBaseMessages(
           role: "user",
           type: "text",
           content: { value: message.content },
+        },
+      ];
+    case "effort_change":
+      return [
+        {
+          role: "system",
+          type: "effort_change",
+          content: { effort: message.effort },
         },
       ];
     default:
@@ -708,8 +717,16 @@ abstract class BaseTransition extends LLM {
   ): Payload {
     const { conversation, prompt } = streamParameters;
 
+    // Only the effort changes this model can apply reach the provider (effort-messages-only-raise).
     const baseMessages = withMessageCacheBreakpoints(
-      conversation.messages.flatMap(toBaseMessages),
+      filterRaisingReasoningEfforts(
+        this.modelConfig,
+        conversation.messages.flatMap(toBaseMessages),
+        {
+          effort: this.reasoningEffort,
+          getEffort: (m) => (m.role === "system" ? m.content.effort : null),
+        }
+      ),
       conversation.messages[0],
       { explicitTailBreakpoint }
     );

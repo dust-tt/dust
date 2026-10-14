@@ -118,6 +118,9 @@ async function serializeAgent(
  *             properties:
  *               userFavorite:
  *                 type: boolean
+ *                 description: >-
+ *                   Favorites the agent for the calling user. Requires a user;
+ *                   rejected with 400 when authenticated with a workspace API key.
  *               agent:
  *                 type: object
  *                 properties:
@@ -235,7 +238,7 @@ async function serializeAgent(
  *                       reason:
  *                         type: string
  *       400:
- *         description: Bad Request. Invalid or missing parameters.
+ *         description: Bad Request. Invalid or missing parameters, or userFavorite sent with a workspace API key.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       403:
@@ -364,8 +367,19 @@ app.patch(
       });
     }
 
-    // it's a public endpoint, so we need to check we are auth with a user, to set a favorite
-    if (body.userFavorite !== undefined && auth.user()) {
+    // Favorites are per user: reject rather than silently ignore when the key carries no user.
+    if (body.userFavorite !== undefined) {
+      if (!auth.user()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "userFavorite is per user and cannot be set with a workspace API key.",
+          },
+        });
+      }
+
       const updateRes = await agent.setUserFavorite(auth, body.userFavorite);
       if (updateRes.isErr()) {
         return apiError(ctx, {

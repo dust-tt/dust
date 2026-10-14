@@ -1,0 +1,16 @@
+import { z } from "zod";
+
+import { listTasks, TaskListSchema } from "./lib/tasks.ts";
+
+export const schema = {
+  description: "List every task.",
+  userIdentity: "workspace_user_required",
+  input: z.object({}),
+  output: TaskListSchema,
+};
+
+export default {
+  async fetch(): Promise<Response> {
+    return Response.json(listTasks());
+  },
+};

@@ -1,5 +1,6 @@
 import ChevronLeft from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/ChevronLeft";
 import ChevronRight from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/ChevronRight";
+import { useLingui } from "@lingui/react/macro";
 import { FullscreenButton } from "@viz/components/dust/slideshow/FullscreenButton";
 import {
   SLIDESHOW_BUTTON_CLASS_NAME,
@@ -25,10 +26,13 @@ export function SlideshowControls({
   onNext,
   slideshowRef,
 }: SlideshowControlsProps) {
+  const { t } = useLingui();
+  const slideNumber = activeIndex + 1;
+
   return (
     <div
       role="group"
-      aria-label="Slideshow controls"
+      aria-label={t`Slideshow controls`}
       className={cn(
         "inline-flex items-center gap-2 overflow-hidden rounded-full px-1.5",
         SLIDESHOW_SURFACE_CLASS_NAME
@@ -40,8 +44,8 @@ export function SlideshowControls({
         variant="ghost"
         size="icon"
         className={SLIDESHOW_BUTTON_CLASS_NAME}
-        aria-label="Previous slide"
-        title="Previous slide (←)"
+        aria-label={t`Previous slide`}
+        title={t`Previous slide (←)`}
         disabled={activeIndex === 0}
         onClick={onPrevious}
       >
@@ -51,9 +55,9 @@ export function SlideshowControls({
         className="flex items-center gap-2 whitespace-nowrap text-xs font-medium leading-4 tabular-nums text-muted-foreground"
         aria-live="polite"
         aria-atomic="true"
-        aria-label={`Slide ${activeIndex + 1} of ${total}`}
+        aria-label={t`Slide ${slideNumber} of ${total}`}
       >
-        <span className="text-foreground">{activeIndex + 1}</span>
+        <span className="text-foreground">{slideNumber}</span>
         <span aria-hidden="true">/</span>
         <span>{total}</span>
       </span>
@@ -62,8 +66,8 @@ export function SlideshowControls({
         variant="ghost"
         size="icon"
         className={SLIDESHOW_BUTTON_CLASS_NAME}
-        aria-label="Next slide"
-        title="Next slide (→)"
+        aria-label={t`Next slide`}
+        title={t`Next slide (→)`}
         disabled={activeIndex === total - 1}
         onClick={onNext}
       >

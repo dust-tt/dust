@@ -5,10 +5,14 @@ import type {
   BetaRawMessageStartEvent,
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { anthropicConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import type { AnthropicRequestPayload } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
 import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import {
+  MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER,
+  requiresMidConversationOutputConfigBeta,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
 import {
   messageStartToResponseIdEvent as baseMessageStartToResponseIdEvent,
@@ -42,7 +46,7 @@ export const THINKING_BINDING_CONTROLS_BETA_HEADER =
 // opt-in). Kept on the built payload rather than added in `streamRaw` so the
 // request we construct reflects exactly what we send (and what the debug dump
 // records). Non-beta params are assignable to the beta stream params.
-type AnthropicStreamRequest = MessageCreateParamsNonStreaming &
+type AnthropicStreamRequest = AnthropicRequestPayload &
   Pick<BetaMessageStreamParams, "betas" | "diagnostics">;
 
 // Extract the cache-miss reason from a message_start (null when nothing to
@@ -119,12 +123,16 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     config: AnthropicInputConfig
   ): Promise<AnthropicStreamRequest> {
     this.previousMessageId = config.previousMessageId;
+    const request = await super.buildRequestPayload(payload, config);
     const betas = [
       ...(this.cacheDiagnosticsEnabled ? [CACHE_DIAGNOSTICS_BETA_HEADER] : []),
       ...this.betas,
+      ...(requiresMidConversationOutputConfigBeta(request.messages)
+        ? [MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER]
+        : []),
     ];
     return {
-      ...(await super.buildRequestPayload(payload, config)),
+      ...request,
       // Top-level automatic caching: auto-places the last cache breakpoint at
       // the tail of the request so the growing conversation prefix is reused.
       cache_control: { type: "ephemeral" },

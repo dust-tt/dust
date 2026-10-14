@@ -79,7 +79,7 @@ async function validateMessageEventsRequest(
       apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message: "Events are only available for agent messages.",
         },
       })

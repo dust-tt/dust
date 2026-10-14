@@ -11,7 +11,7 @@ export function apiErrorForSelectedSpaces(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "feature_flag_not_found",
+          type: "feature_not_enabled",
           message: error.message,
         },
       });
@@ -24,11 +24,18 @@ export function apiErrorForSelectedSpaces(
         },
       });
     case "conversation_not_mutable":
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "space_selection_not_supported_in_pod",
+          message: error.message,
+        },
+      });
     case "space_not_selectable":
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "space_not_selectable",
           message: error.message,
         },
       });

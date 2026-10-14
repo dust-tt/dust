@@ -44,7 +44,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "data_source_file_use_case_not_supported",
         message:
           "Only folder document and table upserts are supported on this endpoint.",
       },
@@ -87,21 +87,50 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     upsertArgs,
   });
   if (rUpsert.isErr()) {
-    let status_code: number;
+    let status_code: 400 | 413 | 500;
     let type: APIErrorType;
 
     switch (rUpsert.error.code) {
       case "connection_not_found":
+        status_code = 400;
+        type = "connector_not_found_error";
+        break;
+
       case "file_not_found":
+        status_code = 400;
+        type = "file_not_found";
+        break;
+
       case "file_not_ready":
-      case "invalid_content_error":
-      case "invalid_csv_and_file":
-      case "invalid_csv_content":
+        status_code = 400;
+        type = "data_source_file_not_ready";
+        break;
+
       case "invalid_file":
+        status_code = 400;
+        type = "file_type_not_supported";
+        break;
+
+      case "invalid_content_error":
+      case "invalid_csv_content":
+        status_code = 400;
+        type = "table_file_content_invalid";
+        break;
+
+      case "table_not_found":
+        status_code = 400;
+        type = "table_not_found";
+        break;
+
+      case "title_too_long":
+        status_code = 400;
+        type = "node_title_too_long";
+        break;
+
+      // Upsert arguments that fail validation.
+      case "invalid_csv_and_file":
       case "invalid_url":
       case "missing_csv":
-      case "table_not_found":
-      case "title_too_long":
         status_code = 400;
         type = "invalid_request_error";
         break;
@@ -117,15 +146,13 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
         break;
     }
 
-    return ctx.json(
-      {
-        error: {
-          type,
-          message: rUpsert.error.message,
-        },
+    return apiError(ctx, {
+      status_code,
+      api_error: {
+        type,
+        message: rUpsert.error.message,
       },
-      status_code as 400 | 413 | 500
-    );
+    });
   }
 
   return ctx.json({ file: file.toPublicJSON(auth) });

@@ -1,5 +1,32 @@
-import { getAuthenticatedFrameUserIdentity } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
-import { describe, expect, it } from "vitest";
+import {
+  AuthenticatedVisualizationActionIframe,
+  getAuthenticatedFrameUserIdentity,
+} from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
+import type { VisualizationActionIframeProps } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { i18n } from "@app/lib/i18n/i18n";
+import { VisualizationFactory } from "@app/tests/utils/VisualizationFactory";
+import { cleanup, render } from "@testing-library/react";
+import { createElement } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  renderIframe: vi.fn<(props: VisualizationActionIframeProps) => void>(),
+}));
+
+vi.mock(
+  "@app/components/assistant/conversation/actions/VisualizationActionIframe",
+  () => ({
+    VisualizationActionIframe: (props: VisualizationActionIframeProps) => {
+      mocks.renderIframe(props);
+      return null;
+    },
+  })
+);
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const authContext = {
   workspace: { role: "user" as const, sId: "w_current" },
@@ -62,5 +89,30 @@ describe("getAuthenticatedFrameUserIdentity", () => {
         "w_current"
       )
     ).toBeUndefined();
+  });
+});
+
+describe("AuthenticatedVisualizationActionIframe", () => {
+  function renderedLocale(activeLocale: string) {
+    i18n.loadAndActivate({ locale: activeLocale, messages: {} });
+    render(
+      createElement(AuthenticatedVisualizationActionIframe, {
+        agentConfigurationId: null,
+        conversationId: null,
+        visualization: VisualizationFactory.buildProtected(),
+        vizUrl: "https://viz.dust.tt",
+        workspaceId: "w_current",
+      })
+    );
+    return mocks.renderIframe.mock.lastCall?.[0].locale;
+  }
+
+  it("passes front's active locale to the Frame", () => {
+    expect(renderedLocale("fr-FR")).toBe("fr-FR");
+    expect(renderedLocale("en-GB")).toBe("en-GB");
+  });
+
+  it("falls back to the default locale for the pseudo-locale", () => {
+    expect(renderedLocale("pseudo")).toBe("en-US");
   });
 });

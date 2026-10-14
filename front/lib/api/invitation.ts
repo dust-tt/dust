@@ -166,7 +166,7 @@ export async function handleMembershipInvitations(
         return new Err({
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "invalid_email_address",
             message: "Invalid email address(es): " + invalidEmails.join(", "),
           },
         });
@@ -189,7 +189,7 @@ export async function handleMembershipInvitations(
         return new Err({
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "pending_invitations_limit_exceeded",
             message: `Too many pending invitations. Please ask your members to consume their invitations before sending more.`,
           },
         });

@@ -58,6 +58,8 @@ export function WelcomePage() {
           isAdmin={isAdmin}
           formData={form.formData}
           setFormData={form.setFormData}
+          locale={form.locale}
+          onLocaleChange={form.setLocale}
           formErrors={form.formErrors}
           showErrors={form.showErrors}
           onNext={form.handleProfileNext}

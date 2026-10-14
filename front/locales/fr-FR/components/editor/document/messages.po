@@ -196,30 +196,6 @@ msgid "This document uses formatting the editor doesn't support yet, so it can't
 msgstr "Ce document utilise une mise en forme que l’éditeur ne prend pas encore en charge, il ne peut donc pas être modifié ici."
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Not saved"
-msgstr "Non enregistré"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Saving…"
-msgstr "Enregistrement…"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Changes pending"
-msgstr "Modifications en attente"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Saved"
-msgstr "Enregistré"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Changes save automatically after {autosaveDebounceSeconds}s of inactivity"
-msgstr "Les modifications sont enregistrées automatiquement après {autosaveDebounceSeconds} s d’inactivité"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Retry"
-msgstr "Réessayer"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Connecting…"
 msgstr "Connexion…"
 
@@ -252,8 +228,12 @@ msgid "{name} is writing"
 msgstr "{name} écrit dans le document"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
-msgstr "L’enregistrement est indisponible. Vos modifications non enregistrées sont toujours là. Copiez-les avant de rouvrir le document."
+msgid "Saving…"
+msgstr "Enregistrement…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saved"
+msgstr "Enregistré"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Link"
@@ -446,10 +426,6 @@ msgstr "Cette suggestion ne peut pas être enregistrée dans ce document."
 #: front/components/editor/document/useDocumentComments.ts
 msgid "The suggestion was applied, but the comment couldn't be resolved. {reason}"
 msgstr "La suggestion a été appliquée, mais le commentaire n’a pas pu être résolu. {reason}"
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "Could not save. Your changes are still here. Try again."
-msgstr "Impossible d’enregistrer. Vos modifications sont toujours là. Réessayez."
 
 #: front/components/editor/document/useDocumentEditor.ts
 msgid "Document content"

@@ -12,7 +12,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentLocale } from "@app/lib/api/assistant/agent_locale";
+import { filterEffortChangesForRun } from "@app/lib/api/actions/servers/self_configuration/helpers";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   constructPromptMultiActions,
@@ -36,6 +36,7 @@ import {
   renderEquippedSkillsUserMessage,
   renderFavoriteSkillsUserMessage,
 } from "@app/lib/api/assistant/skills_rendering";
+import { renderUserMemoryUserMessage } from "@app/lib/api/assistant/user_memory_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -74,6 +75,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
+import { userMemorySkill } from "@app/lib/resources/skill/code_defined/system/user_memory";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -96,10 +98,12 @@ import type {
   AgentMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  ModelConversationTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -238,6 +242,7 @@ function getReplayedToolNames(
       case "function":
       case "compaction":
       case "user":
+      case "effort_change":
         break;
       default:
         assertNever(message);
@@ -587,10 +592,7 @@ export async function runModel(
     conversation,
   });
 
-  const locale = await getAgentLocale(auth, featureFlags);
-
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
   );
@@ -609,15 +611,23 @@ export async function runModel(
     workspaceContext,
     projectContext,
     isNewFileExplorer,
-    hasSandboxTools,
+    hasSandboxTools: true,
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
-    locale,
   });
+
+  let userMemoryMessage: UserMessageTypeModel | null = null;
+  if (systemSkills.some((skill) => skill.sId === userMemorySkill.sId)) {
+    userMemoryMessage = await renderUserMemoryUserMessage(auth, {
+      conversation,
+    });
+  }
+
   // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
     renderFavoriteSkillsUserMessage(favoriteSkills),
+    userMemoryMessage,
   ]);
 
   const modelConfig = modelInfo.endpoint.modelConfig;
@@ -679,6 +689,15 @@ export async function runModel(
 
     return null;
   }
+
+  // Drop the effort changes that would move this run's model to another tier
+  // (raise-keeps-model-tier).
+  const effortChanges = filterEffortChangesForRun(
+    modelInfo,
+    modelConversationRes.value.modelConversation.messages
+  );
+  modelConversationRes.value.modelConversation.messages =
+    effortChanges.messages;
 
   if (disableToolUse) {
     // Tool choice "none" alone leaves the model with nothing to do; spell it out
@@ -1326,7 +1345,10 @@ export async function runModel(
     model: modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
-  });
+  }).map((stepContext) => ({
+    ...stepContext,
+    reasoningEffortInEffect: effortChanges.effortInEffect,
+  }));
 
   return {
     actions,

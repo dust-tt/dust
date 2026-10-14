@@ -75,35 +75,15 @@ describe("dev sandbox image alias", () => {
 });
 
 describe("getToolsForProvider", () => {
-  it("filters dsbx from manifest inputs when requested", async () => {
+  it("includes dsbx in the manifest", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    const hiddenToolsResult = getToolsForProvider(auth, "openai", {
-      includeDsbxTools: false,
-    });
-    expect(hiddenToolsResult.isOk()).toBe(true);
-
-    if (hiddenToolsResult.isErr()) {
-      throw hiddenToolsResult.error;
+    const toolsResult = getToolsForProvider(auth, "openai");
+    if (toolsResult.isErr()) {
+      throw toolsResult.error;
     }
 
-    const hiddenManifest = toolManifestToYAML(
-      createToolManifest(hiddenToolsResult.value)
-    );
-    expect(hiddenManifest).not.toContain("name: dsbx");
-
-    const visibleToolsResult = getToolsForProvider(auth, "openai", {
-      includeDsbxTools: true,
-    });
-    expect(visibleToolsResult.isOk()).toBe(true);
-
-    if (visibleToolsResult.isErr()) {
-      throw visibleToolsResult.error;
-    }
-
-    const visibleManifest = toolManifestToYAML(
-      createToolManifest(visibleToolsResult.value)
-    );
-    expect(visibleManifest).toContain("name: dsbx");
+    const manifest = toolManifestToYAML(createToolManifest(toolsResult.value));
+    expect(manifest).toContain("name: dsbx");
   });
 });

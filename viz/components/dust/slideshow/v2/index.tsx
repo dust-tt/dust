@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import { useVizContext } from "@viz/app/components/VizContext";
 import type { FrameTheme } from "@viz/components/dust/frame";
 import { SlideshowControls } from "@viz/components/dust/slideshow/SlideshowControls";
@@ -187,6 +188,7 @@ function InteractiveSlideshow({
   className,
   theme,
 }: SlideshowContentProps) {
+  const { t } = useLingui();
   const [activeIndex, setActiveIndex] = useState(0);
   const slideshowRef = useRef<HTMLDivElement>(null);
 
@@ -211,7 +213,7 @@ function InteractiveSlideshow({
         className
       )}
       style={theme}
-      aria-label="Slideshow"
+      aria-label={t`Slideshow`}
     >
       {children[activeIndex]}
       <SlideshowGrid

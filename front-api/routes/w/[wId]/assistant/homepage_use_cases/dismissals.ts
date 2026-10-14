@@ -22,7 +22,7 @@ app.post("/", validate("json", PostDismissalBodySchema), async (ctx) => {
         return apiError(ctx, {
           status_code: 404,
           api_error: {
-            type: "invalid_request_error",
+            type: "homepage_use_case_not_found",
             message: `Unknown use case: ${useCaseId}.`,
           },
         });
@@ -30,7 +30,7 @@ app.post("/", validate("json", PostDismissalBodySchema), async (ctx) => {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "homepage_use_case_not_dismissible",
             message: `The use case ${useCaseId} cannot be dismissed.`,
           },
         });

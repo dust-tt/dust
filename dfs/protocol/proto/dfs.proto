@@ -69,9 +69,6 @@ service Dfs {
   rpc Read(ReadRequest) returns (ReadData);
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
-  // Valid checks on virtual shared always return CHANGED, even when supplied versions match.
-  rpc Validate(ValidateRequest) returns (ValidationBatch);
-
   rpc Apply(ApplyRequest) returns (OperationBatch);
   rpc Search(SearchRequest) returns (SearchResults);
 }
@@ -103,6 +100,7 @@ enum ObjectKind {
 
 // Optional timestamps distinguish absence from zero; all timestamps are Unix milliseconds.
 message Attr {
+  // Virtual root returns the tenant's real root ID; shared retains its virtual reference.
   required ObjectRef id = 1;
   // @cc [owner:spolu,label:api] dfs-attribute-name
   // Real non-root objects MUST report their stored basename, independent of the access alias.
@@ -128,11 +126,14 @@ message Attr {
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
   optional uint64 ctime = 8;
-  // Grant changes do not advance this version, including changes to visible mode.
+  // Grant changes do not advance this version, including changes to visible mode. Shared stays at 1.
   required uint64 attr_version = 9;
-  // Directory entry versions track topology changes; grant changes do not advance them.
+  // Real directories and virtual root track topology changes, not grants. Shared stays fixed at 1.
   required uint64 content_version = 10;
-  required ReadView view = 11;
+  // Tracks grant updates made to this object. Shared stays at 1.
+  required uint64 grants_version = 14;
+  // The FDB read snapshot or successful mutation commit version.
+  required int64 store_version = 11;
   optional ExtendedMetadata metadata = 12;
 }
 
@@ -144,11 +145,6 @@ message ExtendedMetadata {
   required uint64 created = 1;
   optional string mime_type = 3;
   map<string, bytes> xattrs = 4;
-}
-
-message ReadView {
-  required int64 store_version = 1;
-  required int64 auth_version = 2;
 }
 
 // Exactly one rule is required. Rules inherit from root to object; a deeper ALLOW can restore bits.
@@ -245,6 +241,11 @@ message GrantPage {
 // The tenant is derived exclusively from the authenticated tenant key.
 // @cc [owner:spolu,label:api] dfs-update-grants-limit
 // Changes MUST contain at most 512 elements, with no repeated grant value.
+
+// @cc [owner:spolu,label:api] dfs-update-grants-version
+// Each successful request MUST advance only the object's grants_version, including empty or no-op
+// changes. Other versions and timestamps MUST remain unchanged. An unknown-commit retry MAY advance
+// grants_version again.
 message UpdateGrantsRequest {
   required ObjectId object_id = 1;
   repeated GrantUpdate changes = 2;
@@ -351,36 +352,6 @@ message FileResult {
   optional Attr object = 2;
   optional bytes data = 3;
   optional ErrorDetails error = 4;
-}
-
-// @cc [owner:spolu,label:api] dfs-validate-limit
-// Checks MUST contain between 1 and 256 elements, inclusive.
-message ValidateRequest {
-  repeated VersionCheck checks = 1;
-}
-
-message VersionCheck {
-  required ObjectRef object_id = 1;
-  optional uint64 attr_version = 2;
-  optional uint64 content_version = 3;
-}
-
-message ValidationBatch {
-  repeated ValidationResult results = 1;
-  required ReadView view = 2;
-}
-
-enum ValidationOutcome {
-  UNCHANGED = 0;
-  CHANGED = 1;
-  DENIED = 2;
-  MISSING = 3;
-  ERROR = 4;
-}
-
-message ValidationResult {
-  required ValidationOutcome outcome = 1;
-  optional ErrorDetails error = 2;
 }
 
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
@@ -521,8 +492,8 @@ message SearchXattr {
 }
 
 // @cc [owner:spolu,label:api] dfs-search-read-view
-// Search responses MUST NOT expose ReadView, including on individual hits. Index-backed results
-// do not represent a store read snapshot.
+// Search responses MUST NOT expose store_version, including on individual hits. Index-backed
+// results do not represent a store read snapshot.
 
 // @cc [owner:spolu,label:api;performance] dfs-search-result-limits
 // Results MUST fit within 1 MiB of encoded protobuf and contain no more than the requested limit

@@ -46,6 +46,24 @@ export function isImportConflictStrategy(
 
 type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 
+export type SkillFilesImportErrorCode =
+  // The caller lacks a capability or a right on an existing skill the import needs.
+  | "unauthorized"
+  // An uploaded file is not a readable ZIP within the size limits.
+  | "invalid_archive"
+  // The selected skills cannot be imported: invalid names, missing, duplicated or conflicting.
+  | "invalid_skills"
+  | "editors_not_found";
+
+export class SkillFilesImportError extends Error {
+  constructor(
+    readonly code: SkillFilesImportErrorCode,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
@@ -57,9 +75,17 @@ type ImportSkillsResult = {
  * uploads their attachments, then creates or updates SkillResource objects.
  *
  * `onConflict` controls what happens when a skill name collides with an
- * existing skill from a different source:
+ * existing skill:
  *  - "skip": the conflicting skill is skipped and reported in `skipped`.
  *  - "error": the entire import is rejected upfront (no partial writes).
+ *  - "override": the existing skill is updated.
+ */
+/**
+ * @cc [owner:fabiencelier,label:product;api] import-conflict-definition
+ * An existing skill with the same name as an imported skill MUST be handled by `onConflict`, unless
+ * `updateSameSource` is set and the existing skill's source equals `source`, in which case it MUST
+ * be updated. If the caller cannot read the existing skill, it MUST NOT be updated or recreated:
+ * "error" and "override" reject the import, "skip" skips it.
  */
 /**
  * @cc [owner:philipperolet,label:security] api-key-import-editors-preflight
@@ -75,6 +101,7 @@ export async function importSkillsFromFiles(
     availability,
     source = "local_file",
     onConflict = "skip",
+    updateSameSource = false,
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
@@ -82,11 +109,17 @@ export async function importSkillsFromFiles(
     availability?: SkillAvailability;
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
+    updateSameSource?: boolean;
   }
-): Promise<Result<ImportSkillsResult, Error>> {
+): Promise<Result<ImportSkillsResult, SkillFilesImportError>> {
   const canCreateSkills = auth.hasWorkspacePermission("create", "skill");
   if (!canCreateSkills) {
-    return new Err(new Error("Creating skills is restricted."));
+    return new Err(
+      new SkillFilesImportError(
+        "unauthorized",
+        "Creating skills is restricted."
+      )
+    );
   }
 
   const allSkills: ZipDetectedSkill[] = [];
@@ -105,13 +138,17 @@ export async function importSkillsFromFiles(
     const detectResult = detectSkillsFromZip({ zipBuffer: buffer });
     if (detectResult.isErr()) {
       await cleanupTempFiles(uploadedFiles);
-      return new Err(new Error(detectResult.error.message));
+      return new Err(
+        new SkillFilesImportError("invalid_archive", detectResult.error.message)
+      );
     }
 
     const readerResult = createZipAttachmentReader(buffer);
     if (readerResult.isErr()) {
       await cleanupTempFiles(uploadedFiles);
-      return new Err(readerResult.error);
+      return new Err(
+        new SkillFilesImportError("invalid_archive", readerResult.error.message)
+      );
     }
     const reader = readerResult.value;
 
@@ -133,11 +170,34 @@ export async function importSkillsFromFiles(
     selectedSkills.map((skill) => skill.name)
   );
   if (!nameValidation.success) {
-    return new Err(new Error(fromError(nameValidation.error).toString()));
+    return new Err(
+      new SkillFilesImportError(
+        "invalid_skills",
+        fromError(nameValidation.error).toString()
+      )
+    );
   }
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
   const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+  const isConflicting = (existing: SkillResource) =>
+    !(updateSameSource && existing.source === source);
+
+  // Names held by skills the caller cannot read. They can never be updated, so "override" rejects
+  // the import like a skill the caller cannot write.
+  const takenNames = await SkillResource.listTakenNames(auth, uniqueNames);
+  const hiddenTakenNames = new Set(
+    [...takenNames].filter((name) => !existingSkillsMap.has(name))
+  );
+  // True when the name collides with an existing skill and `onConflict` says not to write it.
+  const isSkippedOnConflict = (name: string) => {
+    if (hiddenTakenNames.has(name)) {
+      return onConflict !== "override";
+    }
+    const existing = existingSkillsMap.get(name);
+    return !!existing && isConflicting(existing) && onConflict !== "override";
+  };
 
   if (onConflict === "error") {
     // Validate all skills upfront, fail as a unit on semantic problems.
@@ -145,35 +205,54 @@ export async function importSkillsFromFiles(
       selectedSkills,
       requestedNames: names ?? null,
       existingSkills,
-      isConflicting: (existing) => existing.source !== source,
+      isConflicting,
     });
     if (validationResult.isErr()) {
-      return validationResult;
+      return new Err(
+        new SkillFilesImportError(
+          "invalid_skills",
+          validationResult.error.message
+        )
+      );
+    }
+    if (hiddenTakenNames.size > 0) {
+      return new Err(
+        new SkillFilesImportError(
+          "invalid_skills",
+          [...hiddenTakenNames]
+            .map((name) => `A skill named "${name}" already exists.`)
+            .join(" ")
+        )
+      );
     }
   }
   if (selectedSkills.length === 0) {
-    return new Err(new Error("No matching importable skills found."));
+    return new Err(
+      new SkillFilesImportError(
+        "invalid_skills",
+        "No matching importable skills found."
+      )
+    );
   }
 
-  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+  const skillsToUpsert = selectedSkills.filter(
+    (skill) => !isSkippedOnConflict(skill.name)
+  );
 
-  const skillsToUpsert = selectedSkills.filter((skill) => {
-    const existing = existingSkillsMap.get(skill.name);
-    return !(
-      existing &&
-      existing.source !== source &&
-      onConflict !== "override"
-    );
-  });
-
-  const nonWritableSkillNames = removeNulls(
-    skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
-  )
-    .filter((existing) => !auth.can("write", existing))
-    .map((existing) => existing.name);
+  const nonWritableSkillNames = [
+    ...removeNulls(
+      skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
+    )
+      .filter((existing) => !auth.can("write", existing))
+      .map((existing) => existing.name),
+    ...skillsToUpsert
+      .map((skill) => skill.name)
+      .filter((name) => hiddenTakenNames.has(name)),
+  ];
   if (nonWritableSkillNames.length > 0) {
     return new Err(
-      new Error(
+      new SkillFilesImportError(
+        "unauthorized",
         `You don't have permission to update the following skills: ${[
           ...new Set(nonWritableSkillNames),
         ].join(", ")}.`
@@ -196,7 +275,10 @@ export async function importSkillsFromFiles(
       const canPublishSkills = auth.hasWorkspacePermission("publish", "skill");
       if (!canPublishSkills) {
         return new Err(
-          new Error("You don't have permission to change skill availability.")
+          new SkillFilesImportError(
+            "unauthorized",
+            "You don't have permission to change skill availability."
+          )
         );
       }
     }
@@ -213,7 +295,8 @@ export async function importSkillsFromFiles(
       );
       if (!canMakeSkillsDiscoverable) {
         return new Err(
-          new Error(
+          new SkillFilesImportError(
+            "unauthorized",
             "You don't have permission to change a skill's auto-discoverable status."
           )
         );
@@ -229,7 +312,7 @@ export async function importSkillsFromFiles(
     return editorUsersResult;
   }
   const editorUsers = editorUsersResult.value;
-  const createsSkill = selectedSkills.some(
+  const createsSkill = skillsToUpsert.some(
     (skill) => !existingSkillsMap.has(skill.name)
   );
   if (
@@ -239,7 +322,10 @@ export async function importSkillsFromFiles(
     !auth.isAdmin()
   ) {
     return new Err(
-      new Error("User is not authorized to update skill editors.")
+      new SkillFilesImportError(
+        "unauthorized",
+        "User is not authorized to update skill editors."
+      )
     );
   }
 
@@ -252,10 +338,10 @@ export async function importSkillsFromFiles(
   for (const skill of selectedSkills) {
     const existing = existingSkillsMap.get(skill.name) ?? null;
 
-    if (existing && existing.source !== source && onConflict !== "override") {
+    if (isSkippedOnConflict(skill.name)) {
       skipped.push({
         name: skill.name,
-        message: `A different skill named "${skill.name}" already exists.`,
+        message: `A skill named "${skill.name}" already exists.`,
       });
       continue;
     }
@@ -313,7 +399,9 @@ export async function importSkillsFromFiles(
 
       const editorsResult = await existing.upsertEditors(auth, editorUsers);
       if (editorsResult.isErr()) {
-        return editorsResult;
+        return new Err(
+          new SkillFilesImportError("unauthorized", editorsResult.error.message)
+        );
       }
 
       updated.push(existing);
@@ -373,7 +461,9 @@ export async function importSkillsFromFiles(
         editorUsers
       );
       if (editorsResult.isErr()) {
-        return editorsResult;
+        return new Err(
+          new SkillFilesImportError("unauthorized", editorsResult.error.message)
+        );
       }
 
       imported.push(skillResource);
@@ -386,7 +476,7 @@ export async function importSkillsFromFiles(
 async function resolveEditorUsersFromEmails(
   auth: Authenticator,
   editorEmails: string[]
-): Promise<Result<UserResource[], Error>> {
+): Promise<Result<UserResource[], SkillFilesImportError>> {
   const normalizedEditorEmails = [
     ...new Set(
       editorEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)
@@ -409,7 +499,10 @@ async function resolveEditorUsersFromEmails(
 
   if (missingEmails.length > 0) {
     return new Err(
-      new Error(`Editors not found in workspace: ${missingEmails.join(", ")}`)
+      new SkillFilesImportError(
+        "editors_not_found",
+        `Editors not found in workspace: ${missingEmails.join(", ")}`
+      )
     );
   }
 

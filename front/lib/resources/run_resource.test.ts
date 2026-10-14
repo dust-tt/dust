@@ -456,6 +456,42 @@ describe("RunResource inference location", () => {
   });
 });
 
+describe("RunResource.listRunUsagesForRuns", () => {
+  it("returns unavailable usages only when asked, and never pending ones", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { run: reportedRun } = await RunFactory.createWithUsage(auth);
+    const { run: unavailableRun } =
+      await RunFactory.createWithUnavailableUsage(auth);
+    const { run: pendingRun } = await RunFactory.createWithPendingUsage(auth);
+    const runs = [reportedRun, unavailableRun, pendingRun];
+
+    const billableUsages = await RunResource.listRunUsagesForRuns(auth, {
+      runs,
+    });
+    const attributableUsages = await RunResource.listRunUsagesForRuns(auth, {
+      includeUnavailable: true,
+      runs,
+    });
+
+    expect(
+      billableUsages.map(({ runModelId, usageState }) => ({
+        runModelId,
+        usageState,
+      }))
+    ).toEqual([{ runModelId: reportedRun.id, usageState: "reported" }]);
+    expect(
+      new Map(
+        attributableUsages.map((usage) => [usage.runModelId, usage.usageState])
+      )
+    ).toEqual(
+      new Map([
+        [reportedRun.id, "reported"],
+        [unavailableRun.id, "unavailable"],
+      ])
+    );
+  });
+});
+
 describe("RunResource.setRunKeyForDustRunIds", () => {
   it("tags untagged runs, skips already-tagged rows, and overwrites a different key", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});

@@ -21,6 +21,7 @@ export interface ConsumptionSummaryProps {
   period: ConsumptionPeriodSelection;
   usageHref?: string;
   usageLinkLabel?: string;
+  showUsageLink?: boolean;
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
 }
@@ -32,6 +33,7 @@ export function ConsumptionSummary({
   period: periodSelection,
   usageHref = `/w/${workspaceId}/credits`,
   usageLinkLabel,
+  showUsageLink = true,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
@@ -53,7 +55,7 @@ export function ConsumptionSummary({
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel ?? t`Manage in Credits`}
       analyticsScope={analyticsScope}
-      showUsageLink={isManager}
+      showUsageLink={showUsageLink && isManager}
     />
   );
 }

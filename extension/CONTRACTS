@@ -4,7 +4,7 @@ Every platform webpack config MUST run `linguiMacroLoader` (`config/webpack_ling
 `linguiCatalogRule`. The bundle MUST NOT contain a `@lingui/*/macro` module.
 
 @cc [owner:sfriquet,label:react] app-root-provides-i18n
-Each platform app root (`ChromeApp`, `FirefoxApp`, `FrontApp`) MUST render its whole tree inside an
+Each platform app root (`ChromeApp`, `FirefoxApp`, `FrontApp`, `ExcelApp`) MUST render its whole tree inside an
 `I18nProvider` given the `i18n` instance of `@app/lib/i18n/i18n`, itself wrapping a
 `SparkleLocaleProvider`, so that front, extension and sparkle components all render in the active
 locale.

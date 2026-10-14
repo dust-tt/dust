@@ -1,0 +1,160 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/onboarding/ProfileOnboardingDialog.tsx
+msgid "Welcome to Dust"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Customer Success"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Customer Support"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
+msgid "Data"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Design"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Engineering"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Finance"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
+msgid "IT"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "People (HR)"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Legal"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Marketing"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Operations"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Procurement"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Product"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Revenue Operations"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Sales"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Other"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "First name is required"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Last name is required"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Please select your job type"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Hello {firstName}!"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Hello there!"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Let's check a few things."
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "You'll be joining the workspace: <0>{workspaceName}</0>."
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your name is:"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "First name"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Last name"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your preferred language:"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your pronouns (optional):"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Type your own"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Suggestions:"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Pick your role to customize your experience:"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Next"
+msgstr ""
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "What are your favorite platforms?"
+msgstr "What are your favourite platforms?"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognize some of these?"
+msgstr ""

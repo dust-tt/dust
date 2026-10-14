@@ -44,9 +44,6 @@ export function GovernancePageSkeleton() {
         </div>
         <LoadingBlock className="h-9 w-20 rounded-lg" />
       </div>
-      <div className="w-full rounded-xl bg-muted-background px-4 py-3">
-        <LoadingBlock className="h-4 w-96" />
-      </div>
       <div className="flex w-full flex-col gap-8">
         <SkeletonSection labelWidth="w-20" rows={2} />
         <SkeletonSection labelWidth="w-16" rows={2} />

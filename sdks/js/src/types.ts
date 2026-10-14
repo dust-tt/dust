@@ -117,6 +117,7 @@ export type KnownModelLLMId =
   | "gemini-3.6-flash"
   | "gemini-3.7-flash"
   | "gemini-3.8-flash"
+  | "gemini-4-argon"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -875,7 +876,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_fable_5_feature"
   | "deepseek_feature"
   | "exa_people_and_company"
-  | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_frames_v2"
   | "disable_gpt_6_astra"
@@ -888,9 +888,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_pod_goal"
   | "figma_mcp"
   | "fireworks_new_model_feature"
-  | "frame_documents"
   | "frames_v2"
   | "frames_v2_functions"
+  | "frames_v2_public_functions"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
   | "http_client_tool"
@@ -922,7 +922,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "shopify_tool"
   | "show_debug_tools"
   | "simulated_failure_model_feature"
-  | "standard_stream_gpt_6_luna_medium"
+  | "standard_stream_gpt_6_luna_high"
   | "slack_message_splitting"
   | "stateful_conversation_window"
   | "run_tools_from_prompt"
@@ -931,7 +931,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workspace_analytics"
   | "conversations_slack_notifications"
   | "collapsible_messages"
-  | "consumption_export_api"
   | "conversation_consumption_details"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
@@ -948,6 +947,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discovery_homepage"
   | "localisation"
   | "co_edition"
+  | "self_configuration_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3659,6 +3659,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
+  | "AhrefsLogo"
   | "AirbyteLogo"
   | "AirtableLogo"
   | "AmplitudeLogo"
@@ -3667,6 +3668,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "AshbyLogo"
   | "AttioLogo"
   | "BigQueryLogo"
+  | "BrightDataLogo"
   | "ToolsIcon"
   | "CanvaLogo"
   | "ClariLogo"
@@ -3709,6 +3711,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MiroLogo"
   | "ModjoLogo"
   | "MondayLogo"
+  | "N8NLogo"
   | "NaptaLogo"
   | "NetSuiteLogo"
   | "NotionLogo"
@@ -3735,10 +3738,12 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "SupabaseLogo"
   | "SuperhumanLogo"
+  | "SwarmiaLogo"
   | "TerminalSquareIcon"
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
+  | "WebflowLogo"
   | "YoutrustLogo"
   | "ZendeskLogo"
 >();

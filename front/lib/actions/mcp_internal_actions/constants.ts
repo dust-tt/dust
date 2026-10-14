@@ -25,7 +25,6 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { CURSOR_CLOUD_AGENTS_SERVER } from "@app/lib/api/actions/servers/cursor_cloud_agents/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
@@ -33,7 +32,6 @@ import { DOCUMENTS_SERVER } from "@app/lib/api/actions/servers/documents/metadat
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
-import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -76,6 +74,7 @@ import {
   SANDBOX_SERVER,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SELF_CONFIGURATION_SERVER } from "@app/lib/api/actions/servers/self_configuration/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -115,7 +114,6 @@ import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -158,11 +156,12 @@ export const ASHBY_SERVER_NAME = "ashby";
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 // 1047 was workspace_people, folded into workspace_management as list_workspace_members.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [
+  // 3 (file_generation) was superseded by the Computer (sandbox), which generates and converts files.
   // 32 (openai_usage) was a preview MCP gated by openai_usage_mcp; unused, removed.
   // 45 (databricks) was removed in favor of the official Databricks managed MCP servers, added as
   // remote MCP server presets (see DEFAULT_REMOTE_MCP_SERVERS).
-  4,
-  28, 32, 45, 1004, 1016, 1047,
+  3,
+  4, 28, 32, 45, 1004, 1016, 1047,
 ];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
@@ -182,7 +181,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "clari_copilot",
   "confluence",
   "conversation_files",
-  "conversation_side_panel",
   "cursor_cloud_agents",
   "documents",
   "files",
@@ -190,7 +188,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
   "exa_people_and_company",
-  "file_generation",
   "fathom",
   "freshservice",
   "github",
@@ -250,6 +247,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ask_user_question",
   "wakeups",
   "plan_mode",
+  "self_configuration",
   WORKSPACE_ANALYTICS_SERVER_NAME,
   "workspace_management",
   "activation_recommendations",
@@ -328,17 +326,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: IMAGE_GENERATION_SERVER,
-  },
-  file_generation: {
-    id: 3,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: FILE_GENERATION_SERVER,
   },
   [WEB_SEARCH_BROWSE_SERVER_NAME]: {
     id: 5,
@@ -489,17 +476,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CONVERSATION_FILES_SERVER,
-  },
-  conversation_side_panel: {
-    id: 1044,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: CONVERSATION_SIDE_PANEL_SERVER,
   },
   slack: {
     id: 18,
@@ -1035,10 +1011,8 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1024,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !isComputerFeatureEnabled(featureFlags);
-    },
+    isPreview: false,
+    isRestricted: undefined,
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1287,6 +1261,19 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CURSOR_CLOUD_AGENTS_SERVER,
+  },
+  self_configuration: {
+    id: 1052,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("self_configuration_tool");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SELF_CONFIGURATION_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

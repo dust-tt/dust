@@ -162,13 +162,13 @@ msgid "Cancel"
 msgstr "Cancel"
 
 #: front/components/skills/import/ImportSkillsDialog.tsx
+msgid "Importing skills"
+msgstr "Importing skills"
+
+#: front/components/skills/import/ImportSkillsDialog.tsx
 msgctxt "verb, button label"
 msgid "Import"
 msgstr "Import"
-
-#: front/components/skills/import/ImportSkillsDialog.tsx
-msgid "Importing skills"
-msgstr "Importing skills"
 
 #: front/components/skills/import/formSchema.ts
 msgid "Select at least one skill to import"

@@ -4,6 +4,7 @@ import type {
   ServerToolUseBlockParam,
   ToolSearchToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import type { AnthropicMessageParam } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import logger from "@app/logger/logger";
 import { z } from "zod";
 
@@ -144,7 +145,9 @@ function isToolSearchToolResultBlock(
 // Ids of every tool search result across the whole replay. A server_tool_use is dangling only
 // when no result matches it anywhere, since a resumed search completes in a later assistant
 // message than the one that issued it.
-function collectToolSearchResultIds(messages: MessageParam[]): Set<string> {
+function collectToolSearchResultIds(
+  messages: AnthropicMessageParam[]
+): Set<string> {
   const resultIds = new Set<string>();
   for (const message of messages) {
     if (message.role !== "assistant" || typeof message.content === "string") {
@@ -160,7 +163,7 @@ function collectToolSearchResultIds(messages: MessageParam[]): Set<string> {
   return resultIds;
 }
 
-function isToolResultOnlyUserMessage(message: MessageParam): boolean {
+function isToolResultOnlyUserMessage(message: AnthropicMessageParam): boolean {
   return (
     message.role === "user" &&
     Array.isArray(message.content) &&
@@ -169,20 +172,32 @@ function isToolResultOnlyUserMessage(message: MessageParam): boolean {
   );
 }
 
-// Index of the final assistant message when its dangling searches are still resumable, meaning
-// every message after it carries exclusively tool_result blocks. -1 when there is no such message.
-function findResumableAssistantIndex(messages: MessageParam[]): number {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role !== "assistant") {
-      continue;
-    }
+function isEffortOnlySystemMessage(message: AnthropicMessageParam): boolean {
+  return (
+    message.role === "system" &&
+    message.content.length === 0 &&
+    !!message.output_config
+  );
+}
 
-    for (let j = i + 1; j < messages.length; j++) {
-      if (!isToolResultOnlyUserMessage(messages[j])) {
-        return -1;
-      }
+// Index of the final assistant message when its dangling searches are still resumable, meaning
+// every message after it carries exclusively tool_result blocks. Effort-only system messages carry
+// no content and are ignored wherever they sit in that continuation. -1 when there is no such
+// message.
+function findResumableAssistantIndex(
+  messages: AnthropicMessageParam[]
+): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role === "assistant") {
+      return i;
     }
-    return i;
+    if (
+      !isToolResultOnlyUserMessage(message) &&
+      !isEffortOnlySystemMessage(message)
+    ) {
+      return -1;
+    }
   }
 
   return -1;
@@ -199,14 +214,19 @@ function toContentBlocks(
 // Anthropic rejects consecutive same-role messages, so re-merge neighbors after a message was
 // dropped entirely. O(n) in messages. Merging a run of same-role messages re-copies the merged
 // content at each step, but the input arrives with no same-role neighbors (the renderers already
-// merged them), so runs only form around dropped messages and stay short.
+// merged them), so runs only form around dropped messages and stay short. System messages each
+// carry their own `output_config`, so they are never merged.
 function mergeConsecutiveSameRoleMessages(
-  messages: MessageParam[]
-): MessageParam[] {
-  const merged: MessageParam[] = [];
+  messages: AnthropicMessageParam[]
+): AnthropicMessageParam[] {
+  const merged: AnthropicMessageParam[] = [];
   for (const message of messages) {
     const previous = merged[merged.length - 1];
-    if (previous && previous.role === message.role) {
+    if (
+      previous &&
+      previous.role === message.role &&
+      message.role !== "system"
+    ) {
       merged[merged.length - 1] = {
         ...previous,
         content: [
@@ -231,9 +251,9 @@ interface StripUnreplayableToolSearchBlocksOptions {
 // Returns the input array untouched when nothing needs stripping, so the common path is allocation
 // free and byte identical for prompt caching.
 export function stripUnreplayableToolSearchBlocks(
-  messages: MessageParam[],
+  messages: AnthropicMessageParam[],
   { toolSearchInRequest }: StripUnreplayableToolSearchBlocksOptions
-): MessageParam[] {
+): AnthropicMessageParam[] {
   const resumableAssistantIndex = findResumableAssistantIndex(messages);
   const resultIds = collectToolSearchResultIds(messages);
 
@@ -245,7 +265,7 @@ export function stripUnreplayableToolSearchBlocks(
   // reached its use has already been kept or stripped.
   const keptServerToolUseIds = new Set<string>();
 
-  const sanitized: MessageParam[] = [];
+  const sanitized: AnthropicMessageParam[] = [];
   for (const [index, message] of messages.entries()) {
     if (message.role !== "assistant" || typeof message.content === "string") {
       sanitized.push(message);

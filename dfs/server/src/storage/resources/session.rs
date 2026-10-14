@@ -1,8 +1,4 @@
-use std::{
-    collections::BTreeSet,
-    fmt,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::{collections::BTreeSet, fmt, sync::Arc, time::Duration};
 
 use foundationdb::{
     FdbBindingError, RangeOption, Transaction,
@@ -12,11 +8,13 @@ use foundationdb::{
 
 use crate::{
     auth::{self, KeyHash},
+    clock,
     storage::{
         self,
         resources::{
             SUBJECT_MAX_BYTES,
             keys::{namespace_subspace, tenant_subspace},
+            object::TreeHints,
             tenant::{self, TenantResource},
         },
     },
@@ -99,6 +97,8 @@ pub struct SessionResource {
     pub subjects: BTreeSet<String>,
     pub key_hash: KeyHash,
     pub expires_at_ms: u64,
+    /// Shared process-local hints; every permission check still reads the current transaction.
+    pub tree_hints: Arc<TreeHints>,
 }
 
 impl SessionResource {
@@ -126,7 +126,8 @@ impl SessionResource {
             return Err(Error::TooManySubjects);
         }
 
-        let expires_at_ms = now_ms()?
+        let expires_at_ms = clock::now_ms()
+            .map_err(|_| Error::ExpiryGeneration)?
             .checked_add(SESSION_TTL_MS)
             .ok_or(Error::ExpiryGeneration)?;
         let session_key = auth::new_key().map_err(|_| Error::KeyGeneration)?;
@@ -136,6 +137,7 @@ impl SessionResource {
             subjects,
             key_hash: auth::hash_key(&session_key),
             expires_at_ms,
+            tree_hints: TreeHints::shared(),
         };
         Ok((session, session_key))
     }
@@ -229,7 +231,7 @@ impl SessionResource {
     pub fn remaining_ttl(&self) -> Result<Duration, Error> {
         let remaining_ms = self
             .expires_at_ms
-            .checked_sub(now_ms()?)
+            .checked_sub(clock::now_ms().map_err(|_| Error::ExpiryGeneration)?)
             .filter(|remaining_ms| *remaining_ms > 0)
             .ok_or(Error::InvalidKey)?;
         Ok(Duration::from_millis(remaining_ms))
@@ -246,7 +248,7 @@ impl SessionResource {
         key_hash: &KeyHash,
     ) -> Result<Self, storage::Error<Error>> {
         let mut session = Self::authenticate(tx, key_hash).await?;
-        let now_ms = now_ms()?;
+        let now_ms = clock::now_ms().map_err(|_| Error::ExpiryGeneration)?;
         if session.expires_at_ms <= now_ms {
             return Err(Error::InvalidKey.into());
         }
@@ -414,6 +416,7 @@ impl SessionResource {
             subjects,
             key_hash,
             expires_at_ms,
+            tree_hints: TreeHints::shared(),
         }))
     }
 
@@ -437,13 +440,4 @@ impl SessionResource {
             session_id,
         ))
     }
-}
-
-fn now_ms() -> Result<u64, Error> {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| Error::ExpiryGeneration)?
-        .as_millis()
-        .try_into()
-        .map_err(|_| Error::ExpiryGeneration)
 }

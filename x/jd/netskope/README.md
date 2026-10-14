@@ -34,10 +34,10 @@ under test is SSE first, followed by automatic polling when SSE fails.
 
 1. Run `python3 x/jd/netskope/hive.py start pass` and reload the dedicated browser.
 2. Open DevTools → Network, filter for `events`, and send a message. Healthy SSE
-   should deliver the response without `/events/poll` requests.
+   should deliver the response without `/events?transport=poll` requests.
 3. Run `python3 x/jd/netskope/hive.py start full`, reload, and clear the Network list.
 4. Send another message. Expect cancelled SSE attempts followed by successful
-   `/events/poll` requests, and verify the answer actually completes.
+   `/events?transport=poll` requests, and verify the answer actually completes.
 5. Repeat with `chunk`, `latency`, and `deny`. Try both a new conversation and a
    follow-up message. Conversation updates, message tokens, child-agent details,
    Frame results, and browser MCP requests exercise different consumers.

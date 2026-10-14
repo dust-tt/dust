@@ -93,8 +93,7 @@ export function PlanPanelChip({
 
   return (
     <FilterChip
-      label={isMobile ? undefined : label}
-      tooltip={isMobile ? label : undefined}
+      {...(isMobile ? { tooltip: label } : { label })}
       icon={ListSelect}
       variant="secondary"
       isSelected={isChipSelected}

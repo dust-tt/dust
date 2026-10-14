@@ -608,10 +608,7 @@ makeScript(
         `Conversation ${analyticsContext.conversation.conversationId} was not found.`
       );
     }
-    const capabilities = await getAttachmentCapabilityContext(
-      auth,
-      conversation
-    );
+    const capabilities = getAttachmentCapabilityContext(conversation);
 
     const dustRunIds = [...new Set(creditContext.runIds ?? [])];
     const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });

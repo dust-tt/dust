@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/files/processing";
 import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
@@ -23,7 +22,6 @@ import {
   isSupportedAudioContentType,
   isSupportedFileContentType,
 } from "@app/types/files";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
@@ -45,10 +43,7 @@ export async function validateFileUpload(
     useCase: FileUseCase;
   }
 ): Promise<
-  Result<
-    { contentType: SupportedFileContentType; hasSandboxTools: boolean },
-    ProcessAndStoreFileError
-  >
+  Result<{ contentType: SupportedFileContentType }, ProcessAndStoreFileError>
 > {
   if (!isSupportedFileContentType(contentType)) {
     return new Err({
@@ -80,8 +75,9 @@ export async function validateFileUpload(
     });
   }
 
-  const hasSandboxTools = isComputerFeatureEnabled(await getFeatureFlags(auth));
-  if (!ensureFileSize(contentType, fileSize, { hasSandboxTools, useCase })) {
+  if (
+    !ensureFileSize(contentType, fileSize, { hasSandboxTools: true, useCase })
+  ) {
     return new Err({
       name: "dust_error",
       code: "file_too_large",
@@ -89,7 +85,7 @@ export async function validateFileUpload(
     });
   }
 
-  return new Ok({ contentType, hasSandboxTools });
+  return new Ok({ contentType });
 }
 
 export async function processAndStoreFromUrl(
@@ -121,7 +117,7 @@ export async function processAndStoreFromUrl(
   if (urlSafetyError) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_url_not_allowed",
       message: urlSafetyError,
     });
   }
@@ -133,7 +129,7 @@ export async function processAndStoreFromUrl(
     if (!response.ok) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_url_fetch_failed",
         message: `Failed to fetch URL: ${response.statusText}`,
       });
     }
@@ -141,7 +137,7 @@ export async function processAndStoreFromUrl(
     if (!response.body) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_url_fetch_failed",
         message: "Response body is null",
       });
     }
@@ -155,7 +151,7 @@ export async function processAndStoreFromUrl(
     if (!isSupportedFileContentType(finalContentType)) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_type_not_supported",
         message: "Unsupported content type",
       });
     }

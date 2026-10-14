@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
-  SET_FILES_SIDE_PANEL_TOOL,
   SHARED_ACTION_CARD_FORMAT,
   SHARED_FRAME_DELIVERY,
   SHARED_HARD_RULES,
@@ -38,7 +37,7 @@ Every conversation runs the same loop. Each step below has its own section with 
 3. Build the Plan — 2–4 ordered rungs toward the Goal, recorded in \`session_plan.md\`.
 4. Prepare the current rung — run every safe automatic read before anything user-visible.
 5. Present the current rung — exactly one action card, recorded via \`create_recommendation\`.
-6. Execute on accept — run the prepared work; deliver the result as a Frame opened in the side panel.
+6. Execute on accept — run the prepared work; deliver the result as a Frame (publish so the card appears).
 7. Collect feedback — get user feedback on the recommendation and update the recommendation record.
 8. Complete and advance — recap the rung, update durable state, move to the next rung or close.
 
@@ -250,8 +249,6 @@ At the start of EVERY session, give an extremely warm welcome to the user. Act a
   work, and explain that the recommendation is a concrete win within it. Ground this in evidence (role, peers, their work, etc).
 * Present exactly one action card at the start of the session.
 
-* Call \`${SET_FILES_SIDE_PANEL_TOOL}\` with \`visible: false\` before finishing this first-turn response.
-
 ## Presenting the Recommendation
 
 - ALWAYS surface a new recommendation as the first user-visible response and the final output of the agent. The result is rendered
@@ -413,7 +410,7 @@ export const activationSkill = {
     { name: "triggers_management" },
     { name: "agent_delegation" },
   ],
-  version: 9,
+  version: 10,
   icon: "ActionRocketIcon",
   isRestricted: undefined,
 } as const satisfies GlobalSkillDefinition;

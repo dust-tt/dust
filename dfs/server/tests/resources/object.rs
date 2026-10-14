@@ -16,10 +16,25 @@ use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, tuple::unpack};
 
 mod grants;
+mod modes;
+mod stat;
 pub(crate) use grants::{
     grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
     grant_pagination_handles_full_pages_and_object_deletion,
+    grant_update_retry_only_advances_grants_version,
+    grant_versions_advance_for_no_ops_and_reject_overflow,
+};
+pub(crate) use modes::{
+    grant_cache_skips_matching_versions_and_preserves_session_snapshots,
+    modes_for_session_evaluate_full_paths_and_all_grants,
+    modes_for_session_isolate_tenants_and_reject_invalid_ancestry,
+    permission_reads_conflict_with_changes_and_retry, tree_hints_follow_moves_and_recheck_grants,
+};
+pub(crate) use stat::{
+    metadata_reads_preserve_snapshot_and_tenant_scope,
+    stat_distinguishes_object_errors_and_preserves_transaction_failures,
+    virtual_stat_projects_root_and_keeps_shared_versions_fixed,
 };
 
 type StoredObject = (
@@ -30,6 +45,7 @@ type StoredObject = (
     Option<u64>,
     Option<u64>,
     Option<u64>,
+    u64,
     u64,
     u64,
 );
@@ -70,6 +86,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
             ctime_ms,
             attr_version,
             content_version,
+            grants_version,
         ): StoredObject = unpack(&value)?;
         let metadata = tx
             .get(&metadata_key, false)
@@ -80,7 +97,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert!(name.is_empty());
         assert_eq!(kind, i32::from(ObjectKind::Directory));
         assert_eq!(size, 0);
-        assert_eq!((attr_version, content_version), (1, 1));
+        assert_eq!((attr_version, content_version, grants_version), (1, 1, 1));
         assert!((before_ms..=after_ms).contains(&u128::from(created_at_ms)));
         assert_eq!(atime_ms, Some(created_at_ms));
         assert_eq!(mtime_ms, atime_ms);
@@ -92,11 +109,16 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
             .await?
             .context("missing fetched root")?;
         assert_eq!(fetched.object_id, root.object_id);
-        assert_eq!(fetched.tenant_id, root.tenant_id);
+        for object in [&root, &fetched] {
+            assert_eq!(object.tenant.tenant_id, tenant.tenant_id);
+            assert_eq!(object.tenant.root_id, tenant.root_id);
+            assert_eq!(object.tenant.key_hash, tenant.key_hash);
+        }
         assert_eq!(fetched.parent_id, None);
         assert_eq!(fetched.kind, ObjectKind::Directory);
         assert_eq!(fetched.attr_version, root.attr_version);
         assert_eq!(fetched.content_version, root.content_version);
+        assert_eq!(fetched.grants_version, root.grants_version);
         assert_eq!(fetched.atime_ms, root.atime_ms);
         assert!(fetched.metadata.is_none());
         let xattrs =
@@ -127,6 +149,34 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
     Ok(())
 }
 
+pub(crate) async fn object_creation_retry_succeeds_without_changes() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let mut root = ObjectResource::new_root(&tenant)?;
+    root.metadata.as_mut().context("missing metadata")?.xattrs =
+        HashMap::from([("user/tag".to_owned(), b"value".to_vec())]);
+    let root_grants = [grants::allow("u:retry", 0o6)];
+    let create = || {
+        fdb::with_transaction(|tx| {
+            let root = &root;
+            let root_grants = &root_grants;
+            async move { root.create(&tx, root_grants).await }
+        })
+    };
+    create().await?;
+    let tx = fdb::database()?.create_trx()?;
+    let committed = grants::records(&tx, &tenant.tenant_id).await?;
+
+    // A retry after an unknown commit result runs `create` again in a new transaction.
+    create().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    assert_eq!(grants::records(&tx, &tenant.tenant_id).await?, committed);
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.commit().await?;
+    Ok(())
+}
+
 pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let mut root = ObjectResource::new_root(&tenant)?;
@@ -151,6 +201,8 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
         .await?
         .context("missing root metadata")?;
 
+    // Another object with the same ID: identical attributes would read as this test's own retry.
+    root.ctime_ms = root.ctime_ms.map(|ctime_ms| ctime_ms + 1);
     root.metadata.as_mut().context("missing metadata")?.xattrs =
         HashMap::from([("new".to_owned(), b"must not commit".to_vec())]);
     let result = fdb::with_transaction(|tx| {

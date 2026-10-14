@@ -58,16 +58,11 @@ type AnyToolDefinition =
 
 // The two servers the conversational-building skill equips. `stake: "high"` tools are left out:
 // production asks the user before running them, and there is no user to answer during an eval.
-// The single-change `suggest_*` tools are left out too: they are superseded by `suggest`, which the
-// skill instructions exclusively reference.
-// TODO(conversational-building): drop this filter once the `suggest_*` tools are deleted.
 const TOOL_DEFINITIONS = new Map<string, AnyToolDefinition>([
-  ...BUILDING_TOOLS.filter((tool) => !tool.name.startsWith("suggest_")).map(
-    (tool): [string, AnyToolDefinition] => [
-      getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, tool.name),
-      tool,
-    ]
-  ),
+  ...BUILDING_TOOLS.map((tool): [string, AnyToolDefinition] => [
+    getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, tool.name),
+    tool,
+  ]),
   ...WORKSPACE_MANAGEMENT_TOOLS.filter((tool) => tool.stake !== "high").map(
     (tool): [string, AnyToolDefinition] => [
       getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, tool.name),

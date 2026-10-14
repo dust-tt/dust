@@ -146,6 +146,7 @@ export function AgentMemoryTab({
                       <CardActionButton
                         size="icon"
                         icon={Trash01}
+                        tooltip={t`Delete`}
                         onClick={() => {
                           setMemoryToDelete(memory.sId);
                         }}

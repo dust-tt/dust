@@ -11,7 +11,7 @@ import {
 const meta = {
   title: "Lists/ConversationListItem",
   component: ConversationListItem,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

@@ -119,8 +119,9 @@ export async function startVerification(
   const lookupResult = await lookupPhoneNumber(phoneNumber);
   if (lookupResult.isErr()) {
     const error = lookupResult.error;
-    let panic = false;
 
+    // The number itself is rejected unless the lookup failed on Persona's side.
+    let type: VerificationErrorType = "phone_number_not_accepted";
     let message: string;
     switch (error.code) {
       case "not_mobile":
@@ -134,23 +135,19 @@ export async function startVerification(
         message = "This phone number cannot be used for verification.";
         break;
       case "invalid_phone_number":
-      case "lookup_failed":
         message = error.message;
-        panic = true;
         break;
+      case "lookup_failed":
       case "lookup_timeout":
-        // Persona was still processing when our poll window elapsed. This is
-        // transient latency on their side, not actionable by eng-oncall.
+        type = "verification_error";
         message = error.message;
         break;
       default:
         assertNever(error.code);
     }
 
-    // for eng-oncall: you can defer this to growth / paywall owners
     logger.error(
       {
-        panic,
         workspaceId: workspace.sId,
         phoneNumberHash,
         errorCode: error.code,
@@ -159,7 +156,7 @@ export async function startVerification(
       "Phone lookup validation failed"
     );
     return new Err({
-      type: "invalid_request_error",
+      type,
       message,
     });
   }

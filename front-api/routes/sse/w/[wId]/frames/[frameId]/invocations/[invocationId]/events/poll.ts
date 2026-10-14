@@ -11,7 +11,7 @@ const app = workspaceApp();
 
 app.use("*", withSandboxFunctionInvocationFeature());
 
-/** @ignoreswagger */
+/** @ignoreswagger Deprecated on 2026-10-12; use the parent events endpoint with transport=poll. */
 app.get(
   "/",
   validate("param", FrameFunctionInvocationEventParamSchema),

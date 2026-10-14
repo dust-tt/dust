@@ -1,0 +1,192 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Edit group"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+msgid "New group"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Managed by admins"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+msgid "This group grants the Admin role. Only workspace admins can change its members."
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/GroupsList.tsx
+msgid "Group name"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+msgid "e.g. Sales"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Group members ({selectedMemberCount})"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Create"
+msgstr ""
+
+#: front/components/groups/GroupKinds.ts
+msgid "Provisioned"
+msgstr ""
+
+#: front/components/groups/GroupKinds.ts
+msgid "Manual"
+msgstr ""
+
+#: front/components/groups/GroupKinds.ts
+msgid "Other"
+msgstr ""
+
+#: front/components/groups/GroupKinds.ts
+msgid "Synced from your identity provider. Manage membership in your IdP."
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Membership stays managed by your directory."
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Only workspace admins can change this group's members."
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers can manage usage and credit limits for this group's members."
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "{fullName} isn't a member of {groupName} but can manage it."
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "They can grant themselves access to the group's permissions and data."
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Not group member"
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers ({managerCount})"
+msgstr ""
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers can add members and set their usage and credit limits."
+msgstr ""
+
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "{memberCount, plural, one {# member} other {# members}}"
+msgstr ""
+
+#: front/components/groups/GroupSelectionTable.tsx
+msgid "Search groups..."
+msgstr ""
+
+#: front/components/groups/GroupSelectionTable.tsx
+msgid "Loading groups..."
+msgstr ""
+
+#: front/components/groups/GroupsList.tsx
+msgid "Remove group"
+msgstr ""
+
+#: front/components/groups/GroupsList.tsx
+msgid "Members"
+msgstr ""
+
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "Group members ({memberCount})"
+msgstr ""
+
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "This group has no members."
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Group Manager"
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "More options"
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Delete"
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Delete group"
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Are you sure you want to delete {groupName}? This action cannot be undone."
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Search groups"
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Create group"
+msgstr ""
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "You don’t have any groups yet."
+msgstr ""
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "{fullName} isn't a member of {groupName}"
+msgstr ""
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
+msgstr ""
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "{managerCount, plural, one {# person you're appointing isn't a member of {groupName}} other {# people you're appointing aren't members of {groupName}}}"
+msgstr ""
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
+msgstr ""
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "Appoint anyway"
+msgstr ""

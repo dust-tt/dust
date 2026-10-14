@@ -3,7 +3,6 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   USER_MEMORY_EDIT_TOOL_NAME,
-  USER_MEMORY_READ_TOOL_NAME,
   USER_MEMORY_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
@@ -39,32 +38,6 @@ async function resolveUserMemoryFile(
 }
 
 const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
-  [USER_MEMORY_READ_TOOL_NAME]: async (_, { auth }) => {
-    const memoryResult = await resolveUserMemoryFile(auth);
-    if (memoryResult.isErr()) {
-      return memoryResult;
-    }
-    const { fs, path } = memoryResult.value;
-
-    const readResult = await fs.readBuffer(path);
-    if (readResult.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to read the user's personal memory: ${readResult.error.message}`
-        )
-      );
-    }
-
-    const content = readResult.value?.toString("utf-8") ?? "";
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: content.length > 0 ? content : "(memory empty)",
-      },
-    ]);
-  },
-
   [USER_MEMORY_EDIT_TOOL_NAME]: async ({ oldStr, newStr }, { auth }) => {
     const memoryResult = await resolveUserMemoryFile(auth);
     if (memoryResult.isErr()) {
@@ -111,7 +84,8 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
       if (occurrences === 0) {
         return new Err(
           new MCPError(
-            "`oldStr` was not found in the user's personal memory. Read the memory first and copy an exact snippet.",
+            "`oldStr` was not found in the user's personal memory. Copy an exact snippet " +
+              `of its current content:\n\n${currentContent}`,
             { tracked: false }
           )
         );

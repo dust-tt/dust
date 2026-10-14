@@ -47,6 +47,9 @@ RUN find . -name "*.test.tsx" -delete
 # Copy shared migration tooling (scripts/migrate.ts imports ../../scripts/db/migration-runner)
 COPY /scripts/db /app/scripts/db
 
+# The dfs protocol definition, read at runtime by front's dfs client (front/lib/dfs/proto.ts).
+COPY /dfs/protocol/proto /app/dfs/protocol/proto
+
 # Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
 RUN npm run build:migrate
 
@@ -123,6 +126,8 @@ COPY --from=base-deps /app/front/scripts ./scripts
 COPY --from=base-deps /app/front/migrations ./migrations
 # Shared migration tooling lives at the repo root; front/package.json runs `node ../scripts/db/run-migrate.cjs`.
 COPY --from=base-deps /app/scripts/db /app/scripts/db
+# The dfs protocol definition, read at runtime by front's dfs client.
+COPY --from=base-deps /app/dfs/protocol/proto /app/dfs/protocol/proto
 # Copy built SDK
 COPY --from=base-deps /app/sdks/js/dist /app/sdks/js/dist
 COPY --from=base-deps /app/sdks/js/package.json /app/sdks/js/package.json
@@ -229,6 +234,8 @@ COPY --from=front-api-build /app/front ./front
 COPY --from=base-deps /app/front/dist/migrate.js ./front/dist/migrate.js
 # Shared migration tooling lives at the repo root; front-api/package.json runs `node ../scripts/db/run-migrate.cjs`.
 COPY --from=base-deps /app/scripts/db /app/scripts/db
+# The dfs protocol definition, read at runtime by front's dfs client.
+COPY --from=base-deps /app/dfs/protocol/proto /app/dfs/protocol/proto
 
 # front-api workspace (server.ts, app.ts, routes/, middleware/).
 COPY --from=front-api-build /app/front-api ./front-api

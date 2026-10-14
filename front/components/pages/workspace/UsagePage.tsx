@@ -110,7 +110,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
-  LinkExternal01,
   LoadingBlock,
   Page,
   Plus,
@@ -349,13 +348,13 @@ export function UsagePage() {
   const { setUserAllowedModelTier, clearUserAllowedModelTier } =
     useUserAllowedModelTierMutations({ owner });
   const handleSetUserModelTier = useCallback(
-    (member: MemberUsageType, selection: UserModelTierSelection) => {
+    async (member: MemberUsageType, selection: UserModelTierSelection) => {
       if (selection === INHERIT_MODEL_TIER) {
-        void clearUserAllowedModelTier({ userId: member.sId });
+        await clearUserAllowedModelTier({ userId: member.sId });
         return;
       }
 
-      void setUserAllowedModelTier({
+      await setUserAllowedModelTier({
         userId: member.sId,
         tierName: selection,
       });
@@ -1007,13 +1006,6 @@ export function UsagePage() {
                   <Page.H variant="h3">
                     <Trans>Credits</Trans>
                   </Page.H>
-                  <Button
-                    label={t`Breakdown in analytics`}
-                    iconRight={LinkExternal01}
-                    size="xs"
-                    variant="highlight-ghost"
-                    href={`/w/${owner.sId}/analytics/consumption`}
-                  />
                   {isWorkspaceAdmin ? (
                     <AdminSectionAnchor
                       sectionId={ADMIN_SECTION_IDS.usage.addCredits}
@@ -1033,13 +1025,6 @@ export function UsagePage() {
                     <Trans>Credits</Trans>
                   </Page.H>
                   <div className="flex items-center gap-4">
-                    <Button
-                      label={t`Breakdown in analytics`}
-                      iconRight={LinkExternal01}
-                      size="xs"
-                      variant="highlight-ghost"
-                      href={`/w/${owner.sId}/analytics/consumption`}
-                    />
                     {isWorkspaceAdmin ? (
                       <AdminSectionAnchor
                         sectionId={ADMIN_SECTION_IDS.usage.addCredits}

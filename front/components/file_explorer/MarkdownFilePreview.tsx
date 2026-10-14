@@ -1,4 +1,6 @@
 import { RawMarkdownEditor } from "@app/components/editor/RawMarkdownEditor";
+import type { ResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
+import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -24,6 +26,7 @@ interface MarkdownFilePreviewProps {
   viewMode: MarkdownFilePreviewViewMode;
   onContentChange?: (content: string) => void;
   onViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
+  resolveImageUrl: ResolveMarkdownImageUrl;
 }
 
 interface MarkdownFilePreviewViewModeSwitchProps {
@@ -59,15 +62,13 @@ export function MarkdownFilePreviewViewModeSwitch({
     >
       <ButtonsSwitch
         value="preview"
-        label={hideLabels ? undefined : previewLabel}
+        {...(hideLabels ? { tooltip: previewLabel } : { label: previewLabel })}
         icon={Eye}
-        tooltip={hideLabels ? previewLabel : undefined}
       />
       <ButtonsSwitch
         value="edit"
-        label={hideLabels ? undefined : editLabel}
+        {...(hideLabels ? { tooltip: editLabel } : { label: editLabel })}
         icon={Edit04}
-        tooltip={hideLabels ? editLabel : undefined}
       />
     </ButtonsSwitchList>
   );
@@ -199,6 +200,7 @@ export function MarkdownFilePreview({
   viewMode,
   onContentChange,
   onViewModeChange,
+  resolveImageUrl,
 }: MarkdownFilePreviewProps) {
   const previewRef = useRef<HTMLDivElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -257,8 +259,9 @@ export function MarkdownFilePreview({
           </LinkBlock>
         );
       },
+      img: getMarkdownImagePlugin(resolveImageUrl),
     }),
-    []
+    [resolveImageUrl]
   );
 
   const markdownContent = canEdit ? previewContentRef.current : content;

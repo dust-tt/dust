@@ -41,7 +41,7 @@ export function QuickReplyBlock({
   };
 
   return (
-    <span className="float-left clear-left my-0.5">
+    <span className="float-left clear-left my-0.5 font-sans">
       <Button
         size="sm"
         variant="outline"

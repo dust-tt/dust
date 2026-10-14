@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 
 import AdomikLogo from "./Adomik";
+import AhrefsLogo from "./Ahrefs";
 import Ai21Logo from "./Ai21";
 import AirbyteLogo from "./Airbyte";
 import AirtableLogo from "./Airtable";
@@ -12,6 +13,7 @@ import AshbyLogo from "./Ashby";
 import AtlassianLogo from "./Atlassian";
 import AttioLogo from "./Attio";
 import BigQueryLogo from "./BigQuery";
+import BrightDataLogo from "./BrightData";
 import CanvaLogo from "./Canva";
 import ChromeLogo from "./Chrome";
 import ClariLogo from "./Clari";
@@ -80,6 +82,7 @@ import MistralLogo from "./Mistral";
 import ModjoLogo from "./Modjo";
 import MondayLogo from "./Monday";
 import MoonshotLogo from "./Moonshot";
+import N8NLogo from "./N8N";
 import NaptaLogo from "./Napta";
 import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
@@ -108,6 +111,7 @@ import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
 import SuperhumanLogo from "./Superhuman";
+import SwarmiaLogo from "./Swarmia";
 import TableLogo from "./Table";
 import TemporalLogo from "./Temporal";
 import ThinkingMachinesLogo from "./ThinkingMachines";
@@ -116,6 +120,7 @@ import UkgLogo from "./Ukg";
 import ValTownLogo from "./ValTown";
 import VantaLogo from "./Vanta";
 import VideoLogo from "./Video";
+import WebflowLogo from "./Webflow";
 import YoutrustLogo from "./Youtrust";
 import ZaiLogo from "./Zai";
 import ZapierLogo from "./Zapier";
@@ -130,6 +135,7 @@ type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // allowlists, which inevitably drift between apps.
 export const PLATFORM_LOGOS = {
   AdomikLogo,
+  AhrefsLogo,
   Ai21Logo,
   AirbyteLogo,
   AirtableLogo,
@@ -141,6 +147,7 @@ export const PLATFORM_LOGOS = {
   AtlassianLogo,
   AttioLogo,
   BigQueryLogo,
+  BrightDataLogo,
   CanvaLogo,
   ChromeLogo,
   ClariLogo,
@@ -209,6 +216,7 @@ export const PLATFORM_LOGOS = {
   ModjoLogo,
   MondayLogo,
   MoonshotLogo,
+  N8NLogo,
   NaptaLogo,
   NetSuiteLogo,
   NotionLogo,
@@ -237,6 +245,7 @@ export const PLATFORM_LOGOS = {
   StripeLogo,
   SupabaseLogo,
   SuperhumanLogo,
+  SwarmiaLogo,
   TableLogo,
   TemporalLogo,
   ThinkingMachinesLogo,
@@ -245,6 +254,7 @@ export const PLATFORM_LOGOS = {
   ValTownLogo,
   VantaLogo,
   VideoLogo,
+  WebflowLogo,
   YoutrustLogo,
   ZaiLogo,
   ZapierLogo,

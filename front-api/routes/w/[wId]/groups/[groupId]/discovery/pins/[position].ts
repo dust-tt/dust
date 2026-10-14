@@ -78,6 +78,16 @@ function discoveryPinErrorResponse(
           message: error.message,
         },
       });
+    case "discovery_pin_target_not_found":
+    case "discovery_pin_target_not_readable_by_group":
+    case "discovery_pin_group_not_supported":
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: error.code,
+          message: error.message,
+        },
+      });
     case "unauthorized":
       return apiError(ctx, {
         status_code: 403,

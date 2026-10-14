@@ -61,7 +61,8 @@ paragraphs or a whole list, since each is a single pair wherever it starts and e
 inside a fenced code block or a code span is text, not a directive, so this README's own
 examples would survive inside a DFM file. Everything the codec does not define passes through
 untouched. Images are ordinary Markdown too: a document shows a file of its conversation or pod
-with its path as the destination, `![Revenue](pod-<id>/charts/revenue.png)`.
+with its path as the destination, `![Revenue](pod-<id>/charts/revenue.png)`, or a file by its id,
+`![Chart](fil_<id>)`.
 
 **3. Annotations** is a `:::annotations` container at the very end of the file. It holds one
 `::comment{id status}` per thread, `status` being `open` or `resolved`, followed by one

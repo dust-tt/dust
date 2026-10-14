@@ -210,7 +210,9 @@ describe("/api/w/[wId]/groups/[groupId]/granted_seat_type/preview", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe(
+      "seat_type_not_in_contract"
+    );
   });
 
   it("previews the cost and members that would move to a billed seat", async () => {

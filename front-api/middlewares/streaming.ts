@@ -14,6 +14,7 @@ type StreamingEnv = {
  * an un-buffered, un-encoded SSE stream.
  */
 export function setSSEHeaders(ctx: Context): void {
+  tagStreaming(ctx);
   ctx.header("Content-Type", "text/event-stream");
   ctx.header("Cache-Control", "no-cache");
   ctx.header("Connection", "keep-alive");
@@ -21,12 +22,16 @@ export function setSSEHeaders(ctx: Context): void {
   ctx.header("Content-Encoding", "none");
 }
 
-export const streamingTag = createMiddleware<StreamingEnv>(async (c, next) => {
-  c.set("streaming", true);
+function tagStreaming(ctx: Context<StreamingEnv>): void {
+  ctx.set("streaming", true);
 
   const span = tracer.scope().active();
   if (span) {
     span.setTag("streaming", true);
   }
+}
+
+export const streamingTag = createMiddleware<StreamingEnv>(async (c, next) => {
+  tagStreaming(c);
   await next();
 });

@@ -4,11 +4,7 @@ import type { RegularButtonProps } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
 
-interface UTMButtonProps extends Omit<RegularButtonProps, "href"> {
-  href?: string;
-}
-
-const UTMButton = ({ href, ...props }: UTMButtonProps) => {
+const UTMButton = ({ href, ...props }: RegularButtonProps) => {
   const finalHref =
     href && !href.startsWith("http") && !href.startsWith("mailto:")
       ? appendUTMParams(href)

@@ -1,4 +1,5 @@
 import type { LLMCredentialsType } from "@app/types/provider_credential";
+import { z } from "zod";
 
 export type ProviderType = {
   providerId: string;
@@ -16,3 +17,7 @@ export type DustManagedCredentialsType = {
 };
 
 export type CredentialsType = DustManagedCredentialsType & LLMCredentialsType;
+
+export const AzureOpenAIErrorResponseSchema = z.object({
+  error: z.object({ message: z.string() }),
+});

@@ -78,19 +78,19 @@ function getQuotaDescription({
   if (isCreditPooled) {
     switch (executionMode) {
       case "user_pool":
-        return t(msg`This will count towards your personal credit pool.`);
+        return t(msg`This will count toward your personal credit pool.`);
       case "workspace_pool":
-        return t(msg`This will count towards your workspace's credit pool.`);
+        return t(msg`This will count toward your workspace's credit pool.`);
       default:
         return assertNever(executionMode);
     }
   } else {
     switch (executionMode) {
       case "user_pool":
-        return t(msg`This will count towards your personal fair use limits.`);
+        return t(msg`This will count toward your personal fair use limits.`);
       case "workspace_pool":
         return t(
-          msg`This will count towards your workspace's programmatic usage.`
+          msg`This will count toward your workspace's programmatic usage.`
         );
       default:
         return assertNever(executionMode);

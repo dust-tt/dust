@@ -105,7 +105,7 @@ describe("GET /api/w/:wId/credentials/slack_is_legacy", () => {
     const data = (await response.json()) as {
       error: { type: string; message: string };
     };
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("connector_credentials_not_found");
     expect(data.error.message).toMatch(/does not belong to your workspace/);
   });
 
@@ -123,7 +123,7 @@ describe("GET /api/w/:wId/credentials/slack_is_legacy", () => {
     const data = (await response.json()) as {
       error: { type: string; message: string };
     };
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("credential_provider_mismatch");
     expect(data.error.message).toMatch(/not a Slack credential/);
   });
 

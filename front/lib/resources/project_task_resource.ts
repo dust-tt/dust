@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
@@ -816,7 +817,12 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       spaceId: ModelId;
       updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1];
     }
-  ): Promise<Result<{ updatedCount: number }, Error>> {
+  ): Promise<
+    Result<
+      { updatedCount: number },
+      DustError<"invalid_id" | "project_task_not_found">
+    >
+  > {
     if (sIds.length === 0) {
       return new Ok({ updatedCount: 0 });
     }
@@ -825,7 +831,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     for (const sId of sIds) {
       const id = getResourceIdFromSId(sId);
       if (id === null) {
-        return new Err(new Error(`Invalid todo id: ${sId}`));
+        return new Err(new DustError("invalid_id", `Invalid todo id: ${sId}`));
       }
       ids.push(id);
     }
@@ -838,7 +844,12 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     });
 
     if (todos.length !== sIds.length) {
-      return new Err(new Error("Some todos were not found or not accessible."));
+      return new Err(
+        new DustError(
+          "project_task_not_found",
+          "Some todos were not found or not accessible."
+        )
+      );
     }
 
     await withTransaction(async (t) => {

@@ -63,6 +63,7 @@ procs:
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
       COLLAB_INTERNAL_URL: "http://localhost:3013"
       COLLAB_INTERNAL_SECRET: "dev-collab-secret"
+      COLLAB_PUBLIC_URL: "ws://localhost:3013/api/collab"
     shell: |
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
@@ -174,6 +175,12 @@ procs:
     cwd: "<CONFIG_DIR>/../extension"
     shell: |
       npm run dev:firefox
+    autostart: false
+
+  extension-excel:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: |
+      npm run dev:excel
     autostart: false
 
   firebase-webhook-router:

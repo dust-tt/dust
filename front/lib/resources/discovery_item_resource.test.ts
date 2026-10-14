@@ -222,10 +222,10 @@ describe("DiscoveryItemResource", () => {
     });
 
     expect(agentResult.isErr() && agentResult.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
     expect(skillResult.isErr() && skillResult.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
   });
 
@@ -311,7 +311,9 @@ describe("DiscoveryItemResource", () => {
       item: { type: "agent", itemId: hiddenAgent.sId, position: 0 },
     });
 
-    expect(result.isErr() && result.error.code).toBe("invalid_request_error");
+    expect(result.isErr() && result.error.code).toBe(
+      "discovery_pin_target_not_found"
+    );
     expect(
       await DiscoveryItemResource.listPinnedForGroup(auth, { groupModelId })
     ).toEqual([]);
@@ -352,10 +354,10 @@ describe("DiscoveryItemResource", () => {
       item: { type: "skill", itemId: privateSkill.sId, position: 2 },
     });
     expect(rejectedAgent.isErr() && rejectedAgent.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_readable_by_group"
     );
     expect(rejectedSkill.isErr() && rejectedSkill.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_readable_by_group"
     );
     await DiscoveryItemResource.setPinnedForGroup(auth, {
       groupModelId,
@@ -424,10 +426,10 @@ describe("DiscoveryItemResource", () => {
       }
     );
     expect(agentWrite.isErr() && agentWrite.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
     expect(skillWrite.isErr() && skillWrite.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
     expect(
       (
@@ -498,7 +500,9 @@ describe("DiscoveryItemResource", () => {
       item: { type: "agent", itemId: agentAId, position: 0 },
     });
 
-    expect(result.isErr() && result.error.code).toBe("invalid_request_error");
+    expect(result.isErr() && result.error.code).toBe(
+      "discovery_pin_group_not_supported"
+    );
     const listed = await DiscoveryItemResource.listPinnedForGroup(auth, {
       groupModelId: autoGroup.id,
     });
@@ -577,7 +581,7 @@ describe("DiscoveryItemResource", () => {
       item: { type: "agent", itemId: restrictedAgent.sId, position: 0 },
     });
     expect(rejected.isErr() && rejected.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_readable_by_group"
     );
     await GroupPinnedItemModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -622,10 +626,10 @@ describe("DiscoveryItemResource", () => {
       }
     );
     expect(agentWrite.isErr() && agentWrite.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
     expect(skillWrite.isErr() && skillWrite.error.code).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
   });
 });

@@ -31,7 +31,9 @@ app.get(
       remoteInstalledServers,
       workspaceServerViews,
     ] = await Promise.all([
-      InternalMCPServerInMemoryResource.listByWorkspace(auth),
+      InternalMCPServerInMemoryResource.listByWorkspace(auth, {
+        includeCredentials: true,
+      }),
       RemoteMCPServerResource.listByWorkspace(auth, {
         includeHeavyAttributes: [
           "authorization",

@@ -442,7 +442,6 @@ its Frame ID, its share link and recipients, its conversation cards and, in a Po
    once no remaining legacy Frame imports it:
    \`grep\` the other legacy \`.tsx\` files of the folder before each \`rm\`. Migrating the last
    of them removes the shared file.
-8. Open the Frame with \`conversation_side_panel.open_frame\` on its manifest path.
 
 If you cannot get the replacement to publish, for example an error you cannot fix without
 rewriting the Frame, abandon the migration: delete the new folder, apply the requested change to
@@ -466,17 +465,10 @@ Edit existing Pod Frames in place.
  * viewer's Pod role. Existing Pod Frames MUST be changed in place. Outside a Pod, the
  * instructions MUST NOT tell the agent to create Frames in a Pod.
  */
-/**
- * @cc [owner:flvndvd,label:product] frame-document-selection
- * Document guidance MUST select narrative deliverables by their primary purpose, not editability
- * or page count. Existing formats MUST be preserved unless the user requests a format change.
- */
 export const buildFramesV2Instructions = ({
-  hasDocuments,
   hasFunctions,
   isPod,
 }: {
-  hasDocuments: boolean;
   hasFunctions: boolean;
   isPod: boolean;
 }) => `\
@@ -514,32 +506,17 @@ ${
 ## Before authoring
 
 ${
-  hasDocuments
-    ? `Choose the format around the user's main task. Use Document for narrative deliverables such as
-one-pagers, briefs, memos and written reports, where the text carries the explanation. Supporting
-charts and interactive visuals can sit within that narrative. The user need not ask for editing.
-Use ordinary Frame UI for dashboards and applications centered on exploring data or managing
-records and workflows. Editable fields or a one-page layout alone do not make an app a document.
-Follow explicit format requests. When editing an existing Frame, preserve its format unless the
-user asks to change it.
-
-`
-    : ""
-}
-${
   hasFunctions
     ? `Decide whether the Frame is a throwaway visualization or an application with durable state before
-writing source. Chat apps, task lists, trackers, forms, CRUD apps, and ${hasDocuments ? "other editable applications" : "anything users can change"}
+writing source. Chat apps, task lists, trackers, forms, CRUD apps, and anything users can change
 default to durable: declare the database plus the read and mutation functions in the
 manifest. Do not store durable application state in memory; use a Frame database.
-${hasDocuments ? "\nDocument includes selected-text comments and saves its text and discussion in one JSON file. Durable records inside its custom visuals still need a Frame database.\n" : ""}
 `
     : `Frames in this workspace are client-only: they cannot declare server functions, databases, or
 persistent files, so nothing a viewer changes survives a reload. Embed the data the Frame needs in
 its source or in files inside its folder. When the user asks for an application with durable
 state, such as a chat app, task list, tracker, form, or CRUD app, tell them saved state is not
 available for Frames in this workspace and offer a client-only version.
-${hasDocuments ? "\nDocument includes selected-text comments and saves its text and discussion in one JSON file.\n" : ""}
 `
 }
 ## Create a Frame
@@ -716,11 +693,9 @@ before publishing to check in-package file paths${hasFunctions ? " and function 
 publish also assigns the Frame identity; republishing the same path updates that Frame in place.
 
 Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
-Frame build context and report unrelated or noisy failures.
-
-After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
-set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
-the Frame card to the answer. Do not parse the Frame ID from the CLI output for this step.
+Frame build context and report unrelated or noisy failures. A successful publish adds the Frame
+card to the answer and opens it for the user; do not parse the Frame ID from the CLI output for
+that.
 
 ${
   hasFunctions
@@ -773,4 +748,4 @@ the UI linter for v2 Frames, and run \`dsbx frame publish\` in the same Computer
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. ${hasFunctions ? "Do not replace an entire UI or function for a localized state, schema, or styling bug." : "Do not replace an entire UI for a localized state or styling bug."}
 
-${buildInteractiveContentAuthoringProseV2({ hasFramesV2: true, hasDocuments, hasFunctions })}`;
+${buildInteractiveContentAuthoringProseV2({ hasFramesV2: true, hasFunctions })}`;

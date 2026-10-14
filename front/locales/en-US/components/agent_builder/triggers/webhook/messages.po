@@ -101,20 +101,20 @@ msgid "Enter trigger name"
 msgstr "Enter trigger name"
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count towards your personal credit pool."
-msgstr "This will count towards your personal credit pool."
+msgid "This will count toward your personal credit pool."
+msgstr "This will count toward your personal credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count towards your workspace's credit pool."
-msgstr "This will count towards your workspace's credit pool."
+msgid "This will count toward your workspace's credit pool."
+msgstr "This will count toward your workspace's credit pool."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count towards your personal fair use limits."
-msgstr "This will count towards your personal fair use limits."
+msgid "This will count toward your personal fair use limits."
+msgstr "This will count toward your personal fair use limits."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
-msgid "This will count towards your workspace's programmatic usage."
-msgstr "This will count towards your workspace's programmatic usage."
+msgid "This will count toward your workspace's programmatic usage."
+msgstr "This will count toward your workspace's programmatic usage."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "Rate limits"

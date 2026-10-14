@@ -34,18 +34,19 @@ export type FilterOptionListStatus =
   | "loading-more"
   | "updating";
 
-interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
+type FilterOptionCheckboxListProps<Option extends FilterOptionBase> = {
   idPrefix: string;
   options: Option[];
   selectedIds: Set<string>;
   onToggleOption: (option: Option) => void;
-  onSelectAll?: () => void;
-  selectAllLabel?: string;
   hasSelectableOptions?: boolean;
   renderIcon?: (option: Option) => ReactNode;
   status?: FilterOptionListStatus;
   scrollContainer?: HTMLDivElement | null;
-}
+} & (
+  | { onSelectAll?: undefined; selectAllLabel?: undefined }
+  | { onSelectAll: () => void; selectAllLabel: string }
+);
 
 /**
  * @cc [label:react] filter-option-heading-spacing

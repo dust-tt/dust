@@ -1,10 +1,14 @@
+import {
+  isCollabSessionWriteError,
+  type CollabSessionWriteError,
+} from "@app/lib/api/collab/write_through_session";
 import config from "@app/lib/api/config";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import {
   type DfmCommentSignatureError,
   validateMarkdownCommentsForWrite,
-} from "@app/lib/api/files/dfm_comment_signatures";
+} from "@app/lib/api/documents/comment_signatures";
+import { writeFileContentThroughCollabSession } from "@app/lib/api/documents/file_api_write";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -83,8 +87,9 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
- * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused;
- * a new comment that mentions agents or users is posted to the document's conversation.
+ * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused.
+ * While a live session holds a Markdown file, a PUT goes through the session instead of the file
+ * and returns no revision; one with X-Dust-If-Revision-Match returns 412.
  */
 const app = workspaceApp();
 
@@ -115,7 +120,7 @@ function putContentTooLargeError(ctx: Context) {
   return apiError(ctx, {
     status_code: 413,
     api_error: {
-      type: "invalid_request_error",
+      type: "file_too_large",
       message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
     },
   });
@@ -174,14 +179,17 @@ function mapFolderArchiveError(
     case "not_directory":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "folder_required", message: error.message },
       };
 
     case "too_many_entries":
     case "too_large":
       return {
         status_code: 413,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "folder_too_large_to_download",
+          message: error.message,
+        },
       };
 
     case "internal":
@@ -333,13 +341,13 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
         case "too_large":
           return apiError(ctx, {
             status_code: 413,
-            api_error: { type: "invalid_request_error", message: e.message },
+            api_error: { type: "file_too_large", message: e.message },
           });
 
         case "unsupported_type":
           return apiError(ctx, {
             status_code: 400,
-            api_error: { type: "invalid_request_error", message: e.message },
+            api_error: { type: "file_type_not_supported", message: e.message },
           });
 
         case "conversion_failed":
@@ -385,7 +393,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
         case "not_image":
           return apiError(ctx, {
             status_code: 400,
-            api_error: { type: "invalid_request_error", message: e.message },
+            api_error: { type: "file_type_not_supported", message: e.message },
           });
         case "internal":
           return apiError(ctx, {
@@ -533,7 +541,7 @@ function archiveTooLargeError(ctx: Context) {
   return apiError(ctx, {
     status_code: 413,
     api_error: {
-      type: "invalid_request_error",
+      type: "archive_too_large",
       message: `Archive exceeds the ${MAX_ARCHIVE_UPLOAD_SIZE_BYTES / (1024 * 1024)} MB upload limit.`,
     },
   });
@@ -553,14 +561,14 @@ function mapFolderExtractError(
     case "unsafe_entry_path":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "archive_invalid", message: error.message },
       };
 
     case "too_many_entries":
     case "too_large":
       return {
         status_code: 413,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "archive_too_large", message: error.message },
       };
 
     default:
@@ -586,17 +594,79 @@ function mapMarkdownCheckError(
       };
 
     case "unsupported_content_type":
+      return {
+        status_code: 400,
+        api_error: { type: "file_type_not_supported", message: error.message },
+      };
+
     case "not_available":
+      return {
+        status_code: 400,
+        api_error: { type: "feature_not_enabled", message: error.message },
+      };
+
     case "unavailable_file":
+      return {
+        status_code: 400,
+        api_error: { type: "file_not_found", message: error.message },
+      };
+
     case "invalid_position":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
+
     case "unwritable_message":
+      return {
+        status_code: 400,
+        api_error: { type: "comment_unwritable", message: error.message },
+      };
+
     case "foreign_message":
     case "unsigned_message":
     case "altered_message":
     case "moved_message":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "file_comments_changed", message: error.message },
+      };
+
+    default:
+      return assertNever(code);
+  }
+}
+
+function mapCollabWriteError(
+  error: CollabSessionWriteError
+): APIErrorWithContentfulStatusCode {
+  const { code } = error;
+  switch (code) {
+    case "read_only":
+      return {
+        status_code: 403,
+        api_error: { type: "file_read_only", message: error.message },
+      };
+
+    case "refused":
+      return {
+        status_code: 400,
+        api_error: {
+          type: "collab_session_write_refused",
+          message: error.message,
+        },
+      };
+
+    case "conflict":
+      return {
+        status_code: 412,
+        api_error: { type: "collab_session_conflict", message: error.message },
+      };
+
+    case "unavailable":
+      return {
+        status_code: 503,
+        api_error: { type: "service_unavailable", message: error.message },
       };
 
     default:
@@ -716,8 +786,32 @@ app.put(
     }
 
     const content = new Uint8Array(contentBuffer);
-    // Only Markdown in a co_edition workspace has its comments checked and new messages; any
-    // other write gets null `newMessages`, and possibly a revision binding it to what was checked.
+    const ifRevisionMatch = ctx.req.valid("header")["x-dust-if-revision-match"];
+
+    const live = await writeFileContentThroughCollabSession(
+      auth,
+      dustFs,
+      canonicalPath,
+      {
+        content,
+        requestContentType: ctx.req.header("content-type") ?? undefined,
+        ifRevisionMatch,
+      }
+    );
+    if (live.isErr()) {
+      return apiError(
+        ctx,
+        isCollabSessionWriteError(live.error)
+          ? mapCollabWriteError(live.error)
+          : mapMarkdownCheckError(live.error)
+      );
+    }
+    if (live.value.kind === "written") {
+      return new Response(null, { status: 200 });
+    }
+
+    // Only Markdown in a co_edition workspace has its comments checked; any other write possibly
+    // gets a revision binding it to what was checked.
     const markdownCheck = await validateMarkdownCommentsForWrite(
       auth,
       dustFs,
@@ -728,7 +822,7 @@ app.put(
     if (markdownCheck.isErr()) {
       return apiError(ctx, mapMarkdownCheckError(markdownCheck.error));
     }
-    const { revision: checkedRevision, newMessages } = markdownCheck.value;
+    const { revision: checkedRevision } = markdownCheck.value;
 
     // A Markdown write is conditional on the revision its comments were validated against.
     const writeResult = await writeCanonicalFileContent(
@@ -737,7 +831,7 @@ app.put(
       canonicalPath,
       content,
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["x-dust-if-revision-match"] ?? checkedRevision
+      ifRevisionMatch ?? checkedRevision
     );
 
     if (writeResult.isErr()) {
@@ -749,7 +843,7 @@ app.put(
             return apiError(ctx, {
               status_code: 413,
               api_error: {
-                type: "invalid_request_error",
+                type: "file_too_large",
                 message: error.message,
               },
             });
@@ -757,16 +851,23 @@ app.put(
             return apiError(ctx, {
               status_code: 412,
               api_error: {
-                type: "invalid_request_error",
+                type: "file_revision_conflict",
                 message: error.message,
               },
             });
           case "revision_not_supported":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "file_revision_not_supported",
+                message: error.message,
+              },
+            });
           case "unsupported_content_type":
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "file_type_not_supported",
                 message: error.message,
               },
             });
@@ -775,13 +876,6 @@ app.put(
         }
       }
       return apiError(ctx, mapDustFsError(error));
-    }
-
-    if (newMessages) {
-      await dispatchCommentMentions(auth, {
-        scopedPath: canonicalPath,
-        newMessages,
-      });
     }
 
     return new Response(null, {
@@ -842,7 +936,7 @@ function mapDustFsError(
     case "already_exists":
       return {
         status_code: 409,
-        api_error: { type: "invalid_request_error", message: err.message },
+        api_error: { type: "file_already_exists", message: err.message },
       };
 
     case "frame_manifest_move":

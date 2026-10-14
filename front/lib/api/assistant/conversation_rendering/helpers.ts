@@ -8,6 +8,7 @@ import {
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
+import { renderEffortChangeMessageForAction } from "@app/lib/api/actions/servers/self_configuration/rendering";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
@@ -38,6 +39,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type {
   CompactionMessageTypeModel,
+  EffortChangeMessageTypeModel,
   Content,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -144,6 +146,7 @@ export type Step = {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
     enabledSkillMessages: UserMessageTypeModel[];
+    effortChangeMessage: EffortChangeMessageTypeModel | null;
   }[];
 };
 
@@ -346,11 +349,17 @@ export async function getSteps(
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
       }),
+      effortChangeMessage: renderEffortChangeMessageForAction(action),
     }),
     { concurrency: RENDER_ACTIONS_CONCURRENCY }
   );
 
-  for (const { action, result, enabledSkillMessages } of renderedActions) {
+  for (const {
+    action,
+    result,
+    enabledSkillMessages,
+    effortChangeMessage,
+  } of renderedActions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
     stepByStepIndex[stepIndex].actions.push({
@@ -361,6 +370,7 @@ export async function getSteps(
       },
       result,
       enabledSkillMessages,
+      effortChangeMessage,
     });
   }
 
@@ -432,6 +442,7 @@ export async function getSteps(
                   content: "Error: tool execution failed",
                 },
                 enabledSkillMessages: [],
+                effortChangeMessage: null,
               });
             }
           }

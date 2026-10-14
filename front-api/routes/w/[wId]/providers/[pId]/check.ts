@@ -1,4 +1,7 @@
+import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
+import { untrustedFetch } from "@app/lib/egress/server";
 import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
+import { AzureOpenAIErrorResponseSchema } from "@app/types/provider";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -55,23 +58,18 @@ app.post(
             },
           });
         }
+        const endpointError = validateAzureOpenAIEndpoint(config.endpoint);
+        if (endpointError) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "provider_endpoint_error",
+              message: endpointError,
+            },
+          });
+        }
         try {
-          const parsed = new URL(config.endpoint);
-          if (
-            !parsed.hostname.endsWith(".openai.azure.com") &&
-            !parsed.hostname.endsWith(".cognitive.microsoft.com")
-          ) {
-            return apiError(ctx, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "The endpoint is invalid (expecting `openai.azure.com` or `cognitive.microsoft.com`).",
-              },
-            });
-          }
-
-          const deploymentsRes = await fetch(
+          const deploymentsRes = await untrustedFetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
               method: "GET",
@@ -81,14 +79,20 @@ app.post(
             }
           );
           if (!deploymentsRes.ok) {
-            const err = await deploymentsRes.json();
+            const err = AzureOpenAIErrorResponseSchema.parse(
+              await deploymentsRes.json()
+            );
             return ctx.json({ ok: false, error: err.error.message }, 400);
           }
           await deploymentsRes.json();
           return ctx.json({ ok: true });
         } catch {
           return ctx.json(
-            { ok: false, error: "Invalid Azure endpoint URL" },
+            {
+              ok: false,
+              error:
+                "Could not list deployments from the Azure OpenAI endpoint.",
+            },
             400
           );
         }

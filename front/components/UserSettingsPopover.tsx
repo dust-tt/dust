@@ -168,17 +168,6 @@ function getPersonalInfoSchema(t: (descriptor: MessageDescriptor) => string) {
   });
 }
 
-function OptionalRowTitle({ title }: { title: string }) {
-  return (
-    <>
-      {title}{" "}
-      <span className="copy-sm text-muted-foreground">
-        <Trans>- Optional</Trans>
-      </span>
-    </>
-  );
-}
-
 type PersonalInfoType = z.infer<ReturnType<typeof getPersonalInfoSchema>>;
 
 function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
@@ -375,7 +364,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           />
 
           <SettingsList.Row
-            title={<OptionalRowTitle title={t`Pronouns`} />}
+            title={t`Pronouns`}
             action={
               <div className="flex w-64 flex-col gap-2">
                 <Input
@@ -406,7 +395,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           />
 
           <SettingsList.Row
-            title={<OptionalRowTitle title={t`Job title`} />}
+            title={t`Job title`}
             action={
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

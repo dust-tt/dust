@@ -51,7 +51,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "regular_or_global_space_required",
           message:
             "Can only delete Webhook Source Views from regular or global spaces.",
         },

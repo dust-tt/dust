@@ -12,10 +12,14 @@ export function sharedUsageLimitErrorToApiError(
         api_error: { type: "group_not_found", message: error.message },
       };
     case "invalid_group_kind":
+      return {
+        status_code: 400,
+        api_error: { type: "group_kind_not_supported", message: error.message },
+      };
     case "invalid_threshold":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "usage_limit_out_of_range", message: error.message },
       };
     case "invalid_order":
       return {
@@ -41,7 +45,7 @@ export function sharedUsageLimitErrorToApiError(
     case "shared_usage_limits_not_enabled":
       return {
         status_code: 403,
-        api_error: { type: "feature_flag_not_found", message: error.message },
+        api_error: { type: "feature_not_enabled", message: error.message },
       };
     default:
       assertNever(error.type);

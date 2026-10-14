@@ -84,7 +84,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "system_view_required",
           message: "Updates can only be performed on system views.",
         },
       });
@@ -125,7 +125,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "mcp_server_view_already_exists",
               message: updateResult.error.message,
             },
           });

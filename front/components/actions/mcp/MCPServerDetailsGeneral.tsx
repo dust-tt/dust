@@ -6,7 +6,6 @@ import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
-  getMcpServerViewDescription,
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
@@ -16,6 +15,7 @@ import {
   MCP_TOOL_STAKE_SHORT_LABELS,
 } from "@app/lib/actions/tool_stakes_descriptions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { formatDate } from "@app/lib/i18n/format";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -65,7 +65,7 @@ export function MCPServerDetailsGeneral({
     return (
       <div className="flex flex-col gap-2">
         <ClampedDescription
-          description={getMcpServerViewDescription(mcpServerView)}
+          description={getMcpServerViewDisplayDescription(t, mcpServerView)}
         />
         <div className="heading-lg">
           <Trans>Available tools ({toolCount})</Trans>

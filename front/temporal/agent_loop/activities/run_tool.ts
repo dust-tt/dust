@@ -20,6 +20,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import { claimToolActivityStart } from "@app/temporal/agent_loop/lib/tool_activity_start_marker";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -89,6 +90,12 @@ function extractDataSourceIds(
   return result;
 }
 
+/**
+ * @cc [owner:tdraier,label:error-handling;concurrency] claim-start-before-work
+ * `runToolActivity` MUST obtain `claimToolActivityStart` for its Temporal activity execution before
+ * any work other than heartbeating, and MUST NOT execute the tool when the claim is refused or
+ * throws.
+ */
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
@@ -107,6 +114,18 @@ export async function runToolActivity(
   // connection-pool contention. Tool activities are not retried, so a missed first heartbeat
   // kills the whole run: heartbeat immediately and periodically until setup completes.
   heartbeat();
+
+  const { activityId, workflowExecution } = Context.current().info;
+  const startClaimed = await claimToolActivityStart({
+    workflowId: workflowExecution.workflowId,
+    runId: workflowExecution.runId,
+    activityId,
+  });
+  if (!startClaimed) {
+    throw new Error(
+      "Tool activity was already declared never started by its workflow"
+    );
+  }
 
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 

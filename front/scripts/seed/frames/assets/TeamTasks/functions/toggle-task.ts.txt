@@ -1,0 +1,21 @@
+import { db } from "@dust/pod";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { tasks } from "../databases/tasks.db.ts";
+import { listTasks, TaskListSchema } from "./lib/tasks.ts";
+
+export const schema = {
+  description: "Mark a task done or not done.",
+  userIdentity: "workspace_user_required",
+  input: z.object({ id: z.number(), done: z.boolean() }),
+  output: TaskListSchema,
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { id, done } = await request.json();
+    db("tasks").update(tasks).set({ done }).where(eq(tasks.id, id)).run();
+    return Response.json(listTasks());
+  },
+};

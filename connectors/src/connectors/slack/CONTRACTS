@@ -1,11 +1,11 @@
 @cc [owner:Nils-Fedrigo,label:product] slack-text-extractable
 Translated Slack text MUST be rendered with `i18n._("<English text>", values)` on an `I18n` instance
-returned by `getSlackI18n` (`lib/i18n.ts`), held in a binding named `i18n`, never with the global
-`i18n` of `@lingui/core`. The first argument MUST be a string literal, which is both the message id
-and its English text: `lingui extract` only collects literal ids passed to a callee named `i18n._`.
-Dynamic parts MUST be named ICU placeholders (`{agentName}`) passed in `values`, never concatenated
-or interpolated into the literal. Lingui macros (`@lingui/*/macro`) MUST NOT be imported: connectors
-runs under `tsx`, which does not compile them.
+returned by `getBotI18n` (`connectors/src/lib/bot/i18n.ts`), held in a binding named `i18n`, never
+with the global `i18n` of `@lingui/core`. The first argument MUST be a string literal, which is both
+the message id and its English text: `lingui extract` only collects literal ids passed to a callee
+named `i18n._`. Dynamic parts MUST be named ICU placeholders (`{agentName}`) passed in `values`,
+never concatenated or interpolated into the literal. Lingui macros (`@lingui/*/macro`) MUST NOT be
+imported: connectors runs under `tsx`, which does not compile them.
 
 @cc [owner:Nils-Fedrigo,label:product] slack-user-text-translated
 Text the Slack bot writes for Slack users (messages, ephemerals, assistant statuses, plan titles,
@@ -16,9 +16,8 @@ placeholders. The `message` of other `Error`s is diagnostic: it MAY stay English
 users through the placeholder of a translated sentence. Text sent to the Dust API or to models
 (message content, content fragments) MUST NOT be translated.
 
-@cc [owner:Nils-Fedrigo,label:product] slack-text-in-recipient-locale
-Slack text MUST be rendered with the `I18n` that `lib/user_locale.ts` returns for the Slack user it
-is written to, `getSlackI18nForUser`. Text with no single human recipient (channel announcements,
-replies to Slack workflows) MUST use the workspace locale, from `getSlackI18nForUser` with a `null`
-`slackUserId`. Production code MUST NOT pick a locale
-with `getSlackI18n` directly.
+@cc [owner:Nils-Fedrigo,label:product] slack-text-in-workspace-locale
+Slack text MUST be rendered with the `I18n` that `getBotI18nForWorkspace`
+(`connectors/src/lib/bot/workspace_locale.ts`) returns: the locale set in the Dust workspace
+settings, whoever the Slack user it is written to.
+Production code MUST NOT pick a locale with `getBotI18n` directly.

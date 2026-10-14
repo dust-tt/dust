@@ -51,6 +51,7 @@ function withSidePanel(
           setVirtuosoMsg: vi.fn(),
           virtuosoMsg: null,
           data: undefined,
+          wasAutoOpenDismissedForFileId: () => false,
         }}
       >
         {children}

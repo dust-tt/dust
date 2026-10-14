@@ -597,7 +597,7 @@ export async function finalizeConnection(
 
   if (
     providerStrategy.isCallbackQueryValid &&
-    !providerStrategy.isCallbackQueryValid(query)
+    !(await providerStrategy.isCallbackQueryValid(query, connection))
   ) {
     childLogger.error(
       { connectionId, step: "callback_validation" },

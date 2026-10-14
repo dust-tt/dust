@@ -31,6 +31,7 @@ export const CLAUDE_OPUS_5_5 = "claude-opus-5-5" as const;
 export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 export const CLAUDE_HAIKU_5_5 = "claude-haiku-5-5" as const;
 
+export const GEMINI_4_ARGON = "gemini-4-argon" as const;
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
 export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
 export const GEMINI_3_6_FLASH = "gemini-3.6-flash" as const;
@@ -97,6 +98,7 @@ export const MODELS = [
   CLAUDE_OPUS_5_5,
   CLAUDE_HAIKU_4_5,
   CLAUDE_HAIKU_5_5,
+  GEMINI_4_ARGON,
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
   GEMINI_3_6_FLASH,

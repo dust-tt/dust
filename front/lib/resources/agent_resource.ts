@@ -71,6 +71,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
@@ -3364,7 +3365,7 @@ export class AgentResource
    */
   async listSkills(
     auth: Authenticator,
-    fetchContext: SkillFetchContext = {}
+    fetchContext: SkillFetchContext & SkillHydrationOptions = {}
   ): Promise<SkillResource[]> {
     const skillsByAgent = await SkillResource.listByAgents(
       auth,

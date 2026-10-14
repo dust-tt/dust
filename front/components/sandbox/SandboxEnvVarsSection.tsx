@@ -7,7 +7,7 @@ import {
   normalizeHttpsSecretAllowedDomains,
   SANDBOX_ENV_VAR_PREFIX,
 } from "@app/lib/api/sandbox/env_vars";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { formatNumber } from "@app/lib/i18n/format";
 import {
@@ -21,7 +21,6 @@ import type {
   SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -203,8 +202,6 @@ export function SandboxEnvVarsSection({
   const allowedDomainsHelperText = t`Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.`;
   const savedAsMessage = (domains: string) => t`Will be saved as ${domains}.`;
   const { isAdmin } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
   const allowEdit = canEdit ?? isAdmin;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
@@ -220,7 +217,7 @@ export function SandboxEnvVarsSection({
     useSandboxEnvVars({
       owner,
       spaceId,
-      disabled: disabled || !hasSandboxAdmin,
+      disabled,
     });
   const { upsertSandboxEnvVar, isUpsertingSandboxEnvVar } =
     useUpsertSandboxEnvVar({ owner, spaceId });
@@ -454,15 +451,6 @@ export function SandboxEnvVarsSection({
   const envVarToDeleteName = envVarToDelete?.name;
 
   const renderBody = () => {
-    if (!hasSandboxAdmin) {
-      return (
-        <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          <Trans>
-            Computer administration is not enabled for this workspace.
-          </Trans>
-        </ContentMessage>
-      );
-    }
     if (isSandboxEnvVarsLoading) {
       return <Spinner />;
     }

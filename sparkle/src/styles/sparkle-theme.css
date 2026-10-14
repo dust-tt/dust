@@ -20,7 +20,6 @@
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-background-position-spin: background-position-spin 2000ms infinite
     alternate;
-  --animate-rainbow: rainbow var(--speed, 16s) infinite linear;
   --animate-loading-dot: loading-dot 1.2s infinite;
   --animate-collapse-down: collapse-down 150ms ease-out;
   --animate-collapse-up: collapse-up 150ms ease-out;
@@ -42,18 +41,6 @@
 }
 @utility h-2xl {
   height: 1024px;
-}
-
-/* Rainbow gradient background (was theme.extend.backgroundImage). */
-@utility bg-rainbow-gradient {
-  background-image: linear-gradient(
-    90deg,
-    oklch(79.91% 0.111 242.35),
-    oklch(65.39% 0.1893 252.74),
-    oklch(62.68% 0.2325 303.9),
-    oklch(72.15% 0.1521 248.14),
-    oklch(53.19% 0.1614 253.34)
-  );
 }
 
 /* Sparkle-specific keyframes (was theme.extend.keyframes). */
@@ -128,14 +115,6 @@
   }
   100% {
     background-position: calc(200%) 0;
-  }
-}
-@keyframes rainbow {
-  0% {
-    background-position: 0%;
-  }
-  100% {
-    background-position: 200%;
   }
 }
 @keyframes collapse-down {

@@ -288,7 +288,7 @@
             "description": "Invalid request body (missing fields, invalid dates, range exceeds 30 days)"
           },
           "403": {
-            "description": "The workspace does not have access to the consumption export API, or the API key has no\nadmin scope and the export is not restricted to groups whose analytics it can read.\n"
+            "description": "The API key has no admin scope and the export is not restricted to groups whose\nanalytics it can read.\n"
           },
           "429": {
             "description": "Rate limit exceeded (60 requests per minute per workspace)"
@@ -687,7 +687,8 @@
                 "type": "object",
                 "properties": {
                   "userFavorite": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Favorites the agent for the calling user. Requires a user; rejected with 400 when authenticated with a workspace API key."
                   },
                   "agent": {
                     "type": "object",
@@ -856,7 +857,7 @@
             }
           },
           "400": {
-            "description": "Bad Request. Invalid or missing parameters."
+            "description": "Bad Request. Invalid or missing parameters, or userFavorite sent with a workspace API key."
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
@@ -3768,7 +3769,7 @@
                       "skip",
                       "override"
                     ],
-                    "description": "Conflict handling strategy. Defaults to error."
+                    "description": "Strategy applied when a skill with the same name already exists in the workspace. error rejects the whole import, skip skips the skill and reports it in skipped, override updates the existing skill. Defaults to error."
                   },
                   "editors": {
                     "type": "array",

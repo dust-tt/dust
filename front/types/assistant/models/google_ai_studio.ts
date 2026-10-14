@@ -19,6 +19,7 @@ export const GEMINI_3_5_FLASH_MODEL_ID = "gemini-3.5-flash" as const;
 export const GEMINI_3_6_FLASH_MODEL_ID = "gemini-3.6-flash" as const;
 export const GEMINI_3_7_FLASH_MODEL_ID = "gemini-3.7-flash" as const;
 export const GEMINI_3_8_FLASH_MODEL_ID = "gemini-3.8-flash" as const;
+export const GEMINI_4_ARGON_MODEL_ID = "gemini-4-argon" as const;
 
 export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -261,11 +262,10 @@ export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
-  description:
-    "Google's latest powerful model with enhanced reasoning (1m context).",
-  shortDescription: "Google's most advanced model.",
+  description: "Google's powerful model with enhanced reasoning (1m context).",
+  shortDescription: "Google's advanced reasoning model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -468,6 +468,49 @@ export const GEMINI_3_8_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   regionalAvailability: {
     // EU multi-region availability was verified on 2026-09-04:
     // https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+
+// Specs verified against
+// https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/4-argon
+// (2026-10-13): Gemini 4 Argon accepts text, images, audio, video, and PDFs,
+// supports structured output and batch inference, has a 1,048,576-token context
+// window, and generates up to 65,536 tokens per request. The documented thinking
+// levels are low, medium (default), and high; minimal and thinking budgets are
+// rejected. It is served on the global endpoint and the `eu` multi-region.
+export const GEMINI_4_ARGON_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_4_ARGON_MODEL_ID,
+  displayName: "Gemini 4 Argon",
+  contextSize: 1_048_576,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Google's flagship reasoning model for complex and agentic tasks (1m context).",
+  shortDescription: "Google's most advanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 65_536,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  supportedReasoningEfforts: {
+    none: false,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: false,
+    maximal: false,
+  },
+  defaultReasoningEffort: "medium",
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  supportsBatchProcessing: true,
+  regionalAvailability: {
+    // EU multi-region availability was verified on 2026-10-13:
+    // https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/locations.
     "us-central1": true,
     "europe-west1": true,
   },

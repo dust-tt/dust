@@ -366,6 +366,83 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     }
   });
 
+  it.each([
+    { onConflict: "error", expected: "rejected" },
+    { onConflict: "skip", expected: "skipped" },
+    { onConflict: "override", expected: "updated" },
+  ] as const)(
+    "applies onConflict=$onConflict to a skill previously imported through the API",
+    async ({ onConflict, expected }) => {
+      const { key, workspace } = await createPublicApiMockRequest({
+        role: "admin",
+      });
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
+      const auth = await Authenticator.fromKey(key, workspace.sId);
+      const name = "Previously Imported Skill";
+
+      const firstImport = await importSkillsFromFiles(auth, {
+        uploadedFiles: [
+          await makeSkillZipFile({ name, instructions: "Original." }),
+        ],
+        source: "api",
+        onConflict: "error",
+      });
+      expect(firstImport.isOk()).toBe(true);
+
+      const result = await importSkillsFromFiles(auth, {
+        uploadedFiles: [
+          await makeSkillZipFile({ name, instructions: "Changed." }),
+        ],
+        source: "api",
+        onConflict,
+      });
+
+      switch (expected) {
+        case "rejected":
+          expect(result.isErr()).toBe(true);
+          break;
+        case "skipped":
+          expect(result.isOk() && result.value.skipped).toEqual([
+            { name, message: `A skill named "${name}" already exists.` },
+          ]);
+          break;
+        case "updated":
+          expect(result.isOk() && result.value.updated).toHaveLength(1);
+          break;
+      }
+      const skill = await SkillResource.fetchByName(auth, name);
+      expect(skill?.instructions).toBe(
+        expected === "updated" ? "Changed." : "Original."
+      );
+    }
+  );
+
+  it("updates a skill re-imported from a local file", async () => {
+    const { key, workspace } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    const auth = await Authenticator.fromKey(key, workspace.sId);
+    const name = "Local File Skill";
+
+    for (const instructions of ["Original.", "Changed."]) {
+      const result = await importSkillsFromFiles(auth, {
+        uploadedFiles: [await makeSkillZipFile({ name, instructions })],
+        source: "local_file",
+        onConflict: "skip",
+        updateSameSource: true,
+      });
+      expect(result.isOk()).toBe(true);
+    }
+
+    const skill = await SkillResource.fetchByName(auth, name);
+    expect(skill?.instructions).toBe("Changed.");
+  });
+
   it("sets availability when creating and updating imported skills", async () => {
     const { key, workspace } = await createPublicApiMockRequest({
       role: "admin",
@@ -392,7 +469,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
         ],
         availability,
         source: "api",
-        onConflict: "error",
+        onConflict: "override",
       });
       if (result.isErr()) {
         throw result.error;
@@ -508,7 +585,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
         }),
       ],
       source: "api",
-      onConflict: "error",
+      onConflict: "override",
       editors: [secondEditor.email],
     });
 
@@ -617,6 +694,72 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     const skill = await SkillResource.fetchByName(ownerAuth, "Owned Skill");
     expect(skill?.instructions).toBe("Original instructions.");
   });
+
+  it.each(["error", "skip", "override"] as const)(
+    "never writes a same-name skill the caller cannot read with onConflict=%s",
+    async (onConflict) => {
+      const { workspace } = await createPublicApiMockRequest();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+      await GroupPermissionResource.setForEverybody(adminAuth, {
+        grantType: "create",
+        resourceType: "skill",
+      });
+      const owner = await UserFactory.basic();
+      const importer = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, owner, { role: "user" });
+      await MembershipFactory.associate(workspace, importer, { role: "user" });
+      // The skill requires a restricted space the importer is not a member of.
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      await restrictedSpace.addMembers(adminAuth, { userIds: [owner.sId] });
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const importerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        importer.sId,
+        workspace.sId
+      );
+      const name = "Hidden Skill";
+      await SkillFactory.create(ownerAuth, {
+        name,
+        instructions: "Original instructions.",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      expect(await SkillResource.fetchByName(importerAuth, name)).toBeNull();
+
+      const result = await importSkillsFromFiles(importerAuth, {
+        uploadedFiles: [
+          await makeSkillZipFile({ name, instructions: "Should not write." }),
+        ],
+        source: "api",
+        onConflict,
+      });
+
+      const conflictMessage = `A skill named "${name}" already exists.`;
+      switch (onConflict) {
+        case "error":
+          expect(result.isErr() && result.error.message).toBe(conflictMessage);
+          break;
+        case "skip":
+          expect(result.isOk() && result.value).toEqual({
+            imported: [],
+            updated: [],
+            skipped: [{ name, message: conflictMessage }],
+          });
+          break;
+        case "override":
+          expect(result.isErr() && result.error.message).toBe(
+            `You don't have permission to update the following skills: ${name}.`
+          );
+          break;
+      }
+      const skill = await SkillResource.fetchByName(ownerAuth, name);
+      expect(skill?.instructions).toBe("Original instructions.");
+    }
+  );
 
   it("rejects the import for a key without the create/skill capability", async () => {
     const { auth, workspace } = await createPublicApiMockRequest({

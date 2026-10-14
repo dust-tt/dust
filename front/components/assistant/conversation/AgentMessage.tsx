@@ -20,7 +20,6 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
-  UiView,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -269,7 +268,6 @@ function PrunedContextChip() {
 interface AgentMessageProps {
   conversationId: string;
   spaceId: string | null;
-  uiView: UiView;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -294,7 +292,6 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   spaceId,
-  uiView,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -1222,7 +1219,7 @@ export function AgentMessage({
 
   const messageContent = (
     <ConversationMessageContent
-      citations={isDeleted || uiView === "compact" ? undefined : citations}
+      citations={isDeleted ? undefined : citations}
       type="agent"
     >
       {isDeleted ? (
@@ -1248,7 +1245,6 @@ export function AgentMessage({
           isAgentMessageHandingOver={isAgentMessageHandingOver}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
-          uiView={uiView}
         />
       )}
     </ConversationMessageContent>
@@ -1336,7 +1332,6 @@ function AgentMessageContent({
   isAgentMessageHandingOver,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
-  uiView,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1370,7 +1365,6 @@ function AgentMessageContent({
   isAgentMessageHandingOver: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-  uiView: UiView;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -1508,7 +1502,7 @@ function AgentMessageContent({
     ]
   );
 
-  const { interactiveFiles } = useAutoOpenSidePanel({
+  useAutoOpenSidePanel({
     agentMessage,
     isLastMessage,
   });
@@ -1644,10 +1638,6 @@ function AgentMessageContent({
         />
         {blockedActionElement}
         {creditSpendCheckpointPausedElement}
-        <AgentMessageInteractiveContentGeneratedFiles
-          files={interactiveFiles}
-          collapsible={uiView === "compact"}
-        />
         {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
         {answer && (
@@ -1674,7 +1664,7 @@ function AgentMessageContent({
             )}
           </div>
         )}
-        {uiView !== "compact" && generatedFiles.length > 0 && (
+        {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
             {generatedFiles.map((file) => (
               <ToolGeneratedFileDetails
@@ -1687,6 +1677,9 @@ function AgentMessageContent({
             ))}
           </div>
         )}
+        <AgentMessageInteractiveContentGeneratedFiles
+          agentMessage={agentMessage}
+        />
         {/*
          * Cancelled messages render the standard message footer (feedback + full menu,
          * including Retry), so we only show the "Generation stopped." note here.

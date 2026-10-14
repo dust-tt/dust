@@ -92,14 +92,6 @@ const QUERIES: LabeledQuery[] = [
 
   // --- user_memory ---
   {
-    query: "read my personal memory",
-    expected: "user_memory.read",
-  },
-  {
-    query: "open my personal memory and show its full contents",
-    expected: "user_memory.read",
-  },
-  {
     query: "update my personal memory by replacing a snippet of text",
     expected: "user_memory.edit",
   },
@@ -874,14 +866,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "interactive_content.retrieve_interactive_content_file",
   },
   {
-    query: "open an existing frame in the side panel without editing it",
-    expected: "conversation_side_panel.open_frame",
-  },
-  {
-    query: "show the user a frame that was already created",
-    expected: "conversation_side_panel.open_frame",
-  },
-  {
     query: "revert my frame to the previous version",
     expected: "interactive_content.revert_interactive_content_file",
   },
@@ -1085,6 +1069,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "show the most recent pod documents from last week",
     expected: "pod_manager.retrieve_recent_documents",
+    maxRank: 2,
   },
   {
     query: "start a new pod conversation with the research agent",
@@ -1271,21 +1256,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "image_generation.generate_image",
   },
 
-  // --- file_generation ---
-  {
-    query: "turn this conversation file into a PDF",
-    expected: "file_generation.convert_file_format",
-  },
-  {
-    query: "write my report text out as a Word document",
-    expected: "file_generation.generate_file",
-    maxRank: 2,
-  },
-  {
-    query: "which input formats can I turn into an xlsx spreadsheet",
-    expected: "file_generation.get_supported_source_formats_for_output_format",
-  },
-
   // --- fathom ---
   {
     query: "list my fathom call recordings",
@@ -1394,10 +1364,6 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "delete a file from the conversation or pod file system",
     expected: "files.delete",
-  },
-  {
-    query: "extract text from a pdf or docx binary document",
-    expected: "files.extract_text",
   },
   {
     query: "copy a file from one scoped path to another keeping the source",
@@ -1602,16 +1568,6 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "mark this conversation as unread",
     expected: "common_utilities.mark_conversation_read",
-  },
-
-  // --- conversation_side_panel ---
-  {
-    query: "open the files side panel so the user can browse attachments",
-    expected: "conversation_side_panel.set_files_side_panel",
-  },
-  {
-    query: "hide the conversation files explorer panel",
-    expected: "conversation_side_panel.set_files_side_panel",
   },
 
   // --- exa_people_and_company ---

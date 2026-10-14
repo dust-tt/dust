@@ -75,7 +75,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "invalid_pagination_parameters",
             message: "Agent search offset is out of range",
           },
         });

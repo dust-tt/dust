@@ -50,7 +50,7 @@ export function useAuth(): AuthContextValue {
 }
 
 /**
- * @cc [owner:PopDaph,label:product] live-editing-per-cell
+ * @cc [owner:PopDaph,label:product] collab-editing-per-cell
  * Files MUST be edited live only where the cell's auth context returns a `collabUrl` (its
  * `COLLAB_PUBLIC_URL`), and only through it: without one, the editor saves the file itself.
  */

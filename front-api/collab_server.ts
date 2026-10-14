@@ -4,7 +4,7 @@ import "./lib/startup-log";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import { COLLAB_INTERNAL_ROUTES_PREFIX } from "@app/types/collab";
+import { COLLAB_INTERNAL_ROUTES_PREFIX } from "@app/types/collab_internal";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { serve } from "@hono/node-server";
@@ -13,11 +13,13 @@ import crossws from "crossws/adapters/node";
 
 import {
   ACCESS_RECHECK_INTERVAL_MS,
-  checkpointAllDocuments,
-  createCollabHocuspocus,
   recheckAllConnections,
+} from "./lib/collab/connection_access";
+import {
+  saveAllSessions,
+  createCollabHocuspocus,
 } from "./lib/collab/hocuspocus";
-import { createInternalDocumentsApp } from "./lib/collab/internal_routes";
+import { createInternalRoutes } from "./lib/collab/internal_routes";
 import { createHono } from "./lib/hono";
 import { unhandledErrorHandler } from "./middlewares/utils";
 import { healthzApp } from "./routes/healthz";
@@ -44,10 +46,7 @@ const hocuspocus = createCollabHocuspocus();
 
 const app = createHono();
 app.route("/api/healthz", healthzApp);
-app.route(
-  COLLAB_INTERNAL_ROUTES_PREFIX,
-  createInternalDocumentsApp(hocuspocus)
-);
+app.route(COLLAB_INTERNAL_ROUTES_PREFIX, createInternalRoutes(hocuspocus));
 app.onError(unhandledErrorHandler);
 
 // crossws types the upgraded socket as a partial WebSocket; on Node it is a full `ws` socket.
@@ -128,7 +127,7 @@ const recheckTimer = setInterval(() => {
   });
 }, ACCESS_RECHECK_INTERVAL_MS);
 
-// Checkpoint every document before exiting: edits waiting for a debounced store reach the file.
+// Save every document before exiting: edits waiting for a debounced store reach the file.
 async function shutdown(signal: NodeJS.Signals) {
   logger.info(
     { signal, documents: hocuspocus.getDocumentsCount() },
@@ -136,9 +135,9 @@ async function shutdown(signal: NodeJS.Signals) {
   );
   clearInterval(recheckTimer);
   server.close();
-  // Terminated, not closed: no edit still on the wire may arrive during the checkpoints.
+  // Terminated, not closed: no edit still on the wire may arrive during the saves.
   ws.closeAll(undefined, undefined, true);
-  await checkpointAllDocuments(hocuspocus);
+  await saveAllSessions(hocuspocus);
   logger.info("Collab server stopped");
   process.exit(0);
 }

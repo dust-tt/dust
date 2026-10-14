@@ -2,6 +2,7 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import type { MessageStreamBatchEvent } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -42,28 +43,40 @@ async function getMessageIdByRank(
 
 function pollMessageEvents({
   prefix,
+  suffix,
   workspaceId,
   conversationId,
   messageId,
   lastEventId,
 }: {
   prefix: string;
+  suffix: string;
   workspaceId: string;
   conversationId: string;
   messageId: string;
   lastEventId?: string;
 }) {
-  const query = lastEventId ? `?lastEventId=${lastEventId}` : "";
+  const query = new URLSearchParams();
+  if (lastEventId) {
+    query.set("lastEventId", lastEventId);
+  }
+  if (!suffix) {
+    query.set("transport", "poll");
+  }
   return honoApp.request(
-    `${prefix}/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
+    `${prefix}/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events${suffix}?${query}`
   );
 }
 
-describe.each(["/api/sse", "/api"])(
-  "GET %s/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll",
-  (prefix) => {
+describe.each([
+  { prefix: "/api/sse", suffix: "" },
+  { prefix: "/api/sse", suffix: "/poll" },
+])(
+  "GET $prefix/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events$suffix",
+  ({ prefix, suffix }) => {
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(logger, "info").mockImplementation(() => undefined);
     });
 
     it("returns 404 when the conversation does not exist", async () => {
@@ -71,6 +84,7 @@ describe.each(["/api/sse", "/api"])(
 
       const response = await pollMessageEvents({
         prefix,
+        suffix,
         workspaceId: workspace.sId,
         conversationId: "conv_unknown",
         messageId: "msg_unknown",
@@ -91,6 +105,7 @@ describe.each(["/api/sse", "/api"])(
 
       const response = await pollMessageEvents({
         prefix,
+        suffix,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
         messageId,
@@ -98,6 +113,10 @@ describe.each(["/api/sse", "/api"])(
       });
 
       expect(response.status).toBe(200);
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: false }),
+        "Processed request"
+      );
       expect(response.headers.get("Cache-Control")).toBe("no-store");
       expect(await response.json()).toEqual({
         events: [
@@ -120,6 +139,7 @@ describe.each(["/api/sse", "/api"])(
 
       const response = await pollMessageEvents({
         prefix,
+        suffix,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
         messageId,
@@ -155,6 +175,7 @@ describe.each(["/api/sse", "/api"])(
 
       const response = await pollMessageEvents({
         prefix,
+        suffix,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
         messageId,
@@ -162,6 +183,10 @@ describe.each(["/api/sse", "/api"])(
       });
 
       expect(response.status).toBe(200);
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: false }),
+        "Processed request"
+      );
       expect(await response.json()).toEqual({
         events: events.map((event) => JSON.stringify(event)),
       });
@@ -191,6 +216,7 @@ describe.each(["/api/sse", "/api"])(
 
       const activeResponse = await pollMessageEvents({
         prefix,
+        suffix,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
         messageId,
@@ -206,6 +232,7 @@ describe.each(["/api/sse", "/api"])(
 
       const response = await pollMessageEvents({
         prefix,
+        suffix,
         workspaceId: workspace.sId,
         conversationId: conversation.sId,
         messageId,
@@ -213,6 +240,10 @@ describe.each(["/api/sse", "/api"])(
       });
 
       expect(response.status).toBe(200);
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: false }),
+        "Processed request"
+      );
       expect(await response.json()).toEqual({
         events: [
           JSON.stringify({
@@ -224,3 +255,23 @@ describe.each(["/api/sse", "/api"])(
     });
   }
 );
+
+it("returns 404 for the removed legacy message polling endpoint", async () => {
+  const { workspace, auth } = await createPrivateApiMockRequest();
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    messagesCreatedAt: [new Date()],
+  });
+  const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
+
+  const response = await pollMessageEvents({
+    prefix: "/api",
+    suffix: "/poll",
+    workspaceId: workspace.sId,
+    conversationId: conversation.sId,
+    messageId,
+    lastEventId: "end-of-stream",
+  });
+
+  expect(response.status).toBe(404);
+});

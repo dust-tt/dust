@@ -94,7 +94,7 @@ to the collab server (`collab_server.ts`), so such a route would never reach fro
 @cc [owner:tdraier,label:api] collab-server-internal-routes
 The collab server (`collab_server.ts`) serves its own HTTP routes, apart from front-api's route
 tree: its internal routes need the Hocuspocus instance it creates, so they MUST be built by
-`createInternalDocumentsApp` in `lib/collab/internal_routes.ts` and mounted under `/internal` by
+`createInternalRoutes` in `lib/collab/internal_routes.ts` and mounted under `/internal` by
 `collab_server.ts` only. They are an exception to `url-aligned-route-files`,
 `directory-route-mounts` and `route-mounting-is-source-of-truth`, limited to them; every other rule
 of this file applies to them.
@@ -208,6 +208,9 @@ A new error path MUST NOT pair a generic type (`invalid_request_error`, `interna
 `unprocessable_entity`, ...) with a `message` naming a specific failure the user can act on (e.g.
 "A space with this name already exists."). It MUST use the existing type naming that failure
 (`space_already_exists`), or add one to `API_ERROR_TYPES` in `front/types/error.ts`.
+
+`invalid_request_error` is reserved for malformed requests, see
+`invalid-request-error-means-malformed` in `front/types/error.ts`.
 
 @cc [label:api] workspace-import-aliases
 Use `@front-api/*` for imports from `front-api/` itself (middleware, app, helpers) and `@app/*`

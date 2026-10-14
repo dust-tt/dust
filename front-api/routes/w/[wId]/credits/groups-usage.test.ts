@@ -438,7 +438,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
     const response = await getGroupsUsage(workspace.sId);
 
     expect(response.status).toBe(403);
-    expect((await response.json()).error.type).toBe("feature_flag_not_found");
+    expect((await response.json()).error.type).toBe("feature_not_enabled");
     expect(getActiveContract).not.toHaveBeenCalled();
   });
 });

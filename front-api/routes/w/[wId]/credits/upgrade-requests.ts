@@ -61,7 +61,10 @@ function upgradeRequestErrorToApiError(
     case "reason_required":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "upgrade_request_reason_required",
+          message: error.message,
+        },
       };
     case "user_not_found":
       return {
@@ -74,12 +77,18 @@ function upgradeRequestErrorToApiError(
     case "request_not_found":
       return {
         status_code: 404,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "upgrade_request_not_found",
+          message: error.message,
+        },
       };
     case "request_not_pending":
       return {
         status_code: 409,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "upgrade_request_already_resolved",
+          message: error.message,
+        },
       };
     case "internal_error":
       return {

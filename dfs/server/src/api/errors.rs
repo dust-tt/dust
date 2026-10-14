@@ -1,10 +1,17 @@
-use dfs_protocol::{error::status, rpc::ErrorCode};
+use dfs_protocol::{
+    error::status,
+    rpc::{ErrorCode, ErrorDetails},
+};
 use tonic::Status;
 
 use crate::storage::{
     self,
     resources::{object, session, tenant},
 };
+
+#[cfg(test)]
+#[path = "../../tests/api/errors.rs"]
+mod tests;
 
 // A transaction that calls several resources needs one error type. API closures use
 // `storage::Error<Status>` so each resource call can use `?` despite returning a different error enum.
@@ -17,7 +24,8 @@ use crate::storage::{
 // This replaces the original resource or decoding error variant with its API status inside the
 // transaction closure. Resource modules still return typed errors and remain independent of tonic.
 
-impl From<object::Error> for Status {
+// Share the mapping between RPC statuses and individual batch errors.
+impl From<object::Error> for ErrorCode {
     fn from(error: object::Error) -> Self {
         match error {
             object::Error::InvalidXattrName
@@ -27,16 +35,34 @@ impl From<object::Error> for Status {
             | object::Error::TooManyGrants
             | object::Error::DuplicateGrant
             | object::Error::InvalidGrantLimit
-            | object::Error::InvalidGrantCursor => status(ErrorCode::InvalidInput),
-            object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            object::Error::NotFound => status(ErrorCode::NotFound),
+            | object::Error::InvalidGrantCursor => ErrorCode::InvalidInput,
+            object::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            // Ordinary reads conceal inaccessible objects just like missing objects.
+            object::Error::NotFound | object::Error::NotAuthorized => ErrorCode::NotFound,
+            object::Error::UnsupportedKind => ErrorCode::Unsupported,
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
-            | object::Error::InvalidStoredGrant => {
+            | object::Error::InvalidStoredGrant
+            | object::Error::InvalidAncestry
+            | object::Error::VersionOverflow => {
                 tracing::error!(%error, "object operation failed");
-                status(ErrorCode::Internal)
+                ErrorCode::Internal
             }
         }
+    }
+}
+
+impl From<object::Error> for ErrorDetails {
+    fn from(error: object::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<object::Error> for Status {
+    fn from(error: object::Error) -> Self {
+        status(error.into())
     }
 }
 
@@ -114,94 +140,5 @@ impl<E: Into<Status>> From<storage::Error<E>> for Status {
             storage::Error::Resource(error) => return error.into(),
         }
         status(ErrorCode::Internal)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use dfs_protocol::{InvalidId, rpc::ErrorDetails};
-    use foundationdb::{FdbBindingError, FdbError};
-    use prost::Message;
-
-    use super::*;
-    use crate::auth::InvalidKeyHash;
-
-    #[test]
-    fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), prost::DecodeError>
-    {
-        let error: storage::Error<tenant::Error> =
-            FdbBindingError::from(FdbError::from_code(1020)).into();
-        let error = FdbBindingError::from(storage::Error::<Status>::from(error));
-        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
-
-        for (error, expected) in [
-            (
-                storage::Error::<Status>::from(storage::Error::Resource(tenant::Error::InvalidId)),
-                ErrorCode::InvalidInput,
-            ),
-            (
-                storage::Error::<Status>::from(storage::Error::Resource(
-                    object::Error::AlreadyExists,
-                )),
-                ErrorCode::AlreadyExists,
-            ),
-            (
-                storage::Error::<Status>::from(storage::Error::Resource(
-                    object::Error::InvalidXattrName,
-                )),
-                ErrorCode::InvalidInput,
-            ),
-            (
-                storage::Error::<Status>::from(storage::Error::Resource(
-                    object::Error::XattrsTooLarge,
-                )),
-                ErrorCode::InvalidInput,
-            ),
-        ] {
-            // Follow the runner's boxing and unboxing before translating the final API response.
-            let error = FdbBindingError::from(error);
-            let error = storage::Error::<Status>::from(error);
-            let status: Status = error.into();
-            assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn tenant_errors_preserve_retries_and_statuses_through_sessions()
-    -> Result<(), prost::DecodeError> {
-        let error: storage::Error<tenant::Error> =
-            FdbBindingError::from(FdbError::from_code(1020)).into();
-        let error = FdbBindingError::from(storage::Error::<session::Error>::from(error));
-        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
-
-        for (error, expected) in [
-            (tenant::Error::InvalidId, ErrorCode::InvalidInput),
-            (tenant::Error::InvalidKey, ErrorCode::Unauthenticated),
-        ] {
-            let error = storage::Error::<session::Error>::from(storage::Error::Resource(error));
-            let error = FdbBindingError::from(error);
-            let error = storage::Error::<session::Error>::from(error);
-            let status: Status = error.into();
-            assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn decoding_errors_return_generic_internal_details() -> Result<(), prost::DecodeError> {
-        for error in [
-            storage::Error::<tenant::Error>::InvalidKeyHash(InvalidKeyHash),
-            storage::Error::InvalidObjectId(InvalidId),
-        ] {
-            let status: Status = error.into();
-            assert_eq!(status.code(), tonic::Code::Internal);
-            assert_eq!(status.message(), "Internal error.");
-            assert_eq!(
-                ErrorDetails::decode(status.details())?.code,
-                i32::from(ErrorCode::Internal)
-            );
-        }
-        Ok(())
     }
 }

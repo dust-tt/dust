@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import { useVizContext } from "@viz/app/components/VizContext";
 import { EDITABLE_FILE_ID_PREFIX } from "@viz/app/lib/transformEditableText";
 import {
@@ -335,7 +336,11 @@ export function EditableFrame({ children }: EditableFrameProps) {
           />
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={4}>
-          {stagedEdits ? "Click to edit" : "Double-click to edit"}
+          {stagedEdits ? (
+            <Trans>Click to edit</Trans>
+          ) : (
+            <Trans>Double-click to edit</Trans>
+          )}
         </TooltipContent>
       </Tooltip>
     </>

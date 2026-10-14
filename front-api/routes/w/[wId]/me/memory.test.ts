@@ -61,7 +61,7 @@ describe("feature flag gating", () => {
 
     expect(response.status).toBe(403);
     const data = ApiErrorSchema.parse(await response.json());
-    expect(data.error.type).toBe("feature_flag_not_found");
+    expect(data.error.type).toBe("feature_not_enabled");
   });
 });
 
@@ -125,7 +125,7 @@ describe("PATCH /api/w/:wId/me/memory", () => {
 
     expect(response.status).toBe(400);
     const data = ApiErrorSchema.parse(await response.json());
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("user_memory_too_long");
     expect(setUserMemory).not.toHaveBeenCalled();
   });
 

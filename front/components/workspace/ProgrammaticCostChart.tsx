@@ -18,7 +18,10 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { formatMicroUsdCompact } from "@app/lib/client/credits";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import {
+  clampToMonth,
+  getBillingCycleFromDay,
+} from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatCurrency, formatDate } from "@app/lib/i18n/format";
@@ -279,16 +282,20 @@ export function BaseProgrammaticCostChart({
   >({});
 
   const now = new Date();
-  // selectedPeriod is "YYYY-MM", so we parse it and create a UTC date.
-  // To get the correct billing cycle, we need a date within that cycle, so we set
-  // the day to billingCycleStartDay.
+  // selectedPeriod is "YYYY-MM", the month in which the selected billing cycle
+  // starts. The cycle starts on billingCycleStartDay, clamped to the month's last
+  // day so that e.g. day 31 in September stays in September instead of overflowing.
   const [year, month] = selectedPeriod.split("-").map(Number);
-  const currentDate = new Date(Date.UTC(year, month - 1, billingCycleStartDay));
+  const selectedCycleStart = clampToMonth(
+    new Date(Date.UTC(year, month - 1, billingCycleStartDay)),
+    month - 1,
+    true
+  );
 
   // Calculate the billing cycle for the selected month
   const billingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
-    currentDate,
+    selectedCycleStart,
     true
   );
 
@@ -311,12 +318,20 @@ export function BaseProgrammaticCostChart({
   const periodLabel = `${formatCycleDate(billingCycle.cycleStart)} → ${formatCycleDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
-  // Use UTC methods since currentDate is a UTC date
+  // Use UTC methods since selectedCycleStart is a UTC date
   const nextPeriodDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
+    Date.UTC(
+      selectedCycleStart.getUTCFullYear(),
+      selectedCycleStart.getUTCMonth() + 1,
+      1
+    )
   );
   const previousPeriodDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
+    Date.UTC(
+      selectedCycleStart.getUTCFullYear(),
+      selectedCycleStart.getUTCMonth() - 1,
+      1
+    )
   );
 
   // Check if we can go to next period (not in the future)

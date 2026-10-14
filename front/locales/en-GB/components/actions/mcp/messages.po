@@ -1,0 +1,523 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/actions/mcp/AddToolsDialog.tsx
+msgid "Add tools"
+msgstr ""
+
+#: front/components/actions/mcp/AddToolsDialog.tsx
+msgid "Search tools..."
+msgstr ""
+
+#: front/components/actions/mcp/AddToolsDialog.tsx
+msgid "Add MCP server"
+msgstr ""
+
+#: front/components/actions/mcp/AddToolsDialog.tsx
+msgid "No tool matches your search"
+msgstr ""
+
+#: front/components/actions/mcp/AddToolsDialog.tsx
+msgid "No tools found. Try a different search term."
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Synchronization needs attention. Open the tool to refresh authentication."
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Disconnected"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Personal"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Shared"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Used by"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Availability"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Workspace"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Account"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgctxt "column header, author of the last edit"
+msgid "By"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "Last updated"
+msgstr ""
+
+#: front/components/actions/mcp/AdminActionsList.tsx
+msgid "You don’t have any tools yet."
+msgstr ""
+
+#: front/components/actions/mcp/InternalMCPBearerTokenForm.tsx
+msgid "Authorization"
+msgstr ""
+
+#: front/components/actions/mcp/InternalMCPBearerTokenForm.tsx
+msgid "Headers ({headerCount})"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Shared account"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Personal accounts"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "All members will use the credentials you provide here."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Each member logs in with their own credentials when they use the tool."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Request body (recommended)"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Basic auth header"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Credentials"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "How do you want to connect?"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Connection type"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Customize scopes ({enabledOptionalScopeCount}/{optionalScopeCount} optional enabled)"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Customize scopes"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "Questions? Read <0>our guide</0> on {toolName}."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "{toolName} does not support individual connection."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+msgid "{toolName} does not support shared connection."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerAuthConnection.tsx
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "<0>{useCaseLabel}</0>: {useCaseDescription}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Remove this tool from agents?"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Saving will remove the tool from the following agents:"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Open {agentName} in Agent Builder"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Skills using this tool will not be affected."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Continue"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Failed to save changes"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Header values are hidden once saved: re-enter every header value to update headers."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "This action will delete the tool's existing copies"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Making the tool available to all will delete its copies in these spaces:"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Any agents using the tool there will lose access until an admin manually re-adds the shared version to each one. If any agents are affected, you'll receive an email listing them."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Continue anyway"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "{serverName} updated"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Your changes have been saved."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Validation error"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+msgid "Please fix the highlighted fields and try again."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "Restrict this tool to skills"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "Agents can only reach this tool through a skill, which carries the workspace context and safety rules with it."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "Agents can pick this tool up on its own, without a skill to frame how it is used."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "Available to all workspace members"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "These tools are only available to the users of the selected spaces."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "These tools are accessible to everyone in the workspace."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
+msgid "Search a space"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsGeneral.tsx
+#: front/components/actions/mcp/ToolsList.tsx
+msgid "Available tools ({toolCount})"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsGeneral.tsx
+#: front/components/actions/mcp/ToolsList.tsx
+msgid "Description"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsGeneral.tsx
+msgid "No tools available."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsGeneral.tsx
+msgid "Edited by {editorName}, {editedAt}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Unsaved changes will be lost"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "All unsaved changes will be lost. Are you sure you want to close?"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Close without saving"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Confirm removal"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Are you sure you want to remove <0>{serverName}</0>?"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "This action cannot be undone."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Remove"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "General"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Tools & stakes"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Removing..."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Saving..."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsSheet.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "This server exposes no tools."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "{toolCount, plural, one {# tool available} other {# tools available}}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "{visibleToolCount} of {toolCount, plural, one {# tool available} other {# tools available}}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+#: front/components/actions/mcp/ToolsList.tsx
+msgid "User approval settings"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Search tools"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Deselect all"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Select all"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "No tool matches that search."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Deselect {toolDisplayName}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Select {toolDisplayName}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Stake"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Show less"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Show more"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Select all {toolCount, plural, one {# tool} other {# tools}}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Set stake"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "State"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Enable"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerDetailsTools.tsx
+msgid "Disable"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Header name"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Header value"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Remove header"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Add header"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerMetaFields.tsx
+msgid "Key"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerMetaFields.tsx
+msgid "Value"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerMetaFields.tsx
+msgid "Remove field"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerMetaFields.tsx
+msgid "Add meta field"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Shared authentication is no longer valid and must be refreshed. Until then, agents cannot use these tools."
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Failed to connect {providerName}"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Authentication"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Warning"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "More info"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Active"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Requires authentication"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Refresh"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Deactivate"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Activate"
+msgstr ""
+
+#: front/components/actions/mcp/MCPServerSettings.tsx
+msgid "Permissions"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Synchronization warning"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Server could not synchronize successfully. Last attempt on {lastSyncDate}: {lastError}"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Server could not synchronize successfully. Last attempt: {lastError}"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Server URL & icon"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Syncing..."
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Sync"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Advanced"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Bearer token"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Paste the bearer token here"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "This will be sent alongside the request made to your server as a Bearer token in the headers."
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Networking & headers ({headerCount})"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Meta fields ({metaFieldCount})"
+msgstr ""
+
+#: front/components/actions/mcp/RemoteMCPForm.tsx
+msgid "Key-value pairs sent as <0>_meta</0> on every tool call to this server."
+msgstr ""
+
+#: front/components/actions/mcp/ToolsList.tsx
+msgid "Tool stake setting"
+msgstr ""

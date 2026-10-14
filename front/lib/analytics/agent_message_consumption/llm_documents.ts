@@ -8,6 +8,7 @@ import type {
   BilledRunUsage,
 } from "@app/lib/analytics/agent_message_consumption/load";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
+import { isUnavailableRunUsage } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import type {
   AgentMessageConsumptionItemResource,
   AgentMessageModelConsumptionItemResource,
@@ -182,6 +183,10 @@ function buildLlmConsumptionDocument({
   };
 }
 
+/**
+ * @cc [owner:sfriquet,label:product;backend] no-llm-document-for-unavailable-usage
+ * An `unavailable` run usage MUST NOT produce an LLM document.
+ */
 export function buildLlmConsumptionDocuments(
   input: AgentMessageConsumptionAnalyticsInput,
   allocation: MessageConsumptionAllocation<BilledRunUsage>
@@ -191,6 +196,12 @@ export function buildLlmConsumptionDocuments(
   const documents: AgentMessageConsumptionAnalyticsLlmData[] = [];
 
   for (const usage of allocation.messageUsages) {
+    // An unavailable call was never billed and has no tokens: it is only kept so the tool calls
+    // it emitted have a usage to hang from (see `isUnavailableRunUsage`).
+    if (isUnavailableRunUsage(usage)) {
+      continue;
+    }
+
     documents.push(
       buildLlmConsumptionDocument({
         allocation,

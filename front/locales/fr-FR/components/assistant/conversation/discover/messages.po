@@ -224,6 +224,14 @@ msgstr "Position dans la rubrique À la une"
 msgid "Position {positionNumber}"
 msgstr "Position {positionNumber}"
 
+#: front/components/assistant/conversation/discover/DiscoveryHomepageOptInLine.tsx
+msgid "Switch back to the original homepage."
+msgstr "Revenir à la page d'accueil d'origine."
+
+#: front/components/assistant/conversation/discover/DiscoveryHomepageOptInLine.tsx
+msgid "Your homepage is getting a refresh. <0>Get a sneak peek!</0>"
+msgstr "Votre page d'accueil fait peau neuve. <0>Découvrez-la en avant-première !</0>"
+
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Masquer cette suggestion"

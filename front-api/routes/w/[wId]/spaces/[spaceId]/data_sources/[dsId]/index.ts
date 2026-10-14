@@ -40,7 +40,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_auth_error",
           message:
             "Only the users that are `admins` for the current workspace can update a data source.",
         },
@@ -62,7 +62,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "managed_data_source_not_editable",
           message: "Managed data sources cannot be updated.",
         },
       });
@@ -102,7 +102,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_auth_error",
           message:
             "Only the users that are `admins` for the current workspace can update a data source.",
         },
@@ -144,7 +144,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_not_deletable",
           message: "Managed data sources cannot be deleted.",
         },
       });

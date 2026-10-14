@@ -188,7 +188,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_not_accepted");
         expect(result.error.message).toBe(
           "Only mobile phone numbers are accepted for verification."
         );
@@ -209,7 +209,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_not_accepted");
         expect(result.error.message).toBe(
           "Prepaid phone numbers are not accepted for verification."
         );
@@ -225,7 +225,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_not_accepted");
         expect(result.error.message).toBe(
           "This phone number cannot be used for verification."
         );
@@ -243,7 +243,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_not_accepted");
         expect(result.error.message).toBe(
           "This phone number cannot be used for verification."
         );
@@ -261,7 +261,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_not_accepted");
         expect(result.error.message).toBe("Invalid phone number");
       }
     });

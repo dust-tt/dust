@@ -105,7 +105,7 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("system_view_required");
     expect(data.error.message).toBe(
       "Updates can only be performed on system views."
     );
@@ -373,7 +373,7 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("mcp_server_view_already_exists");
     expect(data.error.message).toContain("server-two");
   });
 
@@ -404,7 +404,7 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("mcp_server_view_already_exists");
     expect(data.error.message).toContain(candidateName);
   });
 

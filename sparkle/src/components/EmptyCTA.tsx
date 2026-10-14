@@ -1,4 +1,4 @@
-import { Button, type RegularButtonProps } from "@sparkle/components/Button";
+import { type ButtonBaseProps, Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
@@ -51,7 +51,7 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
 
 EmptyCTA.displayName = "EmptyCTA";
 
-interface EmptyCTAButtonProps extends RegularButtonProps {
+interface EmptyCTAButtonProps extends ButtonBaseProps {
   icon: React.ComponentType;
   label: string;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;

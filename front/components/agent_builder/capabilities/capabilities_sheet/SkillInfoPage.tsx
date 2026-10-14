@@ -4,7 +4,7 @@ import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { hasRelations } from "@app/lib/skill";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { GetSkillWithRelationsResponseBody } from "@app/types/api/skills";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -21,7 +21,7 @@ import { useMemo, useState } from "react";
 type SkillTabType = "info" | "editors";
 
 interface SkillInfoPageProps {
-  skill: SkillWithRelationsType;
+  skill: GetSkillWithRelationsResponseBody["skill"];
   owner: WorkspaceType;
   user: UserType;
   onClose: () => void;
@@ -93,7 +93,7 @@ function SkillInfoContent({
   skill,
 }: {
   owner: WorkspaceType;
-  skill: SkillWithRelationsType;
+  skill: GetSkillWithRelationsResponseBody["skill"];
 }) {
   const { spaces } = useSpacesContext();
 

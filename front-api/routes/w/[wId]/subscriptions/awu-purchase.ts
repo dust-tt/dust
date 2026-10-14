@@ -66,7 +66,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "metronome_billing_not_configured",
               message:
                 "Credit purchases are not available for this workspace. Please contact support.",
             },
@@ -75,7 +75,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "credit_priced_plan_required",
               message:
                 "Credit purchases are not available for your current plan. Please contact support.",
             },
@@ -84,7 +84,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "enterprise_credit_purchase_not_supported",
               message:
                 "Credit purchases are not available for Enterprise workspaces. Please contact your Dust sales representative.",
             },
@@ -93,7 +93,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "stripe_customer_not_found",
               message:
                 "No Stripe customer found for this workspace. Please contact support.",
             },
@@ -102,7 +102,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "credit_purchase_pending",
               message:
                 "A pending credit purchase already exists for this workspace. Please wait for it to complete.",
             },
@@ -111,7 +111,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "credit_purchase_amount_out_of_range",
               message: err.message,
             },
           });

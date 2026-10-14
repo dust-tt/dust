@@ -253,6 +253,7 @@ function earliestImageSignedUrlExpiryMs(
 
         case "assistant":
         case "compaction":
+        case "effort_change":
           break;
 
         default:

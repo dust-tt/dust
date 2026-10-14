@@ -25,7 +25,6 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare kind: AgentSuggestionKind;
   declare suggestion: SuggestionPayload;
   declare analysis: string | null;
-  declare title: string | null;
 
   declare state: AgentSuggestionState;
   declare source: CreationOptional<AgentSuggestionSource>;
@@ -69,11 +68,6 @@ AgentSuggestionModel.init(
       allowNull: true,
       comment:
         "Optional analysis/reasoning explaining why this suggestion was made",
-    },
-    title: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "Optional short user-facing title of the suggestion",
     },
     state: {
       type: DataTypes.STRING,

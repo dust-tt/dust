@@ -97,7 +97,9 @@ describe("PATCH /api/w/:wId/assistant/suggestion_batches/:bId", () => {
     const response = await patch(workspace, batch.sId, { state: "approved" });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe(
+      "suggestion_batch_already_reviewed"
+    );
   });
 
   it.each(["approved", "rejected"] as const)(
@@ -368,7 +370,7 @@ describe("approving skill suggestions", () => {
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(403);
     expect((await response.json()).error.message).toContain(
       'knowledge "Handbook" (node_1)'
     );
@@ -391,7 +393,7 @@ describe("approving skill suggestions", () => {
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(403);
     expect((await response.json()).error.message).toContain(
       'tool "Web search" (msv_abc123)'
     );
@@ -694,7 +696,7 @@ describe("approving skill suggestions", () => {
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
 
     const updated = await SkillResource.fetchById(auth, skill.sId);
     expect(updated?.instructions).toBe("Original instructions");
@@ -821,7 +823,7 @@ describe("approving skill suggestions (editors)", () => {
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
     expect((await response.json()).error.message).toContain(
       "not active members"
     );
@@ -978,14 +980,14 @@ describe("approving skill suggestions (name)", () => {
     expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
   });
 
-  it("returns 400 when the name was taken after the suggestion was recorded", async () => {
+  it("returns 409 when the name was taken after the suggestion was recorded", async () => {
     const { workspace, auth, skill, batch } = await setupSkill();
     const suggestion = await nameSuggestion(auth, skill, batch, "Taken Later");
     await SkillFactory.create(auth, { name: "Taken Later" });
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect((await response.json()).error.message).toContain("already exists");
 
     const reloaded = await SkillSuggestionResource.fetchById(
@@ -1171,7 +1173,7 @@ describe("approving agent suggestions", () => {
     expect(placeholder?.status).toBe("pending");
   });
 
-  it("returns 400 and leaves the suggestion pending when the target is not a placeholder", async () => {
+  it("returns 409 and leaves the suggestion pending when the target is not a placeholder", async () => {
     const { workspace, auth, user, agent, batch } = await setupAgent();
     await grantWorkspacePermission(workspace, user, {
       grantType: "create",
@@ -1184,7 +1186,7 @@ describe("approving agent suggestions", () => {
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect((await response.json()).error.message).toContain(
       "already been created"
     );

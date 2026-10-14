@@ -29,17 +29,20 @@ export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
 export const DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS =
   "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields($select=_IpLabelId))&select=@microsoft.graph.downloadUrl";
 
-// Lean projection used for delta pagination. Unlike the projections above it omits
-// the `$expand=listItem($expand=fields)` expansion and the `@microsoft.graph.downloadUrl`
-// select. Those two are the memory-heavy parts of a `DriveItem`: expanded SharePoint
-// custom-column payloads and a per-item download URL. `getFullDeltaResults` keeps every
-// latest `DriveItem` in an in-memory map until pagination completes, so carrying that
-// metadata for every folder, root marker and deleted entry (none of which need it)
-// inflates the worker's footprint and can OOM the pod on large drives.
+// Lean projection used for delta pagination and for listing folder children. Unlike the
+// projections above it omits the `$expand=listItem($expand=fields)` expansion and the
+// `@microsoft.graph.downloadUrl` select. Those two are the heavy parts of a `DriveItem`:
+// expanded SharePoint custom-column payloads and a per-item download URL.
+// - Delta: `getFullDeltaResults` keeps every latest `DriveItem` in an in-memory map until
+//   pagination completes, so carrying that metadata for every folder, root marker and
+//   deleted entry (none of which need it) inflates the worker's footprint and can OOM the
+//   pod on large drives.
+// - Children: on large folders (e.g. thousands of images), expanding every item's fields
+//   makes Graph time out (504) on the page.
 // `syncOneFile` already re-hydrates the download URL and list-item fields per file on
 // demand (see connectors/src/connectors/microsoft/temporal/file.ts), so files that are
 // actually synced still get the full metadata.
-export const DRIVE_ITEM_DELTA_SELECTS =
+export const DRIVE_ITEM_LEAN_SELECTS =
   "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds";
 
 // Value stored in `microsoft_nodes.skipReason` when a file is excluded by sensitivity label allowlist.

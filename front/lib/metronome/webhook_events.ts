@@ -392,7 +392,9 @@ const MarketplacesGcpMeteringDisabledSchema = z.object({
 const stripeBillingProviderSchema = z.object({
   type: z.literal("stripe"),
   stripe: z.object({
-    payment_intent_id: z.string(),
+    // Absent on some real payloads (e.g. a `paid` manual_commit status that
+    // only carries the Stripe invoice_id).
+    payment_intent_id: z.string().nullish(),
     error: z
       .object({
         type: z.string(),

@@ -64,6 +64,7 @@ export interface RunUsageWithRunKeyType extends RunUsageType {
   runKey: string | null;
   runUsageModelId: ModelId;
   runModelId: ModelId;
+  usageState: RunUsageState | null;
   usageType: UsageType | null;
 }
 
@@ -301,8 +302,12 @@ export class RunResource extends BaseResource<RunModel> {
   static async listRunUsagesForRuns(
     auth: Authenticator,
     {
+      includeUnavailable = false,
       runs,
     }: {
+      // Unavailable attempts carry no tokens and no cost, so billing never needs them. Consumption
+      // attribution does: their run may still have emitted billed tool calls.
+      includeUnavailable?: boolean;
       runs: RunResource[];
     }
   ): Promise<RunUsageWithRunKeyType[]> {
@@ -318,13 +323,20 @@ export class RunResource extends BaseResource<RunModel> {
       runs.map((run) => [run.id, run.runKey])
     );
 
+    const usageStates: RunUsageState[] = includeUnavailable
+      ? ["reported", "unavailable"]
+      : ["reported"];
     const usages = await RunUsageModel.findAll({
       where: {
         runId: { [Op.in]: runModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
         // Pending and unavailable attempts are reconciliation records, not
-        // billable usage. Null supports rows written during rolling deploys.
-        [Op.or]: [{ usageState: "reported" }, { usageState: null }],
+        // billable usage, and pending ones are not final yet. Null supports
+        // rows written during rolling deploys.
+        [Op.or]: [
+          { usageState: { [Op.in]: usageStates } },
+          { usageState: null },
+        ],
       },
     });
 
@@ -344,6 +356,7 @@ export class RunResource extends BaseResource<RunModel> {
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
       serviceTier: usage.serviceTier,
+      usageState: usage.usageState,
       usageType: usage.usageType,
     }));
   }

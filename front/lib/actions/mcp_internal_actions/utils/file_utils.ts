@@ -227,7 +227,7 @@ export async function getFileFromConversationAttachment(
   const conversation = runContext.conversation;
   let attachment: ConversationAttachmentType | null = null;
 
-  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+  const capabilities = getAttachmentCapabilityContext(conversation);
 
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];

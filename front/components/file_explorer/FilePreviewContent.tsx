@@ -1,28 +1,25 @@
-import { Document } from "@app/components/editor/document";
+import { DocumentEditor } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CollabParticipantsAvatars } from "@app/components/file_explorer/CollabParticipantsAvatars";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
-import { LiveParticipantsAvatars } from "@app/components/file_explorer/LiveParticipantsAvatars";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
-import { resolveDocumentImageSource } from "@app/components/file_explorer/utils";
-import {
-  useDfmMessageVerifier,
-  useSignDfmCommentMessage,
-} from "@app/hooks/useDfmCommentSignatures";
-import { useLiveTicket } from "@app/hooks/useLiveTicket";
+import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
+import { useCollabTicket } from "@app/hooks/useCollabTicket";
+import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { liveCaretColor } from "@app/lib/client/live_session";
+import { caretColor } from "@app/lib/client/collab/messages";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
@@ -42,7 +39,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { parse } from "csv-parse/browser/esm/sync";
-import { useCallback, useContext, useMemo } from "react";
+import { useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -381,10 +378,6 @@ function RichMarkdownDocument({
   statusContainer,
 }: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
-  const signCommentMessage = useSignDfmCommentMessage({
-    owner,
-    filePath: editor.path,
-  });
   const verifyCommentMessage = useDfmMessageVerifier({
     owner,
     filePath: editor.path,
@@ -409,38 +402,31 @@ function RichMarkdownDocument({
     owner,
     documentPath: editor.path,
   });
-  const resolveImageSource = useCallback(
-    (src: string) => resolveDocumentImageSource(owner, src),
-    [owner]
-  );
+  const resolveImageSource = useResolveMarkdownImageUrl(owner);
 
-  const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
-  const live =
-    editor.liveUrl && user
-      ? {
-          url: editor.liveUrl,
-          documentName: toLiveDocumentName(owner.sId, editor.path),
-          getTicket: getLiveTicket,
-          user: {
-            id: user.sId,
-            name: user.fullName,
-            color: liveCaretColor(user.sId),
-          },
-        }
-      : undefined;
+  const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
+  const live = user
+    ? {
+        url: editor.collabUrl,
+        documentName: toSessionName(owner.sId, editor.path),
+        getTicket: getCollabTicket,
+        user: {
+          id: user.sId,
+          name: user.fullName,
+          color: caretColor(user.sId),
+        },
+      }
+    : undefined;
 
   return (
-    <Document
+    <DocumentEditor
       initialContent={editor.initialContent}
       headerControlsContainer={headerControlsContainer}
       statusContainer={statusContainer}
-      onSave={live ? undefined : editor.onSave}
-      onStateChange={live ? undefined : editor.onStateChange}
       live={live}
       commentAuthor={
         user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
       }
-      signCommentMessage={signCommentMessage}
       verifyCommentMessage={verifyCommentMessage ?? undefined}
       renderCommentBody={(body) => (
         <CommentBodyMarkdown owner={owner} body={body} />
@@ -452,8 +438,8 @@ function RichMarkdownDocument({
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}
       badge={<CoEditionBadge />}
-      renderLiveParticipants={(participants) => (
-        <LiveParticipantsAvatars owner={owner} participants={participants} />
+      renderCollabParticipants={(participants) => (
+        <CollabParticipantsAvatars owner={owner} participants={participants} />
       )}
     />
   );
@@ -477,6 +463,8 @@ export function FilePreviewContent({
   owner,
   processedContent,
 }: FilePreviewContentProps) {
+  const resolveImageUrl = useResolveMarkdownImageUrl(owner);
+
   if (isContentLoading) {
     return (
       <div
@@ -564,6 +552,7 @@ export function FilePreviewContent({
             viewMode={markdownViewMode}
             onContentChange={onMarkdownContentChange}
             onViewModeChange={onMarkdownViewModeChange}
+            resolveImageUrl={resolveImageUrl}
           />
         );
       }

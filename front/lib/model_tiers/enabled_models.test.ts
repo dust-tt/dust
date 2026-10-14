@@ -280,14 +280,14 @@ describe("resolveStreamModel", () => {
     expect(resolved.reasoningEffort).toBe("low");
   });
 
-  it("routes the Auto stream to GPT 6 Luna medium first when the workspace has its flag", async () => {
+  it("routes the Auto stream to GPT 6 Luna high first when the workspace has its flag", async () => {
     const resolved = await resolveStreamForAuth(adminAuth, "auto", new Set(), [
-      "standard_stream_gpt_6_luna_medium",
+      "standard_stream_gpt_6_luna_high",
     ]);
 
     expect(resolved.fromPool).toBe(true);
     expect(resolved.model.modelId).toBe(GPT_6_LUNA_MODEL_ID);
-    expect(resolved.reasoningEffort).toBe("medium");
+    expect(resolved.reasoningEffort).toBe("high");
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {

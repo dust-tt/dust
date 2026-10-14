@@ -1,12 +1,8 @@
 // Shared by Document and its hook to avoid circular type imports.
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
-import type { Result } from "@app/types/shared/result";
+import type { DfmAuthor } from "@app/lib/markdown/dfm";
 import type { Extensions } from "@tiptap/core";
 import type { ReactNode } from "react";
-
-/** Ok once the content is stored, Err with a message the editor shows next to Retry. */
-export type DocumentSaveResult = Result<void, string>;
 
 export type DocumentCommentAvatarSize = "xs" | "xxs" | "3xs";
 
@@ -19,26 +15,21 @@ export interface DocumentProps {
   mountPortalContainer?: HTMLElement;
   /**
    * Where the comments button shows, such as the host's header bar. Without it, it shows above the
-   * document with the save and live statuses.
+   * document with the live status.
    */
   headerControlsContainer?: HTMLElement | null;
   /**
-   * Where the save or live status shows as one icon, such as next to the host's file name. Without
-   * it the statuses show in the badge above the document.
+   * Where the live status shows as one icon, such as next to the host's file name. Without it the
+   * statuses show in the badge above the document.
    */
   statusContainer?: HTMLElement | null;
   readOnly?: boolean;
-  /** Idle time before autosaving, in milliseconds. Defaults to 3,000. */
-  autosaveDebounceMs?: number;
-  /** Enables editing. Receives the DFM source to persist; resolve Ok once stored, Err with the reason. */
-  onSave?: (content: string) => Promise<DocumentSaveResult>;
   /**
-   * Edits the document live with everyone else in the session instead of saving it. The file's
-   * content shows read-only until the session has synced. Comments go through the session.
+   * Edits the document live with everyone else in the session; without it, the document is
+   * read-only. The file's content shows read-only until the session has synced. Comments go
+   * through the session.
    */
-  live?: DocumentLiveSession;
-  /** Reports the draft state, so the host can hold navigation while edits are unsaved. */
-  onStateChange?: (state: DocumentDraftState) => void;
+  live?: CollabConnectionSettings;
   /**
    * Signs new comments and replies. Commenting requires an editable document and an author;
    * existing comments stay readable without one.
@@ -49,16 +40,6 @@ export interface DocumentProps {
     author: DfmAuthor,
     size: DocumentCommentAvatarSize
   ) => ReactNode;
-  /**
-   * Has the server write and sign a new message for the comment, after the messages already in
-   * `thread` (none for a new thread); resolve with the message to insert, or Err with the reason.
-   * Without it, new messages are built locally and unsigned.
-   */
-  signCommentMessage?: (
-    commentId: string,
-    thread: DfmMessage[],
-    body: string
-  ) => Promise<Result<DfmMessage, string>>;
   /** Checks a message's signature; without it, messages are shown without a verification mark. */
   verifyCommentMessage?: DfmMessageVerifier;
   renderCommentBody: (body: string) => ReactNode;
@@ -74,9 +55,7 @@ export interface DocumentProps {
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
   badge?: ReactNode;
   /** Renders the users in the live session, the current one first, such as an avatar stack. */
-  renderLiveParticipants?: (
-    participants: DocumentLiveParticipant[]
-  ) => ReactNode;
+  renderCollabParticipants?: (participants: CollabParticipant[]) => ReactNode;
 }
 
 /** A file of the document's conversation or pod, embedded by its path. */
@@ -96,7 +75,7 @@ export interface DocumentEmbeddableFiles {
 }
 
 /** Where and as whom a Document joins its live session. */
-export interface DocumentLiveSession {
+export interface CollabConnectionSettings {
   url: string;
   documentName: string;
   /** Fetches a one-time ticket for each connection; throws when access is refused. */
@@ -105,17 +84,10 @@ export interface DocumentLiveSession {
 }
 
 /** A user with the live document open. */
-export interface DocumentLiveParticipant {
+export interface CollabParticipant {
   id: string;
   name: string;
 }
 
-/** Where a live document's connection stands, shown in place of the save status. */
-export type LiveStatus = "connecting" | "live" | "offline" | "refused";
-
-export interface DocumentDraftState {
-  dirty: boolean;
-  saving: boolean;
-  /** The last save failure shown to the user, or null. */
-  error: string | null;
-}
+/** Where a live document's connection stands. */
+export type CollabStatus = "connecting" | "live" | "offline" | "refused";

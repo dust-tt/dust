@@ -23,6 +23,680 @@ export type DefaultRemoteMCPServerConfig = {
   featureFlag?: WhitelistableFeature;
 };
 
+const AMPLITUDE_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url"
+> = {
+  icon: "AmplitudeLogo",
+  documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
+  connectionInstructions:
+    "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    search: "never_ask",
+    get_from_url: "never_ask",
+    get_amplitude_context: "never_ask",
+    query_amplitude_data: "never_ask",
+    get_amplitude_charts: "never_ask",
+    render_amplitude_chart: "never_ask",
+    get_amp_user_data: "never_ask",
+    get_experiments: "never_ask",
+    query_experiment: "never_ask",
+    get_flags: "never_ask",
+    get_deployments: "never_ask",
+    get_amp_taxonomy: "never_ask",
+    get_transformations: "never_ask",
+    get_group_types: "never_ask",
+    get_session_replays: "never_ask",
+    list_session_replays: "never_ask",
+    get_session_replay_events: "never_ask",
+    list_guides_surveys: "never_ask",
+    get_guide_or_survey: "never_ask",
+    query_wave_opportunities: "never_ask",
+    query_wave_product_areas: "never_ask",
+    use_amplitude_ai_feedback: "never_ask",
+    get_agent_results: "never_ask",
+    get_amplitude_agent_analytics_info: "never_ask",
+    get_data_ingestion_sources: "never_ask",
+    get_data_source_details: "never_ask",
+    get_data_warehouse_destinations: "never_ask",
+    get_data_warehouse_jobs: "never_ask",
+    list_tool_categories: "never_ask",
+    get_category_tools: "never_ask",
+    describe_tool: "never_ask",
+    use_amplitude_chart_monitors: "low",
+    use_amp_dashboards: "low",
+    use_amp_notebooks: "low",
+    use_amp_comments: "low",
+    use_amplitude_cohorts: "low",
+    create_experiment: "low",
+    update_experiment: "low",
+    create_metric: "low",
+    manage_wave_opportunities: "low",
+    manage_wave_product_areas: "low",
+    manage_wave_verification_artifacts: "low",
+    share_amp_entities: "high",
+    create_flags: "high",
+    update_flag: "high",
+    manage_amp_events: "high",
+    manage_amp_properties: "high",
+    manage_amp_taxonomy: "high",
+  },
+  toolDisplayLabels: {
+    search: {
+      running: "Searching on Amplitude",
+      done: "Search on Amplitude",
+    },
+    get_from_url: {
+      running: "Fetching from Amplitude URL",
+      done: "Fetched from Amplitude URL",
+    },
+    get_amplitude_context: {
+      running: "Fetching context from Amplitude",
+      done: "Fetched context from Amplitude",
+    },
+    query_amplitude_data: {
+      running: "Querying data on Amplitude",
+      done: "Queried data on Amplitude",
+    },
+    get_amplitude_charts: {
+      running: "Fetching charts from Amplitude",
+      done: "Fetched charts from Amplitude",
+    },
+    render_amplitude_chart: {
+      running: "Rendering chart from Amplitude",
+      done: "Rendered chart from Amplitude",
+    },
+    get_amp_user_data: {
+      running: "Fetching user data from Amplitude",
+      done: "Fetched user data from Amplitude",
+    },
+    get_experiments: {
+      running: "Fetching experiments from Amplitude",
+      done: "Fetched experiments from Amplitude",
+    },
+    query_experiment: {
+      running: "Querying experiment on Amplitude",
+      done: "Queried experiment on Amplitude",
+    },
+    get_flags: {
+      running: "Fetching feature flags from Amplitude",
+      done: "Fetched feature flags from Amplitude",
+    },
+    get_deployments: {
+      running: "Fetching deployments from Amplitude",
+      done: "Fetched deployments from Amplitude",
+    },
+    get_amp_taxonomy: {
+      running: "Fetching taxonomy from Amplitude",
+      done: "Fetched taxonomy from Amplitude",
+    },
+    get_transformations: {
+      running: "Fetching transformations from Amplitude",
+      done: "Fetched transformations from Amplitude",
+    },
+    get_group_types: {
+      running: "Fetching group types from Amplitude",
+      done: "Fetched group types from Amplitude",
+    },
+    get_session_replays: {
+      running: "Fetching session replays from Amplitude",
+      done: "Fetched session replays from Amplitude",
+    },
+    list_session_replays: {
+      running: "Listing session replays on Amplitude",
+      done: "Listed session replays on Amplitude",
+    },
+    get_session_replay_events: {
+      running: "Fetching session replay events from Amplitude",
+      done: "Fetched session replay events from Amplitude",
+    },
+    list_guides_surveys: {
+      running: "Listing guides and surveys on Amplitude",
+      done: "Listed guides and surveys on Amplitude",
+    },
+    get_guide_or_survey: {
+      running: "Fetching guide or survey from Amplitude",
+      done: "Fetched guide or survey from Amplitude",
+    },
+    query_wave_opportunities: {
+      running: "Querying opportunities on Amplitude",
+      done: "Queried opportunities on Amplitude",
+    },
+    query_wave_product_areas: {
+      running: "Querying product areas on Amplitude",
+      done: "Queried product areas on Amplitude",
+    },
+    use_amplitude_ai_feedback: {
+      running: "Fetching feedback from Amplitude",
+      done: "Fetched feedback from Amplitude",
+    },
+    get_agent_results: {
+      running: "Fetching agent results from Amplitude",
+      done: "Fetched agent results from Amplitude",
+    },
+    get_amplitude_agent_analytics_info: {
+      running: "Fetching agent analytics from Amplitude",
+      done: "Fetched agent analytics from Amplitude",
+    },
+    get_data_ingestion_sources: {
+      running: "Fetching ingestion sources from Amplitude",
+      done: "Fetched ingestion sources from Amplitude",
+    },
+    get_data_source_details: {
+      running: "Fetching data source details from Amplitude",
+      done: "Fetched data source details from Amplitude",
+    },
+    get_data_warehouse_destinations: {
+      running: "Fetching warehouse destinations from Amplitude",
+      done: "Fetched warehouse destinations from Amplitude",
+    },
+    get_data_warehouse_jobs: {
+      running: "Fetching warehouse jobs from Amplitude",
+      done: "Fetched warehouse jobs from Amplitude",
+    },
+    list_tool_categories: {
+      running: "Listing tool categories on Amplitude",
+      done: "Listed tool categories on Amplitude",
+    },
+    get_category_tools: {
+      running: "Listing category tools on Amplitude",
+      done: "Listed category tools on Amplitude",
+    },
+    describe_tool: {
+      running: "Describing tool on Amplitude",
+      done: "Described tool on Amplitude",
+    },
+    use_amplitude_chart_monitors: {
+      running: "Managing chart monitors on Amplitude",
+      done: "Managed chart monitors on Amplitude",
+    },
+    use_amp_dashboards: {
+      running: "Managing dashboards on Amplitude",
+      done: "Managed dashboards on Amplitude",
+    },
+    use_amp_notebooks: {
+      running: "Managing notebooks on Amplitude",
+      done: "Managed notebooks on Amplitude",
+    },
+    use_amp_comments: {
+      running: "Managing comments on Amplitude",
+      done: "Managed comments on Amplitude",
+    },
+    use_amplitude_cohorts: {
+      running: "Managing cohorts on Amplitude",
+      done: "Managed cohorts on Amplitude",
+    },
+    create_experiment: {
+      running: "Creating experiment on Amplitude",
+      done: "Created experiment on Amplitude",
+    },
+    update_experiment: {
+      running: "Updating experiment on Amplitude",
+      done: "Updated experiment on Amplitude",
+    },
+    create_metric: {
+      running: "Creating metric on Amplitude",
+      done: "Created metric on Amplitude",
+    },
+    manage_wave_opportunities: {
+      running: "Managing opportunities on Amplitude",
+      done: "Managed opportunities on Amplitude",
+    },
+    manage_wave_product_areas: {
+      running: "Managing product areas on Amplitude",
+      done: "Managed product areas on Amplitude",
+    },
+    manage_wave_verification_artifacts: {
+      running: "Managing verification artifacts on Amplitude",
+      done: "Managed verification artifacts on Amplitude",
+    },
+    share_amp_entities: {
+      running: "Updating sharing on Amplitude",
+      done: "Updated sharing on Amplitude",
+    },
+    create_flags: {
+      running: "Creating feature flags on Amplitude",
+      done: "Created feature flags on Amplitude",
+    },
+    update_flag: {
+      running: "Updating feature flag on Amplitude",
+      done: "Updated feature flag on Amplitude",
+    },
+    manage_amp_events: {
+      running: "Managing events on Amplitude",
+      done: "Managed events on Amplitude",
+    },
+    manage_amp_properties: {
+      running: "Managing properties on Amplitude",
+      done: "Managed properties on Amplitude",
+    },
+    manage_amp_taxonomy: {
+      running: "Managing tracking plan on Amplitude",
+      done: "Managed tracking plan on Amplitude",
+    },
+  },
+};
+
+const QOBRA_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url"
+> = {
+  icon: "QobraLogo",
+  documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
+  connectionInstructions:
+    "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    get_identity: "never_ask",
+    get_company_settings: "never_ask",
+    list_sandboxes: "never_ask",
+    list_data_tables: "never_ask",
+    get_data_table: "never_ask",
+    list_data_table_records: "never_ask",
+    list_integrations: "never_ask",
+    list_users: "never_ask",
+    get_user: "never_ask",
+    list_user_attributes: "never_ask",
+    list_roles: "never_ask",
+    get_role: "never_ask",
+    list_groups: "never_ask",
+    get_group: "never_ask",
+    list_group_dimensions: "never_ask",
+    list_quotas: "never_ask",
+    list_quota_values: "never_ask",
+    list_plans: "never_ask",
+    get_plan: "never_ask",
+    list_commission_letters_campaigns: "never_ask",
+    get_commission_letters_campaign: "never_ask",
+    list_reports: "never_ask",
+    get_report: "never_ask",
+    get_report_data: "never_ask",
+    get_report_pivot_data: "never_ask",
+    get_report_chart_data: "never_ask",
+    list_dashboards: "never_ask",
+    get_dashboard: "never_ask",
+    list_requests: "never_ask",
+    get_request: "never_ask",
+    list_sales_coach_discussions: "never_ask",
+    get_sales_coach_discussion: "never_ask",
+    list_statements: "never_ask",
+    get_statement: "never_ask",
+    get_statement_compensation: "never_ask",
+    list_statement_records: "never_ask",
+    list_statement_periods: "never_ask",
+    list_exchange_rates: "never_ask",
+    list_imports: "never_ask",
+    get_import: "never_ask",
+    list_audit_logs: "never_ask",
+    get_audit_log: "never_ask",
+    list_dependencies: "never_ask",
+    list_help_center_articles: "never_ask",
+    get_help_center_article: "never_ask",
+  },
+  toolDisplayLabels: {
+    get_identity: {
+      running: "Fetching your Qobra identity",
+      done: "Fetched your Qobra identity",
+    },
+    get_company_settings: {
+      running: "Fetching company settings from Qobra",
+      done: "Fetched company settings from Qobra",
+    },
+    list_sandboxes: {
+      running: "Listing sandboxes on Qobra",
+      done: "Listed sandboxes on Qobra",
+    },
+    list_data_tables: {
+      running: "Listing data tables on Qobra",
+      done: "Listed data tables on Qobra",
+    },
+    get_data_table: {
+      running: "Fetching data table from Qobra",
+      done: "Fetched data table from Qobra",
+    },
+    list_data_table_records: {
+      running: "Listing data table records on Qobra",
+      done: "Listed data table records on Qobra",
+    },
+    list_integrations: {
+      running: "Listing integrations on Qobra",
+      done: "Listed integrations on Qobra",
+    },
+    list_users: {
+      running: "Listing users on Qobra",
+      done: "Listed users on Qobra",
+    },
+    get_user: {
+      running: "Fetching user from Qobra",
+      done: "Fetched user from Qobra",
+    },
+    list_user_attributes: {
+      running: "Listing user attributes on Qobra",
+      done: "Listed user attributes on Qobra",
+    },
+    list_roles: {
+      running: "Listing roles on Qobra",
+      done: "Listed roles on Qobra",
+    },
+    get_role: {
+      running: "Fetching role from Qobra",
+      done: "Fetched role from Qobra",
+    },
+    list_groups: {
+      running: "Listing groups on Qobra",
+      done: "Listed groups on Qobra",
+    },
+    get_group: {
+      running: "Fetching group from Qobra",
+      done: "Fetched group from Qobra",
+    },
+    list_group_dimensions: {
+      running: "Listing group dimensions on Qobra",
+      done: "Listed group dimensions on Qobra",
+    },
+    list_quotas: {
+      running: "Listing quotas on Qobra",
+      done: "Listed quotas on Qobra",
+    },
+    list_quota_values: {
+      running: "Listing quota values on Qobra",
+      done: "Listed quota values on Qobra",
+    },
+    list_plans: {
+      running: "Listing compensation plans on Qobra",
+      done: "Listed compensation plans on Qobra",
+    },
+    get_plan: {
+      running: "Fetching compensation plan from Qobra",
+      done: "Fetched compensation plan from Qobra",
+    },
+    list_commission_letters_campaigns: {
+      running: "Listing commission letter campaigns on Qobra",
+      done: "Listed commission letter campaigns on Qobra",
+    },
+    get_commission_letters_campaign: {
+      running: "Fetching commission letter campaign from Qobra",
+      done: "Fetched commission letter campaign from Qobra",
+    },
+    list_reports: {
+      running: "Listing reports on Qobra",
+      done: "Listed reports on Qobra",
+    },
+    get_report: {
+      running: "Fetching report from Qobra",
+      done: "Fetched report from Qobra",
+    },
+    get_report_data: {
+      running: "Fetching report data from Qobra",
+      done: "Fetched report data from Qobra",
+    },
+    get_report_pivot_data: {
+      running: "Fetching report pivot data from Qobra",
+      done: "Fetched report pivot data from Qobra",
+    },
+    get_report_chart_data: {
+      running: "Fetching report chart data from Qobra",
+      done: "Fetched report chart data from Qobra",
+    },
+    list_dashboards: {
+      running: "Listing dashboards on Qobra",
+      done: "Listed dashboards on Qobra",
+    },
+    get_dashboard: {
+      running: "Fetching dashboard from Qobra",
+      done: "Fetched dashboard from Qobra",
+    },
+    list_requests: {
+      running: "Listing requests on Qobra",
+      done: "Listed requests on Qobra",
+    },
+    get_request: {
+      running: "Fetching request from Qobra",
+      done: "Fetched request from Qobra",
+    },
+    list_sales_coach_discussions: {
+      running: "Listing Sales Coach discussions on Qobra",
+      done: "Listed Sales Coach discussions on Qobra",
+    },
+    get_sales_coach_discussion: {
+      running: "Fetching Sales Coach discussion from Qobra",
+      done: "Fetched Sales Coach discussion from Qobra",
+    },
+    list_statements: {
+      running: "Listing statements on Qobra",
+      done: "Listed statements on Qobra",
+    },
+    get_statement: {
+      running: "Fetching statement from Qobra",
+      done: "Fetched statement from Qobra",
+    },
+    get_statement_compensation: {
+      running: "Fetching statement compensation from Qobra",
+      done: "Fetched statement compensation from Qobra",
+    },
+    list_statement_records: {
+      running: "Listing statement records on Qobra",
+      done: "Listed statement records on Qobra",
+    },
+    list_statement_periods: {
+      running: "Listing statement periods on Qobra",
+      done: "Listed statement periods on Qobra",
+    },
+    list_exchange_rates: {
+      running: "Listing exchange rates on Qobra",
+      done: "Listed exchange rates on Qobra",
+    },
+    list_imports: {
+      running: "Listing imports on Qobra",
+      done: "Listed imports on Qobra",
+    },
+    get_import: {
+      running: "Fetching import from Qobra",
+      done: "Fetched import from Qobra",
+    },
+    list_audit_logs: {
+      running: "Listing audit logs on Qobra",
+      done: "Listed audit logs on Qobra",
+    },
+    get_audit_log: {
+      running: "Fetching audit log from Qobra",
+      done: "Fetched audit log from Qobra",
+    },
+    list_dependencies: {
+      running: "Listing dependencies on Qobra",
+      done: "Listed dependencies on Qobra",
+    },
+    list_help_center_articles: {
+      running: "Listing Help Center articles on Qobra",
+      done: "Listed Help Center articles on Qobra",
+    },
+    get_help_center_article: {
+      running: "Fetching Help Center article from Qobra",
+      done: "Fetched Help Center article from Qobra",
+    },
+  },
+};
+
+const PANDADOC_SHARED_CONFIG: Omit<
+  DefaultRemoteMCPServerConfig,
+  "id" | "name" | "description" | "url" | "connectionInstructions"
+> = {
+  icon: "PandaDocLogo",
+  documentationUrl:
+    "https://developers.pandadoc.com/docs/getting-started-with-mcp",
+  authMethod: "oauth-dynamic",
+  toolStakes: {
+    documents_audit_trail_get: "never_ask",
+    documents_list: "never_ask",
+    documents_search: "never_ask",
+    documents_status_get: "never_ask",
+    documents_details_get: "never_ask",
+    documents_summary_get: "never_ask",
+    documents_content_get: "never_ask",
+    documents_metadata_batch_get: "never_ask",
+    contacts_list: "never_ask",
+    contacts_search: "never_ask",
+    templates_list: "never_ask",
+    templates_details_get: "never_ask",
+    catalog_items_search: "never_ask",
+    catalog_item_get: "never_ask",
+    documents_create: "high",
+    documents_update: "high",
+    documents_status_change: "high",
+    documents_send: "high",
+    documents_fields_assign: "high",
+    documents_archive: "high",
+    documents_reminder_send: "high",
+    recipients_edit: "high",
+    recipients_add_cc: "high",
+    recipients_reassign: "high",
+    recipients_delete: "high",
+    templates_create: "high",
+    templates_update: "high",
+    templates_duplicate: "high",
+    templates_delete: "high",
+    catalog_item_create: "high",
+    catalog_item_update: "high",
+    catalog_item_delete: "high",
+    quotes_update: "high",
+  },
+  toolDisplayLabels: {
+    documents_audit_trail_get: {
+      running: "Loading a document audit trail from PandaDoc",
+      done: "Loaded a document audit trail from PandaDoc",
+    },
+    documents_list: {
+      running: "Listing documents on PandaDoc",
+      done: "Listed documents on PandaDoc",
+    },
+    documents_search: {
+      running: "Searching documents on PandaDoc",
+      done: "Searched documents on PandaDoc",
+    },
+    documents_status_get: {
+      running: "Checking a document status on PandaDoc",
+      done: "Checked a document status on PandaDoc",
+    },
+    documents_details_get: {
+      running: "Loading document details from PandaDoc",
+      done: "Loaded document details from PandaDoc",
+    },
+    documents_summary_get: {
+      running: "Loading a document summary from PandaDoc",
+      done: "Loaded a document summary from PandaDoc",
+    },
+    documents_content_get: {
+      running: "Loading document content from PandaDoc",
+      done: "Loaded document content from PandaDoc",
+    },
+    documents_metadata_batch_get: {
+      running: "Loading document metadata from PandaDoc",
+      done: "Loaded document metadata from PandaDoc",
+    },
+    contacts_list: {
+      running: "Looking up a contact by email on PandaDoc",
+      done: "Looked up a contact by email on PandaDoc",
+    },
+    contacts_search: {
+      running: "Searching contacts on PandaDoc",
+      done: "Searched contacts on PandaDoc",
+    },
+    templates_list: {
+      running: "Listing templates on PandaDoc",
+      done: "Listed templates on PandaDoc",
+    },
+    templates_details_get: {
+      running: "Loading template details from PandaDoc",
+      done: "Loaded template details from PandaDoc",
+    },
+    catalog_items_search: {
+      running: "Searching catalog items on PandaDoc",
+      done: "Searched catalog items on PandaDoc",
+    },
+    catalog_item_get: {
+      running: "Loading a catalog item from PandaDoc",
+      done: "Loaded a catalog item from PandaDoc",
+    },
+    documents_create: {
+      running: "Creating a document on PandaDoc",
+      done: "Created a document on PandaDoc",
+    },
+    documents_update: {
+      running: "Updating a document on PandaDoc",
+      done: "Updated a document on PandaDoc",
+    },
+    documents_status_change: {
+      running: "Changing a document status on PandaDoc",
+      done: "Changed a document status on PandaDoc",
+    },
+    documents_send: {
+      running: "Sending a document on PandaDoc",
+      done: "Sent a document on PandaDoc",
+    },
+    documents_fields_assign: {
+      running: "Assigning document fields on PandaDoc",
+      done: "Assigned document fields on PandaDoc",
+    },
+    documents_archive: {
+      running: "Archiving a document on PandaDoc",
+      done: "Archived a document on PandaDoc",
+    },
+    documents_reminder_send: {
+      running: "Sending a document reminder on PandaDoc",
+      done: "Sent a document reminder on PandaDoc",
+    },
+    recipients_edit: {
+      running: "Editing a recipient on PandaDoc",
+      done: "Edited a recipient on PandaDoc",
+    },
+    recipients_add_cc: {
+      running: "Adding a CC recipient on PandaDoc",
+      done: "Added a CC recipient on PandaDoc",
+    },
+    recipients_reassign: {
+      running: "Reassigning a recipient on PandaDoc",
+      done: "Reassigned a recipient on PandaDoc",
+    },
+    recipients_delete: {
+      running: "Removing a recipient on PandaDoc",
+      done: "Removed a recipient on PandaDoc",
+    },
+    templates_create: {
+      running: "Creating a template on PandaDoc",
+      done: "Created a template on PandaDoc",
+    },
+    templates_update: {
+      running: "Updating a template on PandaDoc",
+      done: "Updated a template on PandaDoc",
+    },
+    templates_duplicate: {
+      running: "Duplicating a template on PandaDoc",
+      done: "Duplicated a template on PandaDoc",
+    },
+    templates_delete: {
+      running: "Deleting a template on PandaDoc",
+      done: "Deleted a template on PandaDoc",
+    },
+    catalog_item_create: {
+      running: "Creating a catalog item on PandaDoc",
+      done: "Created a catalog item on PandaDoc",
+    },
+    catalog_item_update: {
+      running: "Updating a catalog item on PandaDoc",
+      done: "Updated a catalog item on PandaDoc",
+    },
+    catalog_item_delete: {
+      running: "Deleting a catalog item on PandaDoc",
+      done: "Deleted a catalog item on PandaDoc",
+    },
+    quotes_update: {
+      running: "Updating quotes on PandaDoc",
+      done: "Updated quotes on PandaDoc",
+    },
+  },
+};
+
 export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   {
     id: 10000,
@@ -1241,516 +1915,20 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...AMPLITUDE_SHARED_CONFIG,
     id: 10018,
     name: "Amplitude",
     description:
       "Amplitude tools for product analytics — search, query, and create charts, dashboards, notebooks, experiments, and cohorts (Region: US).",
     url: "https://mcp.amplitude.com/mcp",
-    icon: "AmplitudeLogo",
-    documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
-    connectionInstructions:
-      "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      search: "never_ask",
-      get_from_url: "never_ask",
-      get_amplitude_context: "never_ask",
-      query_amplitude_data: "never_ask",
-      get_amplitude_charts: "never_ask",
-      render_amplitude_chart: "never_ask",
-      get_amp_user_data: "never_ask",
-      get_experiments: "never_ask",
-      query_experiment: "never_ask",
-      get_flags: "never_ask",
-      get_deployments: "never_ask",
-      get_amp_taxonomy: "never_ask",
-      get_transformations: "never_ask",
-      get_group_types: "never_ask",
-      get_session_replays: "never_ask",
-      list_session_replays: "never_ask",
-      get_session_replay_events: "never_ask",
-      list_guides_surveys: "never_ask",
-      get_guide_or_survey: "never_ask",
-      query_wave_opportunities: "never_ask",
-      query_wave_product_areas: "never_ask",
-      use_amplitude_ai_feedback: "never_ask",
-      get_agent_results: "never_ask",
-      get_amplitude_agent_analytics_info: "never_ask",
-      get_data_ingestion_sources: "never_ask",
-      get_data_source_details: "never_ask",
-      get_data_warehouse_destinations: "never_ask",
-      get_data_warehouse_jobs: "never_ask",
-      list_tool_categories: "never_ask",
-      get_category_tools: "never_ask",
-      describe_tool: "never_ask",
-      use_amplitude_chart_monitors: "low",
-      use_amp_dashboards: "low",
-      use_amp_notebooks: "low",
-      use_amp_comments: "low",
-      use_amplitude_cohorts: "low",
-      create_experiment: "low",
-      update_experiment: "low",
-      create_metric: "low",
-      manage_wave_opportunities: "low",
-      manage_wave_product_areas: "low",
-      manage_wave_verification_artifacts: "low",
-      share_amp_entities: "high",
-      create_flags: "high",
-      update_flag: "high",
-      manage_amp_events: "high",
-      manage_amp_properties: "high",
-      manage_amp_taxonomy: "high",
-    },
-    toolDisplayLabels: {
-      search: {
-        running: "Searching on Amplitude",
-        done: "Search on Amplitude",
-      },
-      get_from_url: {
-        running: "Fetching from Amplitude URL",
-        done: "Fetched from Amplitude URL",
-      },
-      get_amplitude_context: {
-        running: "Fetching context from Amplitude",
-        done: "Fetched context from Amplitude",
-      },
-      query_amplitude_data: {
-        running: "Querying data on Amplitude",
-        done: "Queried data on Amplitude",
-      },
-      get_amplitude_charts: {
-        running: "Fetching charts from Amplitude",
-        done: "Fetched charts from Amplitude",
-      },
-      render_amplitude_chart: {
-        running: "Rendering chart from Amplitude",
-        done: "Rendered chart from Amplitude",
-      },
-      get_amp_user_data: {
-        running: "Fetching user data from Amplitude",
-        done: "Fetched user data from Amplitude",
-      },
-      get_experiments: {
-        running: "Fetching experiments from Amplitude",
-        done: "Fetched experiments from Amplitude",
-      },
-      query_experiment: {
-        running: "Querying experiment on Amplitude",
-        done: "Queried experiment on Amplitude",
-      },
-      get_flags: {
-        running: "Fetching feature flags from Amplitude",
-        done: "Fetched feature flags from Amplitude",
-      },
-      get_deployments: {
-        running: "Fetching deployments from Amplitude",
-        done: "Fetched deployments from Amplitude",
-      },
-      get_amp_taxonomy: {
-        running: "Fetching taxonomy from Amplitude",
-        done: "Fetched taxonomy from Amplitude",
-      },
-      get_transformations: {
-        running: "Fetching transformations from Amplitude",
-        done: "Fetched transformations from Amplitude",
-      },
-      get_group_types: {
-        running: "Fetching group types from Amplitude",
-        done: "Fetched group types from Amplitude",
-      },
-      get_session_replays: {
-        running: "Fetching session replays from Amplitude",
-        done: "Fetched session replays from Amplitude",
-      },
-      list_session_replays: {
-        running: "Listing session replays on Amplitude",
-        done: "Listed session replays on Amplitude",
-      },
-      get_session_replay_events: {
-        running: "Fetching session replay events from Amplitude",
-        done: "Fetched session replay events from Amplitude",
-      },
-      list_guides_surveys: {
-        running: "Listing guides and surveys on Amplitude",
-        done: "Listed guides and surveys on Amplitude",
-      },
-      get_guide_or_survey: {
-        running: "Fetching guide or survey from Amplitude",
-        done: "Fetched guide or survey from Amplitude",
-      },
-      query_wave_opportunities: {
-        running: "Querying opportunities on Amplitude",
-        done: "Queried opportunities on Amplitude",
-      },
-      query_wave_product_areas: {
-        running: "Querying product areas on Amplitude",
-        done: "Queried product areas on Amplitude",
-      },
-      use_amplitude_ai_feedback: {
-        running: "Fetching feedback from Amplitude",
-        done: "Fetched feedback from Amplitude",
-      },
-      get_agent_results: {
-        running: "Fetching agent results from Amplitude",
-        done: "Fetched agent results from Amplitude",
-      },
-      get_amplitude_agent_analytics_info: {
-        running: "Fetching agent analytics from Amplitude",
-        done: "Fetched agent analytics from Amplitude",
-      },
-      get_data_ingestion_sources: {
-        running: "Fetching ingestion sources from Amplitude",
-        done: "Fetched ingestion sources from Amplitude",
-      },
-      get_data_source_details: {
-        running: "Fetching data source details from Amplitude",
-        done: "Fetched data source details from Amplitude",
-      },
-      get_data_warehouse_destinations: {
-        running: "Fetching warehouse destinations from Amplitude",
-        done: "Fetched warehouse destinations from Amplitude",
-      },
-      get_data_warehouse_jobs: {
-        running: "Fetching warehouse jobs from Amplitude",
-        done: "Fetched warehouse jobs from Amplitude",
-      },
-      list_tool_categories: {
-        running: "Listing tool categories on Amplitude",
-        done: "Listed tool categories on Amplitude",
-      },
-      get_category_tools: {
-        running: "Listing category tools on Amplitude",
-        done: "Listed category tools on Amplitude",
-      },
-      describe_tool: {
-        running: "Describing tool on Amplitude",
-        done: "Described tool on Amplitude",
-      },
-      use_amplitude_chart_monitors: {
-        running: "Managing chart monitors on Amplitude",
-        done: "Managed chart monitors on Amplitude",
-      },
-      use_amp_dashboards: {
-        running: "Managing dashboards on Amplitude",
-        done: "Managed dashboards on Amplitude",
-      },
-      use_amp_notebooks: {
-        running: "Managing notebooks on Amplitude",
-        done: "Managed notebooks on Amplitude",
-      },
-      use_amp_comments: {
-        running: "Managing comments on Amplitude",
-        done: "Managed comments on Amplitude",
-      },
-      use_amplitude_cohorts: {
-        running: "Managing cohorts on Amplitude",
-        done: "Managed cohorts on Amplitude",
-      },
-      create_experiment: {
-        running: "Creating experiment on Amplitude",
-        done: "Created experiment on Amplitude",
-      },
-      update_experiment: {
-        running: "Updating experiment on Amplitude",
-        done: "Updated experiment on Amplitude",
-      },
-      create_metric: {
-        running: "Creating metric on Amplitude",
-        done: "Created metric on Amplitude",
-      },
-      manage_wave_opportunities: {
-        running: "Managing opportunities on Amplitude",
-        done: "Managed opportunities on Amplitude",
-      },
-      manage_wave_product_areas: {
-        running: "Managing product areas on Amplitude",
-        done: "Managed product areas on Amplitude",
-      },
-      manage_wave_verification_artifacts: {
-        running: "Managing verification artifacts on Amplitude",
-        done: "Managed verification artifacts on Amplitude",
-      },
-      share_amp_entities: {
-        running: "Updating sharing on Amplitude",
-        done: "Updated sharing on Amplitude",
-      },
-      create_flags: {
-        running: "Creating feature flags on Amplitude",
-        done: "Created feature flags on Amplitude",
-      },
-      update_flag: {
-        running: "Updating feature flag on Amplitude",
-        done: "Updated feature flag on Amplitude",
-      },
-      manage_amp_events: {
-        running: "Managing events on Amplitude",
-        done: "Managed events on Amplitude",
-      },
-      manage_amp_properties: {
-        running: "Managing properties on Amplitude",
-        done: "Managed properties on Amplitude",
-      },
-      manage_amp_taxonomy: {
-        running: "Managing tracking plan on Amplitude",
-        done: "Managed tracking plan on Amplitude",
-      },
-    },
   },
   {
+    ...AMPLITUDE_SHARED_CONFIG,
     id: 10019,
     name: "Amplitude Europe",
     description:
       "Amplitude tools for product analytics — search, query, and create charts, dashboards, notebooks, experiments, and cohorts (Region: EU).",
     url: "https://mcp.eu.amplitude.com/mcp",
-    icon: "AmplitudeLogo",
-    documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
-    connectionInstructions:
-      "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      search: "never_ask",
-      get_from_url: "never_ask",
-      get_amplitude_context: "never_ask",
-      query_amplitude_data: "never_ask",
-      get_amplitude_charts: "never_ask",
-      render_amplitude_chart: "never_ask",
-      get_amp_user_data: "never_ask",
-      get_experiments: "never_ask",
-      query_experiment: "never_ask",
-      get_flags: "never_ask",
-      get_deployments: "never_ask",
-      get_amp_taxonomy: "never_ask",
-      get_transformations: "never_ask",
-      get_group_types: "never_ask",
-      get_session_replays: "never_ask",
-      list_session_replays: "never_ask",
-      get_session_replay_events: "never_ask",
-      list_guides_surveys: "never_ask",
-      get_guide_or_survey: "never_ask",
-      query_wave_opportunities: "never_ask",
-      query_wave_product_areas: "never_ask",
-      use_amplitude_ai_feedback: "never_ask",
-      get_agent_results: "never_ask",
-      get_amplitude_agent_analytics_info: "never_ask",
-      get_data_ingestion_sources: "never_ask",
-      get_data_source_details: "never_ask",
-      get_data_warehouse_destinations: "never_ask",
-      get_data_warehouse_jobs: "never_ask",
-      list_tool_categories: "never_ask",
-      get_category_tools: "never_ask",
-      describe_tool: "never_ask",
-      use_amplitude_chart_monitors: "low",
-      use_amp_dashboards: "low",
-      use_amp_notebooks: "low",
-      use_amp_comments: "low",
-      use_amplitude_cohorts: "low",
-      create_experiment: "low",
-      update_experiment: "low",
-      create_metric: "low",
-      manage_wave_opportunities: "low",
-      manage_wave_product_areas: "low",
-      manage_wave_verification_artifacts: "low",
-      share_amp_entities: "high",
-      create_flags: "high",
-      update_flag: "high",
-      manage_amp_events: "high",
-      manage_amp_properties: "high",
-      manage_amp_taxonomy: "high",
-    },
-    toolDisplayLabels: {
-      search: {
-        running: "Searching on Amplitude",
-        done: "Search on Amplitude",
-      },
-      get_from_url: {
-        running: "Fetching from Amplitude URL",
-        done: "Fetched from Amplitude URL",
-      },
-      get_amplitude_context: {
-        running: "Fetching context from Amplitude",
-        done: "Fetched context from Amplitude",
-      },
-      query_amplitude_data: {
-        running: "Querying data on Amplitude",
-        done: "Queried data on Amplitude",
-      },
-      get_amplitude_charts: {
-        running: "Fetching charts from Amplitude",
-        done: "Fetched charts from Amplitude",
-      },
-      render_amplitude_chart: {
-        running: "Rendering chart from Amplitude",
-        done: "Rendered chart from Amplitude",
-      },
-      get_amp_user_data: {
-        running: "Fetching user data from Amplitude",
-        done: "Fetched user data from Amplitude",
-      },
-      get_experiments: {
-        running: "Fetching experiments from Amplitude",
-        done: "Fetched experiments from Amplitude",
-      },
-      query_experiment: {
-        running: "Querying experiment on Amplitude",
-        done: "Queried experiment on Amplitude",
-      },
-      get_flags: {
-        running: "Fetching feature flags from Amplitude",
-        done: "Fetched feature flags from Amplitude",
-      },
-      get_deployments: {
-        running: "Fetching deployments from Amplitude",
-        done: "Fetched deployments from Amplitude",
-      },
-      get_amp_taxonomy: {
-        running: "Fetching taxonomy from Amplitude",
-        done: "Fetched taxonomy from Amplitude",
-      },
-      get_transformations: {
-        running: "Fetching transformations from Amplitude",
-        done: "Fetched transformations from Amplitude",
-      },
-      get_group_types: {
-        running: "Fetching group types from Amplitude",
-        done: "Fetched group types from Amplitude",
-      },
-      get_session_replays: {
-        running: "Fetching session replays from Amplitude",
-        done: "Fetched session replays from Amplitude",
-      },
-      list_session_replays: {
-        running: "Listing session replays on Amplitude",
-        done: "Listed session replays on Amplitude",
-      },
-      get_session_replay_events: {
-        running: "Fetching session replay events from Amplitude",
-        done: "Fetched session replay events from Amplitude",
-      },
-      list_guides_surveys: {
-        running: "Listing guides and surveys on Amplitude",
-        done: "Listed guides and surveys on Amplitude",
-      },
-      get_guide_or_survey: {
-        running: "Fetching guide or survey from Amplitude",
-        done: "Fetched guide or survey from Amplitude",
-      },
-      query_wave_opportunities: {
-        running: "Querying opportunities on Amplitude",
-        done: "Queried opportunities on Amplitude",
-      },
-      query_wave_product_areas: {
-        running: "Querying product areas on Amplitude",
-        done: "Queried product areas on Amplitude",
-      },
-      use_amplitude_ai_feedback: {
-        running: "Fetching feedback from Amplitude",
-        done: "Fetched feedback from Amplitude",
-      },
-      get_agent_results: {
-        running: "Fetching agent results from Amplitude",
-        done: "Fetched agent results from Amplitude",
-      },
-      get_amplitude_agent_analytics_info: {
-        running: "Fetching agent analytics from Amplitude",
-        done: "Fetched agent analytics from Amplitude",
-      },
-      get_data_ingestion_sources: {
-        running: "Fetching ingestion sources from Amplitude",
-        done: "Fetched ingestion sources from Amplitude",
-      },
-      get_data_source_details: {
-        running: "Fetching data source details from Amplitude",
-        done: "Fetched data source details from Amplitude",
-      },
-      get_data_warehouse_destinations: {
-        running: "Fetching warehouse destinations from Amplitude",
-        done: "Fetched warehouse destinations from Amplitude",
-      },
-      get_data_warehouse_jobs: {
-        running: "Fetching warehouse jobs from Amplitude",
-        done: "Fetched warehouse jobs from Amplitude",
-      },
-      list_tool_categories: {
-        running: "Listing tool categories on Amplitude",
-        done: "Listed tool categories on Amplitude",
-      },
-      get_category_tools: {
-        running: "Listing category tools on Amplitude",
-        done: "Listed category tools on Amplitude",
-      },
-      describe_tool: {
-        running: "Describing tool on Amplitude",
-        done: "Described tool on Amplitude",
-      },
-      use_amplitude_chart_monitors: {
-        running: "Managing chart monitors on Amplitude",
-        done: "Managed chart monitors on Amplitude",
-      },
-      use_amp_dashboards: {
-        running: "Managing dashboards on Amplitude",
-        done: "Managed dashboards on Amplitude",
-      },
-      use_amp_notebooks: {
-        running: "Managing notebooks on Amplitude",
-        done: "Managed notebooks on Amplitude",
-      },
-      use_amp_comments: {
-        running: "Managing comments on Amplitude",
-        done: "Managed comments on Amplitude",
-      },
-      use_amplitude_cohorts: {
-        running: "Managing cohorts on Amplitude",
-        done: "Managed cohorts on Amplitude",
-      },
-      create_experiment: {
-        running: "Creating experiment on Amplitude",
-        done: "Created experiment on Amplitude",
-      },
-      update_experiment: {
-        running: "Updating experiment on Amplitude",
-        done: "Updated experiment on Amplitude",
-      },
-      create_metric: {
-        running: "Creating metric on Amplitude",
-        done: "Created metric on Amplitude",
-      },
-      manage_wave_opportunities: {
-        running: "Managing opportunities on Amplitude",
-        done: "Managed opportunities on Amplitude",
-      },
-      manage_wave_product_areas: {
-        running: "Managing product areas on Amplitude",
-        done: "Managed product areas on Amplitude",
-      },
-      manage_wave_verification_artifacts: {
-        running: "Managing verification artifacts on Amplitude",
-        done: "Managed verification artifacts on Amplitude",
-      },
-      share_amp_entities: {
-        running: "Updating sharing on Amplitude",
-        done: "Updated sharing on Amplitude",
-      },
-      create_flags: {
-        running: "Creating feature flags on Amplitude",
-        done: "Created feature flags on Amplitude",
-      },
-      update_flag: {
-        running: "Updating feature flag on Amplitude",
-        done: "Updated feature flag on Amplitude",
-      },
-      manage_amp_events: {
-        running: "Managing events on Amplitude",
-        done: "Managed events on Amplitude",
-      },
-      manage_amp_properties: {
-        running: "Managing properties on Amplitude",
-        done: "Managed properties on Amplitude",
-      },
-      manage_amp_taxonomy: {
-        running: "Managing tracking plan on Amplitude",
-        done: "Managed tracking plan on Amplitude",
-      },
-    },
   },
   {
     id: 10020,
@@ -3473,490 +3651,20 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...QOBRA_SHARED_CONFIG,
     id: 10034,
     name: "Qobra",
     description:
       "Qobra tools to read your sales compensation data — commission plans, quotas, statements, payouts, reports, and dashboards, scoped to your Qobra permissions (Region: EU).",
     url: "https://mcp.qobra.co/mcp",
-    icon: "QobraLogo",
-    documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
-    connectionInstructions:
-      "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      get_identity: "never_ask",
-      get_company_settings: "never_ask",
-      list_sandboxes: "never_ask",
-      list_data_tables: "never_ask",
-      get_data_table: "never_ask",
-      list_data_table_records: "never_ask",
-      list_integrations: "never_ask",
-      list_users: "never_ask",
-      get_user: "never_ask",
-      list_user_attributes: "never_ask",
-      list_roles: "never_ask",
-      get_role: "never_ask",
-      list_groups: "never_ask",
-      get_group: "never_ask",
-      list_group_dimensions: "never_ask",
-      list_quotas: "never_ask",
-      list_quota_values: "never_ask",
-      list_plans: "never_ask",
-      get_plan: "never_ask",
-      list_commission_letters_campaigns: "never_ask",
-      get_commission_letters_campaign: "never_ask",
-      list_reports: "never_ask",
-      get_report: "never_ask",
-      get_report_data: "never_ask",
-      get_report_pivot_data: "never_ask",
-      get_report_chart_data: "never_ask",
-      list_dashboards: "never_ask",
-      get_dashboard: "never_ask",
-      list_requests: "never_ask",
-      get_request: "never_ask",
-      list_sales_coach_discussions: "never_ask",
-      get_sales_coach_discussion: "never_ask",
-      list_statements: "never_ask",
-      get_statement: "never_ask",
-      get_statement_compensation: "never_ask",
-      list_statement_records: "never_ask",
-      list_statement_periods: "never_ask",
-      list_exchange_rates: "never_ask",
-      list_imports: "never_ask",
-      get_import: "never_ask",
-      list_audit_logs: "never_ask",
-      get_audit_log: "never_ask",
-      list_dependencies: "never_ask",
-      list_help_center_articles: "never_ask",
-      get_help_center_article: "never_ask",
-    },
-    // Les labels sont résolus par slugify(name), donc "qobra" et "qobra-us"
-    // sont deux espaces de noms distincts : la copie est nécessaire.
-    toolDisplayLabels: {
-      get_identity: {
-        running: "Fetching your Qobra identity",
-        done: "Fetched your Qobra identity",
-      },
-      get_company_settings: {
-        running: "Fetching company settings from Qobra",
-        done: "Fetched company settings from Qobra",
-      },
-      list_sandboxes: {
-        running: "Listing sandboxes on Qobra",
-        done: "Listed sandboxes on Qobra",
-      },
-      list_data_tables: {
-        running: "Listing data tables on Qobra",
-        done: "Listed data tables on Qobra",
-      },
-      get_data_table: {
-        running: "Fetching data table from Qobra",
-        done: "Fetched data table from Qobra",
-      },
-      list_data_table_records: {
-        running: "Listing data table records on Qobra",
-        done: "Listed data table records on Qobra",
-      },
-      list_integrations: {
-        running: "Listing integrations on Qobra",
-        done: "Listed integrations on Qobra",
-      },
-      list_users: {
-        running: "Listing users on Qobra",
-        done: "Listed users on Qobra",
-      },
-      get_user: {
-        running: "Fetching user from Qobra",
-        done: "Fetched user from Qobra",
-      },
-      list_user_attributes: {
-        running: "Listing user attributes on Qobra",
-        done: "Listed user attributes on Qobra",
-      },
-      list_roles: {
-        running: "Listing roles on Qobra",
-        done: "Listed roles on Qobra",
-      },
-      get_role: {
-        running: "Fetching role from Qobra",
-        done: "Fetched role from Qobra",
-      },
-      list_groups: {
-        running: "Listing groups on Qobra",
-        done: "Listed groups on Qobra",
-      },
-      get_group: {
-        running: "Fetching group from Qobra",
-        done: "Fetched group from Qobra",
-      },
-      list_group_dimensions: {
-        running: "Listing group dimensions on Qobra",
-        done: "Listed group dimensions on Qobra",
-      },
-      list_quotas: {
-        running: "Listing quotas on Qobra",
-        done: "Listed quotas on Qobra",
-      },
-      list_quota_values: {
-        running: "Listing quota values on Qobra",
-        done: "Listed quota values on Qobra",
-      },
-      list_plans: {
-        running: "Listing compensation plans on Qobra",
-        done: "Listed compensation plans on Qobra",
-      },
-      get_plan: {
-        running: "Fetching compensation plan from Qobra",
-        done: "Fetched compensation plan from Qobra",
-      },
-      list_commission_letters_campaigns: {
-        running: "Listing commission letter campaigns on Qobra",
-        done: "Listed commission letter campaigns on Qobra",
-      },
-      get_commission_letters_campaign: {
-        running: "Fetching commission letter campaign from Qobra",
-        done: "Fetched commission letter campaign from Qobra",
-      },
-      list_reports: {
-        running: "Listing reports on Qobra",
-        done: "Listed reports on Qobra",
-      },
-      get_report: {
-        running: "Fetching report from Qobra",
-        done: "Fetched report from Qobra",
-      },
-      get_report_data: {
-        running: "Fetching report data from Qobra",
-        done: "Fetched report data from Qobra",
-      },
-      get_report_pivot_data: {
-        running: "Fetching report pivot data from Qobra",
-        done: "Fetched report pivot data from Qobra",
-      },
-      get_report_chart_data: {
-        running: "Fetching report chart data from Qobra",
-        done: "Fetched report chart data from Qobra",
-      },
-      list_dashboards: {
-        running: "Listing dashboards on Qobra",
-        done: "Listed dashboards on Qobra",
-      },
-      get_dashboard: {
-        running: "Fetching dashboard from Qobra",
-        done: "Fetched dashboard from Qobra",
-      },
-      list_requests: {
-        running: "Listing requests on Qobra",
-        done: "Listed requests on Qobra",
-      },
-      get_request: {
-        running: "Fetching request from Qobra",
-        done: "Fetched request from Qobra",
-      },
-      list_sales_coach_discussions: {
-        running: "Listing Sales Coach discussions on Qobra",
-        done: "Listed Sales Coach discussions on Qobra",
-      },
-      get_sales_coach_discussion: {
-        running: "Fetching Sales Coach discussion from Qobra",
-        done: "Fetched Sales Coach discussion from Qobra",
-      },
-      list_statements: {
-        running: "Listing statements on Qobra",
-        done: "Listed statements on Qobra",
-      },
-      get_statement: {
-        running: "Fetching statement from Qobra",
-        done: "Fetched statement from Qobra",
-      },
-      get_statement_compensation: {
-        running: "Fetching statement compensation from Qobra",
-        done: "Fetched statement compensation from Qobra",
-      },
-      list_statement_records: {
-        running: "Listing statement records on Qobra",
-        done: "Listed statement records on Qobra",
-      },
-      list_statement_periods: {
-        running: "Listing statement periods on Qobra",
-        done: "Listed statement periods on Qobra",
-      },
-      list_exchange_rates: {
-        running: "Listing exchange rates on Qobra",
-        done: "Listed exchange rates on Qobra",
-      },
-      list_imports: {
-        running: "Listing imports on Qobra",
-        done: "Listed imports on Qobra",
-      },
-      get_import: {
-        running: "Fetching import from Qobra",
-        done: "Fetched import from Qobra",
-      },
-      list_audit_logs: {
-        running: "Listing audit logs on Qobra",
-        done: "Listed audit logs on Qobra",
-      },
-      get_audit_log: {
-        running: "Fetching audit log from Qobra",
-        done: "Fetched audit log from Qobra",
-      },
-      list_dependencies: {
-        running: "Listing dependencies on Qobra",
-        done: "Listed dependencies on Qobra",
-      },
-      list_help_center_articles: {
-        running: "Listing Help Center articles on Qobra",
-        done: "Listed Help Center articles on Qobra",
-      },
-      get_help_center_article: {
-        running: "Fetching Help Center article from Qobra",
-        done: "Fetched Help Center article from Qobra",
-      },
-    },
   },
   {
+    ...QOBRA_SHARED_CONFIG,
     id: 10035,
     name: "Qobra US",
     description:
       "Qobra tools to read your sales compensation data — commission plans, quotas, statements, payouts, reports, and dashboards, scoped to your Qobra permissions (Region: US).",
     url: "https://mcp-us.qobra.co/mcp",
-    icon: "QobraLogo",
-    documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
-    connectionInstructions:
-      "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      get_identity: "never_ask",
-      get_company_settings: "never_ask",
-      list_sandboxes: "never_ask",
-      list_data_tables: "never_ask",
-      get_data_table: "never_ask",
-      list_data_table_records: "never_ask",
-      list_integrations: "never_ask",
-      list_users: "never_ask",
-      get_user: "never_ask",
-      list_user_attributes: "never_ask",
-      list_roles: "never_ask",
-      get_role: "never_ask",
-      list_groups: "never_ask",
-      get_group: "never_ask",
-      list_group_dimensions: "never_ask",
-      list_quotas: "never_ask",
-      list_quota_values: "never_ask",
-      list_plans: "never_ask",
-      get_plan: "never_ask",
-      list_commission_letters_campaigns: "never_ask",
-      get_commission_letters_campaign: "never_ask",
-      list_reports: "never_ask",
-      get_report: "never_ask",
-      get_report_data: "never_ask",
-      get_report_pivot_data: "never_ask",
-      get_report_chart_data: "never_ask",
-      list_dashboards: "never_ask",
-      get_dashboard: "never_ask",
-      list_requests: "never_ask",
-      get_request: "never_ask",
-      list_sales_coach_discussions: "never_ask",
-      get_sales_coach_discussion: "never_ask",
-      list_statements: "never_ask",
-      get_statement: "never_ask",
-      get_statement_compensation: "never_ask",
-      list_statement_records: "never_ask",
-      list_statement_periods: "never_ask",
-      list_exchange_rates: "never_ask",
-      list_imports: "never_ask",
-      get_import: "never_ask",
-      list_audit_logs: "never_ask",
-      get_audit_log: "never_ask",
-      list_dependencies: "never_ask",
-      list_help_center_articles: "never_ask",
-      get_help_center_article: "never_ask",
-    },
-    // Les labels sont résolus par slugify(name), donc "qobra" et "qobra-us"
-    // sont deux espaces de noms distincts : la copie est nécessaire.
-    toolDisplayLabels: {
-      get_identity: {
-        running: "Fetching your Qobra identity",
-        done: "Fetched your Qobra identity",
-      },
-      get_company_settings: {
-        running: "Fetching company settings from Qobra",
-        done: "Fetched company settings from Qobra",
-      },
-      list_sandboxes: {
-        running: "Listing sandboxes on Qobra",
-        done: "Listed sandboxes on Qobra",
-      },
-      list_data_tables: {
-        running: "Listing data tables on Qobra",
-        done: "Listed data tables on Qobra",
-      },
-      get_data_table: {
-        running: "Fetching data table from Qobra",
-        done: "Fetched data table from Qobra",
-      },
-      list_data_table_records: {
-        running: "Listing data table records on Qobra",
-        done: "Listed data table records on Qobra",
-      },
-      list_integrations: {
-        running: "Listing integrations on Qobra",
-        done: "Listed integrations on Qobra",
-      },
-      list_users: {
-        running: "Listing users on Qobra",
-        done: "Listed users on Qobra",
-      },
-      get_user: {
-        running: "Fetching user from Qobra",
-        done: "Fetched user from Qobra",
-      },
-      list_user_attributes: {
-        running: "Listing user attributes on Qobra",
-        done: "Listed user attributes on Qobra",
-      },
-      list_roles: {
-        running: "Listing roles on Qobra",
-        done: "Listed roles on Qobra",
-      },
-      get_role: {
-        running: "Fetching role from Qobra",
-        done: "Fetched role from Qobra",
-      },
-      list_groups: {
-        running: "Listing groups on Qobra",
-        done: "Listed groups on Qobra",
-      },
-      get_group: {
-        running: "Fetching group from Qobra",
-        done: "Fetched group from Qobra",
-      },
-      list_group_dimensions: {
-        running: "Listing group dimensions on Qobra",
-        done: "Listed group dimensions on Qobra",
-      },
-      list_quotas: {
-        running: "Listing quotas on Qobra",
-        done: "Listed quotas on Qobra",
-      },
-      list_quota_values: {
-        running: "Listing quota values on Qobra",
-        done: "Listed quota values on Qobra",
-      },
-      list_plans: {
-        running: "Listing compensation plans on Qobra",
-        done: "Listed compensation plans on Qobra",
-      },
-      get_plan: {
-        running: "Fetching compensation plan from Qobra",
-        done: "Fetched compensation plan from Qobra",
-      },
-      list_commission_letters_campaigns: {
-        running: "Listing commission letter campaigns on Qobra",
-        done: "Listed commission letter campaigns on Qobra",
-      },
-      get_commission_letters_campaign: {
-        running: "Fetching commission letter campaign from Qobra",
-        done: "Fetched commission letter campaign from Qobra",
-      },
-      list_reports: {
-        running: "Listing reports on Qobra",
-        done: "Listed reports on Qobra",
-      },
-      get_report: {
-        running: "Fetching report from Qobra",
-        done: "Fetched report from Qobra",
-      },
-      get_report_data: {
-        running: "Fetching report data from Qobra",
-        done: "Fetched report data from Qobra",
-      },
-      get_report_pivot_data: {
-        running: "Fetching report pivot data from Qobra",
-        done: "Fetched report pivot data from Qobra",
-      },
-      get_report_chart_data: {
-        running: "Fetching report chart data from Qobra",
-        done: "Fetched report chart data from Qobra",
-      },
-      list_dashboards: {
-        running: "Listing dashboards on Qobra",
-        done: "Listed dashboards on Qobra",
-      },
-      get_dashboard: {
-        running: "Fetching dashboard from Qobra",
-        done: "Fetched dashboard from Qobra",
-      },
-      list_requests: {
-        running: "Listing requests on Qobra",
-        done: "Listed requests on Qobra",
-      },
-      get_request: {
-        running: "Fetching request from Qobra",
-        done: "Fetched request from Qobra",
-      },
-      list_sales_coach_discussions: {
-        running: "Listing Sales Coach discussions on Qobra",
-        done: "Listed Sales Coach discussions on Qobra",
-      },
-      get_sales_coach_discussion: {
-        running: "Fetching Sales Coach discussion from Qobra",
-        done: "Fetched Sales Coach discussion from Qobra",
-      },
-      list_statements: {
-        running: "Listing statements on Qobra",
-        done: "Listed statements on Qobra",
-      },
-      get_statement: {
-        running: "Fetching statement from Qobra",
-        done: "Fetched statement from Qobra",
-      },
-      get_statement_compensation: {
-        running: "Fetching statement compensation from Qobra",
-        done: "Fetched statement compensation from Qobra",
-      },
-      list_statement_records: {
-        running: "Listing statement records on Qobra",
-        done: "Listed statement records on Qobra",
-      },
-      list_statement_periods: {
-        running: "Listing statement periods on Qobra",
-        done: "Listed statement periods on Qobra",
-      },
-      list_exchange_rates: {
-        running: "Listing exchange rates on Qobra",
-        done: "Listed exchange rates on Qobra",
-      },
-      list_imports: {
-        running: "Listing imports on Qobra",
-        done: "Listed imports on Qobra",
-      },
-      get_import: {
-        running: "Fetching import from Qobra",
-        done: "Fetched import from Qobra",
-      },
-      list_audit_logs: {
-        running: "Listing audit logs on Qobra",
-        done: "Listed audit logs on Qobra",
-      },
-      get_audit_log: {
-        running: "Fetching audit log from Qobra",
-        done: "Fetched audit log from Qobra",
-      },
-      list_dependencies: {
-        running: "Listing dependencies on Qobra",
-        done: "Listed dependencies on Qobra",
-      },
-      list_help_center_articles: {
-        running: "Listing Help Center articles on Qobra",
-        done: "Listed Help Center articles on Qobra",
-      },
-      get_help_center_article: {
-        running: "Fetching Help Center article from Qobra",
-        done: "Fetched Help Center article from Qobra",
-      },
-    },
   },
   {
     id: 10037,
@@ -4834,12 +4542,9 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     icon: "FigmaLogo",
     documentationUrl: "https://developers.figma.com/docs/figma-mcp-server/",
     connectionInstructions:
-      "Enter the client ID and secret of Dust's approved Figma OAuth app. Authorization endpoint https://www.figma.com/oauth/mcp, token endpoint https://api.figma.com/v1/oauth/token, scope mcp:connect, resource https://mcp.figma.com/mcp, auth method client_secret_basic. The MCP can only access the files and libraries you can already see in Figma.",
+      "Figma uses OAuth. You will be prompted to sign in with your Figma account. The MCP can only access the files and libraries you can already see in Figma.",
     featureFlag: "figma_mcp",
-    // TODO(2026-10-01 FIGMA_OAUTH): Figma rejects dynamic client registration and only
-    // accepts approved OAuth apps, so admins enter the credentials of Dust's app for now.
-    // Revisit once Dust's public Figma app is approved.
-    authMethod: "oauth-static",
+    authMethod: "oauth-dynamic",
     supportedOAuthUseCases: ["platform_actions", "personal_actions"],
     scope: "mcp:connect",
     toolStakes: {
@@ -4853,9 +4558,11 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_libraries: "never_ask",
       search_design_system: "never_ask",
       download_assets: "never_ask",
+      export_video: "never_ask",
       get_code_connect_map: "never_ask",
       get_code_connect_suggestions: "never_ask",
       get_context_for_code_connect: "never_ask",
+      list_file_components_for_code_connect: "never_ask",
       get_generative_plugin: "never_ask",
       list_generative_plugins: "never_ask",
       get_shader: "never_ask",
@@ -4864,6 +4571,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_list_tools: "never_ask",
       weave_get_tool_inputs: "never_ask",
       weave_get_tool_run_output: "never_ask",
+      weave_find_model: "never_ask",
+      weave_get_model_run_output: "never_ask",
 
       create_new_file: "low",
       generate_figma_design: "low",
@@ -4879,7 +4588,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       use_figma: "high",
       update_generative_plugin: "high",
       update_shader: "high",
+      // Image generation and Weave runs spend the user's Figma or Weave credits.
+      generate_image: "high",
       weave_run_tool: "high",
+      weave_run_model: "high",
     },
     toolDisplayLabels: {
       whoami: {
@@ -4922,6 +4634,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
         running: "Downloading assets from Figma",
         done: "Downloaded assets from Figma",
       },
+      export_video: {
+        running: "Exporting a video from Figma",
+        done: "Exported a video from Figma",
+      },
       get_code_connect_map: {
         running: "Reading Code Connect mappings on Figma",
         done: "Read Code Connect mappings on Figma",
@@ -4933,6 +4649,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_context_for_code_connect: {
         running: "Reading Code Connect context on Figma",
         done: "Read Code Connect context on Figma",
+      },
+      list_file_components_for_code_connect: {
+        running: "Listing library components on Figma",
+        done: "Listed library components on Figma",
       },
       get_generative_plugin: {
         running: "Reading a generative plugin on Figma",
@@ -4965,6 +4685,14 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_get_tool_run_output: {
         running: "Reading a Weave run output on Figma",
         done: "Read a Weave run output on Figma",
+      },
+      weave_find_model: {
+        running: "Finding a Weave model on Figma",
+        done: "Found a Weave model on Figma",
+      },
+      weave_get_model_run_output: {
+        running: "Reading a Weave model output on Figma",
+        done: "Read a Weave model output on Figma",
       },
       create_new_file: {
         running: "Creating a file on Figma",
@@ -5021,6 +4749,14 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_run_tool: {
         running: "Running a Weave tool on Figma",
         done: "Ran a Weave tool on Figma",
+      },
+      generate_image: {
+        running: "Generating an image on Figma",
+        done: "Generated an image on Figma",
+      },
+      weave_run_model: {
+        running: "Running a Weave model on Figma",
+        done: "Ran a Weave model on Figma",
       },
     },
   },
@@ -5707,368 +5443,24 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    ...PANDADOC_SHARED_CONFIG,
     id: 10047,
     name: "PandaDoc",
     description:
       "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: Global).",
     url: "https://mcp.pandadoc.com/v1/mcp",
-    icon: "PandaDocLogo",
-    documentationUrl:
-      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
     connectionInstructions:
       "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.com; authentication fails if the server region does not match your account region.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      documents_audit_trail_get: "never_ask",
-      documents_list: "never_ask",
-      documents_search: "never_ask",
-      documents_status_get: "never_ask",
-      documents_details_get: "never_ask",
-      documents_summary_get: "never_ask",
-      documents_content_get: "never_ask",
-      documents_metadata_batch_get: "never_ask",
-      contacts_list: "never_ask",
-      contacts_search: "never_ask",
-      templates_list: "never_ask",
-      templates_details_get: "never_ask",
-      catalog_items_search: "never_ask",
-      catalog_item_get: "never_ask",
-      documents_create: "high",
-      documents_update: "high",
-      documents_status_change: "high",
-      documents_send: "high",
-      documents_fields_assign: "high",
-      documents_archive: "high",
-      documents_reminder_send: "high",
-      recipients_edit: "high",
-      recipients_add_cc: "high",
-      recipients_reassign: "high",
-      recipients_delete: "high",
-      templates_create: "high",
-      templates_update: "high",
-      templates_duplicate: "high",
-      templates_delete: "high",
-      catalog_item_create: "high",
-      catalog_item_update: "high",
-      catalog_item_delete: "high",
-      quotes_update: "high",
-    },
-    toolDisplayLabels: {
-      documents_audit_trail_get: {
-        running: "Loading a document audit trail from PandaDoc",
-        done: "Loaded a document audit trail from PandaDoc",
-      },
-      documents_list: {
-        running: "Listing documents on PandaDoc",
-        done: "Listed documents on PandaDoc",
-      },
-      documents_search: {
-        running: "Searching documents on PandaDoc",
-        done: "Searched documents on PandaDoc",
-      },
-      documents_status_get: {
-        running: "Checking a document status on PandaDoc",
-        done: "Checked a document status on PandaDoc",
-      },
-      documents_details_get: {
-        running: "Loading document details from PandaDoc",
-        done: "Loaded document details from PandaDoc",
-      },
-      documents_summary_get: {
-        running: "Loading a document summary from PandaDoc",
-        done: "Loaded a document summary from PandaDoc",
-      },
-      documents_content_get: {
-        running: "Loading document content from PandaDoc",
-        done: "Loaded document content from PandaDoc",
-      },
-      documents_metadata_batch_get: {
-        running: "Loading document metadata from PandaDoc",
-        done: "Loaded document metadata from PandaDoc",
-      },
-      contacts_list: {
-        running: "Looking up a contact by email on PandaDoc",
-        done: "Looked up a contact by email on PandaDoc",
-      },
-      contacts_search: {
-        running: "Searching contacts on PandaDoc",
-        done: "Searched contacts on PandaDoc",
-      },
-      templates_list: {
-        running: "Listing templates on PandaDoc",
-        done: "Listed templates on PandaDoc",
-      },
-      templates_details_get: {
-        running: "Loading template details from PandaDoc",
-        done: "Loaded template details from PandaDoc",
-      },
-      catalog_items_search: {
-        running: "Searching catalog items on PandaDoc",
-        done: "Searched catalog items on PandaDoc",
-      },
-      catalog_item_get: {
-        running: "Loading a catalog item from PandaDoc",
-        done: "Loaded a catalog item from PandaDoc",
-      },
-      documents_create: {
-        running: "Creating a document on PandaDoc",
-        done: "Created a document on PandaDoc",
-      },
-      documents_update: {
-        running: "Updating a document on PandaDoc",
-        done: "Updated a document on PandaDoc",
-      },
-      documents_status_change: {
-        running: "Changing a document status on PandaDoc",
-        done: "Changed a document status on PandaDoc",
-      },
-      documents_send: {
-        running: "Sending a document on PandaDoc",
-        done: "Sent a document on PandaDoc",
-      },
-      documents_fields_assign: {
-        running: "Assigning document fields on PandaDoc",
-        done: "Assigned document fields on PandaDoc",
-      },
-      documents_archive: {
-        running: "Archiving a document on PandaDoc",
-        done: "Archived a document on PandaDoc",
-      },
-      documents_reminder_send: {
-        running: "Sending a document reminder on PandaDoc",
-        done: "Sent a document reminder on PandaDoc",
-      },
-      recipients_edit: {
-        running: "Editing a recipient on PandaDoc",
-        done: "Edited a recipient on PandaDoc",
-      },
-      recipients_add_cc: {
-        running: "Adding a CC recipient on PandaDoc",
-        done: "Added a CC recipient on PandaDoc",
-      },
-      recipients_reassign: {
-        running: "Reassigning a recipient on PandaDoc",
-        done: "Reassigned a recipient on PandaDoc",
-      },
-      recipients_delete: {
-        running: "Removing a recipient on PandaDoc",
-        done: "Removed a recipient on PandaDoc",
-      },
-      templates_create: {
-        running: "Creating a template on PandaDoc",
-        done: "Created a template on PandaDoc",
-      },
-      templates_update: {
-        running: "Updating a template on PandaDoc",
-        done: "Updated a template on PandaDoc",
-      },
-      templates_duplicate: {
-        running: "Duplicating a template on PandaDoc",
-        done: "Duplicated a template on PandaDoc",
-      },
-      templates_delete: {
-        running: "Deleting a template on PandaDoc",
-        done: "Deleted a template on PandaDoc",
-      },
-      catalog_item_create: {
-        running: "Creating a catalog item on PandaDoc",
-        done: "Created a catalog item on PandaDoc",
-      },
-      catalog_item_update: {
-        running: "Updating a catalog item on PandaDoc",
-        done: "Updated a catalog item on PandaDoc",
-      },
-      catalog_item_delete: {
-        running: "Deleting a catalog item on PandaDoc",
-        done: "Deleted a catalog item on PandaDoc",
-      },
-      quotes_update: {
-        running: "Updating quotes on PandaDoc",
-        done: "Updated quotes on PandaDoc",
-      },
-    },
   },
   {
+    ...PANDADOC_SHARED_CONFIG,
     id: 10048,
     name: "PandaDoc (Europe)",
     description:
       "PandaDoc tools for creating, editing, sending and tracking documents, templates, recipients, contacts and product catalog items (Region: EU).",
     url: "https://mcp.pandadoc.eu/v1/mcp",
-    icon: "PandaDocLogo",
-    documentationUrl:
-      "https://developers.pandadoc.com/docs/getting-started-with-mcp",
     connectionInstructions:
       "PandaDoc uses OAuth with dynamic client registration. Sign in with your PandaDoc account. Use this server if your account is on app.pandadoc.eu; authentication fails if the server region does not match your account region.",
-    authMethod: "oauth-dynamic",
-    toolStakes: {
-      documents_audit_trail_get: "never_ask",
-      documents_list: "never_ask",
-      documents_search: "never_ask",
-      documents_status_get: "never_ask",
-      documents_details_get: "never_ask",
-      documents_summary_get: "never_ask",
-      documents_content_get: "never_ask",
-      documents_metadata_batch_get: "never_ask",
-      contacts_list: "never_ask",
-      contacts_search: "never_ask",
-      templates_list: "never_ask",
-      templates_details_get: "never_ask",
-      catalog_items_search: "never_ask",
-      catalog_item_get: "never_ask",
-      documents_create: "high",
-      documents_update: "high",
-      documents_status_change: "high",
-      documents_send: "high",
-      documents_fields_assign: "high",
-      documents_archive: "high",
-      documents_reminder_send: "high",
-      recipients_edit: "high",
-      recipients_add_cc: "high",
-      recipients_reassign: "high",
-      recipients_delete: "high",
-      templates_create: "high",
-      templates_update: "high",
-      templates_duplicate: "high",
-      templates_delete: "high",
-      catalog_item_create: "high",
-      catalog_item_update: "high",
-      catalog_item_delete: "high",
-      quotes_update: "high",
-    },
-    toolDisplayLabels: {
-      documents_audit_trail_get: {
-        running: "Loading a document audit trail from PandaDoc",
-        done: "Loaded a document audit trail from PandaDoc",
-      },
-      documents_list: {
-        running: "Listing documents on PandaDoc",
-        done: "Listed documents on PandaDoc",
-      },
-      documents_search: {
-        running: "Searching documents on PandaDoc",
-        done: "Searched documents on PandaDoc",
-      },
-      documents_status_get: {
-        running: "Checking a document status on PandaDoc",
-        done: "Checked a document status on PandaDoc",
-      },
-      documents_details_get: {
-        running: "Loading document details from PandaDoc",
-        done: "Loaded document details from PandaDoc",
-      },
-      documents_summary_get: {
-        running: "Loading a document summary from PandaDoc",
-        done: "Loaded a document summary from PandaDoc",
-      },
-      documents_content_get: {
-        running: "Loading document content from PandaDoc",
-        done: "Loaded document content from PandaDoc",
-      },
-      documents_metadata_batch_get: {
-        running: "Loading document metadata from PandaDoc",
-        done: "Loaded document metadata from PandaDoc",
-      },
-      contacts_list: {
-        running: "Looking up a contact by email on PandaDoc",
-        done: "Looked up a contact by email on PandaDoc",
-      },
-      contacts_search: {
-        running: "Searching contacts on PandaDoc",
-        done: "Searched contacts on PandaDoc",
-      },
-      templates_list: {
-        running: "Listing templates on PandaDoc",
-        done: "Listed templates on PandaDoc",
-      },
-      templates_details_get: {
-        running: "Loading template details from PandaDoc",
-        done: "Loaded template details from PandaDoc",
-      },
-      catalog_items_search: {
-        running: "Searching catalog items on PandaDoc",
-        done: "Searched catalog items on PandaDoc",
-      },
-      catalog_item_get: {
-        running: "Loading a catalog item from PandaDoc",
-        done: "Loaded a catalog item from PandaDoc",
-      },
-      documents_create: {
-        running: "Creating a document on PandaDoc",
-        done: "Created a document on PandaDoc",
-      },
-      documents_update: {
-        running: "Updating a document on PandaDoc",
-        done: "Updated a document on PandaDoc",
-      },
-      documents_status_change: {
-        running: "Changing a document status on PandaDoc",
-        done: "Changed a document status on PandaDoc",
-      },
-      documents_send: {
-        running: "Sending a document on PandaDoc",
-        done: "Sent a document on PandaDoc",
-      },
-      documents_fields_assign: {
-        running: "Assigning document fields on PandaDoc",
-        done: "Assigned document fields on PandaDoc",
-      },
-      documents_archive: {
-        running: "Archiving a document on PandaDoc",
-        done: "Archived a document on PandaDoc",
-      },
-      documents_reminder_send: {
-        running: "Sending a document reminder on PandaDoc",
-        done: "Sent a document reminder on PandaDoc",
-      },
-      recipients_edit: {
-        running: "Editing a recipient on PandaDoc",
-        done: "Edited a recipient on PandaDoc",
-      },
-      recipients_add_cc: {
-        running: "Adding a CC recipient on PandaDoc",
-        done: "Added a CC recipient on PandaDoc",
-      },
-      recipients_reassign: {
-        running: "Reassigning a recipient on PandaDoc",
-        done: "Reassigned a recipient on PandaDoc",
-      },
-      recipients_delete: {
-        running: "Removing a recipient on PandaDoc",
-        done: "Removed a recipient on PandaDoc",
-      },
-      templates_create: {
-        running: "Creating a template on PandaDoc",
-        done: "Created a template on PandaDoc",
-      },
-      templates_update: {
-        running: "Updating a template on PandaDoc",
-        done: "Updated a template on PandaDoc",
-      },
-      templates_duplicate: {
-        running: "Duplicating a template on PandaDoc",
-        done: "Duplicated a template on PandaDoc",
-      },
-      templates_delete: {
-        running: "Deleting a template on PandaDoc",
-        done: "Deleted a template on PandaDoc",
-      },
-      catalog_item_create: {
-        running: "Creating a catalog item on PandaDoc",
-        done: "Created a catalog item on PandaDoc",
-      },
-      catalog_item_update: {
-        running: "Updating a catalog item on PandaDoc",
-        done: "Updated a catalog item on PandaDoc",
-      },
-      catalog_item_delete: {
-        running: "Deleting a catalog item on PandaDoc",
-        done: "Deleted a catalog item on PandaDoc",
-      },
-      quotes_update: {
-        running: "Updating quotes on PandaDoc",
-        done: "Updated quotes on PandaDoc",
-      },
-    },
   },
   {
     id: 10049,
@@ -6313,6 +5705,1318 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   },
   {
     id: 10050,
+    name: "n8n",
+    description:
+      "n8n tools to search, run and build workflows, and to manage data tables and AI agents on your n8n instance.",
+    url: "",
+    icon: "N8NLogo",
+    documentationUrl: "https://docs.n8n.io/connect/connect-to-n8n-mcp-server",
+    connectionInstructions:
+      "Enter your n8n instance's MCP server URL, found in n8n under Settings > Instance-level MCP (e.g. https://your-instance.app.n8n.cloud/mcp-server/http, or https://your-domain/mcp-server/http when self-hosted). The instance must be reachable over HTTPS. n8n uses OAuth with dynamic client registration. Sign in with your n8n account to connect. An instance owner or admin must first enable instance-level MCP, and each workflow or agent must be marked as available in MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_workflows: "never_ask",
+      get_workflow_details: "never_ask",
+      get_workflow_execution: "never_ask",
+      search_workflow_executions: "never_ask",
+      get_workflow_history: "never_ask",
+      get_workflow_version: "never_ask",
+      get_workflow_versions_diff: "never_ask",
+      prepare_workflow_pin_data: "never_ask",
+      list_credentials: "never_ask",
+      list_n8n_gateway_services: "never_ask",
+      list_workflow_tags: "never_ask",
+      search_data_tables: "never_ask",
+      get_data_table_rows: "never_ask",
+      search_nodes: "never_ask",
+      get_node_types: "never_ask",
+      get_workflow_best_practices: "never_ask",
+      explore_node_resources: "never_ask",
+      validate_workflow: "never_ask",
+      validate_node_config: "never_ask",
+      get_workflow_sdk_reference: "never_ask",
+      search_projects: "never_ask",
+      search_folders: "never_ask",
+      search_agents: "never_ask",
+      get_agent: "never_ask",
+      list_agent_versions: "never_ask",
+      get_agent_builder_reference: "never_ask",
+      discover_agent_assets: "never_ask",
+      validate_agent: "never_ask",
+      execute_workflow: "high",
+      test_workflow: "high",
+      publish_workflow: "high",
+      unpublish_workflow: "high",
+      create_workflow_from_code: "high",
+      update_workflow: "high",
+      archive_workflow: "high",
+      restore_workflow_version: "high",
+      create_data_table: "high",
+      rename_data_table: "high",
+      add_data_table_column: "high",
+      delete_data_table_column: "high",
+      rename_data_table_column: "high",
+      add_data_table_rows: "high",
+      create_folder: "high",
+      update_folder: "high",
+      move_workflows_to_folder: "high",
+      install_community_node: "high",
+      create_agent: "high",
+      mutate_agent: "high",
+      call_agent: "high",
+      publish_agent: "high",
+      unpublish_agent: "high",
+      revert_agent: "high",
+      delete_agent: "high",
+      verify_agent_mcp_server: "high",
+      update_agent_integration: "high",
+    },
+    toolDisplayLabels: {
+      search_workflows: {
+        running: "Searching workflows on n8n",
+        done: "Searched workflows on n8n",
+      },
+      get_workflow_details: {
+        running: "Getting workflow details from n8n",
+        done: "Got workflow details from n8n",
+      },
+      get_workflow_execution: {
+        running: "Getting an execution from n8n",
+        done: "Got an execution from n8n",
+      },
+      search_workflow_executions: {
+        running: "Searching executions on n8n",
+        done: "Searched executions on n8n",
+      },
+      get_workflow_history: {
+        running: "Loading workflow history from n8n",
+        done: "Loaded workflow history from n8n",
+      },
+      get_workflow_version: {
+        running: "Getting a workflow version from n8n",
+        done: "Got a workflow version from n8n",
+      },
+      get_workflow_versions_diff: {
+        running: "Comparing workflow versions on n8n",
+        done: "Compared workflow versions on n8n",
+      },
+      prepare_workflow_pin_data: {
+        running: "Preparing test data on n8n",
+        done: "Prepared test data on n8n",
+      },
+      list_credentials: {
+        running: "Listing credentials on n8n",
+        done: "Listed credentials on n8n",
+      },
+      list_n8n_gateway_services: {
+        running: "Listing gateway services on n8n",
+        done: "Listed gateway services on n8n",
+      },
+      list_workflow_tags: {
+        running: "Listing workflow tags on n8n",
+        done: "Listed workflow tags on n8n",
+      },
+      search_data_tables: {
+        running: "Searching data tables on n8n",
+        done: "Searched data tables on n8n",
+      },
+      get_data_table_rows: {
+        running: "Reading data table rows from n8n",
+        done: "Read data table rows from n8n",
+      },
+      search_nodes: {
+        running: "Searching nodes on n8n",
+        done: "Searched nodes on n8n",
+      },
+      get_node_types: {
+        running: "Getting node types from n8n",
+        done: "Got node types from n8n",
+      },
+      get_workflow_best_practices: {
+        running: "Checking workflow best practices on n8n",
+        done: "Checked workflow best practices on n8n",
+      },
+      explore_node_resources: {
+        running: "Exploring node resources on n8n",
+        done: "Explored node resources on n8n",
+      },
+      validate_workflow: {
+        running: "Validating a workflow on n8n",
+        done: "Validated a workflow on n8n",
+      },
+      validate_node_config: {
+        running: "Validating a node config on n8n",
+        done: "Validated a node config on n8n",
+      },
+      get_workflow_sdk_reference: {
+        running: "Reading the workflow SDK reference on n8n",
+        done: "Read the workflow SDK reference on n8n",
+      },
+      search_projects: {
+        running: "Searching projects on n8n",
+        done: "Searched projects on n8n",
+      },
+      search_folders: {
+        running: "Searching folders on n8n",
+        done: "Searched folders on n8n",
+      },
+      search_agents: {
+        running: "Searching agents on n8n",
+        done: "Searched agents on n8n",
+      },
+      get_agent: {
+        running: "Getting an agent from n8n",
+        done: "Got an agent from n8n",
+      },
+      list_agent_versions: {
+        running: "Listing agent versions on n8n",
+        done: "Listed agent versions on n8n",
+      },
+      get_agent_builder_reference: {
+        running: "Reading the agent builder reference on n8n",
+        done: "Read the agent builder reference on n8n",
+      },
+      discover_agent_assets: {
+        running: "Discovering agent assets on n8n",
+        done: "Discovered agent assets on n8n",
+      },
+      validate_agent: {
+        running: "Validating an agent on n8n",
+        done: "Validated an agent on n8n",
+      },
+      execute_workflow: {
+        running: "Running a workflow on n8n",
+        done: "Ran a workflow on n8n",
+      },
+      test_workflow: {
+        running: "Testing a workflow on n8n",
+        done: "Tested a workflow on n8n",
+      },
+      publish_workflow: {
+        running: "Publishing a workflow on n8n",
+        done: "Published a workflow on n8n",
+      },
+      unpublish_workflow: {
+        running: "Unpublishing a workflow on n8n",
+        done: "Unpublished a workflow on n8n",
+      },
+      create_workflow_from_code: {
+        running: "Creating a workflow on n8n",
+        done: "Created a workflow on n8n",
+      },
+      update_workflow: {
+        running: "Updating a workflow on n8n",
+        done: "Updated a workflow on n8n",
+      },
+      archive_workflow: {
+        running: "Archiving a workflow on n8n",
+        done: "Archived a workflow on n8n",
+      },
+      restore_workflow_version: {
+        running: "Restoring a workflow version on n8n",
+        done: "Restored a workflow version on n8n",
+      },
+      create_data_table: {
+        running: "Creating a data table on n8n",
+        done: "Created a data table on n8n",
+      },
+      rename_data_table: {
+        running: "Renaming a data table on n8n",
+        done: "Renamed a data table on n8n",
+      },
+      add_data_table_column: {
+        running: "Adding a column on n8n",
+        done: "Added a column on n8n",
+      },
+      delete_data_table_column: {
+        running: "Deleting a column on n8n",
+        done: "Deleted a column on n8n",
+      },
+      rename_data_table_column: {
+        running: "Renaming a column on n8n",
+        done: "Renamed a column on n8n",
+      },
+      add_data_table_rows: {
+        running: "Adding rows on n8n",
+        done: "Added rows on n8n",
+      },
+      create_folder: {
+        running: "Creating a folder on n8n",
+        done: "Created a folder on n8n",
+      },
+      update_folder: {
+        running: "Updating a folder on n8n",
+        done: "Updated a folder on n8n",
+      },
+      move_workflows_to_folder: {
+        running: "Moving workflows on n8n",
+        done: "Moved workflows on n8n",
+      },
+      install_community_node: {
+        running: "Installing a community node on n8n",
+        done: "Installed a community node on n8n",
+      },
+      create_agent: {
+        running: "Creating an agent on n8n",
+        done: "Created an agent on n8n",
+      },
+      mutate_agent: {
+        running: "Updating an agent on n8n",
+        done: "Updated an agent on n8n",
+      },
+      call_agent: {
+        running: "Calling an agent on n8n",
+        done: "Called an agent on n8n",
+      },
+      publish_agent: {
+        running: "Publishing an agent on n8n",
+        done: "Published an agent on n8n",
+      },
+      unpublish_agent: {
+        running: "Unpublishing an agent on n8n",
+        done: "Unpublished an agent on n8n",
+      },
+      revert_agent: {
+        running: "Reverting an agent on n8n",
+        done: "Reverted an agent on n8n",
+      },
+      delete_agent: {
+        running: "Deleting an agent on n8n",
+        done: "Deleted an agent on n8n",
+      },
+      verify_agent_mcp_server: {
+        running: "Testing an MCP server on n8n",
+        done: "Tested an MCP server on n8n",
+      },
+      update_agent_integration: {
+        running: "Updating an agent integration on n8n",
+        done: "Updated an agent integration on n8n",
+      },
+    },
+  },
+  {
+    id: 10052,
+    name: "Ahrefs",
+    description:
+      "Ahrefs tools to analyze backlinks, organic keywords, competitors, rankings, site audits, Search Console data and AI brand visibility.",
+    url: "https://api.ahrefs.com/mcp/mcp",
+    icon: "AhrefsLogo",
+    documentationUrl: "https://docs.ahrefs.com/en/mcp/docs/introduction",
+    connectionInstructions:
+      "Ahrefs uses OAuth with dynamic client registration. Sign in with your Ahrefs account to connect. Requires a paid Ahrefs plan (Lite or higher). Tool calls consume API units from your Ahrefs monthly allowance.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      doc: "never_ask",
+      "subscription-info-limits-and-usage": "never_ask",
+      "management-projects": "never_ask",
+      "management-project-keywords": "never_ask",
+      "management-project-competitors": "never_ask",
+      "management-keyword-list-keywords": "never_ask",
+      "management-locations": "never_ask",
+      "management-brand-radar-reports": "never_ask",
+      "management-brand-radar-prompts": "never_ask",
+      "public-domain-rating-free": "never_ask",
+      "public-domain-rating-top-domains": "never_ask",
+      "public-crawler-ips": "never_ask",
+      "public-crawler-ip-ranges": "never_ask",
+      "batch-analysis": "never_ask",
+      "site-explorer-metrics": "never_ask",
+      "site-explorer-metrics-history": "never_ask",
+      "site-explorer-metrics-by-country": "never_ask",
+      "site-explorer-domain-rating": "never_ask",
+      "site-explorer-domain-rating-history": "never_ask",
+      "site-explorer-url-rating-history": "never_ask",
+      "site-explorer-backlinks-stats": "never_ask",
+      "site-explorer-all-backlinks": "never_ask",
+      "site-explorer-broken-backlinks": "never_ask",
+      "site-explorer-referring-domains": "never_ask",
+      "site-explorer-refdomains-history": "never_ask",
+      "site-explorer-anchors": "never_ask",
+      "site-explorer-linked-anchors-external": "never_ask",
+      "site-explorer-linked-anchors-internal": "never_ask",
+      "site-explorer-linked-domains": "never_ask",
+      "site-explorer-outlinks-stats": "never_ask",
+      "site-explorer-organic-keywords": "never_ask",
+      "site-explorer-organic-competitors": "never_ask",
+      "site-explorer-keywords-history": "never_ask",
+      "site-explorer-total-search-volume-history": "never_ask",
+      "site-explorer-top-pages": "never_ask",
+      "site-explorer-paid-pages": "never_ask",
+      "site-explorer-pages-by-backlinks": "never_ask",
+      "site-explorer-pages-by-internal-links": "never_ask",
+      "site-explorer-pages-by-traffic": "never_ask",
+      "site-explorer-pages-history": "never_ask",
+      "site-explorer-crawled-pages": "never_ask",
+      "site-explorer-ai-responses-count": "never_ask",
+      "keywords-explorer-overview": "never_ask",
+      "keywords-explorer-volume-history": "never_ask",
+      "keywords-explorer-volume-by-country": "never_ask",
+      "keywords-explorer-matching-terms": "never_ask",
+      "keywords-explorer-related-terms": "never_ask",
+      "keywords-explorer-search-suggestions": "never_ask",
+      "serp-overview": "never_ask",
+      "content-helper-topics": "never_ask",
+      "rank-tracker-overview": "never_ask",
+      "rank-tracker-serp-overview": "never_ask",
+      "rank-tracker-competitors-overview": "never_ask",
+      "rank-tracker-competitors-domains": "never_ask",
+      "rank-tracker-competitors-pages": "never_ask",
+      "rank-tracker-competitors-stats": "never_ask",
+      "site-audit-projects": "never_ask",
+      "site-audit-issues": "never_ask",
+      "site-audit-page-explorer": "never_ask",
+      "site-audit-page-content": "never_ask",
+      "gsc-keywords": "never_ask",
+      "gsc-keyword-history": "never_ask",
+      "gsc-pages": "never_ask",
+      "gsc-page-history": "never_ask",
+      "gsc-pages-history": "never_ask",
+      "gsc-performance-history": "never_ask",
+      "gsc-performance-by-device": "never_ask",
+      "gsc-performance-by-position": "never_ask",
+      "gsc-positions-history": "never_ask",
+      "gsc-ctr-by-position": "never_ask",
+      "gsc-metrics-by-country": "never_ask",
+      "gsc-anonymous-queries": "never_ask",
+      "brand-radar-ai-responses": "never_ask",
+      "brand-radar-ai-responses-entities": "never_ask",
+      "brand-radar-cited-domains": "never_ask",
+      "brand-radar-cited-domains-entities": "never_ask",
+      "brand-radar-cited-pages": "never_ask",
+      "brand-radar-cited-pages-entities": "never_ask",
+      "brand-radar-citations-overview-entities": "never_ask",
+      "brand-radar-citations-history-entities": "never_ask",
+      "brand-radar-impressions-overview": "never_ask",
+      "brand-radar-impressions-overview-entities": "never_ask",
+      "brand-radar-impressions-history": "never_ask",
+      "brand-radar-impressions-history-entities": "never_ask",
+      "brand-radar-mentions-overview": "never_ask",
+      "brand-radar-mentions-overview-entities": "never_ask",
+      "brand-radar-mentions-history": "never_ask",
+      "brand-radar-mentions-history-entities": "never_ask",
+      "brand-radar-sov-overview": "never_ask",
+      "brand-radar-sov-overview-entities": "never_ask",
+      "brand-radar-sov-history": "never_ask",
+      "brand-radar-sov-history-entities": "never_ask",
+      "web-analytics-stats": "never_ask",
+      "web-analytics-chart": "never_ask",
+      "web-analytics-top-pages": "never_ask",
+      "web-analytics-top-pages-chart": "never_ask",
+      "web-analytics-entry-pages": "never_ask",
+      "web-analytics-entry-pages-chart": "never_ask",
+      "web-analytics-exit-pages": "never_ask",
+      "web-analytics-exit-pages-chart": "never_ask",
+      "web-analytics-sources": "never_ask",
+      "web-analytics-sources-chart": "never_ask",
+      "web-analytics-source-channels": "never_ask",
+      "web-analytics-source-channels-chart": "never_ask",
+      "web-analytics-referrers": "never_ask",
+      "web-analytics-referrers-chart": "never_ask",
+      "web-analytics-utm-params": "never_ask",
+      "web-analytics-utm-params-chart": "never_ask",
+      "web-analytics-countries": "never_ask",
+      "web-analytics-countries-chart": "never_ask",
+      "web-analytics-cities": "never_ask",
+      "web-analytics-cities-chart": "never_ask",
+      "web-analytics-continents": "never_ask",
+      "web-analytics-continents-chart": "never_ask",
+      "web-analytics-languages": "never_ask",
+      "web-analytics-languages-chart": "never_ask",
+      "web-analytics-devices": "never_ask",
+      "web-analytics-devices-chart": "never_ask",
+      "web-analytics-browsers": "never_ask",
+      "web-analytics-browsers-chart": "never_ask",
+      "web-analytics-browser-versions": "never_ask",
+      "web-analytics-browser-versions-chart": "never_ask",
+      "web-analytics-operating-systems": "never_ask",
+      "web-analytics-operating-systems-chart": "never_ask",
+      "web-analytics-operating-systems-versions": "never_ask",
+      "web-analytics-operating-systems-versions-chart": "never_ask",
+      "social-media-channels": "never_ask",
+      "social-media-channel-metrics": "never_ask",
+      "social-media-posts": "never_ask",
+      "social-media-post-metrics": "never_ask",
+      "social-media-activity-history": "never_ask",
+      "social-media-authors": "never_ask",
+      "render-scorecard": "never_ask",
+      "render-time-series-chart": "never_ask",
+      "render-data-table": "never_ask",
+    },
+    toolDisplayLabels: {
+      doc: {
+        running: "Checking Ahrefs docs",
+        done: "Checked Ahrefs docs",
+      },
+      "subscription-info-limits-and-usage": {
+        running: "Fetching subscription usage from Ahrefs",
+        done: "Fetched subscription usage from Ahrefs",
+      },
+      "management-projects": {
+        running: "Fetching projects from Ahrefs",
+        done: "Fetched projects from Ahrefs",
+      },
+      "management-project-keywords": {
+        running: "Fetching project keywords from Ahrefs",
+        done: "Fetched project keywords from Ahrefs",
+      },
+      "management-project-competitors": {
+        running: "Fetching project competitors from Ahrefs",
+        done: "Fetched project competitors from Ahrefs",
+      },
+      "management-keyword-list-keywords": {
+        running: "Fetching keyword list keywords from Ahrefs",
+        done: "Fetched keyword list keywords from Ahrefs",
+      },
+      "management-locations": {
+        running: "Fetching locations from Ahrefs",
+        done: "Fetched locations from Ahrefs",
+      },
+      "management-brand-radar-reports": {
+        running: "Fetching Brand Radar reports from Ahrefs",
+        done: "Fetched Brand Radar reports from Ahrefs",
+      },
+      "management-brand-radar-prompts": {
+        running: "Fetching Brand Radar prompts from Ahrefs",
+        done: "Fetched Brand Radar prompts from Ahrefs",
+      },
+      "public-domain-rating-free": {
+        running: "Fetching domain rating from Ahrefs",
+        done: "Fetched domain rating from Ahrefs",
+      },
+      "public-domain-rating-top-domains": {
+        running: "Fetching top domains by rating from Ahrefs",
+        done: "Fetched top domains by rating from Ahrefs",
+      },
+      "public-crawler-ips": {
+        running: "Fetching crawler IPs from Ahrefs",
+        done: "Fetched crawler IPs from Ahrefs",
+      },
+      "public-crawler-ip-ranges": {
+        running: "Fetching crawler IP ranges from Ahrefs",
+        done: "Fetched crawler IP ranges from Ahrefs",
+      },
+      "batch-analysis": {
+        running: "Running a batch analysis on Ahrefs",
+        done: "Ran a batch analysis on Ahrefs",
+      },
+      "site-explorer-metrics": {
+        running: "Fetching site metrics from Ahrefs",
+        done: "Fetched site metrics from Ahrefs",
+      },
+      "site-explorer-metrics-history": {
+        running: "Fetching site metrics history from Ahrefs",
+        done: "Fetched site metrics history from Ahrefs",
+      },
+      "site-explorer-metrics-by-country": {
+        running: "Fetching site metrics by country from Ahrefs",
+        done: "Fetched site metrics by country from Ahrefs",
+      },
+      "site-explorer-domain-rating": {
+        running: "Fetching domain rating from Ahrefs",
+        done: "Fetched domain rating from Ahrefs",
+      },
+      "site-explorer-domain-rating-history": {
+        running: "Fetching domain rating history from Ahrefs",
+        done: "Fetched domain rating history from Ahrefs",
+      },
+      "site-explorer-url-rating-history": {
+        running: "Fetching URL rating history from Ahrefs",
+        done: "Fetched URL rating history from Ahrefs",
+      },
+      "site-explorer-backlinks-stats": {
+        running: "Fetching backlinks stats from Ahrefs",
+        done: "Fetched backlinks stats from Ahrefs",
+      },
+      "site-explorer-all-backlinks": {
+        running: "Fetching backlinks from Ahrefs",
+        done: "Fetched backlinks from Ahrefs",
+      },
+      "site-explorer-broken-backlinks": {
+        running: "Fetching broken backlinks from Ahrefs",
+        done: "Fetched broken backlinks from Ahrefs",
+      },
+      "site-explorer-referring-domains": {
+        running: "Fetching referring domains from Ahrefs",
+        done: "Fetched referring domains from Ahrefs",
+      },
+      "site-explorer-refdomains-history": {
+        running: "Fetching referring domains history from Ahrefs",
+        done: "Fetched referring domains history from Ahrefs",
+      },
+      "site-explorer-anchors": {
+        running: "Fetching anchors from Ahrefs",
+        done: "Fetched anchors from Ahrefs",
+      },
+      "site-explorer-linked-anchors-external": {
+        running: "Fetching external linked anchors from Ahrefs",
+        done: "Fetched external linked anchors from Ahrefs",
+      },
+      "site-explorer-linked-anchors-internal": {
+        running: "Fetching internal linked anchors from Ahrefs",
+        done: "Fetched internal linked anchors from Ahrefs",
+      },
+      "site-explorer-linked-domains": {
+        running: "Fetching linked domains from Ahrefs",
+        done: "Fetched linked domains from Ahrefs",
+      },
+      "site-explorer-outlinks-stats": {
+        running: "Fetching outlinks stats from Ahrefs",
+        done: "Fetched outlinks stats from Ahrefs",
+      },
+      "site-explorer-organic-keywords": {
+        running: "Fetching organic keywords from Ahrefs",
+        done: "Fetched organic keywords from Ahrefs",
+      },
+      "site-explorer-organic-competitors": {
+        running: "Fetching organic competitors from Ahrefs",
+        done: "Fetched organic competitors from Ahrefs",
+      },
+      "site-explorer-keywords-history": {
+        running: "Fetching keywords history from Ahrefs",
+        done: "Fetched keywords history from Ahrefs",
+      },
+      "site-explorer-total-search-volume-history": {
+        running: "Fetching search volume history from Ahrefs",
+        done: "Fetched search volume history from Ahrefs",
+      },
+      "site-explorer-top-pages": {
+        running: "Fetching top pages from Ahrefs",
+        done: "Fetched top pages from Ahrefs",
+      },
+      "site-explorer-paid-pages": {
+        running: "Fetching paid pages from Ahrefs",
+        done: "Fetched paid pages from Ahrefs",
+      },
+      "site-explorer-pages-by-backlinks": {
+        running: "Fetching pages by backlinks from Ahrefs",
+        done: "Fetched pages by backlinks from Ahrefs",
+      },
+      "site-explorer-pages-by-internal-links": {
+        running: "Fetching pages by internal links from Ahrefs",
+        done: "Fetched pages by internal links from Ahrefs",
+      },
+      "site-explorer-pages-by-traffic": {
+        running: "Fetching pages by traffic from Ahrefs",
+        done: "Fetched pages by traffic from Ahrefs",
+      },
+      "site-explorer-pages-history": {
+        running: "Fetching pages history from Ahrefs",
+        done: "Fetched pages history from Ahrefs",
+      },
+      "site-explorer-crawled-pages": {
+        running: "Fetching crawled pages from Ahrefs",
+        done: "Fetched crawled pages from Ahrefs",
+      },
+      "site-explorer-ai-responses-count": {
+        running: "Fetching AI citations count from Ahrefs",
+        done: "Fetched AI citations count from Ahrefs",
+      },
+      "keywords-explorer-overview": {
+        running: "Fetching keywords overview from Ahrefs",
+        done: "Fetched keywords overview from Ahrefs",
+      },
+      "keywords-explorer-volume-history": {
+        running: "Fetching keyword volume history from Ahrefs",
+        done: "Fetched keyword volume history from Ahrefs",
+      },
+      "keywords-explorer-volume-by-country": {
+        running: "Fetching keyword volume by country from Ahrefs",
+        done: "Fetched keyword volume by country from Ahrefs",
+      },
+      "keywords-explorer-matching-terms": {
+        running: "Fetching matching terms from Ahrefs",
+        done: "Fetched matching terms from Ahrefs",
+      },
+      "keywords-explorer-related-terms": {
+        running: "Fetching related terms from Ahrefs",
+        done: "Fetched related terms from Ahrefs",
+      },
+      "keywords-explorer-search-suggestions": {
+        running: "Fetching search suggestions from Ahrefs",
+        done: "Fetched search suggestions from Ahrefs",
+      },
+      "serp-overview": {
+        running: "Fetching SERP overview from Ahrefs",
+        done: "Fetched SERP overview from Ahrefs",
+      },
+      "content-helper-topics": {
+        running: "Analyzing content topics on Ahrefs",
+        done: "Analyzed content topics on Ahrefs",
+      },
+      "rank-tracker-overview": {
+        running: "Fetching Rank Tracker overview from Ahrefs",
+        done: "Fetched Rank Tracker overview from Ahrefs",
+      },
+      "rank-tracker-serp-overview": {
+        running: "Fetching Rank Tracker SERP overview from Ahrefs",
+        done: "Fetched Rank Tracker SERP overview from Ahrefs",
+      },
+      "rank-tracker-competitors-overview": {
+        running: "Fetching competitors overview from Ahrefs",
+        done: "Fetched competitors overview from Ahrefs",
+      },
+      "rank-tracker-competitors-domains": {
+        running: "Fetching competitor domains from Ahrefs",
+        done: "Fetched competitor domains from Ahrefs",
+      },
+      "rank-tracker-competitors-pages": {
+        running: "Fetching competitor pages from Ahrefs",
+        done: "Fetched competitor pages from Ahrefs",
+      },
+      "rank-tracker-competitors-stats": {
+        running: "Fetching competitor stats from Ahrefs",
+        done: "Fetched competitor stats from Ahrefs",
+      },
+      "site-audit-projects": {
+        running: "Fetching Site Audit projects from Ahrefs",
+        done: "Fetched Site Audit projects from Ahrefs",
+      },
+      "site-audit-issues": {
+        running: "Fetching Site Audit issues from Ahrefs",
+        done: "Fetched Site Audit issues from Ahrefs",
+      },
+      "site-audit-page-explorer": {
+        running: "Fetching Site Audit pages from Ahrefs",
+        done: "Fetched Site Audit pages from Ahrefs",
+      },
+      "site-audit-page-content": {
+        running: "Fetching Site Audit page content from Ahrefs",
+        done: "Fetched Site Audit page content from Ahrefs",
+      },
+      "gsc-keywords": {
+        running: "Fetching Search Console keywords from Ahrefs",
+        done: "Fetched Search Console keywords from Ahrefs",
+      },
+      "gsc-keyword-history": {
+        running: "Fetching Search Console keyword history from Ahrefs",
+        done: "Fetched Search Console keyword history from Ahrefs",
+      },
+      "gsc-pages": {
+        running: "Fetching Search Console pages from Ahrefs",
+        done: "Fetched Search Console pages from Ahrefs",
+      },
+      "gsc-page-history": {
+        running: "Fetching Search Console page history from Ahrefs",
+        done: "Fetched Search Console page history from Ahrefs",
+      },
+      "gsc-pages-history": {
+        running: "Fetching Search Console pages history from Ahrefs",
+        done: "Fetched Search Console pages history from Ahrefs",
+      },
+      "gsc-performance-history": {
+        running: "Fetching Search Console performance history from Ahrefs",
+        done: "Fetched Search Console performance history from Ahrefs",
+      },
+      "gsc-performance-by-device": {
+        running: "Fetching Search Console performance by device from Ahrefs",
+        done: "Fetched Search Console performance by device from Ahrefs",
+      },
+      "gsc-performance-by-position": {
+        running: "Fetching Search Console performance by position from Ahrefs",
+        done: "Fetched Search Console performance by position from Ahrefs",
+      },
+      "gsc-positions-history": {
+        running: "Fetching Search Console positions history from Ahrefs",
+        done: "Fetched Search Console positions history from Ahrefs",
+      },
+      "gsc-ctr-by-position": {
+        running: "Fetching Search Console CTR by position from Ahrefs",
+        done: "Fetched Search Console CTR by position from Ahrefs",
+      },
+      "gsc-metrics-by-country": {
+        running: "Fetching Search Console metrics by country from Ahrefs",
+        done: "Fetched Search Console metrics by country from Ahrefs",
+      },
+      "gsc-anonymous-queries": {
+        running: "Fetching Search Console anonymous queries from Ahrefs",
+        done: "Fetched Search Console anonymous queries from Ahrefs",
+      },
+      "brand-radar-ai-responses": {
+        running: "Fetching AI responses from Ahrefs",
+        done: "Fetched AI responses from Ahrefs",
+      },
+      "brand-radar-ai-responses-entities": {
+        running: "Fetching AI responses from Ahrefs",
+        done: "Fetched AI responses from Ahrefs",
+      },
+      "brand-radar-cited-domains": {
+        running: "Fetching cited domains from Ahrefs",
+        done: "Fetched cited domains from Ahrefs",
+      },
+      "brand-radar-cited-domains-entities": {
+        running: "Fetching cited domains from Ahrefs",
+        done: "Fetched cited domains from Ahrefs",
+      },
+      "brand-radar-cited-pages": {
+        running: "Fetching cited pages from Ahrefs",
+        done: "Fetched cited pages from Ahrefs",
+      },
+      "brand-radar-cited-pages-entities": {
+        running: "Fetching cited pages from Ahrefs",
+        done: "Fetched cited pages from Ahrefs",
+      },
+      "brand-radar-citations-overview-entities": {
+        running: "Fetching citations overview from Ahrefs",
+        done: "Fetched citations overview from Ahrefs",
+      },
+      "brand-radar-citations-history-entities": {
+        running: "Fetching citations history from Ahrefs",
+        done: "Fetched citations history from Ahrefs",
+      },
+      "brand-radar-impressions-overview": {
+        running: "Fetching impressions overview from Ahrefs",
+        done: "Fetched impressions overview from Ahrefs",
+      },
+      "brand-radar-impressions-overview-entities": {
+        running: "Fetching impressions overview from Ahrefs",
+        done: "Fetched impressions overview from Ahrefs",
+      },
+      "brand-radar-impressions-history": {
+        running: "Fetching impressions history from Ahrefs",
+        done: "Fetched impressions history from Ahrefs",
+      },
+      "brand-radar-impressions-history-entities": {
+        running: "Fetching impressions history from Ahrefs",
+        done: "Fetched impressions history from Ahrefs",
+      },
+      "brand-radar-mentions-overview": {
+        running: "Fetching mentions overview from Ahrefs",
+        done: "Fetched mentions overview from Ahrefs",
+      },
+      "brand-radar-mentions-overview-entities": {
+        running: "Fetching mentions overview from Ahrefs",
+        done: "Fetched mentions overview from Ahrefs",
+      },
+      "brand-radar-mentions-history": {
+        running: "Fetching mentions history from Ahrefs",
+        done: "Fetched mentions history from Ahrefs",
+      },
+      "brand-radar-mentions-history-entities": {
+        running: "Fetching mentions history from Ahrefs",
+        done: "Fetched mentions history from Ahrefs",
+      },
+      "brand-radar-sov-overview": {
+        running: "Fetching share of voice from Ahrefs",
+        done: "Fetched share of voice from Ahrefs",
+      },
+      "brand-radar-sov-overview-entities": {
+        running: "Fetching share of voice from Ahrefs",
+        done: "Fetched share of voice from Ahrefs",
+      },
+      "brand-radar-sov-history": {
+        running: "Fetching share of voice history from Ahrefs",
+        done: "Fetched share of voice history from Ahrefs",
+      },
+      "brand-radar-sov-history-entities": {
+        running: "Fetching share of voice history from Ahrefs",
+        done: "Fetched share of voice history from Ahrefs",
+      },
+      "web-analytics-stats": {
+        running: "Fetching web analytics stats from Ahrefs",
+        done: "Fetched web analytics stats from Ahrefs",
+      },
+      "web-analytics-chart": {
+        running: "Fetching web analytics chart from Ahrefs",
+        done: "Fetched web analytics chart from Ahrefs",
+      },
+      "web-analytics-top-pages": {
+        running: "Fetching top visited pages from Ahrefs",
+        done: "Fetched top visited pages from Ahrefs",
+      },
+      "web-analytics-top-pages-chart": {
+        running: "Fetching top visited pages chart from Ahrefs",
+        done: "Fetched top visited pages chart from Ahrefs",
+      },
+      "web-analytics-entry-pages": {
+        running: "Fetching entry pages from Ahrefs",
+        done: "Fetched entry pages from Ahrefs",
+      },
+      "web-analytics-entry-pages-chart": {
+        running: "Fetching entry pages chart from Ahrefs",
+        done: "Fetched entry pages chart from Ahrefs",
+      },
+      "web-analytics-exit-pages": {
+        running: "Fetching exit pages from Ahrefs",
+        done: "Fetched exit pages from Ahrefs",
+      },
+      "web-analytics-exit-pages-chart": {
+        running: "Fetching exit pages chart from Ahrefs",
+        done: "Fetched exit pages chart from Ahrefs",
+      },
+      "web-analytics-sources": {
+        running: "Fetching traffic sources from Ahrefs",
+        done: "Fetched traffic sources from Ahrefs",
+      },
+      "web-analytics-sources-chart": {
+        running: "Fetching traffic sources chart from Ahrefs",
+        done: "Fetched traffic sources chart from Ahrefs",
+      },
+      "web-analytics-source-channels": {
+        running: "Fetching source channels from Ahrefs",
+        done: "Fetched source channels from Ahrefs",
+      },
+      "web-analytics-source-channels-chart": {
+        running: "Fetching source channels chart from Ahrefs",
+        done: "Fetched source channels chart from Ahrefs",
+      },
+      "web-analytics-referrers": {
+        running: "Fetching referrers from Ahrefs",
+        done: "Fetched referrers from Ahrefs",
+      },
+      "web-analytics-referrers-chart": {
+        running: "Fetching referrers chart from Ahrefs",
+        done: "Fetched referrers chart from Ahrefs",
+      },
+      "web-analytics-utm-params": {
+        running: "Fetching UTM params from Ahrefs",
+        done: "Fetched UTM params from Ahrefs",
+      },
+      "web-analytics-utm-params-chart": {
+        running: "Fetching UTM params chart from Ahrefs",
+        done: "Fetched UTM params chart from Ahrefs",
+      },
+      "web-analytics-countries": {
+        running: "Fetching visitor countries from Ahrefs",
+        done: "Fetched visitor countries from Ahrefs",
+      },
+      "web-analytics-countries-chart": {
+        running: "Fetching visitor countries chart from Ahrefs",
+        done: "Fetched visitor countries chart from Ahrefs",
+      },
+      "web-analytics-cities": {
+        running: "Fetching visitor cities from Ahrefs",
+        done: "Fetched visitor cities from Ahrefs",
+      },
+      "web-analytics-cities-chart": {
+        running: "Fetching visitor cities chart from Ahrefs",
+        done: "Fetched visitor cities chart from Ahrefs",
+      },
+      "web-analytics-continents": {
+        running: "Fetching visitor continents from Ahrefs",
+        done: "Fetched visitor continents from Ahrefs",
+      },
+      "web-analytics-continents-chart": {
+        running: "Fetching visitor continents chart from Ahrefs",
+        done: "Fetched visitor continents chart from Ahrefs",
+      },
+      "web-analytics-languages": {
+        running: "Fetching visitor languages from Ahrefs",
+        done: "Fetched visitor languages from Ahrefs",
+      },
+      "web-analytics-languages-chart": {
+        running: "Fetching visitor languages chart from Ahrefs",
+        done: "Fetched visitor languages chart from Ahrefs",
+      },
+      "web-analytics-devices": {
+        running: "Fetching visitor devices from Ahrefs",
+        done: "Fetched visitor devices from Ahrefs",
+      },
+      "web-analytics-devices-chart": {
+        running: "Fetching visitor devices chart from Ahrefs",
+        done: "Fetched visitor devices chart from Ahrefs",
+      },
+      "web-analytics-browsers": {
+        running: "Fetching visitor browsers from Ahrefs",
+        done: "Fetched visitor browsers from Ahrefs",
+      },
+      "web-analytics-browsers-chart": {
+        running: "Fetching visitor browsers chart from Ahrefs",
+        done: "Fetched visitor browsers chart from Ahrefs",
+      },
+      "web-analytics-browser-versions": {
+        running: "Fetching browser versions from Ahrefs",
+        done: "Fetched browser versions from Ahrefs",
+      },
+      "web-analytics-browser-versions-chart": {
+        running: "Fetching browser versions chart from Ahrefs",
+        done: "Fetched browser versions chart from Ahrefs",
+      },
+      "web-analytics-operating-systems": {
+        running: "Fetching operating systems from Ahrefs",
+        done: "Fetched operating systems from Ahrefs",
+      },
+      "web-analytics-operating-systems-chart": {
+        running: "Fetching operating systems chart from Ahrefs",
+        done: "Fetched operating systems chart from Ahrefs",
+      },
+      "web-analytics-operating-systems-versions": {
+        running: "Fetching OS versions from Ahrefs",
+        done: "Fetched OS versions from Ahrefs",
+      },
+      "web-analytics-operating-systems-versions-chart": {
+        running: "Fetching OS versions chart from Ahrefs",
+        done: "Fetched OS versions chart from Ahrefs",
+      },
+      "social-media-channels": {
+        running: "Fetching social media channels from Ahrefs",
+        done: "Fetched social media channels from Ahrefs",
+      },
+      "social-media-channel-metrics": {
+        running: "Fetching channel metrics from Ahrefs",
+        done: "Fetched channel metrics from Ahrefs",
+      },
+      "social-media-posts": {
+        running: "Fetching social media posts from Ahrefs",
+        done: "Fetched social media posts from Ahrefs",
+      },
+      "social-media-post-metrics": {
+        running: "Fetching post metrics from Ahrefs",
+        done: "Fetched post metrics from Ahrefs",
+      },
+      "social-media-activity-history": {
+        running: "Fetching post activity history from Ahrefs",
+        done: "Fetched post activity history from Ahrefs",
+      },
+      "social-media-authors": {
+        running: "Fetching post authors from Ahrefs",
+        done: "Fetched post authors from Ahrefs",
+      },
+      "render-scorecard": {
+        running: "Rendering a scorecard with Ahrefs",
+        done: "Rendered a scorecard with Ahrefs",
+      },
+      "render-time-series-chart": {
+        running: "Rendering a chart with Ahrefs",
+        done: "Rendered a chart with Ahrefs",
+      },
+      "render-data-table": {
+        running: "Rendering a table with Ahrefs",
+        done: "Rendered a table with Ahrefs",
+      },
+    },
+  },
+  {
+    id: 10053,
+    name: "Webflow",
+    description:
+      "Webflow tools to build and edit pages, elements, styles and components, manage CMS collections, assets and forms, read site analytics, and publish sites.",
+    url: "https://mcp.webflow.com/mcp",
+    icon: "WebflowLogo",
+    documentationUrl: "https://developers.webflow.com/mcp/reference/overview",
+    connectionInstructions:
+      "Webflow uses OAuth with dynamic client registration. Sign in with your Webflow account to connect. Each connection grants access to a single Webflow workspace. Some tools require specific plans or add-ons: Enterprise for page branches and redirects, Webflow Analyze for analytics.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      ask_webflow_ai: "never_ask",
+      webflow_guide_tool: "never_ask",
+      get_more_tools: "never_ask",
+      data_analyze_tool: "never_ask",
+      get_asset_preview: "never_ask",
+      element_snapshot_tool: "never_ask",
+      data_sites_tool: "high",
+      data_pages_tool: "high",
+      data_cms_tool: "high",
+      data_localization_tool: "high",
+      data_scripts_tool: "high",
+      data_comments_tool: "high",
+      data_enterprise_tool: "high",
+      data_forms_tool: "high",
+      data_fonts_tool: "high",
+      data_webhook_tool: "high",
+      data_sitemap_tool: "high",
+      data_assets_tool: "high",
+      asset_tool: "high",
+      data_style_tool: "high",
+      data_variable_tool: "high",
+      data_component_tool: "high",
+      data_component_props_tool: "high",
+      data_component_variants_tool: "high",
+      data_interactions_tool: "high",
+      data_element_tool: "high",
+      data_element_settings_tool: "high",
+      data_element_builder: "high",
+      data_whtml_builder: "high",
+      data_component_builder: "high",
+      data_agent_instructions_tool: "high",
+      data_apps_tool: "high",
+      data_campaigns_tool: "high",
+      designer_tool: "high",
+    },
+    toolDisplayLabels: {
+      ask_webflow_ai: {
+        running: "Asking Webflow AI",
+        done: "Asked Webflow AI",
+      },
+      webflow_guide_tool: {
+        running: "Reading the Webflow guide",
+        done: "Read the Webflow guide",
+      },
+      get_more_tools: {
+        running: "Looking for more Webflow tools",
+        done: "Looked for more Webflow tools",
+      },
+      data_analyze_tool: {
+        running: "Fetching analytics from Webflow",
+        done: "Fetched analytics from Webflow",
+      },
+      get_asset_preview: {
+        running: "Fetching an asset preview from Webflow",
+        done: "Fetched an asset preview from Webflow",
+      },
+      element_snapshot_tool: {
+        running: "Taking an element snapshot on Webflow",
+        done: "Took an element snapshot on Webflow",
+      },
+      data_sites_tool: {
+        running: "Managing sites on Webflow",
+        done: "Managed sites on Webflow",
+      },
+      data_pages_tool: {
+        running: "Managing pages on Webflow",
+        done: "Managed pages on Webflow",
+      },
+      data_cms_tool: {
+        running: "Managing CMS content on Webflow",
+        done: "Managed CMS content on Webflow",
+      },
+      data_localization_tool: {
+        running: "Managing localized content on Webflow",
+        done: "Managed localized content on Webflow",
+      },
+      data_scripts_tool: {
+        running: "Managing custom code on Webflow",
+        done: "Managed custom code on Webflow",
+      },
+      data_comments_tool: {
+        running: "Managing comments on Webflow",
+        done: "Managed comments on Webflow",
+      },
+      data_enterprise_tool: {
+        running: "Managing site settings on Webflow",
+        done: "Managed site settings on Webflow",
+      },
+      data_forms_tool: {
+        running: "Managing forms on Webflow",
+        done: "Managed forms on Webflow",
+      },
+      data_fonts_tool: {
+        running: "Managing fonts on Webflow",
+        done: "Managed fonts on Webflow",
+      },
+      data_webhook_tool: {
+        running: "Managing webhooks on Webflow",
+        done: "Managed webhooks on Webflow",
+      },
+      data_sitemap_tool: {
+        running: "Managing the sitemap on Webflow",
+        done: "Managed the sitemap on Webflow",
+      },
+      data_assets_tool: {
+        running: "Managing assets on Webflow",
+        done: "Managed assets on Webflow",
+      },
+      asset_tool: {
+        running: "Uploading an asset to Webflow",
+        done: "Uploaded an asset to Webflow",
+      },
+      data_style_tool: {
+        running: "Managing styles on Webflow",
+        done: "Managed styles on Webflow",
+      },
+      data_variable_tool: {
+        running: "Managing variables on Webflow",
+        done: "Managed variables on Webflow",
+      },
+      data_component_tool: {
+        running: "Managing components on Webflow",
+        done: "Managed components on Webflow",
+      },
+      data_component_props_tool: {
+        running: "Managing component props on Webflow",
+        done: "Managed component props on Webflow",
+      },
+      data_component_variants_tool: {
+        running: "Managing component variants on Webflow",
+        done: "Managed component variants on Webflow",
+      },
+      data_interactions_tool: {
+        running: "Managing interactions on Webflow",
+        done: "Managed interactions on Webflow",
+      },
+      data_element_tool: {
+        running: "Editing elements on Webflow",
+        done: "Edited elements on Webflow",
+      },
+      data_element_settings_tool: {
+        running: "Managing element settings on Webflow",
+        done: "Managed element settings on Webflow",
+      },
+      data_element_builder: {
+        running: "Building elements on Webflow",
+        done: "Built elements on Webflow",
+      },
+      data_whtml_builder: {
+        running: "Inserting HTML on Webflow",
+        done: "Inserted HTML on Webflow",
+      },
+      data_component_builder: {
+        running: "Inserting components on Webflow",
+        done: "Inserted components on Webflow",
+      },
+      data_agent_instructions_tool: {
+        running: "Managing agent instructions on Webflow",
+        done: "Managed agent instructions on Webflow",
+      },
+      data_apps_tool: {
+        running: "Managing Webflow Cloud apps",
+        done: "Managed Webflow Cloud apps",
+      },
+      data_campaigns_tool: {
+        running: "Managing campaigns on Webflow",
+        done: "Managed campaigns on Webflow",
+      },
+      designer_tool: {
+        running: "Using the Webflow Designer",
+        done: "Used the Webflow Designer",
+      },
+    },
+  },
+  {
+    id: 10054,
+    name: "Bright Data",
+    description:
+      "Bright Data tools to search the web, scrape any webpage (even behind bot detection or CAPTCHA), and run pre-built scrapers for 1,200+ sites.",
+    url: "https://mcp.brightdata.com/mcp",
+    icon: "BrightDataLogo",
+    documentationUrl:
+      "https://docs.brightdata.com/products/mcp-server/overview",
+    connectionInstructions:
+      "Bright Data uses OAuth with dynamic client registration. Sign in with your Bright Data account to connect. Requests consume credits from your Bright Data account (5,000 free requests per month, shared across the account), and scraper runs are billed per record.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      ask_brightdata_assistant: "never_ask",
+      search_engine: "never_ask",
+      search_engine_batch: "never_ask",
+      scrape_as_markdown: "never_ask",
+      scrape_batch: "never_ask",
+      search_scrapers: "never_ask",
+      get_scraper_details: "never_ask",
+      get_scraper_progress: "never_ask",
+      get_scraper_results: "never_ask",
+      run_scraper: "high",
+      refresh_scrapers: "high",
+    },
+    toolDisplayLabels: {
+      ask_brightdata_assistant: {
+        running: "Asking the Bright Data assistant",
+        done: "Asked the Bright Data assistant",
+      },
+      search_engine: {
+        running: "Searching the web with Bright Data",
+        done: "Searched the web with Bright Data",
+      },
+      search_engine_batch: {
+        running: "Running searches with Bright Data",
+        done: "Ran searches with Bright Data",
+      },
+      scrape_as_markdown: {
+        running: "Scraping a webpage with Bright Data",
+        done: "Scraped a webpage with Bright Data",
+      },
+      scrape_batch: {
+        running: "Scraping webpages with Bright Data",
+        done: "Scraped webpages with Bright Data",
+      },
+      search_scrapers: {
+        running: "Searching scrapers on Bright Data",
+        done: "Searched scrapers on Bright Data",
+      },
+      get_scraper_details: {
+        running: "Fetching scraper details from Bright Data",
+        done: "Fetched scraper details from Bright Data",
+      },
+      get_scraper_progress: {
+        running: "Checking scraper progress on Bright Data",
+        done: "Checked scraper progress on Bright Data",
+      },
+      get_scraper_results: {
+        running: "Fetching scraper results from Bright Data",
+        done: "Fetched scraper results from Bright Data",
+      },
+      run_scraper: {
+        running: "Running a scraper on Bright Data",
+        done: "Ran a scraper on Bright Data",
+      },
+      refresh_scrapers: {
+        running: "Refreshing scrapers on Bright Data",
+        done: "Refreshed scrapers on Bright Data",
+      },
+    },
+  },
+  {
+    id: 10055,
+    name: "Swarmia",
+    description:
+      "Swarmia tools to query engineering metrics (DORA, PR cycle time, code and issue metrics), AI tool adoption and impact, key metrics, and saved Explore views.",
+    url: "https://app.swarmia.com/api/v1/mcp",
+    icon: "SwarmiaLogo",
+    documentationUrl:
+      "https://help.swarmia.com/settings/integrations/mcp-server",
+    connectionInstructions:
+      "Swarmia uses OAuth with dynamic client registration. Sign in with your Swarmia account to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      EntityQuery: "never_ask",
+      EntityReport: "never_ask",
+      DiscoverEntitySchema: "never_ask",
+      ListKeyMetrics: "never_ask",
+      EvaluateKeyMetric: "never_ask",
+      ListSavedExploreViews: "never_ask",
+      ExecuteSavedExploreView: "never_ask",
+      InvestmentCategoryQuery: "never_ask",
+      GetGHAWorkflowData: "never_ask",
+      GetSwarmiaKnowledge: "never_ask",
+      BuildAppLink: "never_ask",
+    },
+    toolDisplayLabels: {
+      EntityQuery: {
+        running: "Querying data on Swarmia",
+        done: "Queried data on Swarmia",
+      },
+      EntityReport: {
+        running: "Running a report on Swarmia",
+        done: "Ran a report on Swarmia",
+      },
+      DiscoverEntitySchema: {
+        running: "Exploring the data model on Swarmia",
+        done: "Explored the data model on Swarmia",
+      },
+      ListKeyMetrics: {
+        running: "Listing key metrics on Swarmia",
+        done: "Listed key metrics on Swarmia",
+      },
+      EvaluateKeyMetric: {
+        running: "Calculating a key metric on Swarmia",
+        done: "Calculated a key metric on Swarmia",
+      },
+      ListSavedExploreViews: {
+        running: "Listing saved views on Swarmia",
+        done: "Listed saved views on Swarmia",
+      },
+      ExecuteSavedExploreView: {
+        running: "Running a saved view on Swarmia",
+        done: "Ran a saved view on Swarmia",
+      },
+      InvestmentCategoryQuery: {
+        running: "Fetching investment categories from Swarmia",
+        done: "Fetched investment categories from Swarmia",
+      },
+      GetGHAWorkflowData: {
+        running: "Fetching a GitHub Actions workflow from Swarmia",
+        done: "Fetched a GitHub Actions workflow from Swarmia",
+      },
+      GetSwarmiaKnowledge: {
+        running: "Searching the Swarmia docs",
+        done: "Searched the Swarmia docs",
+      },
+      BuildAppLink: {
+        running: "Building a Swarmia link",
+        done: "Built a Swarmia link",
+      },
+    },
+  },
+  {
+    id: 10056,
     name: "Contentful",
     description:
       "Contentful tools for searching, creating, updating and publishing entries, assets, content types, releases, locales and taxonomies (Region: Global).",
@@ -6739,7 +7443,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
-    id: 10051,
+    id: 10057,
     name: "Contentful (Europe)",
     description:
       "Contentful tools for searching, creating, updating and publishing entries, assets, content types, releases, locales and taxonomies (Region: EU).",

@@ -51,7 +51,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "connector_credentials_not_found",
           message:
             "The credential you requested does not belong to your workspace.",
         },
@@ -62,7 +62,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "credential_provider_mismatch",
           message: "The credential provided is not a Slack credential.",
         },
       });

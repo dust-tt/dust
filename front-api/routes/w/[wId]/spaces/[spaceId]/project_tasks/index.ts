@@ -73,7 +73,7 @@ app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "project_space_required",
         message: "Tasks are only available for project spaces.",
       },
     });
@@ -167,7 +167,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Tasks are only available for project spaces.",
         },
       });
@@ -195,7 +195,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "user_not_found",
             message: "Assignee user not found.",
           },
         });
@@ -205,7 +205,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "assignee_not_pod_member",
             message: "Assignee must be a member of this project.",
           },
         });

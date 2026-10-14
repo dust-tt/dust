@@ -233,7 +233,31 @@ export function AnalyticsConsumptionPage() {
   const content = (
     <AdminPageContainer>
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title={<Page.H variant="h3">{t`Analytics`}</Page.H>} />
+        <Page.Vertical align="stretch" gap="md">
+          <Page.Header
+            title={
+              <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Page.H variant="h3">{t`Analytics`}</Page.H>
+                <AnalyticsConsumptionSelectors
+                  owner={owner}
+                  state={state}
+                  headerActions={
+                    analyticsAssistantEnabled &&
+                    !isOpen && (
+                      <Button
+                        variant="primary"
+                        icon={Robot}
+                        label={t`Ask @analyst`}
+                        onClick={() => setIsOpen(true)}
+                      />
+                    )
+                  }
+                />
+              </div>
+            }
+          />
+          <ConsumptionOverview workspaceId={owner.sId} period={state.period} />
+        </Page.Vertical>
         <Tabs
           value={tab}
           onValueChange={(value) => setTab(value as AnalyticsTab)}
@@ -247,17 +271,8 @@ export function AnalyticsConsumptionPage() {
               owner={owner}
               state={{ ...state, filter }}
               showExportPanel={false}
-              headerActions={
-                analyticsAssistantEnabled &&
-                !isOpen && (
-                  <Button
-                    variant="primary"
-                    icon={Robot}
-                    label={t`Ask @analyst`}
-                    onClick={() => setIsOpen(true)}
-                  />
-                )
-              }
+              showHeader={false}
+              showUsageLink={false}
               onAgentClick={setAgentDetailsId}
               onSkillClick={setSkillDetailsId}
             />
@@ -327,47 +342,31 @@ interface AnalyticsConsumptionContentProps {
   // Whether the bottom export-to-CSV panel is rendered inline. Set to false
   // when the export panel is hoisted into its own tab (see AnalyticsConsumptionPage).
   showExportPanel?: boolean;
+  // Whether the overview and period selectors row is rendered inline. Set to false when it is
+  // hoisted above the tabs (see AnalyticsConsumptionPage).
+  showHeader?: boolean;
   showMemberGroupFilter?: boolean;
   showOverviewError?: boolean;
+  showUsageLink?: boolean;
   state: AnalyticsConsumptionState;
   usageHref?: string;
   usageLinkLabel?: string;
 }
 
-export function AnalyticsConsumptionContent({
-  components = WORKSPACE_CONSUMPTION_COMPONENTS,
+interface AnalyticsConsumptionSelectorsProps {
+  embedded?: boolean;
+  headerActions?: ReactNode;
+  owner: LightWorkspaceType;
+  state: AnalyticsConsumptionState;
+}
+
+function AnalyticsConsumptionSelectors({
   embedded = false,
   headerActions,
   owner,
-  onAgentClick,
-  onSkillClick,
-  showExport = true,
-  showExportPanel = showExport,
-  showMemberGroupFilter = true,
-  showOverviewError = false,
   state,
-  usageHref = `/w/${owner.sId}/credits`,
-  usageLinkLabel,
-}: AnalyticsConsumptionContentProps) {
-  const {
-    dimension,
-    filter,
-    handleDimensionChange,
-    period,
-    granularity,
-    scopeFilter,
-    setFilter,
-    setPeriod,
-    setGranularity,
-    shouldReduceMotion,
-  } = state;
-  const {
-    AttributionTable: AttributionTableComponent,
-    Chart: ChartComponent,
-    Overview: OverviewComponent,
-    Summary: SummaryComponent,
-    UsageFilterPanel: UsageFilterPanelComponent,
-  } = components;
+}: AnalyticsConsumptionSelectorsProps) {
+  const { period, granularity, setPeriod, setGranularity } = state;
   const trackingWorkspaceId = embedded ? null : owner.sId;
 
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
@@ -384,14 +383,7 @@ export function AnalyticsConsumptionContent({
     setGranularity(nextGranularity);
   };
 
-  const handleFilterChange = (nextFilter: UsageFilter) => {
-    trackAnalyticsClick(trackingWorkspaceId, "filter", {
-      filter_action: "apply",
-    });
-    setFilter(nextFilter);
-  };
-
-  const selectors = (
+  return (
     <div className="flex flex-wrap items-center gap-2">
       <ConsumptionPeriodSelector
         period={period}
@@ -404,26 +396,108 @@ export function AnalyticsConsumptionContent({
       {headerActions}
     </div>
   );
+}
+
+interface AnalyticsConsumptionHeaderProps {
+  components?: AnalyticsConsumptionComponents;
+  embedded?: boolean;
+  headerActions?: ReactNode;
+  owner: LightWorkspaceType;
+  showOverviewError?: boolean;
+  state: AnalyticsConsumptionState;
+}
+
+function AnalyticsConsumptionHeader({
+  components = WORKSPACE_CONSUMPTION_COMPONENTS,
+  embedded = false,
+  headerActions,
+  owner,
+  showOverviewError = false,
+  state,
+}: AnalyticsConsumptionHeaderProps) {
+  const { Overview: OverviewComponent } = components;
+
+  return (
+    <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
+      <div className="flex flex-row flex-wrap items-center gap-2">
+        <OverviewComponent
+          workspaceId={owner.sId}
+          period={state.period}
+          showError={showOverviewError}
+        />
+      </div>
+      <AnalyticsConsumptionSelectors
+        embedded={embedded}
+        headerActions={headerActions}
+        owner={owner}
+        state={state}
+      />
+    </div>
+  );
+}
+
+export function AnalyticsConsumptionContent({
+  components = WORKSPACE_CONSUMPTION_COMPONENTS,
+  embedded = false,
+  headerActions,
+  owner,
+  onAgentClick,
+  onSkillClick,
+  showExport = true,
+  showExportPanel = showExport,
+  showHeader = true,
+  showMemberGroupFilter = true,
+  showOverviewError = false,
+  showUsageLink = true,
+  state,
+  usageHref = `/w/${owner.sId}/credits`,
+  usageLinkLabel,
+}: AnalyticsConsumptionContentProps) {
+  const {
+    dimension,
+    filter,
+    handleDimensionChange,
+    period,
+    granularity,
+    scopeFilter,
+    setFilter,
+    shouldReduceMotion,
+  } = state;
+  const {
+    AttributionTable: AttributionTableComponent,
+    Chart: ChartComponent,
+    Summary: SummaryComponent,
+    UsageFilterPanel: UsageFilterPanelComponent,
+  } = components;
+  const trackingWorkspaceId = embedded ? null : owner.sId;
+
+  const handleFilterChange = (nextFilter: UsageFilter) => {
+    trackAnalyticsClick(trackingWorkspaceId, "filter", {
+      filter_action: "apply",
+    });
+    setFilter(nextFilter);
+  };
 
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.consumption}>
       <Page.Vertical align="stretch" gap="xl">
-        <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
-          <div className="flex flex-row flex-wrap items-center gap-2">
-            <OverviewComponent
-              workspaceId={owner.sId}
-              period={period}
-              showError={showOverviewError}
-            />
-          </div>
-          {selectors}
-        </div>
+        {showHeader && (
+          <AnalyticsConsumptionHeader
+            components={components}
+            embedded={embedded}
+            headerActions={headerActions}
+            owner={owner}
+            showOverviewError={showOverviewError}
+            state={state}
+          />
+        )}
 
         <SummaryComponent
           workspaceId={owner.sId}
           period={period}
           usageHref={usageHref}
           usageLinkLabel={usageLinkLabel}
+          showUsageLink={showUsageLink}
         />
 
         <div className="flex flex-col gap-4">

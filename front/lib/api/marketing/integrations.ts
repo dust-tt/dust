@@ -69,7 +69,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "query_tables_v2",
   "include_data",
   "extract_data",
-  "file_generation",
   "image_generation",
   "run_agent",
   "run_dust_app",
@@ -183,6 +182,11 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   airbyte: "data",
   contentful: "productivity",
   "contentful (europe)": "productivity",
+  n8n: "productivity",
+  ahrefs: "data",
+  webflow: "development",
+  "bright data": "data",
+  swarmia: "development",
 };
 
 // Category mapping for connectors

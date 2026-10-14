@@ -29,7 +29,7 @@ export type ServiceName = (typeof ALL_SERVICES)[number];
 
 // Aliases expanding to several services, e.g. `dust-hive restart front`.
 export const SERVICE_ALIASES = {
-  front: ["front-api", "front-workers", "front-spa-poke", "front-spa-app"],
+  front: ["front-api", "front-workers", "front-spa-poke", "front-spa-app", "collab"],
 } as const satisfies Record<string, readonly ServiceName[]>;
 
 export type ServiceAlias = keyof typeof SERVICE_ALIASES;

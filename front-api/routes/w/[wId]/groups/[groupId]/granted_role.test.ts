@@ -104,7 +104,7 @@ describe("/api/w/[wId]/groups/[groupId]/granted_role", () => {
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("group_kind_not_supported");
   });
 
   it("returns 400 on an invalid role value", async () => {

@@ -163,7 +163,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spe
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.type).toBe("agent_message_not_resumable");
   });
 
   it("returns 403 when another user attempts to resolve the pause", async () => {

@@ -2,11 +2,14 @@ import {
   addFileToProject,
   addFrameV2ToProject,
 } from "@app/lib/api/projects/context";
+import type { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { FileTypeWithMetadata } from "@app/types/files";
 import { isConversationFileUseCase } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,6 +27,47 @@ const SaveInProjectRequestBodySchema = z.object({
 const ParamsSchema = z.object({
   fileId: z.string(),
 });
+
+function saveInProjectErrorToApiError({
+  code,
+  message,
+}: DustError<
+  | "project_space_required"
+  | "file_not_mounted"
+  | "file_not_found"
+  | "name_conflict"
+  | "internal_error"
+>): APIErrorWithContentfulStatusCode {
+  switch (code) {
+    case "project_space_required":
+      return {
+        status_code: 400,
+        api_error: { type: "project_space_required", message },
+      };
+    case "file_not_mounted":
+      return {
+        status_code: 400,
+        api_error: { type: "file_not_mounted", message },
+      };
+    case "file_not_found":
+      return {
+        status_code: 404,
+        api_error: { type: "file_not_found", message },
+      };
+    case "name_conflict":
+      return {
+        status_code: 409,
+        api_error: { type: "file_already_exists", message },
+      };
+    case "internal_error":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message },
+      };
+    default:
+      assertNever(code);
+  }
+}
 
 // Mounted at /api/w/:wId/files/:fileId/save-in-project.
 const app = workspaceApp();
@@ -50,7 +94,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_not_frame",
           message: "Only Frame files can be saved to a pod.",
         },
       });
@@ -62,7 +106,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_not_in_conversation",
           message:
             "Only conversation frame files can be saved to a pod. This file is already in a pod or has another use case.",
         },
@@ -97,7 +141,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "The given space is not a project.",
         },
       });
@@ -119,13 +163,7 @@ app.post(
         space,
       });
       if (frameResult.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: frameResult.error.message,
-          },
-        });
+        return apiError(ctx, saveInProjectErrorToApiError(frameResult.error));
       }
 
       return ctx.json({ file: frameResult.value.toJSONWithMetadata(auth) });
@@ -137,13 +175,7 @@ app.post(
       sourceConversationId: file.useCaseMetadata?.conversationId,
     });
     if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: result.error.message,
-        },
-      });
+      return apiError(ctx, saveInProjectErrorToApiError(result.error));
     }
 
     return ctx.json({ file: file.toJSONWithMetadata(auth) });

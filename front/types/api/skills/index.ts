@@ -6,17 +6,10 @@ import type {
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { SpaceKind } from "@app/types/space";
 import type { UserType } from "@app/types/user";
-
-export type GetSkillsResponseBody = {
-  skills: (SkillWithoutInstructionsAndToolsType & {
-    isFavorite?: boolean;
-  })[];
-};
 
 export type GetSkillsReinforcementSettingsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
@@ -123,22 +116,6 @@ export type SearchSkillsResponseBody = {
     }[];
     usage?: SkillSearchRangeFacetValue;
   };
-};
-
-/**
- * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
- * `usage` is included only for `withUsage=true` and is null when unavailable.
- * Each skill always includes `messageCount: null` for legacy clients.
- */
-export type GetSkillsWithRelationsResponseBody = {
-  skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
-    isFavorite?: boolean;
-    // Attributed skill_management.enable_skill calls over the last 30 days.
-    // Null for system skills or when analytics is unavailable.
-    usage?: number | null;
-    /** @deprecated Use usage instead. Always null when returned. */
-    messageCount?: number | null;
-  })[];
 };
 
 export type PostSkillResponseBody = {

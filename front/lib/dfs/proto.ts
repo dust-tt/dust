@@ -16,7 +16,6 @@ export const DFS_METHODS = {
   List: { request: "ListRequest", response: "EntryPage" },
   Read: { request: "ReadRequest", response: "ReadData" },
   ReadFiles: { request: "ReadFilesRequest", response: "FilesBatch" },
-  Validate: { request: "ValidateRequest", response: "ValidationBatch" },
   Apply: { request: "ApplyRequest", response: "OperationBatch" },
   Search: { request: "SearchRequest", response: "SearchResults" },
 } as const;
@@ -39,12 +38,22 @@ const WIRE_CONVERSION_OPTIONS: protobuf.IConversionOptions = {
 
 const DFS_PROTO_PACKAGE = "dfs.v1";
 
-// The server's protocol definition (`dfs/protocol/proto/dfs.proto`), read from the repository
-// rather than copied into front.
+/**
+ * The server's protocol definition (`dfs/protocol/proto/dfs.proto`), read from the repository
+ * rather than copied into front.
+ */
+/**
+ * @cc [owner:fabiencelier,label:architecture] dfs-proto-resolvable
+ * The proto MUST be resolved relative to front's `package.json`, at `../dfs/protocol/proto`, and
+ * MUST stay resolvable from the front-api and workers images: `dockerfiles/front.Dockerfile` copies
+ * `dfs/protocol/proto` next to `front` in both.
+ */
 function loadDfsRoot(): protobuf.Root {
+  // Package resolution works in both source and bundled entry points; `package.json` is the one
+  // file of front that every image keeps.
   const protoPath = path.resolve(
-    path.dirname(require.resolve("@dust-tt/front/lib/dfs/proto.ts")),
-    "../../../dfs/protocol/proto/dfs.proto"
+    path.dirname(require.resolve("@dust-tt/front/package.json")),
+    "../dfs/protocol/proto/dfs.proto"
   );
   return protobuf.parse(readFileSync(protoPath, "utf8")).root;
 }

@@ -23,6 +23,7 @@ export {
   Breadcrumbs,
 } from "./Breadcrumbs";
 export type {
+  ButtonBaseProps,
   ButtonIconType,
   ButtonProps,
   ButtonSizeType,
@@ -130,15 +131,6 @@ export {
 export { DiffBlock, type DiffChange } from "./DiffBlock";
 export type { DiscoveryGlintProps } from "./DiscoveryGlint";
 export { DiscoveryGlint } from "./DiscoveryGlint";
-export {
-  Document,
-  type DocumentComment,
-  type DocumentCommentAuthor,
-  type DocumentCommentReply,
-  type DocumentProps,
-  type DocumentSaveOutcome,
-  type DocumentSaveResult,
-} from "./Document";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
@@ -172,6 +164,8 @@ export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FaviconIcon } from "./FaviconIcon";
+export type { FlagIconProps, FlagSize } from "./FlagIcon";
+export { FLAG_SIZES, FlagIcon } from "./FlagIcon";
 export {
   FILTER_CHIP_VARIANTS,
   FilterChip,
@@ -182,6 +176,7 @@ export {
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
+export type { HoverScrollTextProps } from "./HoverScrollText";
 export { HoverScrollText } from "./HoverScrollText";
 export type { DoubleIconProps } from "./Icon";
 export { DoubleIcon, Icon } from "./Icon";
@@ -215,12 +210,6 @@ export type {
   LegacyRegularButtonProps,
 } from "./LegacyButton";
 export { LegacyButton, MetaButton } from "./LegacyButton";
-export type { LegacyInputProps } from "./LegacyInput";
-export { LegacyInput } from "./LegacyInput";
-export type { LegacyInputWithSaveProps } from "./LegacyInputWithSave";
-export { LegacyInputWithSave } from "./LegacyInputWithSave";
-export type { LegacyFlexSplitButtonProps } from "./LegacySplitButton";
-export { LegacyFlexSplitButton } from "./LegacySplitButton";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
@@ -280,7 +269,6 @@ export { PriceTable } from "./PriceTable";
 export { ProgressBar } from "./ProgressBar";
 export { PuzzleSpinner } from "./PuzzleSpinner";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
-export { RainbowEffect } from "./RainbowEffect";
 export {
   ResizableHandle,
   ResizablePanel,
@@ -319,8 +307,6 @@ export type { SliderStepsProps } from "./SliderSteps";
 export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
-export type { SpinnerBrandProps } from "./SpinnerBrand";
-export { SpinnerBrand } from "./SpinnerBrand";
 export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";

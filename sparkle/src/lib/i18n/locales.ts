@@ -10,10 +10,18 @@ export const SPARKLE_SOURCE_LOCALE = "en-US";
  */
 export const SPARKLE_CATALOG_LOCALES = [
   SPARKLE_SOURCE_LOCALE,
+  "en-GB",
   "fr-FR",
 ] as const;
 
 export type SparkleCatalogLocale = (typeof SPARKLE_CATALOG_LOCALES)[number];
+
+// Mirrors front's `CATALOG_FALLBACK_LOCALES`: an empty `msgstr` renders the fallback's message.
+export const SPARKLE_CATALOG_FALLBACK_LOCALES: Partial<
+  Record<SparkleCatalogLocale, SparkleCatalogLocale>
+> = {
+  "en-GB": SPARKLE_SOURCE_LOCALE,
+};
 
 /**
  * @cc [owner:ykmsd,label:product] sparkle-format-locales-match-front

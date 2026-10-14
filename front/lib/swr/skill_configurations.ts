@@ -44,7 +44,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
@@ -64,7 +63,7 @@ export function useSkill(options: {
   disabled?: boolean;
   shouldRetryOnError?: boolean;
 }): {
-  skill: SkillWithRelationsType | null;
+  skill: GetSkillWithRelationsResponseBody["skill"] | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   isSkillNotFound: boolean;
@@ -180,7 +179,6 @@ export function useSearchSkills({
   debounceMs?: number;
 }) {
   const { fetcherWithBody } = useFetcher();
-  const { mutate: globalMutate } = useSWRConfig();
   const truncatedSearchTerm = searchTerm.slice(
     0,
     SEARCH_SKILLS_QUERY_MAX_LENGTH
@@ -232,12 +230,6 @@ export function useSearchSkills({
     }
   );
 
-  // Search filters and offsets are in the body, so refresh every search key for this workspace.
-  const mutateRegardlessOfQueryParams = useCallback(
-    () => globalMutate((key) => Array.isArray(key) && key[0] === url),
-    [globalMutate, url]
-  );
-
   return {
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
@@ -249,7 +241,6 @@ export function useSearchSkills({
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
     mutate,
-    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -347,26 +338,21 @@ export function useSearchSkillsInfinite({
 }
 
 /**
- * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
- * Revalidate string-keyed skill lists and array-keyed skill searches for the
- * given workspace, regardless of query parameters or search body, plus its
- * reinforcement settings.
- * Do not revalidate other workspaces or individual skill detail endpoints.
+ * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-searches
+ * Revalidate array-keyed skill searches for the given workspace, regardless of
+ * search body.
  */
-export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
+export function useInvalidateSkillsSearch({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
   const { mutate } = useSWRConfig();
-  const skillsUrl = `/api/w/${workspaceId}/skills`;
-  const searchUrl = `${skillsUrl}/search`;
+  const searchUrl = `/api/w/${workspaceId}/skills/search`;
 
   return useCallback(
-    () =>
-      mutate((key) =>
-        isString(key)
-          ? key.split("?")[0] === skillsUrl ||
-            key === `${skillsUrl}/reinforcement_settings`
-          : Array.isArray(key) && key[0] === searchUrl
-      ),
-    [mutate, skillsUrl, searchUrl]
+    () => mutate((key) => Array.isArray(key) && key[0] === searchUrl),
+    [mutate, searchUrl]
   );
 }
 
@@ -379,7 +365,9 @@ export function useUpdateSkillsAvailability({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doUpdateAvailability = async (
     skillIds: string[],
@@ -392,7 +380,7 @@ export function useUpdateSkillsAvailability({
         body: JSON.stringify({ skillIds, availability }),
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       const skillCount = skillIds.length;
       sendNotification({
@@ -459,7 +447,9 @@ export function useArchiveSkill({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doArchive = async () => {
     if (!skill.sId) {
@@ -471,7 +461,7 @@ export function useArchiveSkill({
         method: "DELETE",
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       sendNotification({
         type: "success",
@@ -502,7 +492,9 @@ export function useBatchArchiveSkills({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doArchive = async () => {
     if (skillIds.length === 0) {
@@ -517,7 +509,7 @@ export function useBatchArchiveSkills({
         body: JSON.stringify({ skillIds }),
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       sendNotification({
         type: "success",
@@ -549,7 +541,9 @@ export function useUpdateSkillFavorite({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
   const router = useAppRouter();
 
   const updateSkillFavorite = useCallback(
@@ -562,7 +556,7 @@ export function useUpdateSkillFavorite({
           method: isFavorite ? "POST" : "DELETE",
         });
 
-        void invalidateSkills();
+        void invalidateSkillsSearch();
 
         if (isFavorite) {
           sendNotification({
@@ -597,7 +591,7 @@ export function useUpdateSkillFavorite({
     },
     [
       fetcher,
-      invalidateSkills,
+      invalidateSkillsSearch,
       owner.sId,
       router,
       sendNotification,
@@ -666,7 +660,9 @@ export function useRestoreSkill({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doRestore = async () => {
     if (!skill.sId) {
@@ -678,7 +674,7 @@ export function useRestoreSkill({
         method: "POST",
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       sendNotification({
         type: "success",
@@ -872,7 +868,9 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const [isImporting, setIsImporting] = useState(false);
 
@@ -909,7 +907,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
           }
         }
 
-        void invalidateSkills();
+        void invalidateSkillsSearch();
 
         return notifyImportResult(data, sendNotification, t);
       } catch (err) {
@@ -923,7 +921,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
       owner.sId,
       sendNotification,
       fetcher,
-      invalidateSkills,
+      invalidateSkillsSearch,
       sendApiErrorNotification,
       t,
     ]

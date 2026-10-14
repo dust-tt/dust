@@ -31,10 +31,6 @@ msgid "Governance settings could not be loaded."
 msgstr "Governance settings could not be loaded."
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
-msgid "Groups assigned here are managed in <0>Members → Groups</0>"
-msgstr "Groups assigned here are managed in <0>Members → Groups</0>"
-
-#: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Agents & Skills"
 msgstr "Agents & Skills"
 
@@ -303,8 +299,8 @@ msgid "Language"
 msgstr "Language"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
-msgid "locale localisation"
-msgstr "locale localisation"
+msgid "locale localization"
+msgstr "locale localization"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "Voice transcription"

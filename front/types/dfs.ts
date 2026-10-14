@@ -33,7 +33,9 @@ export type DfsErrorCode =
   | "unsupported"
   | "name_too_long"
   // Client-side only: the server answered with a message the client cannot decode.
-  | "invalid_response";
+  | "invalid_response"
+  // Client-side only: a file changed between the chunks of a multi-chunk read (`DfsFileSystem`).
+  | "content_changed";
 
 export class DfsError extends Error {
   constructor(
@@ -45,9 +47,20 @@ export class DfsError extends Error {
   }
 }
 
-export interface DfsReadView {
-  storeVersion: bigint;
-  authVersion: bigint;
+// Front-side failures to get a workspace's tenant key (not a dfs server error).
+export type DfsTenantErrorCode =
+  | "tenant_not_found"
+  // The tenant exists but its key could not be read from the oauth service.
+  | "tenant_key_unavailable";
+
+export class DfsTenantError extends Error {
+  constructor(
+    readonly code: DfsTenantErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "DfsTenantError";
+  }
 }
 
 export interface DfsExtendedMetadata {
@@ -73,7 +86,8 @@ export interface DfsAttr {
   ctimeMs?: number;
   attrVersion: bigint;
   contentVersion: bigint;
-  view: DfsReadView;
+  grantsVersion: bigint;
+  storeVersion: bigint;
   metadata?: DfsExtendedMetadata;
 }
 
@@ -117,7 +131,7 @@ export interface DfsGrantUpdate {
 // Filesystem reads.
 
 // One result per `stat` reference or `lookup` target, in request order. Each successful result
-// carries its read view in `object.view`.
+// carries its snapshot version in `object.storeVersion`.
 export type DfsAttrResult =
   | { status: "ok"; object: DfsAttr }
   | { status: "error"; errorCode: DfsErrorCode };
@@ -154,29 +168,6 @@ export type DfsFileResult =
 // One result per input; files that do not fit the reply budget get a `capacity` error.
 export interface DfsFilesBatch {
   results: DfsFileResult[];
-}
-
-export interface DfsVersionCheck {
-  objectId: DfsObjectRef;
-  attrVersion?: bigint;
-  contentVersion?: bigint;
-}
-
-export type DfsValidationOutcome =
-  | "unchanged"
-  | "changed"
-  | "denied"
-  | "missing"
-  | "error";
-
-export interface DfsValidationResult {
-  outcome: DfsValidationOutcome;
-  errorCode?: DfsErrorCode;
-}
-
-export interface DfsValidationBatch {
-  results: DfsValidationResult[];
-  view: DfsReadView;
 }
 
 // Filesystem mutations.
@@ -238,7 +229,7 @@ export type DfsOperation =
   | DfsRenameOperation
   | DfsRemoveOperation;
 
-// The commit's read view is in each returned `Attr.view`.
+// The commit version is in each returned `Attr.storeVersion`.
 export interface DfsMutation {
   object?: DfsAttr;
   related: DfsAttr[];

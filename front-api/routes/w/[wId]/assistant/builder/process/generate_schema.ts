@@ -26,7 +26,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "no_model_available",
           message: "No whitelisted models were found for the workspace.",
         },
       });

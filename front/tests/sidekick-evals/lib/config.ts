@@ -77,6 +77,7 @@ const GET_AGENT_CONFIG_SPEC: AgentActionSpecification = {
 function getMockSidekickContext(): SidekickContext {
   return {
     mcpServerViews: null,
+    locale: null,
   };
 }
 

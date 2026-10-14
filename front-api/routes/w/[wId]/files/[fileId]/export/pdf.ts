@@ -39,11 +39,19 @@ app.post(
             status_code: 404,
             api_error: { type: "file_not_found", message: error.message },
           });
-        case "invalid_request":
+        case "not_frame":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "file_not_frame",
+              message: error.message,
+            },
+          });
+        case "not_shareable":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "frame_not_shareable",
               message: error.message,
             },
           });

@@ -55,7 +55,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_not_active",
           message: result.error.message,
         },
       });
@@ -83,7 +83,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_not_active",
           message: result.error.message,
         },
       });

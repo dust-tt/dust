@@ -35,7 +35,11 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
+import type {
+  FieldValueSet,
+  NullableOption,
+  WorkbookWorksheet,
+} from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
@@ -132,6 +136,7 @@ async function processSheet({
   client,
   connector,
   spreadsheet,
+  fields,
   spreadsheetInternalId,
   worksheet,
   worksheetInternalId,
@@ -141,6 +146,7 @@ async function processSheet({
   client: Client;
   connector: ConnectorResource;
   spreadsheet: DriveItem;
+  fields: NullableOption<FieldValueSet> | undefined;
   spreadsheetInternalId: string;
   worksheet: WorkbookWorksheet;
   worksheetInternalId: string;
@@ -278,13 +284,13 @@ async function processSheet({
       })),
     ];
 
-    if (!spreadsheet.listItem?.fields) {
+    if (!fields) {
       localLogger.warn("Unexpected missing fields for spreadsheet");
     }
 
     const tags = await getColumnsFromListItem(
       spreadsheet,
-      spreadsheet.listItem?.fields,
+      fields,
       await getMicrosoftClient(connector.connectionId),
       localLogger
     );
@@ -344,6 +350,7 @@ async function processSheet({
 export async function handleSpreadSheet({
   connectorId,
   file,
+  fields,
   parentInternalId,
   localLogger,
   startSyncTs,
@@ -351,6 +358,8 @@ export async function handleSpreadSheet({
 }: {
   connectorId: number;
   file: DriveItem;
+  // List-item fields (custom columns) of the file, which `file` itself may not carry.
+  fields: NullableOption<FieldValueSet> | undefined;
   parentInternalId: string;
   localLogger: Logger;
   startSyncTs: number;
@@ -461,6 +470,7 @@ export async function handleSpreadSheet({
         client,
         connector,
         spreadsheet: file,
+        fields,
         spreadsheetInternalId: documentId,
         worksheet,
         worksheetInternalId,

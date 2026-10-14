@@ -39,7 +39,7 @@ export function useConversationEvents({
   const buildLongPollURL = useCallback(
     (lastEvent: string | null) => {
       const url = buildEventSourceURL(lastEvent);
-      return url?.replace("/events?", "/events/poll?") ?? null;
+      return url ? `${url}&transport=poll` : null;
     },
     [buildEventSourceURL]
   );

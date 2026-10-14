@@ -1,0 +1,167 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/client/calendar_date.ts
+msgid "Invalid date"
+msgstr ""
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday}"
+msgstr ""
+
+#: front/lib/client/calendar_date.ts
+msgid "{day} at {time}"
+msgstr ""
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday} at {time}"
+msgstr ""
+
+#: front/lib/client/calendar_date.ts
+msgid "{weekday} at {time}"
+msgstr ""
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
+msgstr ""
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+msgstr ""
+
+#: front/lib/client/credits.ts
+msgid "{callCount, plural, one {# use} other {# uses}}"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What’s next, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What are we working on, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What’s on your mind, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What are we building, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "Where do we start, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What’s the plan, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What can I help with, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What should we start with, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "What’s cooking, {name}?"
+msgstr ""
+
+#: front/lib/client/greetings.ts
+msgid "Ready when you are, {name}."
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "Update failed"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "{failedCount, plural, one {Failed to update the role of # member ({succeededCount} succeeded).} other {Failed to update the role of # members ({succeededCount} succeeded).}}"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to admin for # member.} other {Role updated to admin for # members.}}"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to manager for # member.} other {Role updated to manager for # members.}}"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to member for # member.} other {Role updated to member for # members.}}"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Membership revoked for # member.} other {Membership revoked for # members.}}"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "Membership revoked"
+msgstr ""
+
+#: front/lib/client/members.ts
+msgid "Role updated"
+msgstr ""
+
+#: front/lib/client/model_tier_options.ts
+msgid "Includes {tierNames}"
+msgstr ""
+
+#: front/lib/client/model_tier_options.ts
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from workspace"
+msgstr ""
+
+#: front/lib/client/model_tiers.ts
+msgid "Up to {tierName}"
+msgstr ""
+
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from groups"
+msgstr ""
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Lower-cost models for routine tasks."
+msgstr ""
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Balanced models for most tasks."
+msgstr ""
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "More capable models for complex or demanding work."
+msgstr ""
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Frontier models priced far above Premium, for the most demanding work."
+msgstr ""
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "all efforts"
+msgstr ""
+
+#: front/lib/client/visualization.ts
+msgid "The visualization code failed with this error:"
+msgstr ""
+
+#: front/lib/client/visualization.ts
+msgid "Please fix the code."
+msgstr ""
+
+#: front/lib/client/wakeup_schedule.ts
+msgid "at {time}"
+msgstr ""

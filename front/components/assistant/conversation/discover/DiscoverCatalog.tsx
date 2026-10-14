@@ -636,7 +636,7 @@ export function CatalogRow({
           </div>
         </div>
         <p className="copy-sm mt-1 line-clamp-2 text-muted-foreground">
-          {getItemDescription(item)}
+          {getItemDescription(t, item)}
         </p>
       </div>
       <div className="relative shrink-0 self-start">

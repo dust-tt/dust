@@ -11,10 +11,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
-import {
-  filterUsersWithSharedMembership,
-  hasSharedMembership,
-} from "@app/lib/api/user";
+import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -952,7 +949,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       withInstructions = true,
       withTools = true,
-      withToolMetadata = false,
       withFileAttachments = true,
       ...otherOptions
     } = options;
@@ -1031,7 +1027,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          { mode: "configuration", includeMetadata: withToolMetadata }
+          { mode: "configuration" }
         );
       }
 
@@ -1298,7 +1294,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyActive = false,
       withInstructions = true,
       withTools = true,
-      withToolMetadata = false,
       withFileAttachments = true,
     }: SkillFetchContext & SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
@@ -1337,7 +1332,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
-        withToolMetadata,
         withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds, permissionFiltering }
@@ -1404,6 +1398,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return count > 0;
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security;backend] names-only-without-permission-filtering
+   * Returns the subset of `names` used by an active skill in the workspace, including skills the
+   * caller cannot read. It MUST return only names, never data from those skills.
+   */
+  static async listTakenNames(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<Set<string>> {
+    if (names.length === 0) {
+      return new Set();
+    }
+
+    const skills = await this.model.findAll({
+      attributes: ["name"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: names,
+        status: "active",
+      },
+    });
+
+    return new Set(skills.map((skill) => skill.name));
   }
 
   static async fetchByNames(
@@ -1567,7 +1586,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
       withInstructions,
       withTools,
-      withToolMetadata,
       withFileAttachments,
     }: SkillHydrationOptions & {
       agentLoopData?: AgentLoopExecutionData;
@@ -1590,7 +1608,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
-        withToolMetadata,
         withFileAttachments,
       },
       {
@@ -2006,7 +2023,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listDiscoverable(
     auth: Authenticator,
-    { agentLoopData, effectiveSpaceIds }: SkillFetchContext = {}
+    {
+      agentLoopData,
+      effectiveSpaceIds,
+      ...hydrationOptions
+    }: SkillFetchContext & SkillHydrationOptions = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(
       auth,
@@ -2015,6 +2036,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           status: "active",
           availability: "users_and_agents",
         },
+        ...hydrationOptions,
       },
       { agentLoopData, effectiveSpaceIds }
     );
@@ -2243,7 +2265,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation,
       agentLoopData,
       effectiveSpaceIds,
-    }: {
+      ...hydrationOptions
+    }: SkillHydrationOptions & {
       conversation: ConversationWithoutContentType;
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds: string[];
@@ -2262,6 +2285,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       onlyActive: true,
+      ...hydrationOptions,
     });
   }
 
@@ -2304,9 +2328,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
+    // Pod default, discoverable and favorite skills are listed to the model and enabled by
+    // `enable_skill`, which reads their instructions and files but never their tools.
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
       auth,
-      { conversation, agentLoopData, effectiveSpaceIds }
+      {
+        conversation,
+        agentLoopData,
+        effectiveSpaceIds,
+        withTools: false,
+      }
     );
 
     const allAgentSkills = await this.listByAgentConfiguration(
@@ -2323,10 +2354,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
+        withTools: false,
       });
       favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
         agentLoopData,
         effectiveSpaceIds,
+        withTools: false,
       });
     }
 
@@ -2630,7 +2663,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         codeDefinedSkillId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
-        files: def.fetchFiles ? await def.fetchFiles(auth) : (def.files ?? []),
+        files: def.files ?? [],
       }
     );
   }
@@ -3181,110 +3214,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Batch version of listActiveAgents, returns active agents grouped by skill sId.
-   */
-  private static async batchListActiveAgents(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, AgentUsageAttributes[]>> {
-    if (skills.length === 0) {
-      return new Map();
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Separate custom skills from global skills.
-    const customSkillIds = removeNulls(
-      skills.map((s) => (s.codeDefinedSkillId ? null : s.id))
-    );
-    const globalSkillIds = removeNulls(skills.map((s) => s.codeDefinedSkillId));
-
-    // Single query: all agent-skill associations for the given skills.
-    const agentSkills = await AgentSkillModel.findAll({
-      attributes: ["agentConfigurationId", "customSkillId", "globalSkillId"],
-      where: {
-        workspaceId: workspace.id,
-        [Op.or]: removeNulls([
-          customSkillIds.length > 0
-            ? { customSkillId: { [Op.in]: customSkillIds } }
-            : null,
-          globalSkillIds.length > 0
-            ? { globalSkillId: { [Op.in]: globalSkillIds } }
-            : null,
-        ]),
-      },
-    });
-
-    if (agentSkills.length === 0) {
-      return new Map();
-    }
-
-    // Single query: all referenced agent configurations.
-    const uniqueAgentConfigIds = [
-      ...new Set(agentSkills.map((as) => as.agentConfigurationId)),
-    ];
-    const agentConfigs = await AgentConfigurationModel.findAll({
-      attributes: ["id", "sId", "name", "pictureUrl", "requestedSpaceIds"],
-      where: {
-        id: { [Op.in]: uniqueAgentConfigIds },
-        workspaceId: workspace.id,
-        status: "active",
-      },
-    });
-
-    const agentConfigById = new Map(agentConfigs.map((a) => [a.id, a]));
-
-    // Map AgentSkillModel references back to skill sId.
-    const skillIdByModelId = new Map(
-      skills.filter((s) => !s.codeDefinedSkillId).map((s) => [s.id, s.sId])
-    );
-
-    const result = new Map<string, AgentUsageAttributes[]>();
-    for (const as of agentSkills) {
-      const skillId = as.customSkillId
-        ? skillIdByModelId.get(as.customSkillId)
-        : (as.globalSkillId ?? undefined);
-      if (!skillId) {
-        continue;
-      }
-      const agent = agentConfigById.get(as.agentConfigurationId);
-      if (!agent) {
-        continue;
-      }
-      const list = result.get(skillId) ?? [];
-      list.push(agent);
-      result.set(skillId, list);
-    }
-
-    return result;
-  }
-
-  /**
-   * Batch fetch usage (agents using each skill) for multiple skills.
-   * Keyed by skill sId to avoid collisions (global skills share id: -1).
-   */
-  static async batchFetchUsage(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, AgentsUsageType>> {
-    const agentsBySkillId = await this.batchListActiveAgents(auth, skills);
-
-    const result = new Map<string, AgentsUsageType>();
-    for (const skill of skills) {
-      const agents = (agentsBySkillId.get(skill.sId) ?? [])
-        .map((agent) => ({
-          sId: agent.sId,
-          name: agent.name,
-          pictureUrl: agent.pictureUrl,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      result.set(skill.sId, { count: agents.length, agents });
-    }
-
-    return result;
-  }
-
-  /**
    * Batch fetch skill references for multiple child skills.
    * Keyed by child skill sId to avoid collisions with global skills.
    */
@@ -3439,45 +3368,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const userIds = group ? (membershipsByGroupId[group.id] ?? []) : [];
       const users = removeNulls(userIds.map((id) => userById.get(id) ?? null));
       result.set(skill.sId, users);
-    }
-
-    return result;
-  }
-
-  /**
-   * Batch fetch edited-by users for multiple skills.
-   */
-  static async batchFetchEditedByUsers(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, UserResource | null>> {
-    const result = new Map<string, UserResource | null>(
-      skills.map((s) => [s.sId, null])
-    );
-
-    const uniqueEditedByIds = [
-      ...new Set(removeNulls(skills.map((s) => s.editedBy))),
-    ];
-
-    if (uniqueEditedByIds.length === 0) {
-      return result;
-    }
-
-    // Single query: fetch all edited-by users.
-    const editedByUsers = await UserResource.fetchByModelIds(uniqueEditedByIds);
-
-    // Batch privacy filter: keep only users visible to the auth user.
-    const visibleUsers = await filterUsersWithSharedMembership(
-      auth,
-      editedByUsers
-    );
-    const visibleUserIds = new Set(visibleUsers.map((u) => u.id));
-    const userById = new Map(visibleUsers.map((u) => [u.id, u]));
-
-    for (const skill of skills) {
-      if (skill.editedBy !== null && visibleUserIds.has(skill.editedBy)) {
-        result.set(skill.sId, userById.get(skill.editedBy) ?? null);
-      }
     }
 
     return result;
@@ -4718,8 +4608,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentMessageId(
     auth: Authenticator,
-    agentMessageId: ModelId,
-    { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
+    agentMessageId: ModelId
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -4735,7 +4624,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Include all statuses for historical accuracy.
     return this.fetchBySkillReferences(auth, agentMessageSkills, {
       status: ["active", "archived", "suggested"],
-      withToolMetadata,
     });
   }
 

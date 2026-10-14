@@ -87,6 +87,38 @@ module without a matching SVG source is therefore destroyed by a build. Before r
 every export in `src/icons/v2-stroke/index.ts` has a source file — several icons have historically
 been hand-written TSX with no SVG, and they must be exported from Figma first.
 
+# Country flags
+
+The artwork is the free [Untitled UI flag set](https://www.untitledui.com/resources/flag-icons):
+261 countries and regions. Only the `circle` cut is imported; the set also comes as a square and a
+3:2 rectangle, which were deliberately left out because every flag module is pulled in by any
+consumer of `FlagIcon` (about 50 KB gzipped for one cut, three times that for all of them). Flags
+are consumed only through the `FlagIcon` component, which resolves a flag from a code at render
+time; nothing imports a flag module by name.
+
+```
+SVG source       src/icons/src/flags/circle/<CODE>.svg       e.g. GB-SCT.svg
+generated module src/icons/flags/circle/<Module>.tsx          e.g. GbSct.tsx
+generated index  src/icons/flags/circle/index.ts              exports one `FLAGS` record keyed by code
+hand-maintained  src/icons/flags/countries.ts, index.ts
+```
+
+Codes are the uppercase SVG filename stem: ISO 3166-1 alpha-2 where one exists, a
+subdivision-style code for regions (`GB-SCT`, `US-HI`, `PT-20`) and an `X` code for a few disputed
+or historical flags (`XC`, `XS`). `countries.ts` maps every code to its display name and defines
+`FlagCode`; the generated `FLAGS` record is typed against it, so adding or removing an SVG without
+updating `countries.ts` (or vice versa) fails the type check.
+
+Flags are coloured artwork, so like the platform logos they are generated with
+`--no-runtime-config` to escape the black-to-`currentColor` rewrite (52 of them have a black fill).
+`svgr-flag-template.js` is the index template; it needs the source path to recover the code because
+SVGR pascal-cases the module filename. `build_icons.sh` clears only the `circle` directory so the
+hand-maintained files survive.
+
+The Untitled UI SVGs ship with two Figma canvas artifacts on some flags, a full-size `#F5F5F5`
+rectangle and an oversized white one. Both were stripped from the committed sources; strip them
+again when re-importing or a flag grows light grey corners in dark mode.
+
 # Platform logos
 
 The design source of truth is the Figma file
@@ -170,8 +202,7 @@ entry so stored payloads still resolve, and remove both on the following publish
   `npx mcp-add --type http --url "http://localhost:6006/mcp" --scope project`.
 - Curation is tag-driven: stories or files tagged `"!manifest"` are excluded (asset catalogs,
   token tables, design-review galleries, interaction tests, deprecated components). The
-  `"deprecated"` tag renders a sidebar badge. Keep meta `tags: [...]` on one line — the a11y
-  sync script parses it textually.
+  `"deprecated"` tag renders a sidebar badge.
 - Story conventions that feed the manifest: JSDoc with `@summary` on every story export,
   intent-bearing story names, args-driven CSF3 (a `render` must spread its args), `fn()` from
   `storybook/test` for callbacks, component-level JSDoc in `src/components/` (picked up by
@@ -193,21 +224,5 @@ Stories run as real browser tests (vitest browser mode + Playwright Chromium), c
 # Accessibility workflow
 
 Every story gets an axe-core Accessibility panel (a11y addon). Violations are warnings, not
-failures (`a11y: { test: "todo" }` in `.storybook/preview.ts`).
-
-Components with known violations carry an `"a11y-issues"` tag on their story meta, rendered as
-a red "A11y" sidebar badge (tag-badges addon, configured in `.storybook/manager.ts`).
-
-These tags are maintained by a script — do not add or remove them by hand:
-
-```
-npm run a11y:sync
-```
-
-It re-runs the suite in strict mode (`VITE_A11Y_STRICT=1` makes violations fail), then adds the
-tag to story files with violations and removes it from files that are now clean
-(`scripts/sync-a11y-tags.mjs`). Run it after a11y fixes and commit the diff. The prod Storybook
-only reflects the tags committed at build time, so keep them in sync.
-
-To fix a badged component: open it in Storybook, read the violations in the Accessibility
-panel, fix the component, then run the sync and commit the tag removal it produces.
+failures (`a11y: { test: "todo" }` in `.storybook/preview.ts`). To fix one, open the component in
+Storybook and read the violations in the Accessibility panel.

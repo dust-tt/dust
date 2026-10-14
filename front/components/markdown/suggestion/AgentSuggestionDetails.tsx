@@ -4,7 +4,11 @@ import {
   SUGGESTION_DIFF_CLASSES,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
-import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
+import {
+  formatModelEffortLabel,
+  getModelDisplayDescription,
+  getModelDisplayName,
+} from "@app/components/model_picker/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { SuggestedChangeAction } from "@app/components/shared/SuggestedChangeRow";
@@ -14,10 +18,12 @@ import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFie
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+  getAgentDisplayDescription,
+  getMcpServerViewDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
@@ -52,7 +58,7 @@ function SuggestedModelRow({
   const { t } = useLingui();
   const { isDark } = useTheme();
   const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
-  const modelName = model?.displayName ?? modelId;
+  const modelName = model ? getModelDisplayName(t, model) : modelId;
 
   return (
     <SuggestedChangeRow
@@ -70,7 +76,7 @@ function SuggestedModelRow({
           ? formatModelEffortLabel(t, modelName, reasoningEffort)
           : modelName
       }
-      description={model?.description}
+      description={model ? getModelDisplayDescription(t, model) : undefined}
     />
   );
 }
@@ -121,7 +127,7 @@ function SuggestedSkillRow({
       action={action}
       visual={<SkillAvatar size="xs" />}
       title={displayName}
-      description={skill?.userFacingDescription}
+      description={skill ? getSkillDisplayDescription(t, skill) : undefined}
     />
   );
 }
@@ -156,7 +162,9 @@ function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
       }
       title={displayName}
       description={
-        serverView ? getMcpServerViewDescription(serverView) : undefined
+        serverView
+          ? getMcpServerViewDisplayDescription(t, serverView)
+          : undefined
       }
     />
   );
@@ -191,7 +199,9 @@ function SuggestedSubAgentRow({
       action={action}
       visual={<Avatar size="xs" visual={subAgent?.pictureUrl} />}
       title={displayName}
-      description={subAgent?.description}
+      description={
+        subAgent ? getAgentDisplayDescription(t, subAgent) : undefined
+      }
     />
   );
 }

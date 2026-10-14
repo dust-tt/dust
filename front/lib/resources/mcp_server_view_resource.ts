@@ -128,6 +128,12 @@ export type PostMCPServerViewResponseBody = {
  *   checked at runtime). `loadConfiguration` upgrades views already fetched as `metadata`.
  * Neither is enough to run a tool: `connectToMCPServer` reads the plaintext secrets itself.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:security;backend] metadata-mode-loads-no-secrets
+ * `metadata` views MUST NOT carry server secrets: no remote `sharedSecret` or `customHeaders`,
+ * and no internal server credentials (never decrypted). Only the `configuration` mode (the fetch
+ * `mode` option or `loadConfiguration`) loads them.
+ */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
 
 const CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES = [
@@ -238,7 +244,7 @@ export class MCPServerViewResource<
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
         blob.internalMCPServerId,
-        { includeRestricted: true }
+        { includeCredentials: true, includeRestricted: true }
       );
       if (!internalServer) {
         throw new DustError(
@@ -538,13 +544,11 @@ export class MCPServerViewResource<
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
       mode,
-      includeMetadata = true,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
       mode?: TMode;
-      includeMetadata?: boolean;
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
       // workspace does not have. Defaults to `false` so restricted servers are
@@ -599,7 +603,10 @@ export class MCPServerViewResource<
         await InternalMCPServerInMemoryResource.fetchByIds(
           auth,
           removeNulls(views.map((v) => v.internalMCPServerId)),
-          { includeRestricted }
+          {
+            includeCredentials: mode === "configuration",
+            includeRestricted,
+          }
         );
       const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 
@@ -623,7 +630,7 @@ export class MCPServerViewResource<
       }
     }
 
-    if (includeMetadata && filteredViews.length > 0) {
+    if (mode === "configuration" && filteredViews.length > 0) {
       await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
     for (const view of filteredViews) {
@@ -767,11 +774,9 @@ export class MCPServerViewResource<
     ids: ModelId[],
     {
       mode,
-      includeMetadata = true,
       transaction,
     }: {
       mode?: TMode;
-      includeMetadata?: boolean;
       transaction?: Transaction;
     } = {}
   ): Promise<MCPServerViewResource<TMode>[]> {
@@ -784,7 +789,7 @@ export class MCPServerViewResource<
           },
         },
       },
-      { mode, includeMetadata, transaction }
+      { mode, transaction }
     );
 
     return views ?? [];
@@ -1734,6 +1739,11 @@ export class MCPServerViewResource<
         CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES,
         transaction
       );
+      await InternalMCPServerInMemoryResource.loadCredentials(
+        auth,
+        removeNulls(metadataViews.map((v) => v.internalMCPServer ?? null))
+      );
+      await this.populateToolsMetadata(auth, metadataViews, transaction);
       for (const view of metadataViews) {
         view.fetchMode = "configuration";
       }

@@ -1,5 +1,9 @@
+import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { AzureOpenAIErrorResponseSchema } from "@app/types/provider";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -7,6 +11,10 @@ import { z } from "zod";
 
 const ParamsSchema = z.object({
   pId: z.string(),
+});
+
+const AzureDeploymentsResponseSchema = z.object({
+  data: z.array(z.object({ id: z.string(), model: z.string() })),
 });
 
 export type GetProviderModelsResponseBody = {
@@ -104,25 +112,51 @@ app.get(
       }
 
       case "azure_openai": {
-        const deploymentsRes = await fetch(
-          `${config.endpoint}openai/deployments?api-version=2022-12-01`,
-          {
-            method: "GET",
-            headers: {
-              "api-key": config.api_key,
+        const endpointError = validateAzureOpenAIEndpoint(config.endpoint);
+        if (endpointError) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "provider_endpoint_error",
+              message: endpointError,
             },
-          }
-        );
-
-        if (!deploymentsRes.ok) {
-          const err = await deploymentsRes.json();
-          return ctx.json({ error: err.error }, 400);
+          });
         }
-        const deployments = await deploymentsRes.json();
-        const mList = deployments.data.map((m: any) => ({
-          id: m.id,
-          model: m.model,
-        })) as Array<{ model: string; id: string }>;
+
+        let mList: Array<{ id: string; model: string }>;
+        try {
+          const deploymentsRes = await untrustedFetch(
+            `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+            {
+              method: "GET",
+              headers: {
+                "api-key": config.api_key,
+              },
+            }
+          );
+          if (!deploymentsRes.ok) {
+            const err = AzureOpenAIErrorResponseSchema.parse(
+              await deploymentsRes.json()
+            );
+            return ctx.json({ error: err.error.message }, 400);
+          }
+          mList = AzureDeploymentsResponseSchema.parse(
+            await deploymentsRes.json()
+          ).data;
+        } catch (err) {
+          return apiError(
+            ctx,
+            {
+              status_code: 400,
+              api_error: {
+                type: "provider_endpoint_error",
+                message:
+                  "Could not list deployments from the Azure OpenAI endpoint.",
+              },
+            },
+            normalizeError(err)
+          );
+        }
 
         let f = [];
         if (embed) {

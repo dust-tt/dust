@@ -166,7 +166,9 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       });
 
       expect(response.status).toBe(400);
-      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect((await response.json()).error.type).toBe(
+        "group_kind_not_supported"
+      );
     });
   });
 

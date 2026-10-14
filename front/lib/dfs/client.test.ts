@@ -104,6 +104,8 @@ describe("DfsClient", () => {
             {
               object: wireAttr(FILE_ID, {
                 attrVersion: MAX_UINT64.toString(),
+                grantsVersion: MAX_UINT64.toString(),
+                storeVersion: "9223372036854775807",
                 metadata: {
                   created: "1600000000000",
                   mimeType,
@@ -149,7 +151,8 @@ describe("DfsClient", () => {
           mtimeMs: 1700000000000,
           attrVersion: MAX_UINT64,
           contentVersion: BigInt("2"),
-          view: { storeVersion: BigInt("42"), authVersion: BigInt("7") },
+          grantsVersion: MAX_UINT64,
+          storeVersion: BigInt("9223372036854775807"),
           metadata: { createdMs: 1600000000000, mimeType },
         },
       });
@@ -250,48 +253,6 @@ describe("DfsClient", () => {
         { status: "error", objectId: ROOT_ID, errorCode: "capacity" },
       ]);
     }
-  });
-
-  it("validates cached versions", async () => {
-    const { client, transport } = setup({
-      Validate: new Ok({
-        results: [
-          { outcome: "UNCHANGED" },
-          { outcome: "CHANGED" },
-          { outcome: "DENIED", error: { code: "FORBIDDEN" } },
-        ],
-        view: DfsWireFactory.view(),
-      }),
-    });
-
-    const res = await client.validate({
-      checks: [
-        { objectId: "root", contentVersion: BigInt("4") },
-        {
-          objectId: FILE_ID,
-          attrVersion: BigInt("3"),
-          contentVersion: BigInt("2"),
-        },
-        { objectId: ROOT_ID, attrVersion: BigInt("1") },
-      ],
-    });
-
-    expect(transport.calls[0].request).toEqual({
-      checks: [
-        { objectId: { root: true }, contentVersion: "4" },
-        {
-          objectId: wireRef(FILE_ID),
-          attrVersion: "3",
-          contentVersion: "2",
-        },
-        { objectId: wireRef(ROOT_ID), attrVersion: "1" },
-      ],
-    });
-    expect(res.isOk() && res.value.results).toEqual([
-      { outcome: "unchanged", errorCode: undefined },
-      { outcome: "changed", errorCode: undefined },
-      { outcome: "denied", errorCode: "forbidden" },
-    ]);
   });
 
   it("applies operations in order and returns per-operation outcomes", async () => {
@@ -750,8 +711,10 @@ describe("DfsClient", () => {
       offset: 0,
       length: 1.5,
     });
-    const tooLarge = await client.validate({
-      checks: [{ objectId: FILE_ID, attrVersion: MAX_UINT64 + BigInt(1) }],
+    const tooLarge = await client.read({
+      objectId: FILE_ID,
+      offset: 0,
+      length: 2 ** 32,
     });
 
     expect(fractional.isErr() && fractional.error.code).toBe("invalid_input");

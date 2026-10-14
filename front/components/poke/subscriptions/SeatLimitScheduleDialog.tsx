@@ -453,7 +453,9 @@ function ScheduleEditor({
                         variant="ghost-secondary"
                         disabled={saved}
                         tooltip={
-                          saved ? "Saved phases can't be removed" : undefined
+                          saved
+                            ? "Saved phases can't be removed"
+                            : "Remove phase"
                         }
                         onClick={() => handleRemovePhase(index)}
                       />

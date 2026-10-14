@@ -228,12 +228,8 @@ msgid "Presentation"
 msgstr "Presentation"
 
 #: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
-msgid "Frames"
-msgstr "Frames"
-
-#: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
-msgid "{updatedDayKind, select, relative {Updated {updatedDay}} lastWeekday {Updated last {updatedDay}} weekday {Updated on {updatedDay}} other {Updated on {updatedDay}}}"
-msgstr "{updatedDayKind, select, relative {Updated {updatedDay}} lastWeekday {Updated last {updatedDay}} weekday {Updated on {updatedDay}} other {Updated on {updatedDay}}}"
+msgid "Frame"
+msgstr "Frame"
 
 #: front/components/assistant/conversation/CompactionMessage.tsx
 msgid "Context compaction failed"

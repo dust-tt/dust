@@ -1,6 +1,9 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
-import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
+import {
+  isUpgradeRequestReasonError,
+  useRequestUpgrade,
+} from "@app/lib/swr/upgrade_requests";
 import { MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -91,7 +94,7 @@ export function UsageUpgradeButton({
       form.reset();
       return;
     }
-    if (result.error.errorType === "invalid_request_error") {
+    if (isUpgradeRequestReasonError(result.error.errorType)) {
       form.setError("reason", {
         type: "manual",
         message: formatErrorDescription(result.error.error),

@@ -54,7 +54,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "provider_auth_error",
           message:
             "The provided credentials are invalid or could not be verified.",
         },
@@ -129,7 +129,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "provider_auth_error",
           message:
             "The provided credentials are invalid or could not be verified.",
         },

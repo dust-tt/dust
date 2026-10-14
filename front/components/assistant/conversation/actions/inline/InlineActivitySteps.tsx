@@ -46,8 +46,8 @@ function getCompletionLabel(
         : msg`Errored after ${duration}`;
     case "cancelled":
       return withoutTools
-        ? msg`Cancelled after ${duration}, without tools.`
-        : msg`Cancelled after ${duration}`;
+        ? msg`Canceled after ${duration}, without tools.`
+        : msg`Canceled after ${duration}`;
     default:
       return withoutTools
         ? msg`Completed in ${duration}, without tools.`
@@ -61,7 +61,7 @@ function getTerminalLabel(
 ): MessageDescriptor {
   switch (status) {
     case "cancelled":
-      return withoutTools ? msg`Cancelled, without tools.` : msg`Cancelled`;
+      return withoutTools ? msg`Canceled, without tools.` : msg`Canceled`;
     default:
       return withoutTools ? msg`Completed, without tools.` : msg`Completed`;
   }
@@ -227,7 +227,7 @@ export function InlineActivitySteps({
           icon: agentMessage.status === "cancelled" ? XCircle : Check,
           label:
             agentMessage.status === "cancelled"
-              ? t`Cancelled`
+              ? t`Canceled`
               : t({ message: "Done", context: "activity status" }),
         }
       : undefined;

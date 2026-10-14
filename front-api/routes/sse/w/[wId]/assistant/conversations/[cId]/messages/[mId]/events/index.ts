@@ -3,9 +3,8 @@ import {
   PRIVATE_MESSAGE_EVENTS_OPTIONS,
   streamMessageEventsForRoute,
 } from "@front-api/lib/api/sse/message_events";
-import { SseQuerySchema } from "@front-api/lib/api/sse/stream_events";
+import { EventTransportQuerySchema } from "@front-api/lib/api/sse/stream_events";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
 
 import poll from "./poll";
@@ -15,20 +14,20 @@ import poll from "./poll";
 
 const app = workspaceApp();
 
-app.use("*", streamingTag);
-/** @ignoreswagger */
+/** @ignoreswagger Internal event endpoint: SSE by default; transport=poll returns JSON event batches. */
 app.get(
   "/",
   validate("param", MessageParamSchema),
-  validate("query", SseQuerySchema),
+  validate("query", EventTransportQuerySchema),
   (ctx) => {
     const { cId, mId } = ctx.req.valid("param");
-    const { lastEventId } = ctx.req.valid("query");
+    const { lastEventId, transport } = ctx.req.valid("query");
     return streamMessageEventsForRoute(
       ctx,
       ctx.var.auth,
       { conversationId: cId, messageId: mId, lastEventId },
-      PRIVATE_MESSAGE_EVENTS_OPTIONS
+      PRIVATE_MESSAGE_EVENTS_OPTIONS,
+      transport
     );
   }
 );

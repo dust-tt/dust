@@ -1,0 +1,25 @@
+@cc [owner:sfriquet,label:product] teams-text-extractable
+In the Teams bot (`webhook_teams.ts` and `teams/`), translated text MUST be rendered with
+`i18n._("<English text>", values)` on an `I18n` instance returned by `getBotI18n`
+(`connectors/src/lib/bot/i18n.ts`), held in a binding named `i18n`, never with the global `i18n` of
+`@lingui/core`. The first argument MUST be a string literal, which is both the message id and its
+English text: `lingui extract` only collects literal ids passed to a callee named `i18n._`. Dynamic
+parts MUST be named ICU placeholders (`{agentName}`) passed in `values`, never concatenated or
+interpolated into the literal. Lingui macros (`@lingui/*/macro`) MUST NOT be imported: connectors
+runs under `tsx`, which does not compile them.
+
+@cc [owner:sfriquet,label:product] teams-user-text-translated
+Text the Teams bot (`webhook_teams.ts` and `teams/`) writes for Teams users (messages, adaptive
+card text, buttons, placeholders and errors) MUST be translated as specified by
+`teams-text-extractable`. Content not authored by the bot (agent answers, agent and tool names, tool
+labels from the Dust API, Teams data) MUST be interpolated untranslated through placeholders. The
+`message` of an `Error` is diagnostic: it MAY stay English and MUST only reach users through the
+placeholder of a translated sentence. Text sent to the Dust API or to models (message content,
+content fragments) MUST NOT be translated.
+
+@cc [owner:sfriquet,label:product] teams-text-in-workspace-locale
+Teams bot text MUST be rendered with the `I18n` that `getBotI18nForWorkspace`
+(`connectors/src/lib/bot/workspace_locale.ts`) returns for the connector of the Teams activity: the
+locale set in the Dust workspace settings, whichever Teams user it is written to. When the activity
+has no connector, it MUST be rendered with `getBotI18n(DEFAULT_LOCALE)`. Teams bot production code
+MUST NOT pick any other locale.

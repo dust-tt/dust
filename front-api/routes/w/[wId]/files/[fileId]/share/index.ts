@@ -15,6 +15,7 @@ import {
   fileShareScopeSchema,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -89,7 +90,7 @@ app.post(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "frame_sharing_not_allowed",
           message: permission.error.message,
         },
       });
@@ -120,20 +121,32 @@ app.post(
     );
     if (allowlistResult.isErr()) {
       const allowlistError = allowlistResult.error;
-      return apiError(ctx, {
-        status_code:
-          allowlistError.code === "invalid_request_error" ? 400 : 500,
-        api_error: {
-          type:
-            allowlistError.code === "invalid_request_error"
-              ? "invalid_request_error"
-              : "internal_server_error",
-          message: allowlistError.message,
-          ...(isUnverifiableFrameFileRefsShareError(allowlistError)
-            ? { unverifiableRefs: allowlistError.unverifiableRefs }
-            : {}),
-        },
-      });
+      const { message } = allowlistError;
+      switch (allowlistError.code) {
+        case "frame_files_unverifiable":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "frame_files_unverifiable",
+              message,
+              ...(isUnverifiableFrameFileRefsShareError(allowlistError)
+                ? { unverifiableRefs: allowlistError.unverifiableRefs }
+                : {}),
+            },
+          });
+        case "frame_user_required":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: { type: "frame_user_required", message },
+          });
+        case "internal_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: { type: "internal_server_error", message },
+          });
+        default:
+          return assertNever(allowlistError.code);
+      }
     }
 
     const shareResponse = await buildShareFileResponse(auth, file);
@@ -175,7 +188,7 @@ async function fetchShareableFile(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "file_not_frame",
         message: "Only Frame files can be shared publicly.",
       },
     });

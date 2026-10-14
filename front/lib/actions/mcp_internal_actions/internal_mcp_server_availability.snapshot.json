@@ -1,7 +1,6 @@
 {
   "auto": [
     { "name": "image_generation", "id": 2 },
-    { "name": "file_generation", "id": 3 },
     { "name": "web_search_&_browse", "id": 5 },
     { "name": "agent_router", "id": 8 },
     { "name": "include_data", "id": 9 },
@@ -38,11 +37,11 @@
     { "name": "activation_recommendations", "id": 1040 },
     { "name": "agent_templates", "id": 1041 },
     { "name": "user_memory", "id": 1043 },
-    { "name": "conversation_side_panel", "id": 1044 },
     { "name": "agent_delegation", "id": 1045 },
     { "name": "workspace_management", "id": 1048 },
     { "name": "building_agents_and_skills", "id": 1050 },
-    { "name": "documents", "id": 1051 }
+    { "name": "documents", "id": 1051 },
+    { "name": "self_configuration", "id": 1052 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

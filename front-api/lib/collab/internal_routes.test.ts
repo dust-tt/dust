@@ -1,21 +1,21 @@
-import { checkLiveAccess } from "@app/lib/api/collab/live_file";
+import { checkCollabAccess } from "@app/lib/api/collab/access";
 import { ENVELOPE_MAP_NAME } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
+import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { writeUserFile } from "@app/tests/utils/user_files";
+import { toSessionName } from "@app/types/collab";
 import {
   COLLAB_INTERNAL_ROUTES_PREFIX,
-  LIVE_SOURCE_READ_PATH,
-  LIVE_SOURCE_WRITE_PATH,
-  toLiveDocumentName,
-} from "@app/types/collab";
+  COLLAB_SOURCE_READ_PATH,
+  COLLAB_SOURCE_WRITE_PATH,
+} from "@app/types/collab_internal";
 import { Err } from "@app/types/shared/result";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
-import { createInternalDocumentsApp } from "@front-api/lib/collab/internal_routes";
+import { createInternalRoutes } from "@front-api/lib/collab/internal_routes";
 import { createHono } from "@front-api/lib/hono";
 import { unhandledErrorHandler } from "@front-api/middlewares/utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,10 +30,7 @@ function postRaw(
 ) {
   // Mounted as the collab server mounts it.
   const app = createHono()
-    .route(
-      COLLAB_INTERNAL_ROUTES_PREFIX,
-      createInternalDocumentsApp(hocuspocus)
-    )
+    .route(COLLAB_INTERNAL_ROUTES_PREFIX, createInternalRoutes(hocuspocus))
     .onError(unhandledErrorHandler);
   return app.request(`${COLLAB_INTERNAL_ROUTES_PREFIX}${path}`, {
     method: "POST",
@@ -54,7 +51,7 @@ function post(
   return postRaw(path, JSON.stringify(body), authorization, hocuspocus);
 }
 
-describe("createInternalDocumentsApp", () => {
+describe("createInternalRoutes", () => {
   const read = { workspaceId: "w1", canonicalPath: "user-u1/notes.md" };
 
   beforeEach(() => {
@@ -66,20 +63,20 @@ describe("createInternalDocumentsApp", () => {
   });
 
   it("refuses a request without the secret, or when none is configured", async () => {
-    expect((await post(LIVE_SOURCE_READ_PATH, read)).status).toBe(401);
+    expect((await post(COLLAB_SOURCE_READ_PATH, read)).status).toBe(401);
     expect(
-      (await post(LIVE_SOURCE_READ_PATH, read, "Bearer wrong")).status
+      (await post(COLLAB_SOURCE_READ_PATH, read, "Bearer wrong")).status
     ).toBe(401);
 
     vi.mocked(config.getCollabServerInternalSecret).mockReturnValue(undefined);
-    expect((await post(LIVE_SOURCE_READ_PATH, read, "Bearer ")).status).toBe(
+    expect((await post(COLLAB_SOURCE_READ_PATH, read, "Bearer ")).status).toBe(
       401
     );
   });
 
   it("answers a malformed body with the standard error envelope", async () => {
     const response = await postRaw(
-      LIVE_SOURCE_READ_PATH,
+      COLLAB_SOURCE_READ_PATH,
       "{",
       `Bearer ${SECRET}`
     );
@@ -92,7 +89,7 @@ describe("createInternalDocumentsApp", () => {
 
   it("reports a document nobody has open as closed", async () => {
     const response = await post(
-      LIVE_SOURCE_READ_PATH,
+      COLLAB_SOURCE_READ_PATH,
       read,
       `Bearer ${SECRET}`
     );
@@ -107,7 +104,7 @@ describe("createInternalDocumentsApp", () => {
 
     // `co_edition` is off for the workspace.
     const response = await post(
-      LIVE_SOURCE_WRITE_PATH,
+      COLLAB_SOURCE_WRITE_PATH,
       {
         workspaceId: workspace.sId,
         userId: user.sId,
@@ -120,7 +117,7 @@ describe("createInternalDocumentsApp", () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
+      error: { type: "feature_not_enabled" },
     });
   });
 
@@ -129,12 +126,12 @@ describe("createInternalDocumentsApp", () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "co_edition");
     const canonicalPath = await writeUserFile(auth, "notes.md", "# Notes\n");
-    const file = await checkLiveAccess(auth, canonicalPath);
+    const file = await checkCollabAccess(auth, canonicalPath);
     if (file.isErr()) {
       throw new Error(file.error.message);
     }
     const hocuspocus = createCollabHocuspocus();
-    const name = toLiveDocumentName(workspace.sId, canonicalPath);
+    const name = toSessionName(workspace.sId, canonicalPath);
     await hocuspocus.openDirectConnection(name, file.value);
     return {
       hocuspocus,
@@ -152,7 +149,7 @@ describe("createInternalDocumentsApp", () => {
     const { authenticator: outsider } = await createResourceTest({});
     const readAs = (userId?: string) =>
       post(
-        LIVE_SOURCE_READ_PATH,
+        COLLAB_SOURCE_READ_PATH,
         { ...request, userId },
         `Bearer ${SECRET}`,
         hocuspocus
@@ -173,10 +170,10 @@ describe("createInternalDocumentsApp", () => {
       throw new Error("The document is not open.");
     }
     const broadcast = vi.spyOn(document, "broadcastStateless");
-    const agent = LiveAgentFactory.build();
+    const agent = CollabAgentFactory.build();
     const readAs = (userId: string) =>
       post(
-        LIVE_SOURCE_READ_PATH,
+        COLLAB_SOURCE_READ_PATH,
         { ...request, userId, agent },
         `Bearer ${SECRET}`,
         hocuspocus
@@ -201,13 +198,13 @@ describe("createInternalDocumentsApp", () => {
     );
 
     const read = await post(
-      LIVE_SOURCE_READ_PATH,
+      COLLAB_SOURCE_READ_PATH,
       request,
       `Bearer ${SECRET}`,
       hocuspocus
     );
     const written = await post(
-      LIVE_SOURCE_WRITE_PATH,
+      COLLAB_SOURCE_WRITE_PATH,
       { ...request, base: "# Notes\n", source: "# Edited\n" },
       `Bearer ${SECRET}`,
       hocuspocus
@@ -225,7 +222,7 @@ describe("createInternalDocumentsApp", () => {
     hocuspocus.documents.get(name)?.getMap(ENVELOPE_MAP_NAME).clear();
     const readAs = (userId?: string) =>
       post(
-        LIVE_SOURCE_READ_PATH,
+        COLLAB_SOURCE_READ_PATH,
         { ...request, userId },
         `Bearer ${SECRET}`,
         hocuspocus
@@ -239,7 +236,7 @@ describe("createInternalDocumentsApp", () => {
     const { hocuspocus, request } = await openNotes();
 
     const response = await post(
-      LIVE_SOURCE_WRITE_PATH,
+      COLLAB_SOURCE_WRITE_PATH,
       {
         ...request,
         canonicalPath: `${request.canonicalPath}/`,
@@ -256,11 +253,11 @@ describe("createInternalDocumentsApp", () => {
     });
   });
 
-  it("refuses a source too large for a checkpoint to write", async () => {
+  it("refuses a source too large for a save to write", async () => {
     const { hocuspocus, request } = await openNotes();
 
     const response = await post(
-      LIVE_SOURCE_WRITE_PATH,
+      COLLAB_SOURCE_WRITE_PATH,
       {
         ...request,
         base: "# Notes\n",
@@ -272,7 +269,7 @@ describe("createInternalDocumentsApp", () => {
 
     expect(await response.json()).toMatchObject({ result: "refused" });
     const after = await post(
-      LIVE_SOURCE_READ_PATH,
+      COLLAB_SOURCE_READ_PATH,
       request,
       `Bearer ${SECRET}`,
       hocuspocus

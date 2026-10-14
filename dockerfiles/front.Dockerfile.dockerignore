@@ -26,6 +26,12 @@
 !scripts/db/
 !scripts/db/**
 
+# The dfs protocol definition, read at runtime by front's dfs client.
+!dfs/
+!dfs/protocol/
+!dfs/protocol/proto/
+!dfs/protocol/proto/**
+
 # Generated files within the included workspaces.
 **/node_modules
 **/target

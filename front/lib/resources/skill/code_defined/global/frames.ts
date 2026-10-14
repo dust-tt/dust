@@ -4,21 +4,13 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
-import { fetchFrameSkillFiles } from "@app/lib/resources/skill/code_defined/global/frames/files";
+import { FRAME_SKILL_FILES } from "@app/lib/resources/skill/code_defined/global/frames/files";
 import { buildFramesV2Instructions } from "@app/lib/resources/skill/code_defined/global/frames_v2";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import {
-  isComputerFeatureEnabled,
-  isFramesV2FunctionsEnabled,
-} from "@app/types/shared/feature_flags";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 
-/**
- * @cc [owner:flvndvd,label:product] frame-document-disclosure
- * Document authoring instructions and attachments MUST require both frames_v2 and frame_documents.
- * Disabling discovery MUST NOT change the runtime behavior of existing Frames.
- */
 /**
  * @cc [owner:davidebbo,label:product] frame-functions-disclosure
  * Under frames_v2, function, database and persistent-file authoring guidance MUST be included
@@ -56,7 +48,6 @@ export const framesSkill = {
     const isPod = conversation ? isPodConversation(conversation) : false;
     if (flags.includes("frames_v2")) {
       return buildFramesV2Instructions({
-        hasDocuments: flags.includes("frame_documents"),
         hasFunctions: isFramesV2FunctionsEnabled(flags),
         isPod,
       });
@@ -66,19 +57,13 @@ export const framesSkill = {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
     }
 
-    return buildInteractiveContentInstructions({
-      hasComputer: isComputerFeatureEnabled(flags),
-      isPod,
-    });
+    return buildInteractiveContentInstructions({ isPod });
   },
-  mcpServers: [
-    { name: "interactive_content" },
-    { name: "conversation_side_panel" },
-  ],
-  fetchFiles: fetchFrameSkillFiles,
+  mcpServers: [{ name: "interactive_content" }],
+  files: FRAME_SKILL_FILES,
   // Frames v2 authoring runs entirely through the Computer.
   warmsConversationSandbox: (auth: Authenticator) =>
     hasFeatureFlag(auth, "frames_v2"),
-  version: 15,
+  version: 16,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

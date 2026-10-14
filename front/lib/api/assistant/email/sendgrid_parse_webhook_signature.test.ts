@@ -206,7 +206,7 @@ describe("validateSendgridParseWebhookSignature", () => {
     }
 
     expect(result.error.statusCode).toBe(403);
-    expect(result.error.apiError.type).toBe("invalid_request_error");
+    expect(result.error.apiError.type).toBe("invalid_webhook_signature");
   });
 
   it("rejects stale timestamps", () => {
@@ -229,7 +229,7 @@ describe("validateSendgridParseWebhookSignature", () => {
     }
 
     expect(result.error.statusCode).toBe(403);
-    expect(result.error.apiError.type).toBe("invalid_request_error");
+    expect(result.error.apiError.type).toBe("invalid_webhook_signature");
   });
 
   it("rejects timestamps that are too far in the future", () => {
@@ -252,7 +252,7 @@ describe("validateSendgridParseWebhookSignature", () => {
     }
 
     expect(result.error.statusCode).toBe(403);
-    expect(result.error.apiError.type).toBe("invalid_request_error");
+    expect(result.error.apiError.type).toBe("invalid_webhook_signature");
   });
 
   it("accepts a valid signature", () => {

@@ -22,7 +22,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "project_space_required",
               message: result.error.message,
             },
           });
@@ -30,7 +30,7 @@ app.post(
           return apiError(ctx, {
             status_code: 409,
             api_error: {
-              type: "invalid_request_error",
+              type: "pod_tasks_already_seeded",
               message: result.error.message,
             },
           });

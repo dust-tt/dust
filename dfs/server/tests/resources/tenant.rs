@@ -14,6 +14,45 @@ use foundationdb::{
     tuple::{pack, unpack},
 };
 
+pub(crate) async fn tenant_creation_retry_succeeds_without_changes() -> Result<()> {
+    let (tenant, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;
+    let record_key = tenant_subspace(&tenant.tenant_id).pack(&"tenant");
+    let lookup_key = namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice()));
+    let create = || {
+        fdb::with_transaction(|tx| {
+            let tenant = &tenant;
+            async move { tenant.create(&tx).await }
+        })
+    };
+    create().await?;
+    let tx = fdb::database()?.create_trx()?;
+    let record = tx
+        .get(&record_key, false)
+        .await?
+        .context("missing tenant")?;
+    let lookup = tx
+        .get(&lookup_key, false)
+        .await?
+        .context("missing lookup")?;
+
+    // A retry after an unknown commit result runs `create` again in a new transaction.
+    create().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    assert_eq!(
+        tx.get(&record_key, false).await?.as_deref(),
+        Some(record.as_ref())
+    );
+    assert_eq!(
+        tx.get(&lookup_key, false).await?.as_deref(),
+        Some(lookup.as_ref())
+    );
+    tx.clear(&record_key);
+    tx.clear(&lookup_key);
+    tx.commit().await?;
+    Ok(())
+}
+
 pub(crate) async fn authentication_requires_a_matching_index_and_tenant_record() -> Result<()> {
     let (owner, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;
     let (other, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;

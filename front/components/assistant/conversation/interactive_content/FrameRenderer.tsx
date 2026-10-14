@@ -210,7 +210,7 @@ export function FrameRenderer({
     mutateFileContent,
   });
   // Remount via React key only (identifier stays stable so Next.js keeps one /content URL):
-  // on a new contentHash (agent publish / open_frame) and, for v2, after Save/discard/reload.
+  // on a new contentHash (agent publish / interactive content) and, for v2, after Save/discard/reload.
   const vizInstanceKey = `${
     contentHash
       ? `viz-${contentHash}`
@@ -458,7 +458,7 @@ export function FrameRenderer({
                   complete: true,
                   // Stable across revisions — contentHash belongs in `key` only.
                   // Putting it in identifier forced Next.js to recompile /content
-                  // for every open_frame/publish.
+                  // for every publish / content refresh.
                   identifier: `viz-${fileId}`,
                 }}
                 key={vizInstanceKey}

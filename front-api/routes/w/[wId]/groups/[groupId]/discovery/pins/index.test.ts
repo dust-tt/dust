@@ -174,7 +174,7 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
     );
     expect(missingTargetResponse.status).toBe(400);
     expect((await missingTargetResponse.json()).error.type).toBe(
-      "invalid_request_error"
+      "discovery_pin_target_not_found"
     );
   });
 });

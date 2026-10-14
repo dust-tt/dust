@@ -68,8 +68,6 @@ function isReinforcementEnabled(
   return reinforcement !== "off";
 }
 
-type ColumnHeader = ColumnDef<RowData, unknown>["header"];
-
 function getColumns(
   unit: ReinforcementBillingUnit,
   capUnit: string,
@@ -77,8 +75,8 @@ function getColumns(
     name: string;
     editors: string;
     enabled: string;
-    currentlySpent: ColumnHeader;
-    cap: ColumnHeader;
+    currentSpend: string;
+    cap: string;
     lockState: string;
   }
 ): ColumnDef<RowData, unknown>[] {
@@ -134,7 +132,7 @@ function getColumns(
         const selected = pendingEnabled ?? enabled;
         const isLocked = pendingLock ?? lock;
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent className="justify-center">
             <SliderToggle
               selected={selected}
               disabled={isEnabledUpdating || isLocked}
@@ -143,17 +141,17 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-24" },
+      meta: { headerAlign: "center", className: "w-24" },
     },
     {
-      header: headers.currentlySpent,
+      header: headers.currentSpend,
       accessorKey: "currentSpent",
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.BasicCellContent
           label={info.row.original.currentSpentFormatted}
         />
       ),
-      meta: { className: "w-44" },
+      meta: { type: "numeric", className: "w-60" },
     },
     {
       header: headers.cap,
@@ -175,7 +173,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: unit === "awu_credits" ? "w-52" : "w-40" },
+      meta: { className: unit === "awu_credits" ? "w-60 pl-8" : "w-48 pl-8" },
     },
     {
       header: headers.lockState,
@@ -185,7 +183,7 @@ function getColumns(
           info.row.original;
         const selected = pendingLock ?? lock;
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent className="justify-center">
             <SliderToggle
               selected={selected}
               disabled={isLockUpdating}
@@ -194,7 +192,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-32" },
+      meta: { headerAlign: "center", className: "w-32" },
     },
   ];
 }
@@ -396,32 +394,11 @@ export function SelfImprovingSkillsListSection({
         name: t`Name`,
         editors: t`Editors`,
         enabled: t`Enabled`,
-        // "(credits)" goes on its own line: the single-line header is too wide and
-        // overlaps the neighboring columns.
-        currentlySpent:
+        currentSpend:
           unit === "awu_credits"
-            ? () => (
-                <span>
-                  <Trans>
-                    Currently Spent
-                    <br />
-                    (credits)
-                  </Trans>
-                </span>
-              )
-            : t`Currently Spent ($)`,
-        cap:
-          unit === "awu_credits"
-            ? () => (
-                <span>
-                  <Trans>
-                    Cap
-                    <br />
-                    (credits)
-                  </Trans>
-                </span>
-              )
-            : t`Cap ($)`,
+            ? t`Current Spend (credits)`
+            : t`Current Spend ($)`,
+        cap: t`Cap`,
         lockState: t`Lock State`,
       }),
     [t, unit, capUnit]

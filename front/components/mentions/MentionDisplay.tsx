@@ -8,6 +8,7 @@
 
 import { MentionDropdown } from "@app/components/mentions/MentionDropdown";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -17,6 +18,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface MentionDisplayProps {
   mention: RichMention;
@@ -61,7 +63,12 @@ export function MentionDisplay({
   showTooltip = true,
   onSeeAgentDetails,
 }: MentionDisplayProps) {
+  const { t } = useLingui();
   const { user } = useAuth();
+  const description = getAgentDisplayDescription(t, {
+    sId: mention.id,
+    description: mention.description,
+  });
   const isCurrentUserMentioned = mention.id === user?.sId;
   // If interactive and owner is provided, wrap with dropdown.
   if (interactive && owner) {
@@ -82,7 +89,7 @@ export function MentionDisplay({
                 />
               </MentionDropdown>
             </TooltipTrigger>
-            <TooltipContent>{mention.description}</TooltipContent>
+            <TooltipContent>{description}</TooltipContent>
           </TooltipRoot>
         </TooltipProvider>
       );
@@ -115,7 +122,7 @@ export function MentionDisplay({
               isCurrentUserMentioned={isCurrentUserMentioned}
             />
           </TooltipTrigger>
-          <TooltipContent>{mention.description}</TooltipContent>
+          <TooltipContent>{description}</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
     );

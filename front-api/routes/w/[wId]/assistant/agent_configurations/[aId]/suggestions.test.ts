@@ -173,7 +173,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("agent_suggestion_not_found");
     expect(data.error.message).toContain(
       "do not belong to the specified agent configuration"
     );
@@ -195,7 +195,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("sidekick_suggestion_required");
     expect(data.error.message).toContain(
       "Only Sidekick suggestions can be reviewed here"
     );

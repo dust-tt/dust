@@ -1,0 +1,363 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every 5 minutes"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every 15 minutes"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every 30 minutes"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every hour"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Once a day"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Once a week"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "All activity"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Mentions only"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Nothing"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Error updating notification preferences"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Notify me about"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Applies to in-app popups, email, and Slack"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "In-app popup"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Show a popup inside Dust"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Email and Slack notifications are turned off for this workspace by an admin."
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "A direct message in Slack"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Email"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Receive a summary by email"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Email frequency"
+msgstr ""
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "How often to send email notification summaries"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgctxt "workspace role"
+msgid "admin"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgctxt "workspace role"
+msgid "manager"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgctxt "workspace role"
+msgid "user"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Workspace"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Role: {role}"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Invited"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Expired"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Join"
+msgstr ""
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "No pending invitations found."
+msgstr ""
+
+#: front/components/me/PronounPresetChips.tsx
+msgctxt "pronouns"
+msgid "She/Her"
+msgstr ""
+
+#: front/components/me/PronounPresetChips.tsx
+msgctxt "pronouns"
+msgid "He/Him"
+msgstr ""
+
+#: front/components/me/PronounPresetChips.tsx
+msgctxt "pronouns"
+msgid "They/Them"
+msgstr ""
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Error updating sound notification preferences"
+msgstr ""
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Agent waiting sound alert"
+msgstr ""
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Play a sound when an agent needs your input to continue"
+msgstr ""
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Notification sound"
+msgstr ""
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Pick your alert sound"
+msgstr ""
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgctxt "verb, play a sound"
+msgid "Play"
+msgstr ""
+
+#: front/components/me/UserAutomationsDialog.tsx
+msgid "Automations"
+msgstr ""
+
+#: front/components/me/UserAutomationsDialog.tsx
+msgid "Triggers"
+msgstr ""
+
+#: front/components/me/UserAutomationsDialog.tsx
+msgid "Wake-Ups"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Disabled by a manager or admin, who can re-enable it."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Disabled while the workspace is being relocated."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Disabled following a plan downgrade."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "This automation is managed by Dust."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Delete automation"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Manage"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Automation deleted"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "The automation \"{name}\" has been deleted."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Failed to delete automation"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "An error occurred while deleting the automation."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Enabled"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Search automations"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Credit usage is temporarily unavailable."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Failed to load your automations."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "No automation matches your search criteria."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "You haven't created any automation yet."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Are you sure you want to delete \"{triggerToDeleteName}\"?"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "This action cannot be undone."
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+#: front/components/me/UserToolsTable.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Delete"
+msgstr ""
+
+#: front/components/me/UserToolsDialog.tsx
+msgid "Tools"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Error"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Failed to delete tool approbation history."
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Success!"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Tool approbation history deleted."
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Failed to connect provider"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Connected"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Connect"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "More options"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Clear confirmation preferences"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Disconnect"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Search tools"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "No matching tools found"
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "No tools available yet."
+msgstr ""
+
+#: front/components/me/UserToolsTable.tsx
+msgid "Connect {overridesDialogServerName}"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "Conversation"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "Untitled conversation"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "Reason"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "Schedule kind"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "once"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgctxt "next run, table column header"
+msgid "Next"
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "Failed to load your wake-ups."
+msgstr ""
+
+#: front/components/me/UserWakeUpsTable.tsx
+msgid "None of your conversations has a scheduled wake-up. Agents schedule wake-ups to pick a conversation back up on their own."
+msgstr ""

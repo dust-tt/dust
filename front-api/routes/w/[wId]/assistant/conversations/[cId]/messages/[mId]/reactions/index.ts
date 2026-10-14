@@ -69,7 +69,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_not_found",
           message: "The message you're trying to react to does not exist.",
         },
       });
@@ -78,7 +78,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message: "Reactions are not allowed on compaction messages.",
         },
       });
@@ -87,7 +87,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message: "Reactions are not allowed on content fragments.",
         },
       });
@@ -123,7 +123,7 @@ app.post(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_not_found",
         message: "The message you're trying to react to does not exist.",
       },
     });
@@ -173,7 +173,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_not_found",
           message: "The message you're trying to react to does not exist.",
         },
       });
@@ -182,7 +182,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message: "Reactions are not allowed on compaction messages.",
         },
       });
@@ -191,7 +191,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message: "Reactions are not allowed on content fragments.",
         },
       });
@@ -227,7 +227,7 @@ app.delete(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_not_found",
         message: "The message you're trying to react to does not exist.",
       },
     });

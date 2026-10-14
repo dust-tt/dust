@@ -79,10 +79,6 @@ export async function getInternalMCPServer(
       return (
         await import("@app/lib/api/actions/servers/sound_studio")
       ).default(auth, toolContext);
-    case "file_generation":
-      return (
-        await import("@app/lib/api/actions/servers/file_generation")
-      ).default(auth, toolContext);
     case "interactive_content":
       return (
         await import("@app/lib/api/actions/servers/interactive_content")
@@ -193,10 +189,6 @@ export async function getInternalMCPServer(
     case "conversation_files":
       return (
         await import("@app/lib/api/actions/servers/conversation_files")
-      ).default(auth, toolContext);
-    case "conversation_side_panel":
-      return (
-        await import("@app/lib/api/actions/servers/conversation_side_panel")
       ).default(auth, toolContext);
     case "cursor_cloud_agents":
       return (
@@ -408,6 +400,10 @@ export async function getInternalMCPServer(
         auth,
         toolContext
       );
+    case "self_configuration":
+      return (
+        await import("@app/lib/api/actions/servers/self_configuration")
+      ).default(auth, toolContext);
     case "user_analytics":
       return (
         await import("@app/lib/api/actions/servers/user_analytics")

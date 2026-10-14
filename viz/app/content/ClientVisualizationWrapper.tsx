@@ -5,6 +5,8 @@ import {
   VisualizationWrapperWithErrorBoundary,
 } from "@viz/app/components/VisualizationWrapper";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
+import type { VizCatalog } from "@viz/app/lib/i18n/catalogs";
+import { VizI18nProvider } from "@viz/app/lib/i18n/VizI18nProvider";
 import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import { useMemo } from "react";
 
@@ -14,6 +16,7 @@ interface ClientVisualizationWrapperProps {
   isEditable?: boolean;
   stagedEdits?: boolean;
   isFullHeight?: boolean;
+  catalog: VizCatalog;
 }
 
 /**
@@ -26,6 +29,7 @@ export function ClientVisualizationWrapper({
   isEditable = false,
   stagedEdits = false,
   isFullHeight = false,
+  catalog,
 }: ClientVisualizationWrapperProps) {
   const sendCrossDocumentMessage = useMemo(
     () =>
@@ -51,5 +55,9 @@ export function ClientVisualizationWrapper({
     dataAPI,
   };
 
-  return <VisualizationWrapperWithErrorBoundary config={config} />;
+  return (
+    <VizI18nProvider catalog={catalog}>
+      <VisualizationWrapperWithErrorBoundary config={config} />
+    </VizI18nProvider>
+  );
 }

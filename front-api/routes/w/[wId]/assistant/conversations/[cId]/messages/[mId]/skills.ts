@@ -49,7 +49,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message: "Message is not an agent message.",
         },
       });

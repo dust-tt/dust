@@ -12,7 +12,7 @@ may be empty unless a minimum is specified. Numeric sizes and offsets are in byt
 - `ObjectId`: the identity of a real stored object, represented as a 16-byte UUIDv7. It remains
   stable across renames and moves. The real tenant root also has an `ObjectId`.
 - `ObjectRef`: either a real `ObjectId` or a virtual `root` / `shared` tag. Virtual references work
-  with `Stat`, `Lookup`, `List`, and `Validate`. Other operations require a real `ObjectId`.
+  with `Stat`, `Lookup`, and `List`. Other operations require a real `ObjectId`.
   Virtual `root` is a session projection, distinct from the stored tenant root.
 - `bytes`: a sequence of raw bytes.
 
@@ -31,9 +31,10 @@ Attr {
   atime?: Timestamp
   mtime?: Timestamp
   ctime?: Timestamp
-  attr_version: uint64           // Version of attributes and metadata; excludes grant changes.
-  content_version: uint64        // Version of bytes or directory entries; excludes grant changes.
-  view: ReadView                 // Store and authorization versions for these attributes.
+  attr_version: uint64           // Version of attributes and metadata.
+  content_version: uint64        // Version of bytes or directory entries.
+  grants_version: uint64         // Version of grants attached to the object itself.
+  store_version: int64           // FDB read snapshot or successful mutation commit version.
   metadata?: ExtendedMetadata    // Present when extended metadata was requested.
 }
 
@@ -41,11 +42,6 @@ ExtendedMetadata {
   created: Timestamp             // Creation time; Unix epoch for virtual projections.
   mime_type?: string
   xattrs: map<string, bytes>
-}
-
-ReadView {
-  store_version: int64           // Monotonically increasing store snapshot/commit version.
-  auth_version: int64            // Monotonically increasing authorization-state version.
 }
 
 ErrorDetails {
@@ -103,65 +99,29 @@ tenant root, the server assigns it when the object is created. It is read-only a
 across writes, metadata or grant changes, renames, and moves. Virtual projections return the
 synthetic value zero (the Unix epoch).
 
-**`attr_version` and `content_version` are monotonically increasing `uint64` values.** They are
-positive, may have gaps, and never wrap or reset during the object's lifetime. Compare each field
-only with the same field for the same tenant and object. Attribute versions and content versions of
-all directories, including virtual projections, are additionally scoped to the session's visible
-namespace; they are not comparable across different sessions.
+**`attr_version`, `content_version`, and `grants_version` are monotonically increasing `uint64`
+values.** They are positive, may have gaps, and never wrap or reset during the object's lifetime.
+Compare each field only with the same field for the same tenant and object. Attribute versions and
+content versions of all directories, including virtual projections, are additionally scoped to the
+session's visible namespace; they are not comparable across different sessions.
 
-`attr_version` advances when stored attributes or extended metadata change, including size,
-timestamps, MIME type, xattrs, the object's own name, and its stored parent. Renames and moves advance
-it even when file contents are unchanged. Grant changes never advance `attr_version`, even when
-grants on the object or its ancestors change the reported mode. Comparing `attr_version` requires a
-fresh authorization check; matching versions alone never grant access or confirm that grant-dependent
-attributes are unchanged.
-Fetching optional metadata or returning a newer `ReadView` does not itself change `attr_version`.
-The version fields themselves are excluded from attribute-change detection, avoiding recursive
-version bumps. Content mutations advance `attr_version` whenever they change size or timestamps.
+`attr_version` covers an object's attributes and extended metadata. `content_version` covers a
+file's bytes, or a directory's mapping of stored entry names to object IDs, not the child attributes
+included in `List` responses. `grants_version` covers the grants attached to the object itself, not
+those inherited from its ancestors, so it does not track the effective `mode`.
+[VERSIONS.md](VERSIONS.md) lists which operations update each version and timestamp. Comparing
+versions requires a fresh authorization check; matching versions alone never grant access or confirm
+that grant-dependent attributes are unchanged.
 
-For a regular file, `content_version` starts at 1 and advances atomically with nonempty writes and
-changes to file size, including truncation and extension. A nonempty write advances it even when the
-supplied bytes equal the existing bytes. Mode, timestamps, MIME type, xattrs, grants, renames, and
-moves do not advance it.
+Virtual `root` returns the stored tenant root's real ID, attributes, and versions, with the mode
+described above. Clients must refresh the listing of virtual `shared` through `List`. No version
+comparison replaces authorization or confirms cached visibility.
 
-For a real directory, `content_version` starts at 1 and advances atomically whenever its stored
-immediate entries change: a child is created, removed, renamed, moved in or out, or replaced by
-another object under the same name. It covers the mapping of stored entry names to object IDs, not
-the child attributes included in `List` responses. Grant changes never advance it, even when they
-change which entries are visible to the session. Editing a child's contents or attributes alone does
-not advance its parent's `content_version`. Renaming or moving the directory itself advances its
-`attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
-unchanged when its entries are unchanged.
-
-Virtual `root` and `shared` also return positive content versions that advance when topology changes
-their entry mappings. Grant changes never advance them, even when they change visible membership.
-These versions must preserve their ordering across servers and restarts for the same session view.
-No version comparison replaces authorization, validates cached visibility, or establishes a snapshot
-across listing pages.
-
-**Both `ReadView.store_version` and `ReadView.auth_version` are monotonically increasing within a
-tenant.** Each is a nonnegative `int64`: as its respective state advances, its version increases
-and never resets or wraps. Repeated observations of the same snapshot may return the same version;
-versions may have gaps and are not timestamps or counts of operations. Compare each field only with
-the same field for the same tenant.
-
-Monotonicity describes the ordering of states, not response arrival order. Responses can arrive out
-of order, and different authorization replicas can serve different versions within the allowed
-freshness bound.
-
-For reads, `store_version` identifies the store snapshot supplying the response. For mutations, it
-identifies the successful commit. `Attr.view` carries both versions with an individual object's
-attributes. `auth_version` identifies the permission and topology state used to authorize the
-operation, whether served from the RAM tree or the store fallback. The two fields do not promise a
-common snapshot, and a mutation response does not imply the RAM tree has applied that mutation yet.
-Neither field replaces `attr_version` or `content_version` for detecting changes to an object's
-attributes or contents.
-
-Authorization versions must use one tenant-wide ordering across server instances, restarts, tree
-rebuilds, and store fallback. A process-local counter that resets on restart, or unrelated counters
-for RAM and fallback, cannot implement this contract. The same authorization snapshot must retain
-its version whichever instance or authorization path serves it; equal versions identify the same
-authorization state.
+`Attr.store_version` is a nonnegative FDB `int64` version: the read snapshot for reads, or the
+successful commit for mutations. Authorization and attributes are read in the same transaction.
+Versions order store states within a tenant, may repeat or have gaps, and are not timestamps;
+responses can arrive out of order. This field does not replace `attr_version` or `content_version`
+for detecting object changes.
 
 ## Authorization and common limits
 
@@ -248,7 +208,6 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
-| `Validate` | `r` on each target. |
 | create | `w` on the parent. |
 | update, write | `w` on the target. |
 | rename | `w` on the source, any replacement, and affected parents. |
@@ -261,12 +220,12 @@ on real entries. Virtual shared remains read-only. Namespace mutations at virtua
 authenticated tenant's stored root on the server and enforce the session's effective grant
 permissions. Tenant administration uses its tenant key and is not restricted by object grants.
 
-Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
-explicitly. Mutation permission failures use `FORBIDDEN`.
+Ordinary reads conceal inaccessible objects as `NOT_FOUND`. Mutation permission failures use
+`FORBIDDEN`.
 
-The server may authorize through a complete permission tree up to 30 seconds old by default. Expired
-or unusable tree proofs fall back to current FDB authorization. File metadata/content reads use FDB;
-search indexing has independent lag.
+Every permission check reads the target and its ancestry in the operation's FDB transaction.
+Local tree hints schedule reads and reuse grants only when the freshly read `grants_version`
+matches. Search indexing has independent lag.
 
 Keys are opaque 64-character bearer strings. A tenant key authorizes administration for that tenant;
 filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes without NUL. Subject
@@ -442,11 +401,11 @@ A grant's identity is its complete value: variant, subject for ALLOW, and mode. 
 repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
 subject, or multiple DENY modes, are combined as described above. To change a mode, detach the old
 grant and attach the new one in the same request. Attaching an existing value or detaching an absent
-value is a no-op.
+value leaves the grant set unchanged.
 
 Attachments not included in `changes` remain unchanged. Detaching an ancestor grant does not remove
-independent attachments below it. Permission changes, including DENY, are subject to the
-authorization freshness bound described above; they do not promise immediate revocation.
+independent attachments below it. Permission checks use their transaction's view of committed grants;
+conflicting mutations retry their checks before committing.
 
 ## Filesystem reads
 
@@ -480,13 +439,17 @@ AttrResult {
 ```
 
 Results correspond to inputs by position, including repeated inputs. Each successful result
-identifies the object in `object.id` and carries its read view in `object.view`; the batch has no
-separate view.
+identifies the object in `object.id` and the shared FDB snapshot in `object.store_version`.
 An individual missing or inaccessible object does not prevent results for the other IDs. With
 `include_metadata=true`, each successful result populates `object.metadata` from the same FDB snapshot
 as its attributes. Virtual projections return synthetic metadata with MIME type `inode/directory`,
-an empty xattr map, and `created: 0`. With the flag omitted or false, extended metadata is not returned;
-`attr_version` still covers it.
+an empty xattr map, and `created: 0`. With the flag omitted or false, extended metadata is not
+returned.
+
+Clients recheck access and cached versions through `Stat`, normally with metadata omitted. Compare
+`attr_version` and `content_version` independently to decide which cached state to refresh. Matching
+versions do not authorize writes or establish current grant-dependent visibility; refresh listings
+through `List`, always for `shared`.
 
 The encoded response is limited to 4 MiB. If requested metadata would exceed that budget, the RPC
 fails with `CAPACITY`; retry with fewer IDs. Metadata is never silently omitted from a successful
@@ -520,8 +483,8 @@ AttrBatch {
 
 Each target is resolved independently. A missing or inaccessible child produces `NOT_FOUND` in its
 result without preventing other results. For each real parent, the caller must have access to that
-directory. Results use the same attribute/error shape, per-object read views, metadata option, and
-4 MiB response budget as `Stat`.
+directory. Results use the same attribute/error shape, per-object store versions, metadata option,
+and 4 MiB response budget as `Stat`.
 
 ### List
 
@@ -555,17 +518,15 @@ Pages obey both the entry limit and a 4 MiB response budget. Pass `next_after` u
 next request. Ordinary directories are ordered by basename; `shared` uses object-ID cursors.
 Continue until `next_after` is absent, even after an empty page.
 
-Clients refresh cached pages through `List`. A directory's `Attr.content_version`, obtained through
-`Stat`, identifies topology changes to its entry names and object IDs. `Validate` can check those
-bindings, but an unchanged version does not confirm cached entry visibility: grants can change
-visibility without changing the version. Refresh through `List` to obtain current visibility. An
-unchanged directory version also does not validate child attributes embedded in an old page; those
-require separate checks or a refetch. Each fetched page includes current child attributes sharing
-the same `Attr.view` for that request; the page has no separate view. Pages are independently
-refreshed; traversal across pages does not promise a single snapshot, and validation does not
-retroactively make independently fetched pages coherent. The same refresh behavior applies to real
-directories and virtual projections. There is no separate listing token or version precondition on
-`List`.
+Clients refresh cached pages through `List`. For real directories and virtual `root`,
+`Attr.content_version` from `Stat` identifies topology changes to entry names and object IDs.
+Unchanged versions do not confirm visibility, which grants control. Refresh through `List` to
+obtain current visibility. An unchanged directory version also does not validate child attributes embedded in an old page; those require separate checks or a refetch.
+Each fetched page includes current child attributes sharing the same `Attr.store_version`. Pages are
+independently refreshed; traversal across pages does not promise a single snapshot, and validation
+does not retroactively make independently fetched pages coherent. The same refresh behavior applies
+to real directories and virtual projections. There is no separate listing token or version
+precondition on `List`.
 
 Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes readable
 entry points with a matching explicit ALLOW using names suffixed with `--<object-id>`, allowing
@@ -599,7 +560,7 @@ ReadData {
 
 Reads stop at EOF and may return fewer bytes than requested. An offset at or beyond EOF returns
 empty data; a directory fails with `IS_DIRECTORY`. Returned bytes and attributes reflect the read's
-current snapshot, identified by `object.view`.
+current snapshot, identified by `object.store_version`.
 
 ### ReadFiles
 
@@ -631,78 +592,7 @@ FileResult {
 Each input has exactly one result, in input order. Files larger than 1 MiB or that cannot fit in
 the 4 MiB encoded reply budget receive individual `CAPACITY` errors without being downloaded. The
 reply budget accounts for every result, including errors. Attributes and contents share one FDB
-snapshot. All returned attributes carry the same `object.view`; the batch has no separate view.
-
-### Validate
-
-Rechecks access and compares cached attribute and/or content versions for files, directories, and
-virtual projections.
-
-**Arguments**
-
-```text
-ValidateRequest {
-  checks: VersionCheck[]         // From 1 to 256 checks.
-}
-
-VersionCheck {
-  object_id: ObjectRef
-  attr_version?: uint64          // Positive version of cached attributes and extended metadata.
-  content_version?: uint64       // Positive version of cached bytes or directory entries.
-}
-```
-
-Each check must supply at least one version; it may supply either version alone or both. An omitted
-version is not compared. A check with neither version, or with any supplied version equal to zero,
-rejects the request with `INVALID_INPUT`.
-
-**Returns**
-
-```text
-ValidationBatch {
-  results: ValidationResult[]    // One result per check, in the same order.
-  view: ReadView
-}
-
-ValidationResult {
-  outcome: UNCHANGED | CHANGED | DENIED | MISSING | ERROR
-  error?: ErrorDetails           // Details for denied, missing, or erroneous checks.
-}
-```
-
-Authorization is checked before comparing versions. Both versions, when supplied, are compared
-against the same current object view.
-
-Valid checks on virtual `shared` always return `CHANGED`, even when the supplied versions match.
-This applies to attribute-only checks, content-only checks, and checks of both versions. Grants can
-change shared membership without advancing its `content_version`; clients must refresh its listing
-through `List`. Returning `CHANGED` does not require a version bump.
-
-For other existing, authorized objects:
-
-| Supplied versions | `UNCHANGED` when | `CHANGED` when |
-| --- | --- | --- |
-| `attr_version` only | The attribute version matches. | The attribute version differs. |
-| `content_version` only | The content version matches. | The content version differs. |
-| Both | Both versions match. | Either or both versions differ. |
-
-`UNCHANGED` renews read access and validates only the supplied versions; it does not authorize
-writes. Every mutation must independently check its required grant permissions. An attribute check
-covers the object's stored attributes and extended metadata, excluding mode changes caused by
-grants. A content check covers file bytes or a directory's entry-name/object-ID bindings, excluding
-visibility changes caused by grants. Refresh through `Stat` or `Lookup` for
-current grant-dependent attributes and through `List` for current entry visibility; `UNCHANGED` does
-not validate either from cached versions. An attribute-only check does not validate content or a
-cached `content_version`; a content-only check does not validate attributes or extended metadata.
-Even when both versions of a directory match, the attributes and contents of its children require
-their own checks. Session-scoped versions must come from the same session view.
-
-`CHANGED` does not identify which supplied version differed. Refresh the relevant state through
-`Stat`, `Read`/`ReadFiles`, or `List`; checking both versions does not necessarily require downloading
-file bytes again if a fresh `Stat` shows the content version still matches. `DENIED` means access is
-not allowed, `MISSING` means the object is absent, and `ERROR` covers other check failures. These
-outcomes take precedence over version comparisons. A backend failure can fail the entire RPC rather
-than establish freshness for only part of the batch.
+snapshot. All returned attributes carry the same `object.store_version`.
 
 ## Filesystem mutations
 
@@ -759,14 +649,11 @@ Returned attributes reflect the final committed state, rather than an intermedia
 each operation. Removed objects have no returned attributes. Removal returns the surviving parent's
 attributes in `mutation.related`. Other operations may omit parents changed only by listing
 membership and its associated version bookkeeping; clients must invalidate omitted parents' cached
-attributes and listing pages. Attribute and content versions follow the shared rules above and
-advance atomically with their corresponding changes.
+attributes and listing pages.
 
 Every attribute returned in `mutation.object` or `mutation.related` across the batch carries the
-same `Attr.view`: `store_version` is the batch's commit version, and `auth_version` is the
-authorization-state version used by the committed attempt. For an attempt with no stored changes,
-`store_version` is the snapshot version checked by that attempt. A successful mutation returning no
-attributes carries no view.
+same `Attr.store_version`: the batch's commit version, or the transaction's read version when no
+stored changes were made. A successful mutation returning no attributes carries no store version.
 
 Accepted work continues after disconnection, so a lost response does not prove a mutation failed.
 The request has no idempotency key; callers must not blindly replay operations with uncertain outcomes.
@@ -856,8 +743,6 @@ RenameOperation {
 **Successful result:** `mutation.object` contains the moved object's final attributes if it survives.
 The source object and affected parents must be accessible. Replacement requires the same kind;
 a destination directory must be empty. Moving a directory into itself or a descendant is rejected.
-The object's `attr_version` advances on a rename or parent change; the affected parents' listing
-content versions advance as well.
 
 ### remove operation
 
@@ -873,7 +758,7 @@ RemoveOperation {
 ```
 
 **Successful result:** `mutation` is present, with no `object` attributes. Its `related` field
-includes the parent's final attributes, including `view`, unless that parent is also removed later
+includes the parent's final attributes and `store_version`, unless that parent is also removed later
 in the batch. Nonempty directories fail with `NOT_EMPTY`; recursive deletion requires explicitly
 removing descendants first.
 
@@ -946,8 +831,8 @@ SearchAttr {
 
 Each hit carries simplified attributes in `object`, using the same name, size, timestamp, and
 metadata semantics as `Attr`. Extended metadata is optional. Neither search results nor individual
-hits expose a `ReadView`: the search index's state is independent of the store's read snapshot.
-Search attributes also omit mode and attribute/content versions and cannot validate cached
+hits expose a `store_version`: the search index's state is independent of the store's read snapshot.
+Search attributes also omit mode and attribute, content, and grants versions and cannot validate cached
 attributes or permissions. Use `Stat` to fetch full attributes and versions.
 
 An empty or whitespace-only query searches metadata only. Nonempty text matches any normalized
@@ -982,3 +867,9 @@ Clients handle any failure using the gRPC status when details are absent. Indivi
 always carry `ErrorDetails`. Stable protocol codes are `INTERNAL`,
 `INVALID_INPUT`, `NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`,
 `IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.
+
+## Future work
+
+If search uses a full in-memory tree index instead of fan-out writes for indexed parents and grants,
+we may add `auth_version` to identify that index's authorization snapshot separately from
+`store_version`. See [storage future work](STORAGE.md#full-in-memory-tree-index).

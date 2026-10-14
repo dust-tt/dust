@@ -10,6 +10,8 @@
  *   DustFileSystem.forConversations(auth, conversations) multiple conversation mounts (+pod if project space)
  *   DustFileSystem.forPod(auth, space)                   single pod mount
  *   DustFileSystem.forUser(auth)                         the authenticated user's own memory scope
+ *   DustFileSystem.forConversationMetadata(auth, conversation)
+ *       a conversation's metadata (never agent-facing) plus the user's own scope
  *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
  *   DustFileSystem.forAgentLoop(auth, { conversation, scopedPaths })
  *       defaults to the agent loop conversation (+ its pod when applicable), plus any
@@ -40,6 +42,7 @@ import {
   LEGACY_PREFIX_CONVERSATION,
   LEGACY_PREFIX_PROJECT,
   SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_CONVERSATION_METADATA,
   SCOPED_PREFIX_POD,
   SCOPED_PREFIX_USER,
 } from "@app/types/file_system";
@@ -71,6 +74,7 @@ export function sanitizeFileSystemName(name: string): string {
 
 type ParsedScopedPrefix =
   | { kind: "conversation"; id: string }
+  | { kind: "conversation_metadata"; id: string }
   | { kind: "pod"; id: string }
   | { kind: "user"; id: string };
 
@@ -85,6 +89,12 @@ export function parseScopedPrefix(
     const id = prefix.slice(SCOPED_PREFIX_CONVERSATION.length);
 
     return id ? { kind: "conversation", id } : null;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION_METADATA)) {
+    const id = prefix.slice(SCOPED_PREFIX_CONVERSATION_METADATA.length);
+
+    return id ? { kind: "conversation_metadata", id } : null;
   }
 
   if (prefix.startsWith(SCOPED_PREFIX_POD)) {
@@ -116,6 +126,20 @@ function createConversationMount(
       ? `/files/${LEGACY_PREFIX_CONVERSATION}`
       : null,
     // Conversation access is always read+write when fetchById returned the resource.
+    permissions: { canRead: true, canWrite: true },
+  };
+}
+
+function createConversationMetadataMount(
+  conversation: ConversationWithoutContentType
+): FileSystemMount {
+  return {
+    kind: "conversation_metadata",
+    id: conversation.sId,
+    scopedPrefix: `${SCOPED_PREFIX_CONVERSATION_METADATA}${conversation.sId}`,
+    sandboxMountPoint: null,
+    legacyPrefix: null,
+    legacySandboxMountPoint: null,
     permissions: { canRead: true, canWrite: true },
   };
 }
@@ -171,6 +195,10 @@ function collectScopedPrefixesFromPaths(scopedPaths: string[]): {
     switch (parsed.kind) {
       case "conversation":
         conversationIds.add(parsed.id);
+        break;
+
+      // Conversation metadata is never mounted from caller-provided paths.
+      case "conversation_metadata":
         break;
 
       case "pod":
@@ -396,6 +424,41 @@ export class DustFileSystem {
   }
 
   /**
+   * Build a DustFileSystem mounting the conversation's metadata, stored at the conversation's GCS
+   * root outside its files, plus the authenticated user's own scope so user files can be copied
+   * into it server side. Returns `Err("unauthorized")` when there is no authenticated user.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:performance] not-agent-facing
+   * The returned file system MUST NOT be exposed to agent tools: agents must not modify conversation
+   * metadata such as the memory file. It is rendered on every model call, so a change would
+   * retroactively change the conversation prefix and invalidate the prompt cache.
+   */
+  static async forConversationMetadata(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          "No authenticated user for the user file system."
+        )
+      );
+    }
+
+    const mounts = [
+      createConversationMetadataMount(conversation),
+      createUserMount(user.sId),
+    ];
+
+    return new Ok(
+      new DustFileSystem(auth, mounts, DustFileSystem.createBackend(auth))
+    );
+  }
+
+  /**
    * Build a DustFileSystem for an agent loop.
    *
    * Always includes the agent loop conversation mount and, when applicable, its Pod mount
@@ -404,7 +467,7 @@ export class DustFileSystem {
    * two conversations) can resolve both endpoints in a single filesystem instance.
    *
    * User-scoped paths are not supported here and trigger an assert, user filesystem is only
-   * reachable through forUser.
+   * reachable through forUser. Conversation metadata paths are never mounted.
    */
   static async forAgentLoop(
     auth: Authenticator,
@@ -537,6 +600,14 @@ export class DustFileSystem {
 
         return DustFileSystem.forConversation(auth, conversation.toJSON());
       }
+
+      case "conversation_metadata":
+        return new Err(
+          new DustFileSystemError(
+            "invalid_path",
+            `Conversation metadata cannot be accessed by path: ${scopedPath}`
+          )
+        );
 
       case "pod": {
         const space = await SpaceResource.fetchById(auth, parsed.id);

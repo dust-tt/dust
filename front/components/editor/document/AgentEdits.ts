@@ -1,10 +1,10 @@
-import { onLiveAgentEdit } from "@app/lib/client/live_agents";
-import { liveCaretColor } from "@app/lib/client/live_session";
+import { onAgentEdit } from "@app/lib/client/collab/agents";
+import { caretColor } from "@app/lib/client/collab/messages";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
-  LiveAgent,
-  LiveAgentEditMessage,
-  LiveIdRange,
+  CollabAgent,
+  AgentEditMessage,
+  InsertedIdRange,
 } from "@app/types/collab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
@@ -38,7 +38,7 @@ interface TextRange {
 
 /** The text an agent's change inserted, as `ranges` of `doc`. */
 export interface AgentEditGlow {
-  agent: LiveAgent;
+  agent: CollabAgent;
   ranges: TextRange[];
   doc: Node;
 }
@@ -141,7 +141,7 @@ function textItemPosition(
 }
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-edit-ranges
+ * @cc [owner:PopDaph,label:product] collab-agent-edit-ranges
  * The ranges MUST be exactly the text of the `inserted` items that `binding` shows, in document
  * order: each surviving text item clamped to its range, since items of one client merge across
  * changes. Items not integrated yet, deleted, inside a deleted block, or formatting alone MUST make
@@ -149,7 +149,7 @@ function textItemPosition(
  */
 export function insertedTextRanges(
   binding: ProsemirrorBinding,
-  inserted: LiveIdRange[]
+  inserted: InsertedIdRange[]
 ): TextRange[] {
   const { store } = binding.doc;
   const cache: Offsets = new Map();
@@ -193,8 +193,12 @@ export const withAgentEditGlow = (
   return state.tr.setMeta(agentEditsKey, meta);
 };
 
-const glowDecorations = (doc: Node, agent: LiveAgent, ranges: TextRange[]) => {
-  const highlight = `color-mix(in srgb, ${liveCaretColor(agent.agentId)} ${GLOW_PERCENT}%, transparent)`;
+const glowDecorations = (
+  doc: Node,
+  agent: CollabAgent,
+  ranges: TextRange[]
+) => {
+  const highlight = `color-mix(in srgb, ${caretColor(agent.agentId)} ${GLOW_PERCENT}%, transparent)`;
   return DecorationSet.create(
     doc,
     ranges.map(({ from, to }) =>
@@ -232,7 +236,7 @@ const applyAgentEdits = (
 };
 
 /**
- * @cc [owner:PopDaph,label:product;performance] live-agent-edit-glow
+ * @cc [owner:PopDaph,label:product;performance] collab-agent-edit-glow
  * A glow given by `withAgentEditGlow`, while its ranges are in the current document, MUST show
  * those ranges in the agent's color fading in CSS, with decorations unchanged while it runs, then
  * none after `GLOW_MS`. It MUST only add decorations, never change the document, the selection or
@@ -284,7 +288,7 @@ export const agentEditsPlugin = () =>
   });
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-edit-shown
+ * @cc [owner:PopDaph,label:product] collab-agent-edit-shown
  * Each agent edit the session announces MUST glow the text it inserted (`insertedTextRanges`) in
  * the document as it is when the announcement arrives, unless that text spans more than
  * `MAX_GLOWED_RANGES` ranges or none of it shows. A failure resolving it MUST only skip the glow,
@@ -292,7 +296,7 @@ export const agentEditsPlugin = () =>
  */
 export function agentEditGlow(
   state: EditorState,
-  { agent, inserted }: LiveAgentEditMessage
+  { agent, inserted }: AgentEditMessage
 ): Transaction | null {
   const binding = ySyncPluginKey.getState(state)?.binding;
   if (!(binding instanceof ProsemirrorBinding)) {
@@ -310,7 +314,7 @@ export const agentEdits = (provider: HocuspocusProvider) =>
       name: "agentEdits",
       addStorage: () => ({ unsubscribe: null }),
       onCreate() {
-        this.storage.unsubscribe = onLiveAgentEdit(provider, (edit) => {
+        this.storage.unsubscribe = onAgentEdit(provider, (edit) => {
           if (this.editor.isDestroyed) {
             return;
           }

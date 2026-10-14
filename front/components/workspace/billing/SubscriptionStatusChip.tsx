@@ -16,7 +16,7 @@ const STATUS_CHIP: Record<
 > = {
   free: { label: msg`Free`, color: "success" },
   active: { label: msg`Active`, color: "highlight" },
-  cancelled: { label: msg`Cancelled`, color: "info" },
+  cancelled: { label: msg`Canceled`, color: "info" },
   ended: { label: msg`Ended`, color: "warning" },
 };
 

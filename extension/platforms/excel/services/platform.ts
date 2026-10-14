@@ -1,0 +1,25 @@
+import type { CellInfo } from "@app/types/cell";
+import { ExcelAuthService } from "@extension/platforms/excel/services/auth";
+import { getOfficeKeyPrefix } from "@extension/platforms/excel/services/storage";
+import { LocalStorageService } from "@extension/shared/services/local_storage";
+import { PlatformService } from "@extension/shared/services/platform";
+
+export class ExcelPlatformService extends PlatformService {
+  constructor(cells: CellInfo[]) {
+    const storage = new LocalStorageService(getOfficeKeyPrefix);
+
+    super(
+      "excel",
+      ExcelAuthService,
+      storage,
+      cells,
+      undefined, // No capture service for Excel.
+      undefined, // No browser messaging service for Excel.
+      undefined // No MCP service for Excel yet.
+    );
+  }
+
+  captureVisibleTab(): Promise<string> {
+    throw new Error("captureVisibleTab is not supported on this platform.");
+  }
+}

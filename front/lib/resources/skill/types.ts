@@ -26,11 +26,10 @@ type CustomSkillConfigurationFindOptions =
     onlyCustom: true; // Explicit: only custom skills.
   };
 
-// Which satellite data a skill fetch loads. Everything but `withToolMetadata` defaults to true,
-// so a caller that needs less has to opt out.
+// Which satellite data a skill fetch loads. Everything defaults to true, so a caller that needs
+// less has to opt out.
 export type SkillHydrationOptions = {
   withTools?: boolean;
-  withToolMetadata?: boolean;
   withInstructions?: boolean;
   withFileAttachments?: boolean;
 };

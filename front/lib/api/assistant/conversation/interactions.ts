@@ -11,7 +11,7 @@ export type Interaction<T extends MinimalMessageType> = {
 
 /**
  * Group messages into interactions (user turn + agent responses), using turn type
- * (user/content_fragment vs assistant/function) as the delimiter.
+ * (user/content_fragment vs assistant/function/effort_change) as the delimiter.
  *
  * A compaction message acts as an interaction boundary: it closes the current interaction and
  * starts a new one. Pre-compaction messages should already have been filtered out by
@@ -63,7 +63,8 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
       const currentIsAgent =
         currentRole === "agent" ||
         currentRole === "assistant" ||
-        currentRole === "function";
+        currentRole === "function" ||
+        currentRole === "effort_change";
       const nextIsUser = nextRole === "user" || nextRole === "content_fragment";
 
       return (

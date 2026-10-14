@@ -433,7 +433,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "invalid_pagination_parameters" },
     });
   });
 

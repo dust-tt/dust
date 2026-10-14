@@ -67,7 +67,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const response = await getMetadata(workspace, regularSpace.sId);
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("project_space_required");
   });
 
   it("returns only readable active defaults in alphabetical order", async () => {
@@ -141,7 +141,9 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
       defaultAgentId: hiddenAgent.sId,
     });
     expect(rejected.status).toBe(400);
-    expect((await rejected.json()).error.type).toBe("invalid_request_error");
+    expect((await rejected.json()).error.type).toBe(
+      "agent_configuration_not_found"
+    );
 
     const metadata = await ProjectMetadataResource.fetchBySpace(
       auth,
@@ -311,7 +313,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("skill_not_found");
   });
 
   it("allows removing a file tab when another tab has a stale path", async () => {

@@ -97,9 +97,9 @@ msgstr "Erreur lors de la suppression de la conversation."
 msgid "Message has been deleted successfully."
 msgstr "Le message a bien été supprimé."
 
-#: front/hooks/useDfmCommentSignatures.ts
-msgid "Commenting is unavailable."
-msgstr "Les commentaires sont indisponibles."
+#: front/hooks/useDiscoveryHomepageOptIn.ts
+msgid "Could not switch homepage"
+msgstr "Impossible de changer de page d'accueil"
 
 #: front/hooks/useDismissFeedback.ts
 msgid "Failed to mark feedback as seen."
@@ -300,11 +300,11 @@ msgstr "Impossible de résilier votre abonnement."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
-msgid "Subscription cancelled"
+msgid "Subscription canceled"
 msgstr "Abonnement résilié"
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
-msgid "Your subscription has been cancelled."
+msgid "Your subscription has been canceled."
 msgstr "Votre abonnement a été résilié."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts

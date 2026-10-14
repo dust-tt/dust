@@ -100,32 +100,7 @@ fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> Result<()> {
 }
 
 #[test]
-fn version_checks_preserve_presence_and_full_u64_range() -> Result<()> {
-    for version in [None, Some(0), Some(1), Some(u64::MAX)] {
-        let check = rpc::VersionCheck {
-            object_id: ObjectRef::Object(ID.parse()?),
-            attr_version: Some(42),
-            content_version: version,
-        };
-        assert_eq!(
-            rpc::VersionCheck::decode(check.encode_to_vec().as_slice())?,
-            check
-        );
-    }
-    let check = rpc::VersionCheck {
-        object_id: ObjectRef::Root,
-        attr_version: Some(42),
-        content_version: None,
-    };
-    assert_eq!(
-        rpc::VersionCheck::decode(check.encode_to_vec().as_slice())?,
-        check
-    );
-    Ok(())
-}
-
-#[test]
-fn attributes_carry_names_views_and_optional_metadata() -> Result<()> {
+fn attributes_carry_names_store_versions_and_optional_metadata() -> Result<()> {
     let mut object = rpc::Attr {
         id: ObjectRef::Object(ID.parse()?),
         name: "reports".into(),
@@ -137,10 +112,8 @@ fn attributes_carry_names_views_and_optional_metadata() -> Result<()> {
         ctime: None,
         attr_version: 2,
         content_version: 1,
-        view: rpc::ReadView {
-            store_version: 123,
-            auth_version: 120,
-        },
+        grants_version: u64::MAX,
+        store_version: i64::MAX,
         metadata: None,
     };
     assert_eq!(
@@ -190,10 +163,8 @@ fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()>
                     mode: 0o500,
                     attr_version: 1,
                     content_version: 1,
-                    view: rpc::ReadView {
-                        store_version: 123,
-                        auth_version: 120,
-                    },
+                    grants_version: 1,
+                    store_version: 123,
                     ..Default::default()
                 }),
                 error: None,
@@ -270,10 +241,8 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
                         mode: 0o700,
                         attr_version: 2,
                         content_version: 2,
-                        view: rpc::ReadView {
-                            store_version: 123,
-                            auth_version: 120,
-                        },
+                        grants_version: 1,
+                        store_version: 123,
                         ..Default::default()
                     }],
                 }),
@@ -289,8 +258,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
     assert_eq!(removal.object, None);
     assert_eq!(removal.related.len(), 1);
     assert_eq!(removal.related[0].id, ObjectRef::Object(parent_id));
-    assert_eq!(removal.related[0].view.store_version, 123);
-    assert_eq!(removal.related[0].view.auth_version, 120);
+    assert_eq!(removal.related[0].store_version, 123);
     assert_eq!(
         rpc::OperationBatch::decode(response.encode_to_vec().as_slice())?,
         response

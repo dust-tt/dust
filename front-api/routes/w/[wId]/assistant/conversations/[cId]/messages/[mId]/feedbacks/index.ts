@@ -177,7 +177,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_not_found",
           message: "Failed to upsert feedback",
         },
       });
@@ -248,7 +248,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   return apiError(ctx, {
     status_code: 400,
     api_error: {
-      type: "invalid_request_error",
+      type: "message_not_found",
       message: "The message you're trying to give feedback to does not exist.",
     },
   });

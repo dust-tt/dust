@@ -266,7 +266,7 @@ export function useChildAgentStream({
         return null;
       }
       const { conversationId, agentMessageId } = childStreamIds;
-      return `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
+      return `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events?transport=poll&lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
     },
     [childStreamIds, disabled, owner.sId]
   );

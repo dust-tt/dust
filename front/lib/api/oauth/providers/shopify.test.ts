@@ -10,8 +10,6 @@ vi.mock("@app/lib/api/config", () => ({
   default: {
     getAppUrl: () => "https://dust.tt",
     getDevOAuthRedirectBaseUrl: () => undefined,
-    getOAuthShopifyClientId: () => "shopify-client-id",
-    getOAuthShopifyClientSecret: () => "shopify-client-secret",
   },
 }));
 
@@ -31,6 +29,7 @@ describe("ShopifyOAuthProvider", () => {
     const url = new URL(
       provider.setupUri({
         connection: makeConnection("my-store.myshopify.com"),
+        clientId: "shopify-client-id",
       })
     );
 
@@ -46,12 +45,16 @@ describe("ShopifyOAuthProvider", () => {
     expect(url.searchParams.get("state")).toBe("con_shopify");
   });
 
-  it("only accepts a Shopify shop for platform actions", () => {
+  it("requires app credentials and a Shopify shop for platform actions", () => {
     const provider = new ShopifyOAuthProvider();
 
     expect(
       provider.isExtraConfigValid(
-        { shopify_store_domain: "my-store.myshopify.com" },
+        {
+          shopify_store_domain: "my-store.myshopify.com",
+          client_id: "shopify-client-id",
+          client_secret: "shopify-client-secret",
+        },
         "platform_actions"
       )
     ).toBe(true);
@@ -63,17 +66,45 @@ describe("ShopifyOAuthProvider", () => {
     ).toBe(true);
     expect(
       provider.isExtraConfigValid(
-        { shopify_store_domain: "my-store.myshopify.com" },
+        {
+          shopify_store_domain: "my-store.myshopify.com",
+          client_id: "shopify-client-id",
+          client_secret: "shopify-client-secret",
+        },
         "personal_actions"
       )
     ).toBe(false);
     expect(
       provider.isExtraConfigValid(
-        { shopify_store_domain: "shop.example.com" },
+        {
+          shopify_store_domain: "shop.example.com",
+          client_id: "shopify-client-id",
+          client_secret: "shopify-client-secret",
+        },
         "platform_actions"
       )
     ).toBe(false);
   });
+
+  it.each([
+    ["", ""],
+    ["client", ""],
+    ["", "secret"],
+  ])(
+    "rejects incomplete app credentials: client_id=%s, client_secret=%s",
+    (clientId, clientSecret) => {
+      expect(
+        new ShopifyOAuthProvider().isExtraConfigValid(
+          {
+            shopify_store_domain: "my-store.myshopify.com",
+            client_id: clientId,
+            client_secret: clientSecret,
+          },
+          "platform_actions"
+        )
+      ).toBe(false);
+    }
+  );
 });
 
 describe("isValidShopifyCallback", () => {

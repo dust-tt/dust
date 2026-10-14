@@ -352,11 +352,12 @@ app.patch(
               message: r.error.message,
             },
           });
+        // The only `invalid_request_error` is a Pod using the database-backed filesystem.
         case "invalid_request_error":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "conversation_move_not_supported",
               message: r.error.message,
             },
           });
@@ -409,11 +410,12 @@ app.patch(
               message: "Internal server error",
             },
           });
+        // The only `invalid_request_error` is a Pod using the database-backed filesystem.
         case "invalid_request_error":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "conversation_move_not_supported",
               message: r.error.message,
             },
           });

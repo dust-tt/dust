@@ -3,7 +3,7 @@
 FoundationDB stores tenants, sessions, objects, directory entries, contents, and grants.
 [API.md](API.md) defines observable behavior. Session authentication uses a bounded cache backed by
 FDB; object authorization reads tree structure and grants from FDB. Search and a full in-memory
-authorization index are future work (depending on approach chosen for search).
+tree index are future work (depending on approach chosen for search).
 
 ## Key layout
 
@@ -90,25 +90,24 @@ index entries are also removed. Authentication rejects expired sessions independ
 
 | Key | Value | Rationale |
 | --- | --- | --- |
-| `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, and `content_version`. | Supports direct access and ancestry walks. |
+| `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, `content_version`, and `grants_version`. | Supports direct access and ancestry walks. |
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and optional MIME type. | Keeps optional metadata out of ordinary traversal. |
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>/xattr/<name>` | Xattr value bytes. | Supports reading and updating individual xattrs. |
 | `dfs-v1-{env}/tenant/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
 | `dfs-v1-{env}/tenant/<tenantId>/block/<objectId>/<blockIndex>` | Up to 64 KiB of content. | Supports range reads, sparse files, and suffix clearing on truncation. |
 
 Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
-attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
+attr_version, content_version, grants_version)`, with null for absent parents or timestamps. Kind uses the protocol
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
-Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, an empty name,
-and both versions at 1.
-Retries that find the tenant already created leave its root and grants unchanged.
+Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, and an empty name.
 
 Object creation validates all xattrs before staging writes and stores them with attributes and base
-metadata in the same transaction. Each xattr name is a separate tuple component. An empty value
-denotes a present xattr with empty bytes; a missing key denotes an absent xattr. Extended metadata
-reads combine the base entry and xattr entries from the same transaction. Xattr changes commit with
-`attr_version` and preserve the 32 KiB limit on combined xattr name/value bytes. Object deletion clears
-both the base metadata entry and all xattr entries.
+metadata in the same transaction. A retry that finds exactly the attributes it would write succeeds
+without writing; any other occupant of the ID fails with `AlreadyExists`. Each xattr name is a
+separate tuple component. An empty value denotes a present xattr with empty bytes; a missing key
+denotes an absent xattr. Extended metadata reads combine the base entry and xattr entries from the
+same transaction. Xattr changes preserve the 32 KiB limit on combined xattr name/value bytes. Object
+deletion clears both the base metadata entry and all xattr entries.
 
 The MIME type in base metadata is optional (`Option<String>`); `None` is encoded as FDB tuple null.
 A create or update request with `mime_type: ""` clears it by storing `None`, and subsequent metadata
@@ -117,19 +116,19 @@ reads omit the field.
 The stored parent and basename support inheritance and namespace maintenance. They change
 atomically with directory entries; public `Attr` exposes only the basename. Moves preserve object
 IDs and content keys and require no descendant path rewrites. Virtual `root` and `shared` are
-projections; the real tenant root is an ordinary stored object.
+projections; the real tenant root is an ordinary stored object. Virtual `root` returns its real ID and
+versions; `shared` has no stored record.
 
-Effective `mode` and `ReadView` are computed per response. Directory execute/traverse derives from
-read permission. File size, versions, and affected blocks commit together. Missing blocks read as
+Effective `mode` and `store_version` are computed per response. Directory execute/traverse derives
+from read permission. File size, versions, and affected blocks commit together. Missing blocks read as
 zeroes within the logical size; truncation discards trailing data so extension cannot restore it.
 
 ### Directory state and versions
 
-Both versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters
-initialized to 1. Update them atomically according to the [API version rules](API.md#shared-types),
-using checked increments that fail before commit on overflow. Directory entry changes read and
-update the parent record's timestamps and versions in the same transaction. Concurrent sibling
-changes may conflict and retry.
+All three versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters.
+Update them and the timestamps atomically as [VERSIONS.md](VERSIONS.md) lists, using checked
+increments that fail before commit on overflow. Directory entry changes read and update the parent
+record in the same transaction. Concurrent sibling changes may conflict and retry.
 
 ## Grants
 
@@ -159,7 +158,7 @@ Authorization walks the real ancestor chain in one transaction. At each level, D
 bits, then matching ALLOW adds bits. Only read/write bits exist; a deeper ALLOW can reopen access.
 Reverse scans return candidates requiring deduplication and full permission/projection checks. DENY
 creates no entry point. Inherited grants are never materialized, so grant changes need no descendant
-rewrites and never bump object versions.
+rewrites.
 
 ## Transactions
 
@@ -170,8 +169,8 @@ existence, source/destination bindings, directory emptiness, and move-cycle chec
 Within `Apply`, each operation validates before staging writes; failed operations leave no changes.
 Later operations see earlier successes, and all successes commit together. Storage or commit
 failures fail the attempt. Retry definitely uncommitted transactions, recomputing reads and
-decisions. Retrying an unknown commit result requires operation-specific idempotency, as for tenant
-creation.
+decisions. Retrying an unknown commit result requires each resource write to recognize its own
+earlier commit, as tenant, object and session creation do.
 
 The 4 MiB RPC ceiling and 1 MiB `Apply` request budget are separate from FDB transaction accounting.
 Budget index maintenance, metadata, blocks, and required responses before commit. Scans use bounded
@@ -200,10 +199,18 @@ changes. Workers publish conditionally and clear only a matching token, preservi
 and failed work. Hits require bounded existence, freshness, scope, and permission checks. FDB can
 provide these without a RAM tree; indexed ACLs are never authoritative. Results use `SearchAttr`.
 
-### Full in-memory authorization index
+One option is to index parents and grants in Elasticsearch, fanning out parent or grant changes to
+affected descendants. A full in-memory tree index is an alternative to that write fan-out.
 
-We may never build this. A complete tenant tree with compact parent slots and explicit grants could
-accelerate ancestry walks, at the cost of memory, bootstrap, freshness, and recovery machinery.
+### Full in-memory tree index
+
+We may never build this if we choose fan-out search indexing. A complete tenant tree with compact
+parent slots and explicit grants could accelerate ancestry walks, at the cost of memory, bootstrap,
+freshness, and recovery machinery.
+
+An `auth_version` could identify its parent/grant snapshot separately from `store_version`. It would
+need one tenant-wide ordering across instances, restarts, rebuilds, and FDB fallback; equal versions
+must identify the same authorization state. It would not imply a common snapshot with store data.
 
 | Key | Value | Rationale |
 | --- | --- | --- |
@@ -216,6 +223,5 @@ accelerate ancestry walks, at the cost of memory, bootstrap, freshness, and reco
 
 Each object retains one head and at most one current update. Source mutations replace these
 atomically, ordered by FDB's 10-byte commit versionstamp and object ID. Records omit names,
-contents, and inherited permissions; explicit grants are read at the same snapshot. Replicas publish
-coherent generations with tenant-wide authorization versions and fall back to FDB when unavailable
-or stale.
+contents, and inherited permissions. Any such index would remain advisory: every permission check
+must still read the actual ancestry and grants in its FDB transaction.

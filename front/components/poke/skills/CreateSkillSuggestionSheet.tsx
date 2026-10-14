@@ -18,6 +18,7 @@ import {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { PokeMCPServerViewListItemType } from "@app/lib/api/poke/mcp_server_views";
 import { postProcessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import {
   SKILL_INSTRUCTIONS_LABEL,
   SKILL_INVOCATION_LABEL,
@@ -134,6 +135,7 @@ export function CreateSkillSuggestionSheet({
       buildCapabilitySlashCommandItems({
         query: capabilitySearchText,
         skills: activeSkills,
+        t: (descriptor) => defaultLocaleI18n._(descriptor),
         tools: selectableMCPServerViews,
       }),
     [activeSkills, capabilitySearchText, selectableMCPServerViews]

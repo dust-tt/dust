@@ -4,6 +4,12 @@ import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { JOB_TYPE_OPTIONS } from "@app/types/job_type";
+import type { SupportedLocale } from "@app/types/locale";
+import {
+  isSupportedLocale,
+  LOCALE_LABELS,
+  SUPPORTED_LOCALES,
+} from "@app/types/locale";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user";
@@ -12,6 +18,11 @@ import {
   Card,
   Chip,
   ConfluenceLogo,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   DustLogoSquare,
   FrontLogo,
   GithubLogo,
@@ -29,7 +40,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   gmail: GmailLogo,
@@ -110,6 +121,8 @@ interface UserProfileStepProps {
   isAdmin: boolean;
   formData: ProfileFormData;
   setFormData: React.Dispatch<React.SetStateAction<ProfileFormData>>;
+  locale: SupportedLocale | null;
+  onLocaleChange: (locale: SupportedLocale) => void;
   formErrors: ProfileFormErrors;
   showErrors: boolean;
   onNext: () => void;
@@ -120,17 +133,21 @@ export function UserProfileStep({
   isAdmin,
   formData,
   setFormData,
+  locale,
+  onLocaleChange,
   formErrors,
   showErrors,
   onNext,
 }: UserProfileStepProps) {
   const { t } = useLingui();
   const pronounsInputRef = useRef<HTMLInputElement>(null);
+  const localeLabelId = useId();
+  const localeButtonId = useId();
   const firstName = formData.firstName;
   const workspaceName = owner.name;
 
   return (
-    <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
+    <div className="flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
       <DustLogoSquare className="-ml-11 h-10 w-32" />
       <Page.Header
         title={firstName ? t`Hello ${firstName}!` : t`Hello there!`}
@@ -186,6 +203,43 @@ export function UserProfileStep({
           </div>
         </div>
       </div>
+      {locale && (
+        <div>
+          <p id={localeLabelId} className="pb-2 text-muted-foreground">
+            <Trans>Your preferred language:</Trans>
+          </p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                id={localeButtonId}
+                aria-labelledby={`${localeLabelId} ${localeButtonId}`}
+                variant="outline"
+                size="sm"
+                label={LOCALE_LABELS[locale]}
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup
+                value={locale}
+                onValueChange={(value) => {
+                  if (isSupportedLocale(value)) {
+                    onLocaleChange(value);
+                  }
+                }}
+              >
+                {SUPPORTED_LOCALES.map((supportedLocale) => (
+                  <DropdownMenuRadioItem
+                    key={supportedLocale}
+                    value={supportedLocale}
+                    label={LOCALE_LABELS[supportedLocale]}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
       <div>
         <p className="pb-2 text-muted-foreground">
           <Trans>Your pronouns (optional):</Trans>
@@ -275,7 +329,7 @@ export function FavoritePlatformsStep({
       <p className="text-muted-foreground">
         <Trans>
           Dust works at full potential when it can play with your knowledge and
-          help with your tools. Do you recognise some of these?
+          help with your tools. Do you recognize some of these?
         </Trans>
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

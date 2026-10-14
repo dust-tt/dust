@@ -313,10 +313,6 @@ msgstr "Fichier enregistré"
 msgid "Failed to save file"
 msgstr "Impossible d’enregistrer le fichier"
 
-#: front/components/file_explorer/useRichMarkdownEditor.ts
-msgid "This file changed while you were editing. Copy your changes, then reopen the file."
-msgstr "Ce fichier a changé pendant que vous le modifiiez. Copiez vos modifications, puis rouvrez le fichier."
-
 #: front/components/file_explorer/utils.ts
 msgid "All files"
 msgstr "Tous les fichiers"

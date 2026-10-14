@@ -81,7 +81,7 @@ export function useCancelWorkspaceSubscription({
     workspaceId,
     action: "cancel",
     errorTitle: t`Cancellation failed`,
-    successTitle: t`Subscription cancelled`,
+    successTitle: t`Subscription canceled`,
     successDescription: t`Your subscription will end at the end of the current period.`,
   });
   return {

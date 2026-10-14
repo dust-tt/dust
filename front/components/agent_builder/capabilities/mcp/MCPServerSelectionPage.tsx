@@ -3,8 +3,8 @@ import {
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import {
   ActionCard,
   ActionIcons,
@@ -42,7 +42,7 @@ export function MCPServerCard({
   if (view.server.documentationUrl) {
     description = (
       <>
-        {getMcpServerViewDescription(view)}{" "}
+        {getMcpServerViewDisplayDescription(t, view)}{" "}
         <Trans>
           Find documentation{" "}
           <Hoverable
@@ -59,7 +59,7 @@ export function MCPServerCard({
       </>
     );
   } else {
-    description = getMcpServerViewDescription(view);
+    description = getMcpServerViewDisplayDescription(t, view);
   }
 
   return (

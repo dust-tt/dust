@@ -428,6 +428,13 @@ export async function runTriggeredAgentsActivity({
       errorType === "group_shared_usage_limit_reached" ||
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
+      // `postUserMessage` rejections that are permanent for a new conversation.
+      errorType === "model_not_supported" ||
+      errorType === "multiple_agent_mentions" ||
+      errorType === "conversation_agent_running" ||
+      errorType === "conversation_busy" ||
+      errorType === "conversation_fork_pending" ||
+      errorType === "conversation_compaction_running" ||
       errorType === "agent_inaccessible" ||
       errorType === "webhook_storage_error" ||
       errorType === "no_seat";

@@ -28,7 +28,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error.type).toBe("invalid_request_error");
+      expect(data.error.type).toBe("last_admin_cannot_be_removed");
       expect(data.error.message).toBe(
         "Cannot change your role as you are the sole admin of this workspace."
       );
@@ -51,7 +51,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error.type).toBe("invalid_request_error");
+      expect(data.error.type).toBe("last_admin_cannot_be_removed");
       expect(data.error.message).toBe(
         "Cannot change your role as you are the sole admin of this workspace."
       );
@@ -172,7 +172,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error.type).toBe("invalid_request_error");
+      expect(data.error.type).toBe("last_admin_cannot_be_removed");
       expect(data.error.message).toBe(
         "Cannot revoke the last admin of a workspace."
       );

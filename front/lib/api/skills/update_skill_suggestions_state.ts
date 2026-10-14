@@ -18,14 +18,14 @@ import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggesti
  * @cc [owner:fabiencelier,label:product] batched-suggestions-reviewed-through-batch
  * Suggestions that belong to a batch MUST change state through their batch, the others
  * individually, all in a single transaction. When a batch has a member (agent or skill suggestion)
- * that is not among `suggestions`, it MUST fail with `invalid_request_error` without updating
+ * that is not among `suggestions`, it MUST fail with `skill_suggestion_batch_incomplete` without updating
  * anything.
  */
 export async function updateSkillSuggestionsState(
   auth: Authenticator,
   suggestions: SkillSuggestionResource[],
   state: SkillSuggestionState
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+): Promise<Result<undefined, DustError<"skill_suggestion_batch_incomplete">>> {
   const workspaceModelId = auth.getNonNullableWorkspace().id;
   const batchModelIds = [
     ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
@@ -50,7 +50,7 @@ export async function updateSkillSuggestionsState(
   ) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_suggestion_batch_incomplete",
         "Skill suggestions that belong to a batch must be reviewed together with the rest of their batch."
       )
     );

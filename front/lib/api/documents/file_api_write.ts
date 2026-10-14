@@ -1,0 +1,94 @@
+import type { CollabSessionWrite } from "@app/lib/api/collab/write_through_session";
+import {
+  CollabSessionWriteError,
+  writeThroughCollabSession,
+} from "@app/lib/api/collab/write_through_session";
+import type { DfmCommentSignatureError } from "@app/lib/api/documents/comment_signatures";
+import { validateCommentSignaturesForUser } from "@app/lib/api/documents/comment_signatures";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { decodeBuffer } from "@app/lib/api/files/utils";
+import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
+import {
+  contentTypeFromFileName,
+  isMarkdownContentType,
+  stripMimeParameters,
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency;security] collab-file-api-write
+ * In a workspace with `co_edition`, for a file whose name or request content type is
+ * `text/markdown`, `content` MUST be written through `writeThroughCollabSession`, under the file's
+ * normalized path without a trailing slash. The comments MUST be validated with
+ * `validateCommentSignaturesForUser` against the session's source. While a session is open, a
+ * write conditional on a file revision MUST fail with `conflict`, since the file lags the
+ * session, unless the caller cannot write the file, which fails with `read_only` first.
+ * Any other write MUST answer `no_session` without asking the collab server.
+ */
+export async function writeFileContentThroughCollabSession(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string,
+  {
+    content,
+    requestContentType,
+    ifRevisionMatch,
+  }: {
+    content: Uint8Array;
+    requestContentType: string | undefined;
+    ifRevisionMatch: string | undefined;
+  }
+): Promise<
+  Result<
+    CollabSessionWrite<undefined>,
+    CollabSessionWriteError | DfmCommentSignatureError
+  >
+> {
+  const resolved = DustFileSystem.resolveScopedPath(scopedPath);
+  if (resolved.isErr()) {
+    return new Ok({ kind: "no_session" });
+  }
+  // A trailing slash survives normalization but names the same file.
+  const filePath = resolved.value.replace(/\/+$/, "");
+  const isMarkdown =
+    contentTypeFromFileName(filePath) === "text/markdown" ||
+    isMarkdownContentType(stripMimeParameters(requestContentType ?? ""));
+  // Only Markdown opens live, and only in a co_edition workspace: other writes never wait on the
+  // collab server.
+  if (!isMarkdown || !(await hasFeatureFlag(auth, "co_edition"))) {
+    return new Ok({ kind: "no_session" });
+  }
+
+  const next = decodeBuffer(content);
+  return writeThroughCollabSession(auth, dustFs, {
+    filePath,
+    change: async (
+      source
+    ): Promise<
+      Result<
+        { source: string; value: undefined },
+        CollabSessionWriteError | DfmCommentSignatureError
+      >
+    > => {
+      if (ifRevisionMatch !== undefined) {
+        return new Err(
+          new CollabSessionWriteError(
+            "conflict",
+            "This file is being edited live; its revision cannot be matched."
+          )
+        );
+      }
+      const validated = validateCommentSignaturesForUser(auth, {
+        filePath,
+        previous: source,
+        next,
+      });
+      if (validated.isErr()) {
+        return validated;
+      }
+      return new Ok({ source: next, value: undefined });
+    },
+  });
+}

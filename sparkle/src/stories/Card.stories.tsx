@@ -23,7 +23,7 @@ import { Brackets } from "@sparkle/icons/v2-stroke";
 const meta = {
   title: "Data Display/Card",
   component: Card,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
@@ -283,7 +283,9 @@ export const WithActions: Story = {
           variant="primary"
           size="md"
           onClick={fn()}
-          action={<CardActionButton size="icon" icon={XClose} />}
+          action={
+            <CardActionButton size="icon" icon={XClose} tooltip="Remove" />
+          }
         >
           <div className="flex w-full flex-col gap-1 text-sm">
             <div className="flex w-full gap-1 font-semibold text-foreground">
@@ -319,7 +321,9 @@ export const SelectableGrid: Story = {
             size="md"
             selected={selected === index}
             onClick={() => setSelected(index)}
-            action={<CardActionButton size="icon" icon={XClose} />}
+            action={
+              <CardActionButton size="icon" icon={XClose} tooltip="Remove" />
+            }
           >
             <div className="flex w-full flex-col gap-1 text-sm">
               <div className="flex w-full gap-1 font-semibold text-foreground">

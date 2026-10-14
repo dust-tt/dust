@@ -31,11 +31,6 @@ vi.mock("@app/lib/lock", async (importActual) => {
   };
 });
 
-const notifyPublishedFrameSidePanel = vi.hoisted(() => vi.fn());
-vi.mock("@app/lib/api/frames/notify_published_frame", () => ({
-  notifyPublishedFrameSidePanel,
-}));
-
 const manifest = JSON.stringify({
   version: 1,
   name: "Status",
@@ -204,8 +199,6 @@ async function listFramePublishActions(
 
 beforeEach(() => {
   fileStorageMock.reset();
-  notifyPublishedFrameSidePanel.mockClear();
-  notifyPublishedFrameSidePanel.mockResolvedValue(undefined);
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
@@ -245,10 +238,11 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
   it("publishes a registered Frame through the sandbox token", async () => {
     const context = await setup();
     assert(context.frame);
+    const { parentAction, token } = await withPersistedSandboxAction(context);
 
     const response = await requestFramePublish(
       context.workspace.sId,
-      context.token,
+      token,
       context.manifestPath
     );
     expect(response.status).toBe(200);
@@ -261,16 +255,18 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
     );
-    expect(notifyPublishedFrameSidePanel).toHaveBeenCalledWith(
-      expect.anything(),
+
+    const [enrichedParent] =
+      await AgentMCPActionResource.enrichActionsWithOutputItems(context.auth, {
+        actions: [parentAction],
+        ignoreContent: false,
+      });
+    expect(enrichedParent.generatedFiles).toEqual([
       expect.objectContaining({
-        frameId: context.frame.sId,
-        conversationId: context.conversation.sId,
-        messageId: context.agentMessage.sId,
-        configurationId: context.agentConfig.sId,
-        contentRevision: published.publicationId,
-      })
-    );
+        fileId: context.frame.sId,
+        contentType: frameV2ContentType,
+      }),
+    ]);
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {

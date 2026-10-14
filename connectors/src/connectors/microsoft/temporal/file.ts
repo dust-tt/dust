@@ -177,6 +177,13 @@ export async function removeFileBasedOnSensitivityLabel({
  * capped at MAX_FILE_SIZE_TO_DOWNLOAD (re-check on hydrated metadata AND a hard
  * maxContentLength/maxBodyLength on the request), or a huge file OOMs the worker.
  */
+/**
+ * @cc [owner:philipperolet,label:backend] hydrate-lean-items
+ * `file` may come from a lean listing (see DRIVE_ITEM_LEAN_SELECTS) that lacks the download URL
+ * and list-item fields. When either is missing, both MUST be re-fetched before use, and the
+ * sensitivity-label check, document tags, CSV and spreadsheet table tags MUST use the resulting
+ * fields rather than `file.listItem`.
+ */
 export async function syncOneFile({
   connectorId,
   dataSourceConfig,
@@ -269,10 +276,10 @@ export async function syncOneFile({
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
 
   if (!url || !fields) {
-    // The delta projection is lean and never carries the download URL or list-item
-    // fields (see DRIVE_ITEM_DELTA_SELECTS), so hydrating them here is the expected
-    // path for incrementally-synced files rather than an anomaly. This counter tracks
-    // the resulting extra Graph calls so we can monitor the API-volume tradeoff.
+    // The delta and children-listing projection is lean and never carries the download
+    // URL or list-item fields (see DRIVE_ITEM_LEAN_SELECTS), so hydrating them here is
+    // the expected path rather than an anomaly. This counter tracks the resulting extra
+    // Graph calls so we can monitor the API-volume tradeoff.
     statsDClient.increment("microsoft.file.metadata_hydration");
 
     let item: DriveItem;
@@ -512,6 +519,7 @@ export async function syncOneFile({
     result = await handleSpreadSheet({
       connectorId,
       file,
+      fields,
       parentInternalId,
       localLogger,
       startSyncTs,

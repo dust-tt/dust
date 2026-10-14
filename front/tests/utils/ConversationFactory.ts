@@ -89,6 +89,14 @@ async function resolveAgentConfigurationId(
 }
 
 export class ConversationFactory {
+  static async createPlain(auth: Authenticator) {
+    return createConversation(auth, {
+      title: null,
+      visibility: "unlisted",
+      spaceId: null,
+    });
+  }
+
   static async create(
     auth: Authenticator,
     {

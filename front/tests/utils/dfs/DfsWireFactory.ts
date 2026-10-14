@@ -11,10 +11,6 @@ export class DfsWireFactory {
     return { id: DfsWireFactory.objectId(id) };
   }
 
-  static view(overrides: DfsWireMessage = {}): DfsWireMessage {
-    return { storeVersion: "42", authVersion: "7", ...overrides };
-  }
-
   // A regular file attribute for `id`.
   static attr(id: string, overrides: DfsWireMessage = {}): DfsWireMessage {
     return {
@@ -26,7 +22,8 @@ export class DfsWireFactory {
       mtime: "1700000000000",
       attrVersion: "3",
       contentVersion: "2",
-      view: DfsWireFactory.view(),
+      grantsVersion: "1",
+      storeVersion: "42",
       ...overrides,
     };
   }

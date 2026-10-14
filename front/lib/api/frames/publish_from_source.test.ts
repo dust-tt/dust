@@ -5,10 +5,21 @@ import {
   publishFrameFromSource,
   publishFrameV2FromSource,
 } from "@app/lib/api/frames/publish_from_source";
+import {
+  computeFrameSourcePathSetSha256,
+  FRAME_SOURCE_STAGING_ROOT,
+} from "@app/lib/api/frames/source_staging";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import {
+  ensureConversationSandboxReadyWithScope,
+  ensureFrameSandboxReady,
+} from "@app/lib/api/sandbox/lifecycle";
+import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
+import { reconcileDatabaseOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -27,8 +38,42 @@ import {
   getPodFilesBasePath,
 } from "@app/types/mount_path";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox/lifecycle", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/lifecycle")>();
+  return {
+    ...actual,
+    ensureFrameSandboxReady: vi.fn(),
+    ensureConversationSandboxReadyWithScope: vi.fn(),
+  };
+});
+
+vi.mock(
+  "@app/lib/api/sandbox_functions/build_on_sandbox",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/sandbox_functions/build_on_sandbox")
+      >();
+    return { ...actual, buildSandboxFunctionOnReadySandbox: vi.fn() };
+  }
+);
+
+vi.mock("@app/lib/api/sandbox_functions/dsbx_db", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox_functions/dsbx_db")
+    >();
+  return { ...actual, reconcileDatabaseOnReadySandbox: vi.fn() };
+});
+
+vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
+  seedFramePublicationFunctionsArchive: vi.fn().mockResolvedValue(undefined),
+}));
 
 const manifest = JSON.stringify({
   version: 1,
@@ -119,6 +164,7 @@ async function setup({
 
 beforeEach(() => {
   fileStorageMock.reset();
+  vi.clearAllMocks();
 });
 
 describe("publishFrameFromSource", () => {
@@ -270,9 +316,13 @@ type LegacyFrameReplacementScope = "conversation" | "pod";
 async function setupLegacyFrameReplacement({
   scope,
   replacementUiSource = uiSource,
+  replacementManifest = manifest,
+  extraSources = {},
 }: {
   scope: LegacyFrameReplacementScope;
   replacementUiSource?: string;
+  replacementManifest?: string;
+  extraSources?: Record<string, string>;
 }) {
   const {
     authenticator: auth,
@@ -320,9 +370,15 @@ async function setupLegacyFrameReplacement({
   fileStorageMock.setObject(legacyGcsPath, uiSource);
 
   const sourceByPath = new Map([
-    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, replacementManifest],
     [`${gcsSourceDirectoryPath}/index.tsx`, replacementUiSource],
     [`${gcsSourceDirectoryPath}/theme.ts`, "export const theme = {};"],
+    ...Object.entries(extraSources).map(
+      ([relativePath, content]): [string, string] => [
+        `${gcsSourceDirectoryPath}/${relativePath}`,
+        content,
+      ]
+    ),
   ]);
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === `${gcsSourceDirectoryPath}/`
@@ -349,6 +405,7 @@ async function setupLegacyFrameReplacement({
     legacyPath,
     manifestPath,
     pod,
+    sourceByPath,
   };
 }
 
@@ -471,6 +528,152 @@ describe("publishFrameFromSource replacing a legacy Frame", () => {
     expect(result.isErr()).toBe(true);
     const frame = await FileResource.fetchById(auth, legacyFrame.sId);
     expect(frame?.isInteractiveContent).toBe(true);
+  });
+
+  it("builds functions on the conversation sandbox and reconciles after conversion", async () => {
+    const replacementManifest = JSON.stringify({
+      version: 1,
+      description: "Sales with functions and a database.",
+      functions: [
+        {
+          name: "run",
+          description: "Run it.",
+          entryPoint: "functions/run.ts",
+        },
+      ],
+      databases: [{ name: "items", schema: "databases/items.db.ts" }],
+    });
+    const {
+      auth,
+      conversation,
+      legacyFrame,
+      legacyPath,
+      manifestPath,
+      sourceByPath,
+    } = await setupLegacyFrameReplacement({
+      scope: "conversation",
+      replacementManifest,
+      extraSources: {
+        ...functionSources,
+        "databases/items.db.ts": "export const items = {};",
+      },
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
+
+    const sandbox = await SandboxResource.makeNew(auth, {
+      providerId: "test-provider-id",
+      status: "running",
+      baseImage: "dust-base",
+      version: "0.0.0-test",
+    });
+    const stagedRelativePaths = [
+      FRAME_MANIFEST_FILE,
+      "index.tsx",
+      "theme.ts",
+      "functions/run.ts",
+      "databases/items.db.ts",
+    ];
+    const pathSetSha256 = computeFrameSourcePathSetSha256(stagedRelativePaths);
+    vi.spyOn(sandbox, "writeFile").mockResolvedValue(new Ok(undefined));
+    // Both conversation staging (function build) and Frame staging (reconcile) harden
+    // with a path-set hash; return it on every root command so call order does not matter.
+    vi.spyOn(sandbox, "execRoot").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: `${pathSetSha256}  -\n`,
+        stderr: "",
+      })
+    );
+    vi.spyOn(sandbox, "readFile").mockImplementation(
+      async (_auth, filePath) => {
+        const relativePath = stagedRelativePaths.find((path) =>
+          filePath.endsWith(`/${path}`)
+        );
+        if (!relativePath) {
+          return new Err(new Error(`Unexpected staged path: ${filePath}`));
+        }
+        const gcsPath = [...sourceByPath.keys()].find((path) =>
+          path.endsWith(`/${relativePath}`)
+        );
+        const content = gcsPath ? sourceByPath.get(gcsPath) : undefined;
+        return content
+          ? new Ok(Buffer.from(content))
+          : new Err(new Error(`Missing staged content: ${relativePath}`));
+      }
+    );
+    vi.mocked(ensureConversationSandboxReadyWithScope).mockResolvedValue(
+      new Ok({
+        sandbox,
+        freshlyCreated: false,
+        scope: { spaceId: null },
+      })
+    );
+    vi.mocked(ensureFrameSandboxReady).mockImplementation(async () => {
+      const frame = await FileResource.fetchById(auth, legacyFrame.sId);
+      assert(frame?.isFrameV2, "Frame sandbox ensure ran before conversion");
+      return new Ok({
+        sandbox,
+        freshlyCreated: false,
+        scope: { spaceId: null },
+      });
+    });
+    vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default true;",
+        userIdentity: "optional",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      })
+    );
+    vi.mocked(reconcileDatabaseOnReadySandbox).mockResolvedValue(
+      new Ok({ database: "items", created: true, statements: ["CREATE TABLE"] })
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledOnce();
+    expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledWith(
+      auth,
+      conversation
+    );
+    expect(ensureFrameSandboxReady).toHaveBeenCalledOnce();
+    // Called after convertLegacyFrameToFrameV2 mutates the same FileResource in place.
+    expect(ensureFrameSandboxReady).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        sId: legacyFrame.sId,
+        contentType: frameV2ContentType,
+      })
+    );
+    expect(buildSandboxFunctionOnReadySandbox).toHaveBeenCalledWith(auth, {
+      sandbox,
+      srcSandboxPath: expect.stringMatching(
+        new RegExp(`^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/functions/run\\.ts$`)
+      ),
+    });
+    expect(reconcileDatabaseOnReadySandbox).toHaveBeenCalledWith(auth, {
+      sandbox,
+      database: "items",
+      schemaFileSandboxPath: expect.stringMatching(
+        new RegExp(
+          `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/databases/items\\.db\\.ts$`
+        )
+      ),
+    });
+
+    const frame = await FileResource.fetchById(auth, legacyFrame.sId);
+    assert(frame, "Frame not found");
+    expect(frame.isFrameV2).toBe(true);
+    expect(frame.useCaseMetadata?.activePublicationId).toBe(
+      result.value.kind === "v2" ? result.value.publicationId : undefined
+    );
   });
 });
 

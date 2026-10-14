@@ -70,7 +70,8 @@ export async function authorizeSandboxFunctionInvocation(
   let pod: SpaceResource | null;
 
   // Frames are always workspace-member execution, even when a declaration's identity policy is
-  // optional. Public and guest rendering may still work, but invocation fails before wakeup.
+  // optional or public. Public share and guest rendering may still work, but invocation fails
+  // before wakeup.
   if (!user) {
     return authorizationError(
       "This Frame function requires a logged-in user from its workspace."
@@ -100,6 +101,7 @@ export async function authorizeSandboxFunctionInvocation(
   // anyone else, so these only add the requirement on top of membership.
   const policy = userIdentity ?? "optional";
   switch (policy) {
+    case "public":
     case "optional":
     case "workspace_user_required":
       return { authorized: true, user, runtimeSpaceId, pod };

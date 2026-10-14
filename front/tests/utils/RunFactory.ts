@@ -11,6 +11,13 @@ import type {
   ModelIdType,
 } from "@app/types/assistant/models/types";
 
+// gpt-5-mini tokens worth exactly one credit, the default model of `createWithUsage`.
+export const GPT_5_MINI_TOKENS_PER_CREDIT = {
+  input: 34_000,
+  cachedInput: 340_000,
+  output: 4_250,
+};
+
 export class RunFactory {
   static async createWithUsage(
     auth: Authenticator,
@@ -18,6 +25,8 @@ export class RunFactory {
       inputTokens = 100,
       outputTokens = 20,
       reasoningTokens,
+      cachedTokens,
+      cacheCreationTokens,
       modelId = GPT_5_MINI_MODEL_CONFIG.modelId,
       usageType = USAGE_TYPE_USER,
       serviceTier,
@@ -26,6 +35,8 @@ export class RunFactory {
       inputTokens?: number;
       outputTokens?: number;
       reasoningTokens?: number;
+      cachedTokens?: number;
+      cacheCreationTokens?: number;
       modelId?: ModelIdType;
       usageType?: UsageType | null;
       serviceTier?: ServiceTier;
@@ -46,6 +57,8 @@ export class RunFactory {
         inputTokens,
         totalOutputTokens: outputTokens,
         reasoningTokens,
+        cachedTokens,
+        cacheCreationTokens,
         totalTokens: inputTokens + outputTokens,
         serviceTier,
       },
@@ -80,5 +93,35 @@ export class RunFactory {
     }
 
     return { run, runUsageModelId: runUsage.id };
+  }
+
+  // A model call still in flight: its usage row is pending, with no tokens and no cost.
+  static async createWithPendingUsage(auth: Authenticator) {
+    return RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      {
+        inferenceProvider: GPT_5_MINI_MODEL_CONFIG.providerId,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+  }
+
+  // A model call whose provider stream ended without reporting usage: its pending usage row is
+  // closed as unavailable, with no tokens and no cost.
+  static async createWithUnavailableUsage(auth: Authenticator) {
+    const { run, runUsageModelId } = await this.createWithPendingUsage(auth);
+    await run.markPendingRunUsageUnavailable(auth, runUsageModelId);
+
+    return { run, runUsageModelId };
   }
 }

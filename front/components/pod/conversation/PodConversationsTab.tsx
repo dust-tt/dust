@@ -383,7 +383,9 @@ export function PodConversationsTab({
                     size="sm"
                     variant="outline"
                     icon={CheckDouble}
-                    label={isWidthConstrained ? undefined : t`Mark all as read`}
+                    {...(isWidthConstrained
+                      ? { tooltip: t`Mark all as read` }
+                      : { label: t`Mark all as read` })}
                     className="shrink-0"
                     onClick={() => markAllAsRead(unreadConversationIds)}
                     isLoading={isMarkingAllAsRead}
