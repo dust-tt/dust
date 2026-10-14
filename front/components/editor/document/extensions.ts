@@ -6,6 +6,7 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
+import { DocumentListJoin } from "@app/components/editor/document/DocumentListJoin";
 import {
   DocumentTable,
   DocumentTableCell,
@@ -140,6 +141,7 @@ export const buildDocumentEditorExtensions = (
   }
 ): AnyExtension[] => [
   ...buildSchemaExtensions({ live, resolveImageSource }),
+  DocumentListJoin,
   Placeholder.configure({
     placeholder: ({ node, pos, editor }) =>
       node.type.name === "heading"

@@ -128,5 +128,28 @@ describe("numbered lists", () => {
         expect(pressInEmptyParagraph(live, html, [key])).toBe("1. a\n2. c");
       }
     );
+
+    it("keeps a numbered and a bulleted list apart", () => {
+      const html = `
+        <ol><li>a</li></ol>
+        <p></p>
+        <ul><li>c</li></ul>`;
+      pressInEmptyParagraph(live, html, ["Backspace"]);
+      expect(editor?.getJSON().content?.map(({ type }) => type)).toContain(
+        "bulletList"
+      );
+    });
+  });
+
+  it("restores both lists with one undo", () => {
+    const html = `
+      <ol><li>a</li></ol>
+      <p></p>
+      <ol><li>c</li></ol>`;
+    pressInEmptyParagraph(false, html, ["Backspace"]);
+    editor?.commands.undo();
+    expect(
+      editor?.getJSON().content?.filter(({ type }) => type === "orderedList")
+    ).toHaveLength(2);
   });
 });
