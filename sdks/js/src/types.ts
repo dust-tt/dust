@@ -3683,6 +3683,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DriveLogo"
   | "FathomLogo"
   | "FigmaLogo"
+  | "FirefliesLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
   | "FullEnrichLogo"
