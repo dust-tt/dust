@@ -462,7 +462,7 @@ describe("getFileExplorerPipeline type filters", () => {
     ]);
   });
 
-  it("keeps Frame package internals opaque under flat Code and Frames filters", () => {
+  it("keeps Frame package internals opaque under every flat type filter", () => {
     const files = [
       withVirtualExplorerPath(
         frameManifest("pod-p1/apps/status/manifest.json"),
@@ -481,37 +481,56 @@ describe("getFileExplorerPipeline type filters", () => {
         "pod"
       ),
       withVirtualExplorerPath(
+        mountFile("pod-p1/apps/status/readme.md", "readme.md", {
+          contentType: "text/markdown",
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(
         mountFile("pod-p1/notes.ts", "notes.ts", {
           contentType: "text/typescript",
         }),
         "pod"
       ),
+      withVirtualExplorerPath(
+        mountFile("pod-p1/outside.md", "outside.md", {
+          contentType: "text/markdown",
+        }),
+        "pod"
+      ),
     ];
 
-    const frames = getFileExplorerPipeline({
-      activeFilter: "frames",
-      contentNodes: [],
+    const base = {
+      contentNodes: [] as const,
       currentFolderPath: "",
       displayFramePackages: true,
       files,
       searchQuery: "",
-      sortMode: "name-asc",
+      sortMode: "name-asc" as const,
       virtualScopeRoots,
-    });
-    expect(frames.sortedNodes.map((n) => n.path)).toEqual(["pod/apps/status"]);
+    };
 
-    const code = getFileExplorerPipeline({
-      activeFilter: "code",
-      contentNodes: [],
-      currentFolderPath: "",
-      displayFramePackages: true,
-      files,
-      searchQuery: "",
-      sortMode: "name-asc",
-      virtualScopeRoots,
-    });
+    const frames = getFileExplorerPipeline({ ...base, activeFilter: "frames" });
+    expect(frames.sortedNodes.map((n) => n.path)).toEqual(["pod/apps/status"]);
+    expect(frames.filterCounts.frames).toBe(1);
+
+    const code = getFileExplorerPipeline({ ...base, activeFilter: "code" });
     expect(code.sortedNodes.map((n) => n.path)).toEqual(["pod/notes.ts"]);
     expect(code.filterCounts.code).toBe(1);
-    expect(code.filterCounts.frames).toBe(1);
+
+    const texts = getFileExplorerPipeline({ ...base, activeFilter: "texts" });
+    expect(texts.sortedNodes.map((n) => n.path)).toEqual(["pod/outside.md"]);
+
+    const folders = getFileExplorerPipeline({
+      ...base,
+      activeFilter: "folders",
+    });
+    // Ancestor folders of the package are fine; nothing inside the bundle.
+    expect(
+      folders.sortedNodes.every((n) => !n.path.startsWith("pod/apps/status/"))
+    ).toBe(true);
+    expect(folders.sortedNodes.map((n) => n.path)).not.toContain(
+      "pod/apps/status"
+    );
   });
 });
