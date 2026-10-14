@@ -30,6 +30,7 @@ jobs:
           # Define monitored paths
           MONITORED_PATHS=(
             'front/lib/'
+            'front/components/editor/document/'
             'front/types/assistant/models/'
             'front/temporal/'
             'front-api/'

@@ -7,6 +7,7 @@ const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
+const collabAckLabel = "collab-ack";
 const sandboxImageAckLabel = "sandbox-image-ack";
 const auditLogAckLabel = "audit-log-ack";
 
@@ -127,6 +128,34 @@ function checkSSESharedModelsLabel() {
     failSSESharedModelsAck();
   } else {
     warnSSESharedModelsAck(sseAckLabel);
+  }
+}
+
+function failCollabSharedFilesAck() {
+  fail(
+    "Code both the co-edition editor in the browser and the `front-collab` server run has " +
+      "been modified: the editor schema and its Markdown, the DFM codec or the collab protocol.\n\n" +
+      `Please add the \`${collabAckLabel}\` label to acknowledge ` +
+      "that a `front-collab` deploy is required alongside the `front` deploy."
+  );
+}
+
+function warnCollabSharedFilesAck(collabAckLabel: string) {
+  warn(
+    "Code shared by the co-edition editor and `front-collab` has been modified and the PR has " +
+      "the `" +
+      collabAckLabel +
+      "` label. Don't forget to deploy `front-collab` alongside `front`. When the editor " +
+      "schema changes, deploy `front` first: a browser on the previous schema deletes the " +
+      "nodes it does not know from the shared document."
+  );
+}
+
+function checkCollabSharedFilesLabel() {
+  if (!hasLabel(collabAckLabel)) {
+    failCollabSharedFilesAck();
+  } else {
+    warnCollabSharedFilesAck(collabAckLabel);
   }
 }
 
@@ -660,6 +689,24 @@ async function checkDiffFiles() {
   );
   if (modifiedSseSharedModels.length > 0) {
     checkSSESharedModelsLabel();
+  }
+
+  // Code the co-edition editor shares with the front-collab server — the editor schema and its
+  // Markdown, the DFM codec and the collab protocol — requires a front-collab deploy too.
+  const collabSharedPaths = [
+    "front/components/editor/document/",
+    "front/lib/markdown/dfm/",
+    "front/lib/api/collab/",
+    "front-api/lib/collab/",
+  ];
+  const modifiedCollabSharedFiles = diffFiles.filter(
+    (path) =>
+      collabSharedPaths.some((prefix) => path.startsWith(prefix)) &&
+      path.endsWith(".ts") &&
+      !path.endsWith(".test.ts")
+  );
+  if (modifiedCollabSharedFiles.length > 0) {
+    checkCollabSharedFilesLabel();
   }
 
   // Audit log schema changes must ship with a bumped version in
