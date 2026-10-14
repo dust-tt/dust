@@ -1,6 +1,7 @@
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -59,11 +60,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const filterParam = ctx.req.query("filter");
-  const versionParam = ctx.req.query("version");
-  const daysParam = ctx.req.query("days");
   const filter = filterParam === "all" ? "all" : "active";
-  const version = versionParam ? parseInt(versionParam, 10) : undefined;
-  const days = daysParam ? parseInt(daysParam, 10) : undefined;
 
   const feedbacksRes = await getAgentFeedbacks({
     auth,
@@ -71,8 +68,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     withMetadata: ctx.req.query("withMetadata") === "true",
     paginationParams: paginationRes.value,
     filter,
-    version: Number.isNaN(version) ? undefined : version,
-    days: Number.isNaN(days) ? undefined : days,
+    version: parseOptionalInt(ctx.req.query("version")),
+    days: parseOptionalInt(ctx.req.query("days")),
   });
 
   if (feedbacksRes.isErr()) {

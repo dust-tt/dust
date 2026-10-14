@@ -1,5 +1,6 @@
 import type { GetGlobalAgentFeedbacksResponseBody } from "@app/lib/api/poke/global_agent_feedbacks";
 import { listGlobalAgentFeedbacks } from "@app/lib/api/poke/global_agent_feedbacks";
+import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -11,15 +12,9 @@ const app = pokeApp();
 app.get(
   "/",
   async (ctx): HandlerResult<GetGlobalAgentFeedbacksResponseBody> => {
-    const includeEmptyQuery = ctx.req.query("includeEmpty");
-    const lastIdQuery = ctx.req.query("lastId");
-
-    const lastId =
-      lastIdQuery !== undefined ? parseInt(lastIdQuery, 10) : undefined;
-
     const result = await listGlobalAgentFeedbacks({
-      includeEmpty: includeEmptyQuery === "true",
-      lastId,
+      includeEmpty: ctx.req.query("includeEmpty") === "true",
+      lastId: parseOptionalInt(ctx.req.query("lastId")),
     });
 
     return ctx.json(result);
