@@ -8,9 +8,10 @@ import {
 } from "@extension/platforms/excel/tools/parseExpression";
 import { normalizeError } from "@extension/shared/lib/utils";
 
-type WorkbookRead = { expression: string; load?: string[] | null };
+type WorkbookRead = { expression: string };
 
-type CheckedRead = { steps: Step[]; load: string[] };
+// One read after the checks: the steps of its expression.
+type CheckedRead = { steps: Step[] };
 
 // An Office.js proxy object that can be loaded: every Office.js object (Range, Worksheet,
 // collections...) extends `ClientObject`, and in Excel they all have `load` and `toJSON` —
@@ -43,10 +44,13 @@ function isReadTarget(value: unknown): value is ReadTarget {
 }
 
 /**
- * TODO(office_addin): check each step and each `load` property against an allowlist of the
- * read-only properties and methods of the Office.js Excel API. Until then, every step is accepted.
+ * TODO(office_addin): check each step against an allowlist of the read-only properties and
+ * methods of the Office.js Excel API. Until then, every step is accepted.
+ *
+ * TODO(office_addin): check the `load` step with the allowlist. An expression that gives an
+ * object must end with `load(...)` with one argument, and `load` must be the last step.
  */
-function checkSteps(steps: Step[], load: string[]): Result<undefined, string> {
+function checkSteps(steps: Step[]): Result<undefined, string> {
   return new Ok(undefined);
 }
 
@@ -55,16 +59,16 @@ function checkSteps(steps: Step[], load: string[]): Result<undefined, string> {
  */
 function checkReads(reads: WorkbookRead[]): Result<CheckedRead[], string> {
   const checked: CheckedRead[] = [];
-  for (const [index, { expression, load }] of reads.entries()) {
+  for (const [index, { expression }] of reads.entries()) {
     const steps = parseExpression(expression);
     if (steps.isErr()) {
       return new Err(`Read ${index}: invalid expression: ${steps.error}`);
     }
-    const check = checkSteps(steps.value, load ?? []);
+    const check = checkSteps(steps.value);
     if (check.isErr()) {
       return new Err(`Read ${index}: ${check.error}`);
     }
-    checked.push({ steps: steps.value, load: load ?? [] });
+    checked.push({ steps: steps.value });
   }
   return new Ok(checked);
 }
@@ -132,54 +136,28 @@ function resolveTarget(
 }
 
 /**
- * Queues the load of the properties. The values cannot be read now: Office.js objects are empty
- * proxies until `context.sync()` fills them. Use `readValue` after the sync.
- *
- * Example: for a Range with `load: ["values"]`, it queues `range.load(["values"])` and returns
- * the range.
- */
-function queueLoad(
-  value: ReadTarget,
-  load: string[]
-): Result<ReadTarget, string> {
-  // Methods such as `getCount()` give a `ClientResult`: there is nothing to load.
-  if (value instanceof OfficeExtension.ClientResult) {
-    return new Ok(value);
-  }
-  // `load([])` could load all the properties of the object, which can be very large.
-  if (load.length === 0) {
-    return new Err("give the properties to load for this object.");
-  }
-  value.load(load);
-  return new Ok(value);
-}
-
-/**
- * Phase 2, inside Excel.run: resolves the target of every read and queues its loads. Still one batch, nothing
- * sent. Returns one queued read per read, to give to `readValue` after `context.sync()`.
+ * Phase 2, inside Excel.run: resolves the target of every read. The `load` step of each
+ * expression queues its load. Still one batch, nothing sent. Returns one target per read, to give
+ * to `readValue` after `context.sync()`.
  */
 function queueReads(
   workbook: Excel.Workbook,
   checked: CheckedRead[]
 ): Result<ReadTarget[], string> {
   const queued: ReadTarget[] = [];
-  for (const [index, { steps, load }] of checked.entries()) {
+  for (const [index, { steps }] of checked.entries()) {
     const target = resolveTarget(workbook, steps);
     if (target.isErr()) {
       return new Err(`Read ${index}: ${target.error}`);
     }
-    const read = queueLoad(target.value, load);
-    if (read.isErr()) {
-      return new Err(`Read ${index}: ${read.error}`);
-    }
-    queued.push(read.value);
+    queued.push(target.value);
   }
   return new Ok(queued);
 }
 
 /**
- * After `context.sync()`, gets the value of a read. Example: `{ values: [[...]] }` for a Range
- * with `load: ["values"]`.
+ * After `context.sync()`, gets the value of a read. Example: `{ values: [[...]] }` for
+ * `getRange('A1:B2').load(['values'])`.
  */
 function readValue(read: ReadTarget): unknown {
   return read instanceof OfficeExtension.ClientResult

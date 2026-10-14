@@ -5,32 +5,25 @@ export const READ_WORKBOOK_TOOL_NAME = "read_workbook";
 
 const MAX_EXPRESSION_LENGTH = 1_000;
 
-const READ_WORKBOOK_TOOL_DESCRIPTION = `Reads data from the Excel workbook the user has open, with the Office.js Excel API.
+const READ_WORKBOOK_TOOL_DESCRIPTION = `Reads data from the Excel workbook that the user has open.
 
-Each read gives an Office.js expression that starts with \`workbook\` (the \`context.workbook\` object, written without \`context.\`), and the properties to load on the object it gives. The reads are sent to Excel in one batch; the result is a JSON array with one loaded object per read, in the same order. Only read operations are allowed.
+Each read is an Office.js Excel expression that starts with \`workbook\`. End the expression with \`load(...)\` to give the properties to return. Do not add \`load(...)\` after a method that gives a value, for example \`getCount()\`. The result has one item for each read, in the same order.
 
-Example — list the worksheets, read the selection and read a range in one call:
+Example:
 { "reads": [
-  { "expression": "workbook.worksheets", "load": ["name"] },
-  { "expression": "workbook.getSelectedRange()", "load": ["address", "values"] },
-  { "expression": "workbook.worksheets.getItem('Sheet1').getRange('A1:C10')", "load": ["values", "formulas", "numberFormat"] },
+  { "expression": "workbook.worksheets.load('name')" },
+  { "expression": "workbook.worksheets.getItem('Sheet1').getRange('A1:C10').load(['address', 'values', 'format/fill/color'])" },
   { "expression": "workbook.tables.getCount()" }
 ] }
 
-Methods such as \`getCount()\` or \`getCellProperties(...)\` give a value directly: omit \`load\` for those.
-
-On a large sheet, load the address of the used range first, then read the values in blocks.`;
+On a large sheet, read the address of the used range first. Then read the values in blocks.`;
 
 const readSchema = z.object({
   expression: z
     .string()
     .max(MAX_EXPRESSION_LENGTH)
-    .describe("An Office.js expression that starts at `workbook`."),
-  load: z
-    .array(z.string())
-    .nullish()
     .describe(
-      "The properties to load on the object the expression gives. Omit it for methods that give a value directly, such as getCount() or getCellProperties(...)."
+      "An Office.js Excel expression that starts with `workbook`. Use only properties and method calls with literal arguments. Do not use `context`, `await` or `sync()`."
     ),
 });
 
