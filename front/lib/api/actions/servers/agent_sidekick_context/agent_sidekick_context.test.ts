@@ -2075,14 +2075,14 @@ describe("agent_sidekick_context tools", () => {
       );
 
       const tool = getToolByName("suggest_model");
-      // gpt-6.1-sol is in USED_MODEL_CONFIGS but openai is not whitelisted
-      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-6.1-sol")).toBe(
+      // gpt-6-luna is in USED_MODEL_CONFIGS but openai is not whitelisted
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-6-luna")).toBe(
         true
       );
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "gpt-6.1-sol",
+            modelId: "gpt-6-luna",
           },
         },
         createTestExtra(authenticator)
@@ -2093,7 +2093,7 @@ describe("agent_sidekick_context tools", () => {
         expect(result.error.message).toContain(
           "is not available in this workspace"
         );
-        expect(result.error.message).toContain("gpt-6.1-sol");
+        expect(result.error.message).toContain("gpt-6-luna");
       }
     });
   });
