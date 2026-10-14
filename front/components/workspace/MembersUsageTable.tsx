@@ -4,7 +4,9 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import {
+  buildMemberEmailColumn,
   buildMemberNameColumn,
+  MemberEmailSkeleton,
   MemberNameSkeleton,
 } from "@app/components/workspace/member_name_column";
 import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
@@ -217,6 +219,17 @@ function getSharedUsageLimitGroupTooltip({
   );
 }
 
+// Matches the columns built without seat and credit columns, where the email has its own column.
+function MemberUsageWithEmailColumnSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  if (columnId === "name") {
+    return <MemberNameSkeleton rowIndex={rowIndex} hasEmailColumn />;
+  }
+  return <MemberUsageSkeletonCell columnId={columnId} rowIndex={rowIndex} />;
+}
+
 function MemberUsageSkeletonCell({
   columnId,
   rowIndex,
@@ -225,7 +238,9 @@ function MemberUsageSkeletonCell({
     case "select":
       return <LoadingBlock className="h-4 w-4 rounded" />;
     case "name":
-      return <MemberNameSkeleton rowIndex={rowIndex} />;
+      return <MemberNameSkeleton rowIndex={rowIndex} hasEmailColumn={false} />;
+    case "email":
+      return <MemberEmailSkeleton />;
     case "groups":
     case "sharedUsageLimitGroup":
     case "modelTiers":
@@ -744,11 +759,14 @@ export function AwuUsageBar({
   );
 }
 
-// Name is intentionally the only column without a set width, so it absorbs
-// every bit of leftover space. Secondary columns hide (via the container
-// queries in their meta.className) before Name has to shrink, keeping long
-// names/emails readable.
-const nameColumn = buildMemberNameColumn<RowData>();
+// Name (and Email, when shown) are intentionally the only columns without a set width, so they
+// absorb every bit of leftover space. Secondary columns hide (via the container queries in their
+// meta.className) before Name has to shrink, keeping long names/emails readable.
+const nameColumn = buildMemberNameColumn<RowData>({ hasEmailColumn: false });
+const nameColumnWithEmailColumn = buildMemberNameColumn<RowData>({
+  hasEmailColumn: true,
+});
+const emailColumn = buildMemberEmailColumn<RowData>();
 
 function buildGroupsColumn(t: Translate): ColumnDef<RowData, string> {
   return {
@@ -1507,7 +1525,11 @@ function buildColumns({
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
-    nameColumn,
+    // Seat and credit columns already compete with Name for width, so the email only gets its own
+    // column without them.
+    ...(showSeatAndCredits
+      ? [nameColumn]
+      : [nameColumnWithEmailColumn, emailColumn]),
     ...(showGroupsColumn ? [buildGroupsColumn(t)] : []),
     ...(showSharedUsageLimitGroupColumn
       ? [buildSharedUsageLimitGroupColumn(t)]
@@ -1897,7 +1919,11 @@ export function MembersUsageTable({
       <div className="flex flex-col gap-2">
         <DataTableSkeleton
           columns={columns}
-          SkeletonCell={MemberUsageSkeletonCell}
+          SkeletonCell={
+            showSeatAndCredits
+              ? MemberUsageSkeletonCell
+              : MemberUsageWithEmailColumnSkeletonCell
+          }
           rowCount={
             remainingRows > 0
               ? Math.min(pagination.pageSize, remainingRows)
