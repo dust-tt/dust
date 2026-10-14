@@ -20,6 +20,7 @@ interface LLMTraceContextBase {
     | "agent_builder_tags_suggestion"
     | "activation_recommendation"
     | "agent_conversation"
+    | "auto_tier_routing"
     | "compaction"
     | "agent_observability_summary"
     | "agent_suggestion"
