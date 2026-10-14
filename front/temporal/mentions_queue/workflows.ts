@@ -71,6 +71,8 @@ export async function documentCommentMentionWorkflow(
     newMessage: NewCommentMessage;
   }
 ): Promise<void> {
+  // TODO(2026-10-21): replace with deprecatePatch() once no run started before this patch
+  // remains, then remove it a week later.
   if (patched("notify-document-comment-mentions")) {
     try {
       await notifyDocumentCommentMentionsActivity(authType, {

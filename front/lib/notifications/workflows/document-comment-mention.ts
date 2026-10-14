@@ -134,7 +134,7 @@ export function buildDocumentCommentMentionCopy(
   };
 }
 
-export const documentCommentMentionWorkflow = workflow(
+export const documentCommentMentionNotificationWorkflow = workflow(
   DOCUMENT_COMMENT_MENTION_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
     const channels = await step.custom(

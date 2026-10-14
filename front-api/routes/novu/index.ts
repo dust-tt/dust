@@ -5,7 +5,7 @@ import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflow
 import { consumptionExportReadyWorkflow } from "@app/lib/notifications/workflows/consumption-export-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
 import { creditUsageAlertWorkflow } from "@app/lib/notifications/workflows/credit-usage-alert";
-import { documentCommentMentionWorkflow } from "@app/lib/notifications/workflows/document-comment-mention";
+import { documentCommentMentionNotificationWorkflow } from "@app/lib/notifications/workflows/document-comment-mention";
 import {
   frameLoginCodeWorkflow,
   frameSharedWorkflow,
@@ -104,7 +104,7 @@ const options: ServeHandlerOptions = {
     gitHubConnectionDeletedWorkflow,
     mcpGlobalSharingReconfigurationWorkflow,
     accessRequestWorkflow,
-    documentCommentMentionWorkflow,
+    documentCommentMentionNotificationWorkflow,
   ],
 };
 
