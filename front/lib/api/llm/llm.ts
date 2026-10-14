@@ -1,8 +1,5 @@
 import config from "@app/lib/api/config";
-import {
-  contributeFreeUsageCostForUser,
-  isFreeUsageContext,
-} from "@app/lib/api/llm/free_usage";
+import { contributeFreeUsageCostForUser } from "@app/lib/api/llm/free_usage";
 import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import type {
@@ -41,13 +38,12 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
-import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
+import { getLLMUsageType } from "@app/lib/api/llm/usage_type";
 import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
-import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import { isFlexUnavailableError } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
@@ -996,26 +992,6 @@ export abstract class LLM<
   }
 
   private getUsageType(): UsageType {
-    // Calls without tracing context and non-agent utility calls are free.
-    if (!this.context || isFreeUsageContext(this.context)) {
-      return USAGE_TYPE_FREE;
-    }
-
-    const userMessageOrigin = this.context.userMessageOrigin;
-    if (!userMessageOrigin) {
-      throw new Error(
-        "Agent conversation LLM context is missing userMessageOrigin"
-      );
-    }
-
-    return getUsageType(
-      isProgrammaticUsageFromContext({
-        authMethod: this.authenticator.authMethod(),
-        userMessageOrigin,
-        userId: this.context.userId,
-        messageAuthMethod: this.context.userMessageAuthMethod,
-      }),
-      userMessageOrigin
-    );
+    return getLLMUsageType(this.authenticator, this.context);
   }
 }
