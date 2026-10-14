@@ -1,8 +1,8 @@
-import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
+import { PodFilePreviewProvider } from "@app/components/pod/PodFilePreviewProvider";
 import { PodFileTabContent } from "@app/components/pod/PodFileTabContent";
 import { PodSettingsSection } from "@app/components/pod/settings/PodSettingsSection";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
@@ -186,7 +186,7 @@ export function PodPageContent({
 
   return (
     // File references and images in any tab open their file through this provider.
-    <FilePreviewProvider owner={owner}>
+    <PodFilePreviewProvider owner={owner} pod={podInfo}>
       <NavTabPillContent value="conversations">
         <PodConversationsTab
           owner={owner}
@@ -243,6 +243,6 @@ export function PodPageContent({
           mutatePodInfo();
         }}
       />
-    </FilePreviewProvider>
+    </PodFilePreviewProvider>
   );
 }
