@@ -1,3 +1,16 @@
+//! Integration tests for the mount library against a real dfs server.
+//!
+//! The harness starts the dfs server in this process (`dfs_api::serve` on a local port) and talks to
+//! it over gRPC, as the mount does in production. The server stores its data in the FoundationDB
+//! cluster named by `FDB_CLUSTER_FILE`, so these tests need a running FoundationDB and its client
+//! library (`libfdb_c`), as in CI.
+//!
+//! Each run creates a fresh tenant with random IDs, so runs never see each other's data. Objects are
+//! written directly to FoundationDB until the server can create them over gRPC.
+//!
+//! All checks run under the single `mount` test below; to add one, write an `async fn` and call it
+//! from there.
+
 use anyhow::{Context, Result};
 use dfs_api::storage::{
     fdb,
