@@ -30,7 +30,14 @@ export interface DocEdit {
 }
 
 export type ChatMessage =
-  | { id: string; role: "user"; content: string; createdAt: Date }
+  | {
+      id: string;
+      role: "user";
+      content: string;
+      createdAt: Date;
+      /** The user rolled a document back to an earlier version. */
+      edit?: DocEdit;
+    }
   | {
       id: string;
       role: "agent";
@@ -87,4 +94,15 @@ export interface Conversations {
   ) => Promise<{ reply: string; markdown: string }>;
   /** A document's current content. */
   readFile: (conversation: Conversation, fileKey: string) => Promise<string>;
+  /**
+   * Rolls a document back to an earlier version (`markdown`, from `current`):
+   * a new version, shown in the conversation.
+   */
+  rollBack: (
+    conversation: Conversation,
+    fileKey: string,
+    markdown: string,
+    current: string,
+    versionAt: Date
+  ) => void;
 }

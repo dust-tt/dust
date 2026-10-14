@@ -3,9 +3,12 @@ import {
   Button,
   Avatar,
   Check,
+  Clock,
   Chip,
   cn,
   ContentMessage,
+  ContentMessageInline,
+  ContentMessageAction,
   DotsHorizontal,
   Download01,
   DropdownMenu,
@@ -20,6 +23,7 @@ import {
   Pencil01,
   Robot,
   RefreshCw05,
+  ReverseLeft,
   Spinner,
   Tooltip,
   Users01,
@@ -102,20 +106,18 @@ const REPLAY_META = "agentEditReplay";
 
 type EditorView = NonNullable<ReturnType<DocEditorHandle["getView"]>>;
 
-/** The index `count` words away from `index` in `text` (towards `step`). */
-function skipWords(text: string, index: number, step: 1 | -1, count: number) {
-  let i = index;
-  const at = () => (step > 0 ? text[i] : text[i - 1]);
-  const inText = () => (step > 0 ? i < text.length : i > 0);
-  for (let n = 0; n < count; n++) {
-    while (inText() && /\s/.test(at())) {
-      i += step;
-    }
-    while (inText() && !/\s/.test(at())) {
-      i += step;
-    }
+/** Where each word of `text` ends (its trailing space included). */
+function typingSteps(text: string): number[] {
+  const ends: number[] = [];
+  const word = /\S+\s*/g;
+  let match;
+  while ((match = word.exec(text))) {
+    ends.push(match.index + match[0].length);
   }
-  return i;
+  if (!ends.length || ends[ends.length - 1] !== text.length) {
+    ends.push(text.length);
+  }
+  return ends;
 }
 
 /**
@@ -153,6 +155,22 @@ const SIMULATED_EDITS = [
 ];
 
 // What the simulated agent adds to the paragraph it rewrites.
+// Sentences of the benchmark the agent rewrites (prototype), and how.
+const SIMULATED_REWRITES: Array<[string, string]> = [
+  [
+    "Pupchi is a soft training treat made for puppies under 12 months.",
+    "Pupchi is a soft, single-protein training treat for puppies in their first year.",
+  ],
+  [
+    "Most competitors sit between $6 and $9 a pouch.",
+    "Competitors cluster between $6 and $9 a pouch, most of them close to $7.",
+  ],
+  [
+    "Strong with retail buyers, little puppy-specific messaging.",
+    "Retail buyers like it, but it says little to puppy owners.",
+  ],
+];
+
 const SIMULATED_AGENT_EDITS = [
   " Early tests show puppies finish these treats in under a minute.",
   " This matches what owners told us in the last survey.",
@@ -222,19 +240,22 @@ interface DocumentPanelProps {
   /** Element next to the file name where the save status renders. */
   titleSlot: HTMLElement | null;
   /**
-   * An agent's edit to show as a diff over the document, in place of the
-   * editor (opened from its card in the conversation).
+   * A version of the document to show, read-only, in place of the editor
+   * (opened from its card in the conversation).
    */
-  diff: DocEditDiff | null;
-  onCloseDiff: () => void;
+  version: DocVersion | null;
+  onCloseVersion: () => void;
+  /** Rolls the document back to the version shown. */
+  onRollBack: () => void;
 }
 
-export interface DocEditDiff {
-  before: string;
-  after: string;
-  /** The agent that made the edit. */
-  by: string;
+/** A version of a document: what an edit made it. */
+export interface DocVersion {
+  /** The document at this version. */
+  markdown: string;
   at: Date;
+  /** The document is still at this version. */
+  isCurrent: boolean;
 }
 
 /** An agent working on the document: thinking, or typing its edit. */
@@ -415,14 +436,79 @@ function DocPresences({
   );
 }
 
-/** Over a diff: whose edit it is. */
-function DiffHeader({ diff }: { diff: DocEditDiff }) {
+/**
+ * A version of the document, read-only, under a blue banner with its date:
+ * "View current" goes back to the document (as does Escape), "Roll back"
+ * makes it the document's content.
+ */
+function VersionView({
+  version,
+  onClose,
+  onRollBack,
+}: {
+  version: DocVersion;
+  onClose: () => void;
+  onRollBack: () => void;
+}) {
+  const onCloseRef = useRef(onClose);
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose;
+  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const date = version.at.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return (
-    <span className="truncate rounded-md bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-xs">
-      <span className="font-medium text-foreground">@{diff.by}</span>
-      {"'s changes · "}
-      {diff.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-    </span>
+    <div className="@container min-h-0 flex-1 overflow-y-auto bg-muted-background">
+      <div className={DOC_PAGE}>
+        {/* Opaque from the top edge, so the text scrolls under it. */}
+        <div className="sticky top-0 z-40 -mt-3 mb-2 bg-muted-background py-3">
+          <ContentMessageInline
+            variant="blue"
+            icon={Clock}
+            className="flex w-full"
+          >
+            <span className="font-semibold">Version of {date}</span>
+            <ContentMessageAction
+              label="Roll back"
+              variant="ghost"
+              icon={ReverseLeft}
+              disabled={version.isCurrent}
+              onClick={onRollBack}
+            />
+            <ContentMessageAction
+              label="View current"
+              variant="primary"
+              onClick={onClose}
+            />
+          </ContentMessageInline>
+        </div>
+        <DocEditor
+          key={`${version.at.getTime()}`}
+          initialMarkdown={version.markdown}
+          initialJson={null}
+          activeCommentId={null}
+          onChange={() => {}}
+          onCommentSelection={() => {}}
+          onSuggestSelection={() => {}}
+          onCommentClick={() => {}}
+          readOnly
+          withSelectionToolbar={false}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -462,8 +548,9 @@ export function DocumentPanel({
   isConversationBusy,
   conversationAgent,
   agentRunCount,
-  diff,
-  onCloseDiff,
+  version,
+  onCloseVersion,
+  onRollBack,
 }: DocumentPanelProps) {
   const { isFullscreen, setFullscreen } = usePanelFullscreen();
   const editorRef = useRef<DocEditorHandle>(null);
@@ -594,12 +681,21 @@ export function DocumentPanel({
     isAgent = true,
     block,
     oldSlice,
+    more = [],
+    replace,
   }: {
     view: EditorView;
     by: DocAuthor;
     isAgent?: boolean;
     block: { from: number; to: number };
     oldSlice: ReturnType<EditorView["state"]["doc"]["slice"]> | null;
+    /** New blocks right after `block`, typed after it. */
+    more?: Array<{ from: number; to: number }>;
+    /**
+     * The passage replaced, as offsets in `block` (a sentence the agent
+     * erases and rewrites as a whole); otherwise just the words that differ.
+     */
+    replace?: { at: number; oldLength: number; newLength: number };
   }) => {
     const finalDoc = view.state.doc;
     const start = block.from;
@@ -619,11 +715,13 @@ export function DocumentPanel({
     }
     try {
       // Before the first paint: the passage shows its old text (or nothing).
-      show((tr) =>
-        oldSlice
+      const runEnd = more.length ? more[more.length - 1].to : block.to;
+      show((tr) => {
+        tr.delete(block.to, runEnd);
+        return oldSlice
           ? tr.replace(start, block.to, oldSlice)
-          : tr.delete(start, block.to)
-      );
+          : tr.delete(start, block.to);
+      });
       const oldEnd = start + (oldSlice?.size ?? 0);
       // Narrow the replay to the words that changed: the shared start and
       // end of the passage stay in place. Leaf nodes (line breaks) count as
@@ -631,8 +729,6 @@ export function DocumentPanel({
       let from = start;
       let cutOld = oldEnd;
       let cutNew = block.to;
-      let contextFrom = from;
-      let contextTo = cutNew;
       const oldText = view.state.doc.textBetween(start, oldEnd, "", "\n");
       const newText = finalDoc.textBetween(start, block.to, "", "\n");
       if (
@@ -655,10 +751,11 @@ export function DocumentPanel({
         from = start + same;
         cutOld = oldEnd - tail;
         cutNew = block.to - tail;
-        // Once typed, the change stays highlighted with three words of
-        // context on each side.
-        contextFrom = start + skipWords(newText, same, -1, 3);
-        contextTo = start + skipWords(newText, cutNew - start, 1, 3);
+      }
+      if (replace) {
+        from = start + replace.at;
+        cutOld = from + replace.oldLength;
+        cutNew = from + replace.newLength;
       }
       if (revealBlock(view, from, scrollAreaRef.current)) {
         await sleep(450);
@@ -667,31 +764,63 @@ export function DocumentPanel({
         id,
         name: by.name,
         color: presenceColor(by.name, isAgent),
-        pos: from,
+        // At the end of the old words when it erases them first.
+        pos: cutOld,
       });
       await sleep(650);
       if (cutOld > from) {
-        // The old words are highlighted, then removed.
-        patchPresence(id, { range: { from, to: cutOld } });
-        await sleep(450);
-        show((tr) => tr.delete(from, cutOld));
-        patchPresence(id, { range: null });
-        await sleep(150);
+        // The old words are erased from their end, as with backspace, the
+        // caret going back with them.
+        const perStep = Math.max(1, Math.ceil((cutOld - from) / 40));
+        for (let end = cutOld; end > from; ) {
+          const to = end;
+          end = Math.max(from, end - perStep);
+          const at = end;
+          show((tr) => tr.delete(at, to));
+          patchPresence(id, { pos: at });
+          await sleep(25);
+        }
+        await sleep(300);
       }
-      // The new words appear in one go, fading in, with their formatting.
-      // The caret stays where the change starts.
-      if (cutNew > from) {
-        const fadeIn = view.state.schema.marks.fadeIn;
-        show((tr) =>
-          tr
-            .replace(from, from, finalDoc.slice(from, cutNew))
-            .addMark(from, cutNew, fadeIn.create())
+      // The new words are typed one by one, with their formatting, the
+      // caret following. The writer's color (the highlight color for an
+      // agent) progresses along the sentence at the caret; a finished block
+      // fades to the text color. Each step shows the final document cut
+      // after the words typed so far.
+      if (cutNew > from || more.length) {
+        const typed = view.state.schema.marks.typed;
+        const color = presenceColor(by.name, isAgent);
+        const typeEnd = more.length ? runEnd : cutNew;
+        const blocks = [{ from, to: cutNew }, ...more];
+        const words = blocks.flatMap((b, block) =>
+          typingSteps(finalDoc.textBetween(b.from, b.to, "", "\n")).map(
+            (end) => ({ block, end: b.from + end })
+          )
         );
-        patchPresence(id, { range: { from: contextFrom, to: contextTo } });
-        await sleep(650);
-        show((tr) => tr.removeMark(from, cutNew, fadeIn));
-      } else {
-        patchPresence(id, { range: { from: contextFrom, to: contextTo } });
+        const stepMs = Math.min(70, 2400 / words.length);
+        for (const { block, end } of words) {
+          show((tr) => {
+            tr.replaceWith(0, tr.doc.content.size, finalDoc.content);
+            if (end < typeEnd) {
+              tr.delete(end, typeEnd);
+            }
+            for (const b of blocks.slice(0, block)) {
+              tr.addMark(b.from, b.to, typed.create({ color, settled: true }));
+            }
+            return tr.addMark(
+              Math.max(from, blocks[block].from),
+              end,
+              typed.create({ color })
+            );
+          });
+          patchPresence(id, { pos: end });
+          await sleep(stepMs);
+        }
+        show((tr) =>
+          tr.addMark(from, typeEnd, typed.create({ color, settled: true }))
+        );
+        await sleep(1000);
+        show((tr) => tr.removeMark(from, typeEnd, typed));
       }
     } catch {
       // The document changed under the replay: show the final version.
@@ -747,6 +876,14 @@ export function DocumentPanel({
       if (view && oldDoc && index >= 0) {
         const after = new Set(newBlocks.map((b) => b.text));
         const old = oldBlocks[index];
+        // New blocks right after it (a new section) are typed with it.
+        const more: typeof newBlocks = [];
+        for (const b of newBlocks.slice(index + 1)) {
+          if (before.has(b.text)) {
+            break;
+          }
+          more.push(b);
+        }
         void replayEdit({
           view,
           by,
@@ -755,6 +892,7 @@ export function DocumentPanel({
             old && old.text && !after.has(old.text)
               ? oldDoc.slice(old.from, old.to)
               : null,
+          more,
         });
       }
     },
@@ -815,45 +953,6 @@ export function DocumentPanel({
     onSessionChange,
     applyAgentEdit,
   ]);
-
-  // An agent's edit opened from the conversation: drawn over the document
-  // until a click outside the changes, or Escape.
-  const hasEditor = !!session;
-  useEffect(() => {
-    if (!hasEditor) {
-      return;
-    }
-    editorRef.current?.showDiff(
-      diff ? { before: diff.before, after: diff.after } : null
-    );
-  }, [hasEditor, diff?.before, diff?.after]);
-  const onCloseDiffRef = useRef(onCloseDiff);
-  useLayoutEffect(() => {
-    onCloseDiffRef.current = onCloseDiff;
-  });
-  const isDiffShown = !!diff;
-  useEffect(() => {
-    if (!isDiffShown) {
-      return;
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Element | null;
-      if (!target?.closest(".doc-diff-del, .doc-diff-ins")) {
-        onCloseDiffRef.current();
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) {
-        onCloseDiffRef.current();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [isDiffShown]);
 
   if (loadError) {
     return (
@@ -1121,6 +1220,56 @@ export function DocumentPanel({
     });
   };
 
+  // Prototype: the agent erases a sentence on screen and types a new
+  // version.
+  const agentRewritesSentence = async (view: EditorView) => {
+    const area = scrollAreaRef.current?.getBoundingClientRect();
+    const found = SIMULATED_REWRITES.flatMap(([sentence, rewrite]) =>
+      textBlocks()
+        .filter((b) => b.text.includes(sentence))
+        .map((b) => ({
+          block: b,
+          at: b.text.indexOf(sentence),
+          sentence,
+          rewrite,
+        }))
+    ).filter(
+      ({ block }) =>
+        view.state.doc.textBetween(block.from, block.to, "", "\n").length ===
+        block.to - block.from
+    );
+    const onScreen = found.find(({ block }) => {
+      if (!area) {
+        return true;
+      }
+      const { top } = view.coordsAtPos(block.from);
+      return top > area.top + 60 && top < area.bottom - 80;
+    });
+    const target = onScreen ?? found[0];
+    if (!target) {
+      return;
+    }
+    const { block, at, sentence, rewrite } = target;
+    const oldSlice = view.state.doc.slice(block.from, block.to);
+    view.dispatch(
+      view.state.tr.insertText(
+        rewrite,
+        block.from + at,
+        block.from + at + sentence.length
+      )
+    );
+    await replayEdit({
+      view,
+      by: { name: agentName },
+      block: {
+        from: block.from,
+        to: block.to + rewrite.length - sentence.length,
+      },
+      oldSlice,
+      replace: { at, oldLength: sentence.length, newLength: rewrite.length },
+    });
+  };
+
   // Prototype: a human collaborator types a sentence at the end of the text
   // block number `index`, so presence (caret, name tag, highlight) can be
   // seen. The end is read again before each keystroke: edits elsewhere move
@@ -1139,28 +1288,44 @@ export function DocumentPanel({
     if (start === null) {
       return;
     }
-    upsertPresence({
-      id,
-      name: person.name,
-      color: presenceColor(person.name, false),
-      pos: start,
-    });
+    const color = presenceColor(person.name, false);
+    upsertPresence({ id, name: person.name, color, pos: start });
     await sleep(700);
+    // Their color progresses along what they type, at their caret, then
+    // fades to the text color.
+    const typedMark = view.state.schema.marks.typed;
     let typed = 0;
     for (const ch of phrase) {
       const pos = endOf();
       if (pos === null) {
         break;
       }
-      view.dispatch(view.state.tr.insertText(ch, pos));
+      view.dispatch(
+        view.state.tr
+          .insertText(ch, pos)
+          .addMark(pos, pos + 1, typedMark.create({ color }))
+      );
       typed += 1;
-      patchPresence(id, {
-        pos: pos + 1,
-        range: { from: pos + 1 - typed, to: pos + 1 },
-      });
+      patchPresence(id, { pos: pos + 1 });
       await sleep(30 + Math.random() * 60);
     }
-    await retirePresence(id, 1800);
+    const display = (
+      edit: (tr: EditorView["state"]["tr"]) => EditorView["state"]["tr"]
+    ) =>
+      view.dispatch(
+        edit(view.state.tr)
+          .setMeta(REPLAY_META, true)
+          .setMeta("addToHistory", false)
+      );
+    const end = endOf();
+    if (end !== null) {
+      display((tr) =>
+        tr.addMark(end - typed, end, typedMark.create({ color, settled: true }))
+      );
+    }
+    await sleep(1000);
+    display((tr) => tr.removeMark(0, tr.doc.content.size, typedMark));
+    await retirePresence(id, 400);
   };
 
   const indexOfBlock = (block: { from: number }) =>
@@ -1186,6 +1351,11 @@ export function DocumentPanel({
       if (target) {
         await agentEditsParagraph(view, target);
       }
+    });
+
+  const simulateAgentRewrite = () =>
+    simulate(async (view) => {
+      await agentRewritesSentence(view);
     });
 
   const simulateCollaborator = () =>
@@ -1372,39 +1542,6 @@ export function DocumentPanel({
   const deleteReply = (commentId: string, replyId: string) =>
     setReplies(commentId, (replies) => replies.filter((r) => r.id !== replyId));
 
-  // A suggested edit posted in an existing thread: the thread now holds it,
-  // with the note as the viewer's reply.
-  const suggestOnThread = (id: string, text: string, note: string) => {
-    const comment = session.comments.find((c) => c.id === id);
-    const view = editorRef.current?.getView();
-    const range = editorRef.current?.getCommentRange(id);
-    if (!comment || !view || !range) {
-      return;
-    }
-    anchorSuggestion(view, id, range, comment.quote, text);
-    updateComments((comments) =>
-      comments.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              suggestion: { text, status: "pending" },
-              replies: note
-                ? [
-                    ...c.replies,
-                    {
-                      id: crypto.randomUUID(),
-                      author: YOU,
-                      body: note,
-                      createdAt: new Date(),
-                    },
-                  ]
-                : c.replies,
-            }
-          : c
-      )
-    );
-  };
-
   // Who is on the document: the people of this file and the agents that
   // worked on it, plus anyone writing in it right now.
   const presenceOf = (name: string): DocPresence => {
@@ -1445,7 +1582,6 @@ export function DocumentPanel({
     onResolve: resolveComment,
     onDelete: deleteComment,
     onDeleteReply: deleteReply,
-    onSuggest: suggestOnThread,
   };
 
   const startDraft = (suggest: boolean) => {
@@ -1538,6 +1674,12 @@ export function DocumentPanel({
                       onClick={() => void simulateAgentEdit()}
                     />
                     <DropdownMenuItem
+                      icon={Robot}
+                      label="The agent rewrites a sentence"
+                      disabled={isSimulating}
+                      onClick={() => void simulateAgentRewrite()}
+                    />
+                    <DropdownMenuItem
                       icon={RefreshCw05}
                       label="The document saves slowly"
                       disabled={isSaving}
@@ -1604,8 +1746,15 @@ export function DocumentPanel({
                 </div>
               </div>
             )}
+            {version && (
+              <VersionView
+                version={version}
+                onClose={onCloseVersion}
+                onRollBack={onRollBack}
+              />
+            )}
             {/* Pinned at the top right of the document, over the text. */}
-            {isCommentsListOpen && (
+            {isCommentsListOpen && !version && (
               <div className="pointer-events-none absolute inset-y-3 right-3 z-30 flex items-start">
                 <div className="pointer-events-auto flex max-h-full">
                   <CommentsList
@@ -1627,7 +1776,12 @@ export function DocumentPanel({
             )}
             <div
               ref={scrollAreaRef}
-              className="@container min-h-0 flex-1 overflow-y-auto bg-muted-background"
+              // Hidden, not unmounted, under a version: the editor keeps
+              // its state.
+              className={cn(
+                "@container min-h-0 flex-1 overflow-y-auto bg-muted-background",
+                version && "hidden"
+              )}
             >
               <div
                 ref={pageRef}
@@ -1654,7 +1808,6 @@ export function DocumentPanel({
                 Only the badge takes clicks. */}
                 <div className="pointer-events-none sticky top-3 z-40 mb-5 flex items-center gap-2 [&>*]:pointer-events-auto">
                   <CoEditionBadge />
-                  {diff && <DiffHeader diff={diff} />}
                 </div>
                 <DocEditor
                   ref={editorRef}
@@ -1705,9 +1858,6 @@ export function DocumentPanel({
                     handlers={threadHandlers}
                     onSaveDraft={saveDraft}
                     onSaveSuggestion={saveSuggestion}
-                    onSuggestDraft={() =>
-                      setDraft((d) => (d ? { ...d, suggest: true } : d))
-                    }
                     onCancelDraft={cancelDraft}
                     onClose={() => setActiveCommentId(null)}
                   />

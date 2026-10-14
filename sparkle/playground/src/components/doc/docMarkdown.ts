@@ -55,7 +55,7 @@ const serializer = new MarkdownSerializer(
     // Formatting markdown can't express, and comment anchors, are dropped.
     underline: { open: "", close: "" },
     comment: { open: "", close: "" },
-    fadeIn: { open: "", close: "" },
+    typed: { open: "", close: "" },
   }
 );
 

@@ -14,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Edit04,
   Icon,
   Link01,
   MessageCircle01,
@@ -218,21 +217,19 @@ function ReplyBody({ reply }: { reply: DocReply }) {
 
 /**
  * The field under a thread: Sparkle's Composer, `comment` variant. "@" picks
- * someone or an agent, the pencil suggests an edit of the commented text,
- * Enter sends.
+ * someone or an agent, Enter sends. (Edits are suggested from the selection
+ * bar.)
  */
 export function ThreadInput({
   placeholder = "Type or @...",
   disabled = false,
   autoFocus = false,
   onSubmit,
-  onSuggest,
 }: {
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
   onSubmit: (body: string) => void;
-  onSuggest?: () => void;
 }) {
   const [value, setValue] = useState("");
   const [isFocused, setIsFocused] = useState(autoFocus);
@@ -251,28 +248,15 @@ export function ThreadInput({
         isFocused={isFocused}
         onContentClick={() => inputRef.current?.focus()}
         rightActions={
-          <>
-            {onSuggest && (
-              <Button
-                variant="outline"
-                size="xs"
-                icon={Edit04}
-                tooltip="Suggest an edit"
-                className="rounded-full"
-                disabled={disabled}
-                onClick={onSuggest}
-              />
-            )}
-            <Button
-              variant="highlight"
-              size="xs"
-              icon={ArrowUp}
-              aria-label="Send comment"
-              className="rounded-full"
-              disabled={disabled || !value.trim()}
-              onClick={submit}
-            />
-          </>
+          <Button
+            variant="highlight"
+            size="xs"
+            icon={ArrowUp}
+            aria-label="Send comment"
+            className="rounded-full"
+            disabled={disabled || !value.trim()}
+            onClick={submit}
+          />
         }
       >
         <ComposerInput
@@ -309,8 +293,6 @@ export interface ThreadHandlers {
   /** Deletes the whole thread. */
   onDelete: (commentId: string) => void;
   onDeleteReply: (commentId: string, replyId: string) => void;
-  /** A suggested edit of the commented text, posted in the thread. */
-  onSuggest: (commentId: string, text: string, note: string) => void;
 }
 
 function copyLink(commentId: string) {
@@ -393,7 +375,7 @@ function ThreadMessages({
   );
 }
 
-/** The input under a thread, or the suggestion composer once asked for. */
+/** The input under a thread. */
 function ThreadReply({
   comment,
   handlers,
@@ -403,20 +385,6 @@ function ThreadReply({
   handlers: ThreadHandlers;
   autoFocus: boolean;
 }) {
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const pendingSuggestion = comment.suggestion?.status === "pending";
-  if (isSuggesting) {
-    return (
-      <SuggestionComposer
-        quote={comment.quote}
-        onSubmit={(text, note) => {
-          handlers.onSuggest(comment.id, text, note);
-          setIsSuggesting(false);
-        }}
-        onCancel={() => setIsSuggesting(false)}
-      />
-    );
-  }
   return (
     <ThreadInput
       autoFocus={autoFocus}
@@ -426,8 +394,6 @@ function ThreadReply({
           ? `@${handlers.agentName} is working…`
           : "Type or @..."
       }
-      // One suggestion at a time per thread.
-      onSuggest={pendingSuggestion ? undefined : () => setIsSuggesting(true)}
       onSubmit={(body) => handlers.onReply(comment.id, body)}
     />
   );
@@ -496,7 +462,6 @@ export function ThreadCard({
   handlers,
   onSaveDraft,
   onSaveSuggestion,
-  onSuggestDraft,
   onCancelDraft,
   onClose,
 }: {
@@ -510,8 +475,6 @@ export function ThreadCard({
   handlers: ThreadHandlers;
   onSaveDraft: (body: string) => void;
   onSaveSuggestion: (text: string, note: string) => void;
-  /** Turns the draft into a suggested edit. */
-  onSuggestDraft: () => void;
   onCancelDraft: () => void;
   onClose: () => void;
 }) {
@@ -546,11 +509,7 @@ export function ThreadCard({
           onCancel={onCancelDraft}
         />
       ) : draft ? (
-        <ThreadInput
-          autoFocus
-          onSubmit={onSaveDraft}
-          onSuggest={onSuggestDraft}
-        />
+        <ThreadInput autoFocus onSubmit={onSaveDraft} />
       ) : (
         comment && (
           // Keyed: another thread starts folded again.

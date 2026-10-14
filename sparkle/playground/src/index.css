@@ -128,19 +128,41 @@
   -webkit-box-decoration-break: clone;
 }
 
-/* Text an agent just wrote, appearing in place. */
-@keyframes doc-fade-in {
-  from {
-    opacity: 0;
-    filter: blur(2px);
+/* Text being typed: a band of the writer's color (--typed-color, the
+   highlight color for agents) at the end of the passage, fading into the text
+   color behind it, so the color progresses along the sentence as it's typed
+   (across line wraps: an inline background runs along its lines). Once
+   typed, the band shrinks away. */
+@property --typed-band {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+.doc-typed {
+  --typed-band: 260px;
+  --typed-light: color-mix(in oklch, var(--typed-color) 45%, white);
+  background-image: linear-gradient(
+    90deg,
+    currentColor calc(100% - var(--typed-band)),
+    var(--typed-color) calc(100% - var(--typed-band) * 0.45),
+    var(--typed-light) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.doc-typed[data-settled] {
+  animation: doc-typed-settle 900ms ease-in both;
+}
+@keyframes doc-typed-settle {
+  to {
+    --typed-band: 0px;
   }
 }
-.doc-fade-in {
-  animation: doc-fade-in 600ms ease-out;
-}
 @media (prefers-reduced-motion: reduce) {
-  .doc-fade-in {
-    animation: none;
+  .doc-typed {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
   }
 }
 

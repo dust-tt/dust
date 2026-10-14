@@ -1,7 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
-import { Extension, Mark, mergeAttributes } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { Mark, mergeAttributes } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
@@ -13,7 +11,6 @@ import {
   useRef,
 } from "react";
 
-import { diffDocuments } from "./docDiff";
 import { docToMarkdown, markdownToHtml } from "./docMarkdown";
 import { DOC_TYPOGRAPHY } from "./docTypography";
 import { SelectionToolbar } from "./SelectionToolbar";
@@ -27,13 +24,26 @@ import { SelectionToolbar } from "./SelectionToolbar";
 // editor uses the other one.
 type PMNode = NonNullable<ReturnType<typeof useEditor>>["state"]["doc"];
 
-// Text an agent just wrote, fading in; removed once the animation is done.
-const FadeInMark = Mark.create({
-  name: "fadeIn",
+// Text being typed by an agent or a person: their color (the highlight color
+// for agents) at its end, fading into the text color behind, so the color
+// progresses along the sentence; it fades away once typed (`settled`).
+// Removed once done.
+const TypedMark = Mark.create({
+  name: "typed",
   inclusive: false,
-  excludes: "",
+  addAttributes() {
+    return { color: { default: null }, settled: { default: false } };
+  },
   parseHTML: () => [],
-  renderHTML: () => ["span", { class: "doc-fade-in" }, 0],
+  renderHTML: ({ HTMLAttributes }) => [
+    "span",
+    {
+      class: "doc-typed",
+      style: `--typed-color: ${HTMLAttributes.color}`,
+      ...(HTMLAttributes.settled ? { "data-settled": "" } : {}),
+    },
+    0,
+  ],
 });
 
 const CommentMark = Mark.create({
@@ -79,123 +89,6 @@ const CommentMark = Mark.create({
     ];
   },
 });
-
-// An agent's edit drawn over the document (see docDiff.ts): added text
-// highlighted, removed text shown struck through where it was. Decorations
-// only, the document itself is untouched; they follow later edits. (The casts
-// bridge the two prosemirror copies' types, see PMNode.)
-const diffKey = new PluginKey<DecorationSet>("docDiff");
-
-const DiffDecorations = Extension.create({
-  name: "docDiff",
-  addProseMirrorPlugins() {
-    return [
-      new Plugin<DecorationSet>({
-        key: diffKey,
-        state: {
-          init: () => DecorationSet.empty,
-          apply: (tr, set) =>
-            (tr.getMeta(diffKey) as DecorationSet | undefined) ??
-            set.map(tr.mapping as never, tr.doc as never),
-        },
-        props: {
-          decorations: (state) => diffKey.getState(state) as never,
-        },
-      }),
-    ];
-  },
-});
-
-function removedText(tag: string, text: string, className: string) {
-  const element = document.createElement(tag);
-  element.className = className;
-  element.textContent = text;
-  return element;
-}
-
-/** Decorations showing the change from `before` to `after` over `doc`. */
-function diffDecorations(doc: PMNode, before: string, after: string) {
-  const { blocks, hunks } = diffDocuments(before, after);
-  // The document's text blocks; each block of the edited version is found
-  // among them by its text, in order (later edits may have moved things).
-  const current: Array<{ from: number; to: number; text: string }> = [];
-  doc.descendants((node, pos) => {
-    if (node.isTextblock) {
-      current.push({
-        from: pos + 1,
-        to: pos + node.nodeSize - 1,
-        text: node.textContent,
-      });
-      return false;
-    }
-    return true;
-  });
-  let cursor = 0;
-  const located = blocks.map((text) => {
-    const index = current.findIndex((b, i) => i >= cursor && b.text === text);
-    if (index === -1) {
-      return null;
-    }
-    cursor = index + 1;
-    return current[index];
-  });
-  const decorations: Decoration[] = [];
-  hunks.forEach((hunk, i) => {
-    if (hunk.kind === "deletedBlock") {
-      const anchor = hunk.afterBlock >= 0 ? located[hunk.afterBlock] : null;
-      const pos = anchor ? anchor.to + 1 : (current[0]?.from ?? 1) - 1;
-      if (hunk.afterBlock >= 0 && !anchor) {
-        return;
-      }
-      decorations.push(
-        Decoration.widget(
-          pos,
-          () => removedText(hunk.tag, hunk.text, "doc-diff-del doc-diff-block"),
-          { side: 1, key: `del-block-${i}`, ignoreSelection: true }
-        )
-      );
-      return;
-    }
-    const block = located[hunk.block];
-    if (!block) {
-      return;
-    }
-    if (hunk.kind === "insertedBlock") {
-      decorations.push(
-        Decoration.inline(block.from, block.to, { class: "doc-diff-ins" })
-      );
-      return;
-    }
-    const from = block.from + hunk.offset;
-    if (hunk.removed) {
-      const { removed } = hunk;
-      // Before the added text, a space apart (not struck through).
-      const spaced = hunk.addedLength > 0;
-      decorations.push(
-        Decoration.widget(
-          from,
-          () => {
-            const element = document.createElement("span");
-            element.append(removedText("span", removed, "doc-diff-del"));
-            if (spaced) {
-              element.append(" ");
-            }
-            return element;
-          },
-          { side: -1, key: `del-${i}-${removed}`, ignoreSelection: true }
-        )
-      );
-    }
-    if (hunk.addedLength > 0) {
-      decorations.push(
-        Decoration.inline(from, from + hunk.addedLength, {
-          class: "doc-diff-ins",
-        })
-      );
-    }
-  });
-  return DecorationSet.create(doc as never, decorations);
-}
 
 /** Range of `text` in the document, matched across text nodes. */
 function findTextRange(
@@ -255,11 +148,6 @@ export interface DocEditorHandle {
   focusComment: (id: string) => void;
   /** Where comment `id` is anchored. */
   getCommentRange: (id: string) => { from: number; to: number } | null;
-  /**
-   * Shows an edit (`before` → `after`) over the document, scrolled to its
-   * first change; null clears it.
-   */
-  showDiff: (diff: { before: string; after: string } | null) => void;
   /** Replaces the content, re-anchoring comments whose quote still exists. */
   setMarkdown: (
     markdown: string,
@@ -279,7 +167,7 @@ interface DocEditorProps {
     json: Record<string, unknown>;
   }) => void;
   onCommentSelection: () => void;
-  /** "Suggest edit" on the selection (read-only documents). */
+  /** "Suggest" on the selection: an edit to accept or reject. */
   onSuggestSelection: () => void;
   /**
    * The viewer can't edit: typing, pasting and formatting are ignored, but
@@ -288,6 +176,8 @@ interface DocEditorProps {
   readOnly?: boolean;
   /** Called with the clicked comment, or null for a click elsewhere. */
   onCommentClick: (commentId: string | null) => void;
+  /** The bar over a selection (comment, suggest, formatting). */
+  withSelectionToolbar?: boolean;
 }
 
 export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
@@ -302,6 +192,7 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
       onSuggestSelection,
       readOnly = false,
       onCommentClick,
+      withSelectionToolbar = true,
     },
     ref
   ) => {
@@ -321,8 +212,7 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
       extensions: [
         StarterKit.configure({ link: { openOnClick: false } }),
         CommentMark,
-        FadeInMark,
-        DiffDecorations,
+        TypedMark,
       ],
       content: initialJson ?? markdownToHtml(initialMarkdown),
       editorProps: {
@@ -412,24 +302,6 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
       ref,
       () => ({
         getView: () => editor?.view ?? null,
-        showDiff: (diff) => {
-          if (!editor) {
-            return;
-          }
-          const set = diff
-            ? diffDecorations(editor.state.doc, diff.before, diff.after)
-            : DecorationSet.empty;
-          editor.view.dispatch(
-            editor.state.tr.setMeta(diffKey, set).setMeta("addToHistory", false)
-          );
-          if (diff) {
-            requestAnimationFrame(() =>
-              editor.view.dom
-                .querySelector(".doc-diff-del, .doc-diff-ins")
-                ?.scrollIntoView({ block: "center" })
-            );
-          }
-        },
         focusEnd: () => {
           editor?.commands.focus("end");
         },
@@ -525,9 +397,6 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
           "doc-editor",
           DOC_TYPOGRAPHY,
           // Production's highlight (DocumentComments.ts).
-          // An edit shown over the document (Figma, Co-edition 305:2126).
-          "[&_.doc-diff-del]:text-faint [&_.doc-diff-del]:line-through",
-          "[&_.doc-diff-ins]:rounded-sm [&_.doc-diff-ins]:bg-highlight-50 [&_.doc-diff-ins]:text-highlight-500 [&_.doc-diff-ins]:[box-decoration-break:clone]",
           "[&_.doc-comment-mark]:cursor-pointer [&_.doc-comment-mark]:rounded-sm [&_.doc-comment-mark]:bg-golden-100 [&_.doc-comment-mark]:transition-colors hover:[&_.doc-comment-mark]:bg-golden-200/70"
         )}
       >
@@ -536,18 +405,20 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
           // this can't be a static utility class.
           <style>{`.doc-editor [data-comment-id="${CSS.escape(activeCommentId)}"] { background-color: var(--color-golden-200); }`}</style>
         )}
-        <BubbleMenu
-          editor={editor}
-          shouldShow={({ state }) => !state.selection.empty}
-          options={{ placement: "top", offset: 8 }}
-        >
-          <SelectionToolbar
+        {withSelectionToolbar && (
+          <BubbleMenu
             editor={editor}
-            readOnly={readOnly}
-            onComment={onCommentSelection}
-            onSuggest={onSuggestSelection}
-          />
-        </BubbleMenu>
+            shouldShow={({ state }) => !state.selection.empty}
+            options={{ placement: "top", offset: 8 }}
+          >
+            <SelectionToolbar
+              editor={editor}
+              readOnly={readOnly}
+              onComment={onCommentSelection}
+              onSuggest={onSuggestSelection}
+            />
+          </BubbleMenu>
+        )}
         <EditorContent editor={editor} />
       </div>
     );

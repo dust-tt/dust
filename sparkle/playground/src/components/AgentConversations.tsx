@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   Breadcrumbs,
   Button,
   Chip,
@@ -8,9 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Folder,
+  MessageCircle01,
   Markdown,
   Settings01,
-  XClose,
 } from "@dust-tt/sparkle";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -24,9 +25,11 @@ import {
 import type {
   AgentMessage,
   ChatAgent,
+  ChatMessage,
   ChatFile,
   Conversation,
   Conversations,
+  DocEdit,
 } from "../lib/coEdition";
 import { ConversationFilesPanel } from "./ConversationSidePanels";
 import { type AgentActivity, DocumentPanel } from "./doc/DocumentPanel";
@@ -233,7 +236,7 @@ function ConversationView({
   onSend,
   onOpenFile,
   subtitle,
-  onOpenEdit,
+  renderVersionCard,
 }: {
   conversation: Conversation;
   agents: ChatAgent[];
@@ -243,8 +246,8 @@ function ConversationView({
   onOpenFile: (file: ChatFile) => void;
   /** Under the empty conversation's heading. */
   subtitle: string;
-  /** Opens the document an agent message edited, on its changes. */
-  onOpenEdit: (message: AgentMessage) => void;
+  /** The version card of a message that edited a document, if any. */
+  renderVersionCard: (message: ChatMessage) => ReactNode;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastMessageId =
@@ -280,6 +283,11 @@ function ConversationView({
                   >
                     {message.content}
                   </NewConversationUserMessage>
+                  {message.edit && (
+                    <div className="flex w-full justify-end pt-2">
+                      {renderVersionCard(message)}
+                    </div>
+                  )}
                 </NewConversationMessageGroup>
               ) : (
                 <NewConversationMessageGroup
@@ -320,13 +328,7 @@ function ConversationView({
                       onOpenFile={onOpenFile}
                     />
                     {message.edit && message.status === "done" && (
-                      <div className="pt-3">
-                        <DocumentEditCard
-                          title={message.edit.fileKey}
-                          subtitle={`Edited by ${message.agent.name}`}
-                          onClick={() => onOpenEdit(message)}
-                        />
-                      </div>
+                      <div className="pt-3">{renderVersionCard(message)}</div>
                     )}
                   </NewConversationAgentMessage>
                 </NewConversationMessageGroup>
@@ -359,6 +361,8 @@ function ConversationView({
 }
 
 const fileNameOf = (path: string) => path.split("/").pop() ?? path;
+
+const normalize = (markdown: string) => markdown.replace(/\s+/g, " ").trim();
 
 /**
  * A markdown file of a Pod, open full page in the co-edition editor (today
@@ -400,8 +404,9 @@ function PodDocument({
       agentRunCount={0}
       toolbarSlot={toolbarSlot}
       titleSlot={titleSlot}
-      diff={null}
-      onCloseDiff={() => {}}
+      version={null}
+      onCloseVersion={() => {}}
+      onRollBack={() => {}}
       askAgent={(request) => replyToPodComment({ ...request, fileKey: path })}
       agents={authors}
       fileAgents={[]}
@@ -433,6 +438,7 @@ export function AgentConversations({
     send,
     askFromComment,
     readFile,
+    rollBack,
   } = conversationsApi;
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isFilesOpen, setIsFilesOpen] = useState(false);
@@ -448,7 +454,11 @@ export function AgentConversations({
     null
   );
   // The agent message whose edit the document panel shows as a diff.
-  const [diffMessageId, setDiffMessageId] = useState<string | null>(null);
+  const [versionMessageId, setVersionMessageId] = useState<string | null>(null);
+  // A new conversation of the Pod, in place of its files.
+  const [isPodChatOpen, setIsPodChatOpen] = useState(false);
+  // Bumps on a roll-back: the document panel reopens on the new content.
+  const [docRevision, setDocRevision] = useState(0);
   // Co-edition state per document, keyed by conversation and file.
   const [docSessions, setDocSessions] = useState<Record<string, DocSession>>(
     {}
@@ -468,22 +478,33 @@ export function AgentConversations({
     agents[0];
   const files = conversationFiles(active);
 
-  const diffMessage = active.messages.find(
-    (m): m is AgentMessage =>
-      m.id === diffMessageId && m.role === "agent" && !!m.edit
+  // The message whose document version the panel shows.
+  const versionMessage = active.messages.find(
+    (m) => m.id === versionMessageId && !!m.edit
   );
+  // A document's content now: as edited in its panel, else its last version.
+  const currentMarkdownOf = (fileKey: string) =>
+    docSessions[`${active.id}:${fileKey}`]?.markdown ??
+    [...active.messages].reverse().find((m) => m.edit?.fileKey === fileKey)
+      ?.edit?.after;
+  const isCurrentVersion = (edit: DocEdit) => {
+    const current = currentMarkdownOf(edit.fileKey);
+    return (
+      current !== undefined && normalize(current) === normalize(edit.after)
+    );
+  };
 
   const closeSidePanels = () => {
     setIsFilesOpen(false);
     setOpenFile(null);
-    setDiffMessageId(null);
+    setVersionMessageId(null);
   };
 
   // A document gets the room it needs to be edited: the Files list closes.
   const openFileInPanel = (file: ChatFile) => {
     setIsFilesOpen(false);
     setOpenFile(file);
-    setDiffMessageId(null);
+    setVersionMessageId(null);
   };
 
   useEffect(() => {
@@ -498,9 +519,68 @@ export function AgentConversations({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const openVersion = (message: ChatMessage) => {
+    const file = files.find((f) => f.key === message.edit?.fileKey);
+    if (file) {
+      openFileInPanel(file);
+      setVersionMessageId(message.id);
+    }
+  };
+
+  // The version becomes the document's content: a new version, so the
+  // roll-back can itself be rolled back.
+  const rollBackTo = (message: ChatMessage) => {
+    const edit = message.edit;
+    if (!edit) {
+      return;
+    }
+    const current = currentMarkdownOf(edit.fileKey) ?? edit.before;
+    rollBack(active, edit.fileKey, edit.after, current, message.createdAt);
+    const key = `${active.id}:${edit.fileKey}`;
+    setDocSessions((prev) =>
+      prev[key]
+        ? {
+            ...prev,
+            [key]: {
+              ...prev[key],
+              markdown: edit.after,
+              savedMarkdown: edit.after,
+              editorJson: null,
+            },
+          }
+        : prev
+    );
+    setDocRevision((r) => r + 1);
+    const file = files.find((f) => f.key === edit.fileKey);
+    if (file) {
+      openFileInPanel(file);
+    }
+  };
+
+  const renderVersionCard = (message: ChatMessage) => {
+    const edit = message.edit;
+    if (!edit) {
+      return null;
+    }
+    const isCurrent = isCurrentVersion(edit);
+    const by =
+      message.role === "agent"
+        ? `Edited by ${message.agent.name}`
+        : "Rolled back by you";
+    return (
+      <DocumentEditCard
+        title={edit.fileKey}
+        subtitle={isCurrent ? `${by} · Current version` : by}
+        onClick={() => openVersion(message)}
+        onRollBack={isCurrent ? undefined : () => rollBackTo(message)}
+      />
+    );
+  };
+
   const selectConversation = (id: string) => {
     setActiveId(id);
     setPodPage(null);
+    setIsPodChatOpen(false);
     closeSidePanels();
   };
 
@@ -537,17 +617,36 @@ export function AgentConversations({
       onNewConversation={() => {
         startNewConversation();
         setPodPage(null);
+        setIsPodChatOpen(false);
         closeSidePanels();
         onNavClose();
       }}
       selectedPod={podPage?.pod ?? null}
       onSelectPod={(pod) => {
         closeSidePanels();
+        setIsPodChatOpen(false);
         setPodPage({ pod, openPath: null });
         onNavClose();
       }}
     />
   );
+
+  // In the Pod's top bar, as the Files button in a conversation's: a new
+  // conversation, in place of the files (a file open stays next to it).
+  const podChatButton = (
+    <Button
+      size="sm"
+      variant="ghost-secondary"
+      icon={MessageCircle01}
+      tooltip="New conversation"
+      onClick={() => {
+        startNewConversation();
+        setIsPodChatOpen(true);
+      }}
+    />
+  );
+  // A markdown file of the Pod, in the side panel.
+  const podDocPath = podPage?.openPath ?? null;
 
   return (
     <PanelLayout collapseNavWithSidePanel>
@@ -557,78 +656,53 @@ export function AgentConversations({
 
       {podPage ? (
         <PanelLayoutPanel
-          label={podPage.openPath ? fileNameOf(podPage.openPath) : podPage.pod}
+          label={isPodChatOpen ? active.title : podPage.pod}
           isOpen={true}
           onClose={() => {}}
           minimalWidth={400}
-          // The Pod, then the file open full page and its save status.
           topBarLeft={
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-1">
+              {isPodChatOpen && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={ArrowLeft}
+                  tooltip="Back to files"
+                  onClick={() => setIsPodChatOpen(false)}
+                />
+              )}
               <Breadcrumbs
                 items={[
                   {
                     label: podPage.pod,
-                    onClick: podPage.openPath
-                      ? () => setPodPage({ ...podPage, openPath: null })
+                    onClick: isPodChatOpen
+                      ? () => setIsPodChatOpen(false)
                       : undefined,
                   },
-                  ...(podPage.openPath
-                    ? [{ label: fileNameOf(podPage.openPath) }]
-                    : []),
+                  ...(isPodChatOpen ? [{ label: active.title }] : []),
                 ]}
                 size="sm"
                 hasLighterFont
               />
-              {podPage.openPath && (
-                <div
-                  ref={setPodTitleSlot}
-                  className="flex shrink-0 items-center empty:hidden"
-                />
-              )}
             </div>
           }
-          topBarRight={
-            podPage.openPath ? (
-              <div className="flex items-center gap-1">
-                <div
-                  ref={setPodToolbarSlot}
-                  className="flex items-center gap-1"
-                />
-                {/* Closes the file, back to the Pod's files. */}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={XClose}
-                  tooltip="Close"
-                  onClick={() => setPodPage({ ...podPage, openPath: null })}
-                />
-              </div>
-            ) : undefined
-          }
+          topBarRight={isPodChatOpen ? undefined : podChatButton}
         >
-          {podPage.openPath ? (
-            <PodDocument
-              key={podPage.openPath}
-              path={podPage.openPath}
-              session={docSessions[`pod:${podPage.openPath}`]}
-              onSessionCreate={(session) =>
-                setDocSessions((prev) => ({
-                  ...prev,
-                  [`pod:${podPage.openPath}`]: session,
-                }))
-              }
-              onSessionChange={(update) =>
-                setDocSessions((prev) => {
-                  const key = `pod:${podPage.openPath}`;
-                  return prev[key]
-                    ? { ...prev, [key]: update(prev[key]) }
-                    : prev;
-                })
-              }
+          {isPodChatOpen ? (
+            <ConversationView
+              conversation={active}
               agents={agents}
-              agentName={selectedAgent.name}
-              titleSlot={podTitleSlot}
-              toolbarSlot={podToolbarSlot}
+              selectedAgent={selectedAgent}
+              onSelectAgent={(agent) => setAgentId(agent.id)}
+              onSend={handleSend}
+              // A file of this conversation opens with it, out of the Pod.
+              onOpenFile={(file) => {
+                setPodPage(null);
+                setIsPodChatOpen(false);
+                openFileInPanel(file);
+              }}
+              subtitle={`New conversation in ${podPage.pod}.`}
+              renderVersionCard={renderVersionCard}
             />
           ) : (
             <PodPage
@@ -669,7 +743,7 @@ export function AgentConversations({
                 } else {
                   // In place of the document, if one is open.
                   setOpenFile(null);
-                  setDiffMessageId(null);
+                  setVersionMessageId(null);
                   setIsFilesOpen(true);
                 }
               }}
@@ -684,29 +758,44 @@ export function AgentConversations({
             onSend={handleSend}
             onOpenFile={openFileInPanel}
             subtitle={subtitle}
-            onOpenEdit={(message) => {
-              const file = files.find((f) => f.key === message.edit?.fileKey);
-              if (file && message.edit) {
-                openFileInPanel(file);
-                setDiffMessageId(message.id);
-              }
-            }}
+            renderVersionCard={renderVersionCard}
           />
         </PanelLayoutPanel>
       )}
 
-      {/* One side panel, for the conversation's Files or the document open
-      from them: each opens in place of the other. */}
+      {/* One side panel: the conversation's Files or the document open from
+      them, or a Pod's file. Each opens in place of the other. */}
       <PanelLayoutPanel
-        label={isFilesOpen ? "Files" : (openFile?.title ?? "File")}
+        label={
+          podDocPath
+            ? fileNameOf(podDocPath)
+            : isFilesOpen
+              ? "Files"
+              : (openFile?.title ?? "File")
+        }
         // A document being edited takes focus, like a page.
         sizingType="default"
         fullscreenEnabled={!isFilesOpen}
-        isOpen={isFilesOpen || openFile !== null}
-        onClose={closeSidePanels}
+        isOpen={!!podDocPath || isFilesOpen || openFile !== null}
+        onClose={() => {
+          if (podPage) {
+            setPodPage({ ...podPage, openPath: null });
+          }
+          closeSidePanels();
+        }}
         // The file's name, then its save status (Figma, Co-edition top bar).
         topBarLeft={
-          isFilesOpen ? (
+          podDocPath ? (
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="min-w-16 truncate text-sm font-medium text-foreground">
+                {fileNameOf(podDocPath)}
+              </span>
+              <div
+                ref={setPodTitleSlot}
+                className="flex shrink-0 items-center empty:hidden"
+              />
+            </div>
+          ) : isFilesOpen ? (
             <Breadcrumbs
               items={[{ label: "Files" }]}
               size="sm"
@@ -725,12 +814,37 @@ export function AgentConversations({
           )
         }
         topBarRight={
-          isFilesOpen ? undefined : (
+          isFilesOpen ? undefined : podDocPath ? (
+            <div ref={setPodToolbarSlot} className="flex items-center gap-1" />
+          ) : (
             <div ref={setDocToolbarSlot} className="flex items-center gap-1" />
           )
         }
       >
-        {isFilesOpen && (
+        {podDocPath && (
+          <PodDocument
+            key={podDocPath}
+            path={podDocPath}
+            session={docSessions[`pod:${podDocPath}`]}
+            onSessionCreate={(session) =>
+              setDocSessions((prev) => ({
+                ...prev,
+                [`pod:${podDocPath}`]: session,
+              }))
+            }
+            onSessionChange={(update) =>
+              setDocSessions((prev) => {
+                const key = `pod:${podDocPath}`;
+                return prev[key] ? { ...prev, [key]: update(prev[key]) } : prev;
+              })
+            }
+            agents={agents}
+            agentName={selectedAgent.name}
+            titleSlot={podTitleSlot}
+            toolbarSlot={podToolbarSlot}
+          />
+        )}
+        {!podDocPath && isFilesOpen && (
           <ConversationFilesPanel
             files={files.map(toDataSource)}
             onFileOpen={(dataSource) => {
@@ -741,9 +855,9 @@ export function AgentConversations({
             }}
           />
         )}
-        {!isFilesOpen && openFile && docKey && (
+        {!podDocPath && !isFilesOpen && openFile && docKey && (
           <DocumentPanel
-            key={docKey}
+            key={`${docKey}:${docRevision}`}
             title={openFile.title}
             loadDocument={() => readFile(active, openFile.key)}
             agentName={selectedAgent.name}
@@ -767,17 +881,18 @@ export function AgentConversations({
             }
             toolbarSlot={docToolbarSlot}
             titleSlot={docTitleSlot}
-            diff={
-              diffMessage?.edit && diffMessage.edit.fileKey === openFile.key
+            version={
+              versionMessage?.edit &&
+              versionMessage.edit.fileKey === openFile.key
                 ? {
-                    before: diffMessage.edit.before,
-                    after: diffMessage.edit.after,
-                    by: diffMessage.agent.name,
-                    at: diffMessage.createdAt,
+                    markdown: versionMessage.edit.after,
+                    at: versionMessage.createdAt,
+                    isCurrent: isCurrentVersion(versionMessage.edit),
                   }
                 : null
             }
-            onCloseDiff={() => setDiffMessageId(null)}
+            onCloseVersion={() => setVersionMessageId(null)}
+            onRollBack={() => versionMessage && rollBackTo(versionMessage)}
             askAgent={(request) =>
               askFromComment(active, { ...request, fileKey: openFile.key })
             }

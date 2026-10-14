@@ -528,6 +528,36 @@ export function useMockConversations(): Conversations {
     []
   );
 
+  const rollBack = useCallback(
+    (
+      conversation: Conversation,
+      fileKey: string,
+      markdown: string,
+      current: string,
+      versionAt: Date
+    ) => {
+      files.current.set(`${conversation.id}:${fileKey}`, markdown);
+      const time = versionAt.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      updateConversation(conversation.id, (c) => ({
+        ...c,
+        messages: [
+          ...c.messages,
+          {
+            id: crypto.randomUUID(),
+            role: "user",
+            content: `Rolled ${fileKey} back to the version of ${time}.`,
+            createdAt: new Date(),
+            edit: { fileKey, before: current, after: markdown },
+          },
+        ],
+      }));
+    },
+    [updateConversation]
+  );
+
   return {
     agents: AGENTS,
     conversations,
@@ -537,5 +567,6 @@ export function useMockConversations(): Conversations {
     send,
     askFromComment,
     readFile,
+    rollBack,
   };
 }

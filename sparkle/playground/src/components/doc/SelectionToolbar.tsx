@@ -20,7 +20,7 @@ import { type Editor, useEditorState } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 
 // The bar over a text selection, as production's DocumentSelectionToolbar:
-// comment, then the text formatting (text style, bold, italic, underline,
+// comment and suggest (an edit), then the text formatting (text style, bold, italic, underline,
 // strikethrough, code, lists, link). The link opens a field in the bar.
 
 const TEXT_STYLES = [
@@ -197,19 +197,21 @@ export function SelectionToolbar({
       onClick={onComment}
     />
   );
+  const suggestButton = (
+    <Button
+      size="xs"
+      variant="ghost-secondary"
+      icon={Pencil01}
+      label="Suggest"
+      onMouseDown={keepSelection}
+      onClick={onSuggest}
+    />
+  );
   if (readOnly) {
     return (
       <HoveringBar size="xs">
         {commentButton}
-        <HoveringBar.Separator />
-        <Button
-          size="xs"
-          variant="ghost-secondary"
-          icon={Pencil01}
-          label="Suggest edit"
-          onMouseDown={keepSelection}
-          onClick={onSuggest}
-        />
+        {suggestButton}
       </HoveringBar>
     );
   }
@@ -243,6 +245,7 @@ export function SelectionToolbar({
   return (
     <HoveringBar size="xs">
       {commentButton}
+      {suggestButton}
       <HoveringBar.Separator />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
