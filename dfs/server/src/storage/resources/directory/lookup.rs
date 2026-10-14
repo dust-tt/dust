@@ -62,7 +62,7 @@ impl DirectoryResource {
                     ObjectRef::Object(_) | ObjectRef::Root => parents.next().flatten(),
                     ObjectRef::Shared | ObjectRef::Invalid => None,
                 };
-                Self::resolve_child(tx, target, parent)
+                Self::resolve_child_for_session(tx, target, parent)
             })
             .collect();
         let children: Vec<_> = stream::iter(resolutions)
@@ -89,7 +89,7 @@ impl DirectoryResource {
             .collect())
     }
 
-    async fn resolve_child(
+    async fn resolve_child_for_session(
         tx: &Transaction,
         target: &LookupTarget,
         parent: Option<(ObjectResource, Mode)>,
