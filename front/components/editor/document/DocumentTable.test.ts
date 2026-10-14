@@ -1,13 +1,12 @@
 // @vitest-environment node
 import {
   documentSchema,
-  findUnsupportedElement,
   serializeDocumentMarkdown,
 } from "@app/components/editor/document/content";
 import { loadDfm } from "@app/components/editor/document/dfm_persistence";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { DOMParser as ProseMirrorDOMParser } from "@tiptap/pm/model";
@@ -149,13 +148,17 @@ describe("table Markdown", () => {
     ["at the top level", "| a | b |\n| --- | --- |\n| 1 | 2 | 3 |\n"],
     ["in a list item", "- item\n\n  | a |\n  | --- |\n  | 1 | 2 |\n"],
   ])("refuses a row with more cells than its header %s", (_, source) => {
-    expect(findUnsupportedElement(source)).toBe("table_extra_cells");
+    expect(loadDfm(source)).toEqual(
+      new Err(
+        "The Markdown uses formatting the editor cannot keep: a table row with more cells than its header."
+      )
+    );
   });
 
   it("counts neither an escaped pipe nor a pipe in code as a cell", () => {
     expect(
-      findUnsupportedElement("| a | b |\n| --- | --- |\n| x \\| y | `p|q` |\n")
-    ).toBeNull();
+      loadDfm("| a | b |\n| --- | --- |\n| x \\| y | `p|q` |\n").isOk()
+    ).toBe(true);
   });
 });
 
