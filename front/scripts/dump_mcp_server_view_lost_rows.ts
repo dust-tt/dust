@@ -32,6 +32,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
+import { isNumber } from "@app/types/shared/utils/general";
 import assert from "assert";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns";
@@ -97,10 +98,7 @@ async function selectRows(
     { replacements: { workspaceModelId, ids }, type: QueryTypes.SELECT }
   );
   return rows.map(({ row }) => {
-    assert(
-      typeof row.id === "number",
-      `Row without a numeric id in ${tableName}`
-    );
+    assert(isNumber(row.id), `Row without a numeric id in ${tableName}`);
     return { id: row.id, row };
   });
 }
