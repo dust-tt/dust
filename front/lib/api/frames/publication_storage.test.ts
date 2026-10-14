@@ -25,7 +25,9 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { enablePublicFrameFunctions } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { redisMock } from "@app/tests/utils/mocks/redis";
@@ -131,6 +133,19 @@ const sourceFilesWithFunction = [
 
 const uiBundleCode = "export default function App() {}";
 
+const manifestWithFastFunction = FrameManifestSchema.parse({
+  version: 1,
+  description: "Track tasks.",
+  functions: [
+    {
+      name: "add-task",
+      description: "Add a task.",
+      entryPoint: "functions/add_task.ts",
+      executionMode: "fast",
+    },
+  ],
+});
+
 const functionArtifacts = [
   {
     name: "add-task",
@@ -148,6 +163,11 @@ const functionArtifacts = [
     },
   },
 ] satisfies FramePublicationFunctionArtifact[];
+
+const publicFunctionArtifacts = functionArtifacts.map((artifact) => ({
+  ...artifact,
+  userIdentity: "public" as const,
+}));
 
 function createDeferred() {
   let resolvePromise: (() => void) | undefined;
@@ -442,6 +462,89 @@ describe("storeFramePublication", () => {
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("stores a fast public function when public functions are enabled", async () => {
+    const { auth, frame } = await setupFrame();
+    await enablePublicFrameFunctions(auth);
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: publicFunctionArtifacts,
+      manifest: manifestWithFastFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const descriptor = await loadFramePublicationDescriptor(auth, {
+      frame,
+      publicationId: result.value.publicationId,
+    });
+    expect(
+      descriptor.isOk() && descriptor.value.functions.map((f) => f.userIdentity)
+    ).toEqual(["public"]);
+  });
+
+  it("rejects a public function when public functions are disabled", async () => {
+    const { auth, frame } = await setupFrame();
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: publicFunctionArtifacts,
+      manifest: manifestWithFastFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+
+    expect(result.isErr() && result.error.code).toBe(
+      "invalid_function_artifact"
+    );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a public function that is not fast", async () => {
+    const { auth, frame } = await setupFrame();
+    await enablePublicFrameFunctions(auth);
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: publicFunctionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+
+    expect(result.isErr() && result.error.code).toBe(
+      "invalid_function_artifact"
+    );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a public function whose bundle references a secret", async () => {
+    const { auth, frame } = await setupFrame();
+    await enablePublicFrameFunctions(auth);
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: publicFunctionArtifacts.map((artifact) => ({
+        ...artifact,
+        bundleCode: 'export async function run() { return "DSEC_API_KEY"; }',
+      })),
+      manifest: manifestWithFastFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+
+    expect(result.isErr() && result.error.code).toBe(
+      "invalid_function_artifact"
+    );
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 

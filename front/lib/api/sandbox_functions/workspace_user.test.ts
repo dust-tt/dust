@@ -285,6 +285,49 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
   });
 });
 
+describe("authorizeSandboxFunctionInvocation for public Frame functions", () => {
+  it("authorizes a workspace member and denies a non-member", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    const member = await makeWorkspaceMember(workspace);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    const nonMember = await UserFactory.basic();
+    const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      nonMember.sId,
+      workspace.sId
+    );
+
+    const memberAuthorization = await authorizeSandboxFunctionInvocation(
+      memberAuth,
+      {
+        userIdentity: "public",
+        origin: "delegated",
+        owner: { kind: "frame", frame, scope: { spaceId: null } },
+      }
+    );
+    const nonMemberAuthorization = await authorizeSandboxFunctionInvocation(
+      nonMemberAuth,
+      {
+        userIdentity: "public",
+        origin: "delegated",
+        owner: { kind: "frame", frame, scope: { spaceId: null } },
+      }
+    );
+
+    expect(memberAuthorization).toMatchObject({
+      authorized: true,
+      user: expect.objectContaining({ sId: member.sId }),
+    });
+    expect(nonMemberAuthorization).toMatchObject({
+      authorized: false,
+      errorCode: "user_authentication_required",
+    });
+  });
+});
+
 describe("authorizeSandboxFunctionInvocation across server revisions", () => {
   it("fails closed for a policy persisted by a newer server revision", async () => {
     const { adminAuth, space } = await setup();

@@ -27,7 +27,7 @@ export function scopeEncryptionKey(scope: SandboxEnvVarScope): string {
 }
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
-const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
+export const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
 // Suffix max length is 64 — the wire form is `<prefix><suffix>` (e.g. "DSEC_FOO"),
 // so the rendered name fits comfortably under typical 128-char env-var limits
 // even with our longest prefix.
