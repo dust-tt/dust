@@ -1,6 +1,6 @@
 import { withFlexProcessing } from "@app/lib/api/llm/flex_processing";
 import { LLM } from "@app/lib/api/llm/llm";
-import { filterRaisingReasoningEfforts } from "@app/lib/api/llm/per_message_reasoning_effort";
+import { filterApplicableReasoningEfforts } from "@app/lib/api/llm/per_message_reasoning_effort";
 import { withConciseOpenAIReasoningSummary } from "@app/lib/api/llm/reasoning_summary";
 import type {
   BatchDeletionOutcome,
@@ -700,11 +700,11 @@ abstract class BaseTransition extends LLM {
     return flaggedConfig;
   }
 
-  // Only the effort changes this model can apply reach the provider (effort-messages-only-raise).
+  // Only the effort changes this model can apply reach the provider (effort-messages-change-effort).
   private toBaseMessagesWithEffortChanges(
     conversation: LLMStreamParameters["conversation"]
   ): BaseMessage[] {
-    return filterRaisingReasoningEfforts(
+    return filterApplicableReasoningEfforts(
       this.modelConfig,
       conversation.messages.flatMap(toBaseMessages),
       {

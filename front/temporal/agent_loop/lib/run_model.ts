@@ -691,7 +691,7 @@ export async function runModel(
   }
 
   // Drop the effort changes that would move this run's model to another tier
-  // (raise-keeps-model-tier).
+  // (effort-change-keeps-model-tier).
   const effortChanges = filterEffortChangesForRun(
     modelInfo,
     modelConversationRes.value.modelConversation.messages

@@ -1,5 +1,5 @@
 import {
-  filterRaisingReasoningEfforts,
+  filterApplicableReasoningEfforts,
   supportsPerMessageReasoningEffort,
 } from "@app/lib/api/llm/per_message_reasoning_effort";
 import {
@@ -22,7 +22,7 @@ function keptEfforts(
   effort: ReasoningEffort | null,
   items: Item[]
 ): (ReasoningEffort | null)[] {
-  return filterRaisingReasoningEfforts(model, items, {
+  return filterApplicableReasoningEfforts(model, items, {
     effort,
     getEffort: (item) => item.effort,
   }).map((item) => item.effort);
@@ -46,8 +46,8 @@ describe("supportsPerMessageReasoningEffort", () => {
   });
 });
 
-describe("filterRaisingReasoningEfforts", () => {
-  it("keeps the effort changes that raise the effort in effect", () => {
+describe("filterApplicableReasoningEfforts", () => {
+  it("keeps the effort changes that move the effort in effect", () => {
     expect(
       keptEfforts(CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG, "medium", [
         { effort: null },
@@ -58,15 +58,16 @@ describe("filterRaisingReasoningEfforts", () => {
     ).toEqual([null, "high", null, "xhigh"]);
   });
 
-  it("drops changes that lower or keep the effort in effect", () => {
+  it("keeps lowering changes and drops those that keep the effort or disable thinking", () => {
     expect(
       keptEfforts(CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG, "medium", [
-        { effort: "low" },
         { effort: "medium" },
         { effort: "xhigh" },
-        { effort: "high" },
+        { effort: "xhigh" },
+        { effort: "low" },
+        { effort: "none" },
       ])
-    ).toEqual(["xhigh"]);
+    ).toEqual(["xhigh", "low"]);
   });
 
   it("drops all changes on models without per-message effort", () => {

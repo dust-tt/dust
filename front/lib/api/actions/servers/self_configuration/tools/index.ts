@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import { raiseReasoningEffort } from "@app/lib/api/actions/servers/self_configuration/helpers";
+import { moveReasoningEffort } from "@app/lib/api/actions/servers/self_configuration/helpers";
 import {
   ADJUST_REASONING_EFFORT_TOOL_NAME,
   SELF_CONFIGURATION_TOOLS_METADATA,
@@ -19,18 +19,10 @@ const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
   ) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
-    if (direction === "lower") {
-      return new Err(
-        new MCPError("Lowering your reasoning effort is not supported yet.", {
-          tracked: false,
-        })
-      );
-    }
-
     const { modelInfo, stepContext } = runContext;
     const from =
       stepContext.reasoningEffortInEffect ?? modelInfo.reasoningEffort ?? null;
-    const to = raiseReasoningEffort(modelInfo, { from, steps });
+    const to = moveReasoningEffort(modelInfo, { from, direction, steps });
     if (from === null || to === null || to === from) {
       return new Err(
         new MCPError(
@@ -38,7 +30,7 @@ const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
             from === "none" ||
             !supportsPerMessageReasoningEffort(modelInfo.endpoint.modelConfig)
             ? "Your reasoning effort cannot be changed with the current model and effort."
-            : `Your reasoning effort is already at the highest one available ("${from}").`,
+            : `Your reasoning effort is already at the ${direction === "raise" ? "highest" : "lowest"} one available ("${from}").`,
           { tracked: false }
         )
       );

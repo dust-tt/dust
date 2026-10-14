@@ -25,10 +25,10 @@ export const SELF_CONFIGURATION_TOOLS_METADATA = [
     name: ADJUST_REASONING_EFFORT_TOOL_NAME,
     description:
       "Raise or lower your reasoning effort by one or more steps for the rest of the " +
-      "conversation, e.g. raise it when the user's requests need deeper reasoning than you " +
-      "currently give (hard math, intricate debugging, long multi-step analysis). The change " +
-      "stops at the highest effort available and applies from the user's next message at the " +
-      "latest.",
+      "conversation: raise it when the user's requests need deeper reasoning than you currently " +
+      "give (hard math, intricate debugging, long multi-step analysis), lower it when they get " +
+      "simple again. The change stops at the highest or lowest effort available and applies " +
+      "from the user's next message at the latest.",
     schema: ADJUST_REASONING_EFFORT_SCHEMA,
     stake: "never_ask",
     eager: true,
