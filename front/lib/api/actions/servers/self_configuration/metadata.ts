@@ -30,6 +30,7 @@ export const SELF_CONFIGURATION_TOOLS_METADATA = [
       "stops at the highest effort available and applies from the user's next message at the " +
       "latest.",
     schema: ADJUST_REASONING_EFFORT_SCHEMA,
+    enableAlerting: true,
     stake: "never_ask",
     eager: true,
     displayLabels: {
