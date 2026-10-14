@@ -173,6 +173,7 @@ opens the file through the file API. Without it, the reference shows as its titl
 | `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `frameEmbed` node, its Markdown, and the host's renderers its view reads. |
 | `DocumentImageMenu.tsx` | The width slider, reset and remove menu over a hovered image. |
 | `DocumentFrameMenu.tsx` | The height slider and remove menu over a hovered Frame. |
+| `DocumentResizeBar.tsx` | The size slider, reset and remove bar shared by the image and Frame menus. |
 | `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
