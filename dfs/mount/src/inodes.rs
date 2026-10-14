@@ -6,7 +6,7 @@ use std::collections::HashMap;
 ///
 /// The kernel counts one lookup for each reply that gives it an inode (`lookup`, and later
 /// `create`, `mkdir` or `readdirplus`), never for plain `readdir` entries. The root is not in the
-/// table: the kernel never forgets it.
+/// table, and pinned inodes stay whatever the kernel forgets.
 pub(crate) struct Inodes {
     inodes: HashMap<Ino, Inode>,
     inos: HashMap<ObjectId, Ino>,
@@ -16,6 +16,7 @@ pub(crate) struct Inodes {
 struct Inode {
     object: ObjectId,
     lookups: u64,
+    pinned: bool,
 }
 
 impl Inodes {
@@ -25,6 +26,23 @@ impl Inodes {
             inos: HashMap::new(),
             next: ROOT_INO + 1,
         }
+    }
+
+    /// Gives `object` an inode number that `forget` never drops. `object` must not be in the table
+    /// yet.
+    pub(crate) fn pin(&mut self, object: ObjectId) -> Ino {
+        let ino = self.next;
+        self.next += 1;
+        self.inos.insert(object, ino);
+        self.inodes.insert(
+            ino,
+            Inode {
+                object,
+                lookups: 0,
+                pinned: true,
+            },
+        );
+        ino
     }
 
     /// Counts one lookup of `object` and returns its inode number, giving it a new one if the
@@ -41,7 +59,11 @@ impl Inodes {
         });
         self.inodes
             .entry(ino)
-            .or_insert(Inode { object, lookups: 0 })
+            .or_insert(Inode {
+                object,
+                lookups: 0,
+                pinned: false,
+            })
             .lookups += 1;
         ino
     }
@@ -54,14 +76,14 @@ impl Inodes {
         self.inodes.get(&ino).map(|inode| inode.object)
     }
 
-    /// Forgets `count` lookups of `ino`, and the inode itself once none is left. Ignores the root
-    /// and unknown inodes.
+    /// Forgets `count` lookups of `ino`, and the inode itself once none is left, unless it is
+    /// pinned. Ignores the root and unknown inodes.
     pub(crate) fn forget(&mut self, ino: Ino, count: u64) {
         let Some(inode) = self.inodes.get_mut(&ino) else {
             return;
         };
         inode.lookups = inode.lookups.saturating_sub(count);
-        if inode.lookups == 0 {
+        if inode.lookups == 0 && !inode.pinned {
             let object = inode.object;
             self.inodes.remove(&ino);
             self.inos.remove(&object);
@@ -104,6 +126,18 @@ mod tests {
         let ino = inodes.lookup(ObjectId::new_v7());
         inodes.forget(ino, 2);
         assert_eq!(inodes.object(ino), None);
+    }
+
+    #[test]
+    fn a_pinned_inode_is_never_dropped() {
+        let mut inodes = Inodes::new();
+        let object = ObjectId::new_v7();
+        let ino = inodes.pin(object);
+        assert_ne!(ino, ROOT_INO);
+        assert_eq!(inodes.lookup(object), ino);
+        inodes.forget(ino, 2);
+        assert_eq!(inodes.object(ino), Some(object));
+        assert_eq!(inodes.lookup(object), ino);
     }
 
     #[test]

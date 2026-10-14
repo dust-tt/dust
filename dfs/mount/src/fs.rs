@@ -1,5 +1,5 @@
 use crate::{errno::Errno, inodes::Inodes, remote::Remote};
-use dfs_protocol::{ObjectId, is_valid_name};
+use dfs_protocol::{ObjectId, ObjectRef, is_valid_name, rpc::ObjectKind};
 use std::{
     collections::HashSet,
     sync::{Mutex, PoisonError},
@@ -11,6 +11,9 @@ pub type Ino = u64;
 
 /// The inode number FUSE gives the mount root.
 pub const ROOT_INO: Ino = 1;
+
+/// Read and execute for everyone: the root is read-only.
+const ROOT_PERMISSIONS: u16 = 0o555;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -44,20 +47,20 @@ pub struct Folder {
     pub id: ObjectId,
 }
 
+/// A configured folder and its inode number, fixed for the life of the mount.
+struct RootEntry {
+    folder: Folder,
+    ino: Ino,
+}
+
 /// The filesystem served by the mount, independent of the FUSE library. Inode numbers come from
 /// and go back to the kernel; everything else is fetched from the dfs server.
 pub struct Fs {
-    #[expect(
-        dead_code,
-        reason = "used by `getattr`, `lookup` and `readdir`, not implemented yet"
-    )]
     remote: Remote,
-    #[expect(
-        dead_code,
-        reason = "used by `lookup` and `readdir`, not implemented yet"
-    )]
-    folders: Vec<Folder>,
+    root_entries: Vec<RootEntry>,
     inodes: Mutex<Inodes>,
+    /// When the mount started: the root's timestamps.
+    started: SystemTime,
 }
 
 impl Fs {
@@ -76,15 +79,35 @@ impl Fs {
                 return Err(Errno::EINVAL);
             }
         }
+        let mut inodes = Inodes::new();
+        let root_entries = folders
+            .into_iter()
+            .map(|folder| RootEntry {
+                ino: inodes.pin(folder.id),
+                folder,
+            })
+            .collect();
         Ok(Self {
             remote,
-            folders,
-            inodes: Mutex::new(Inodes::new()),
+            root_entries,
+            inodes: Mutex::new(inodes),
+            started: SystemTime::now(),
         })
     }
 
-    pub async fn getattr(&self, _ino: Ino) -> Result<Attributes, Errno> {
-        todo!()
+    pub async fn getattr(&self, ino: Ino) -> Result<Attributes, Errno> {
+        if ino != ROOT_INO {
+            todo!()
+        }
+        Ok(Attributes {
+            ino: ROOT_INO,
+            kind: Kind::Directory,
+            size: 0,
+            permissions: ROOT_PERMISSIONS,
+            atime: self.started,
+            mtime: self.started,
+            ctime: self.started,
+        })
     }
 
     /**
@@ -102,16 +125,39 @@ impl Fs {
 
     /**
      * @cc [owner:fontanierh,label:product] synthetic-root
-     * The root MUST list only configured folders, and MUST be read-only.
+     * The root MUST list only the configured folders that the server reports as readable
+     * directories, and MUST be read-only.
      */
-    pub async fn readdir(&self, _ino: Ino) -> Result<Vec<DirEntry>, Errno> {
-        todo!()
+    pub async fn readdir(&self, ino: Ino) -> Result<Vec<DirEntry>, Errno> {
+        if ino != ROOT_INO {
+            todo!()
+        }
+        let references: Vec<ObjectRef> = self
+            .root_entries
+            .iter()
+            .map(|entry| entry.folder.id.into())
+            .collect();
+        let results = self.remote.stat(&references).await?;
+        let mut entries = Vec::new();
+        for (entry, result) in self.root_entries.iter().zip(results) {
+            match result {
+                Ok(attr) if attr.kind() == ObjectKind::Directory => entries.push(DirEntry {
+                    ino: entry.ino,
+                    kind: Kind::Directory,
+                    name: entry.folder.name.clone(),
+                }),
+                // Missing or unreadable folders, and folders that are not directories.
+                Ok(_) | Err(Errno::ENOENT) => {}
+                Err(errno) => return Err(errno),
+            }
+        }
+        Ok(entries)
     }
 
     /**
      * @cc [owner:fontanierh,label:coding] forget-counts
      * The mount MUST keep an object until the kernel has forgotten every lookup of it, and MUST
-     * drop it then. The root MUST never be dropped.
+     * drop it then. The root and configured folders MUST never be dropped.
      */
     pub fn forget(&self, ino: Ino, count: u64) {
         self.inodes
@@ -144,6 +190,15 @@ mod tests {
             folder("conversation", ObjectId::new_v7()),
             folder("project", ObjectId::new_v7()),
         ])?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn the_root_is_a_read_only_directory() -> Result<(), Errno> {
+        let root = new_fs(Vec::new())?.getattr(ROOT_INO).await?;
+        assert_eq!(root.ino, ROOT_INO);
+        assert_eq!(root.kind, Kind::Directory);
+        assert_eq!(root.permissions, 0o555);
         Ok(())
     }
 
