@@ -89,7 +89,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/teams/adaptive_cards.ts
-msgid "**Getting started**"
+msgid "**Getting Started**"
 msgstr ""
 
 #. js-lingui-explicit-id
@@ -99,7 +99,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: connectors/src/api/webhooks/teams/adaptive_cards.ts
-msgid "• Enable the integration in your workspace settings"
+msgid "• Enable the integration in your Workspace settings"
 msgstr ""
 
 #. js-lingui-explicit-id
