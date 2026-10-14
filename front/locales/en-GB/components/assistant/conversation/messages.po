@@ -1142,6 +1142,10 @@ msgid "Triggered and sent automatically"
 msgstr ""
 
 #: front/components/assistant/conversation/UserMessage.tsx
+msgid "Comment on {fileName}"
+msgstr ""
+
+#: front/components/assistant/conversation/UserMessage.tsx
 msgid "Edit message"
 msgstr ""
 
