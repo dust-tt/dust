@@ -326,7 +326,7 @@ describe("createCollabHocuspocus", () => {
       new Err(new CollabSaveError("revision_conflict", "File changed."))
     );
     vi.mocked(keepConflictingFile).mockResolvedValue(
-      new Err("The file was deleted while it was open.")
+      new Err(new Error("The file was deleted while it was open."))
     );
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);

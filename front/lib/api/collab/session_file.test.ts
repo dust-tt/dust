@@ -309,7 +309,7 @@ describe("saveCollabSession", () => {
 
       const kept = await keepConflictingFile(file, lastSave);
       if (kept.isErr()) {
-        throw new Error(kept.error);
+        throw kept.error;
       }
       const { copyPath } = kept.value;
       expect(copyPath).toMatch(COPY_NAME);
@@ -353,7 +353,7 @@ describe("saveCollabSession", () => {
 
       const kept = await keepConflictingFile(file, lastSave);
       if (kept.isErr()) {
-        throw new Error(kept.error);
+        throw kept.error;
       }
       expect(kept.value.lastSave.source).toBe(theirs);
       expect(await readText(file, kept.value.copyPath ?? "")).toBe(theirs);

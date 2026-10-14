@@ -429,9 +429,9 @@ const MAX_CONFLICT_ROUNDS = 3;
  * `revision_conflict`, the file's version MUST be kept with `keepConflictingFile` before the session
  * saves over it: the session's last save becomes the file as now stored, and when a copy was
  * written, its path MUST be recorded in the session's save state and that state sent to every
- * connection. It MUST then save again, at most
- * `MAX_CONFLICT_ROUNDS` times, and return the first failure it cannot recover: any failure but a
- * conflict, a conflict whose file cannot be kept, or a conflict past the last round.
+ * connection. It MUST then save again, at most `MAX_CONFLICT_ROUNDS` times, and return the first
+ * failure it cannot recover: any failure but a conflict, a conflict whose file cannot be kept, or a
+ * conflict past the last round.
  */
 export async function saveSession(
   document: Document,
@@ -462,7 +462,7 @@ export async function saveSession(
         {
           documentName: document.name,
           workspaceId: writer.workspaceId,
-          reason: kept.error,
+          reason: kept.error.message,
         },
         "Collab conflict not kept"
       );

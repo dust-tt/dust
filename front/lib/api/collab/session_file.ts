@@ -59,9 +59,11 @@ export async function loadCollabSession({
 }
 
 /** Why a save failed: `revision_conflict` when something else wrote the file since the last save. */
+export type CollabSaveErrorCode = "revision_conflict" | "failed";
+
 export class CollabSaveError extends Error {
   constructor(
-    readonly code: "revision_conflict" | "failed",
+    readonly code: CollabSaveErrorCode,
     message: string
   ) {
     super(message);
@@ -144,28 +146,32 @@ function conflictCopyPath(filePath: string, date: Date, index: number): string {
 export async function keepConflictingFile(
   { dustFs, canonicalPath }: CollabAccess,
   last: CollabSave
-): Promise<Result<{ lastSave: CollabSave; copyPath: string | null }, string>> {
+): Promise<Result<{ lastSave: CollabSave; copyPath: string | null }, Error>> {
   const read = await readCanonicalFileContent(dustFs, canonicalPath);
   if (read.isErr()) {
-    return new Err(read.error.message);
+    return new Err(read.error);
   }
   if (!read.value) {
-    return new Err("The file was deleted while it was open.");
+    return new Err(new Error("The file was deleted while it was open."));
   }
   const { revision } = read.value;
   if (revision === undefined) {
     read.value.stream.on("error", () => undefined).destroy();
-    return new Err("This file's storage does not support revisions.");
+    return new Err(
+      new Error("This file's storage does not support revisions.")
+    );
   }
   const bytes = await streamToBoundedBuffer(
     read.value.stream,
     WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
   );
   if (bytes.isErr()) {
-    return bytes;
+    return new Err(new Error(bytes.error));
   }
   if (!bytes.value) {
-    return new Err("The file is larger than a live document can save.");
+    return new Err(
+      new Error("The file is larger than a live document can save.")
+    );
   }
 
   // Read through the codec, the way the session saves, so the same Markdown spelled differently
@@ -180,17 +186,22 @@ export async function keepConflictingFile(
   }
 
   const date = new Date();
+  // Every candidate name is in the file's own folder: one access check covers them all.
+  const writable = dustFs.checkWriteAccess(
+    conflictCopyPath(canonicalPath, date, 0)
+  );
+  if (writable.isErr()) {
+    return new Err(writable.error);
+  }
   for (let index = 0; index < MAX_CONFLICT_COPY_NAMES; index++) {
     const copyPath = conflictCopyPath(canonicalPath, date, index);
-    const writable = dustFs.checkWriteAccess(copyPath);
-    if (writable.isErr()) {
-      return new Err(writable.error.message);
-    }
     const normalizedCopyPath = DustFileSystem.normalizeScopedPath(copyPath);
     const copyStoragePath =
       normalizedCopyPath && dustFs.toMountFilePath(normalizedCopyPath);
     if (!copyStoragePath) {
-      return new Err("This file's storage does not support revisions.");
+      return new Err(
+        new Error("This file's storage does not support revisions.")
+      );
     }
     const written = await writeFileWithRevision(copyStoragePath, {
       content: bytes.value,
@@ -201,8 +212,8 @@ export async function keepConflictingFile(
       return new Ok({ lastSave, copyPath });
     }
     if (written.error !== "conflict") {
-      return new Err(written.error.message);
+      return new Err(written.error);
     }
   }
-  return new Err("Every name for the copy is taken.");
+  return new Err(new Error("Every name for the copy is taken."));
 }

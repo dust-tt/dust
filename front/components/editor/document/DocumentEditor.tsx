@@ -31,6 +31,7 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import { EditorContent } from "@app/components/editor/EditorContent";
 import type { AgentEvent } from "@app/lib/client/collab/agents";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
+import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { cn } from "@dust-tt/sparkle";
 import { Trans } from "@lingui/react/macro";
 import type { AnyExtension, Editor } from "@tiptap/core";
@@ -348,7 +349,9 @@ export const DocumentView = ({
     </div>
   );
 
-  const conflictCopyName = collabView?.conflictCopy?.split("/").pop();
+  const conflictCopyName = collabView?.conflictCopy
+    ? getFileNameFromScopedPath(collabView.conflictCopy)
+    : null;
 
   return (
     <article
