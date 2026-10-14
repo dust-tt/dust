@@ -227,7 +227,7 @@ function sanitizeSkillInstructionsHtml(html: string): string {
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
 
 interface SkillBuilderInstructionsEditorProps {
-  onOpenInsertMenu?: (openInsertMenu: () => void) => void;
+  onOpenInsertMenu?: (openInsertMenu: (() => void) | null) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
@@ -531,7 +531,8 @@ export function SkillBuilderInstructionsEditor({
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleOpenInsertMenu = useCallback(() => {
-    if (!editor) {
+    // `setEditable(false)` blocks typing, not commands.
+    if (!editor || !editor.isEditable) {
       return;
     }
 
@@ -540,9 +541,9 @@ export function SkillBuilderInstructionsEditor({
 
   useEffect(() => {
     if (editor && onOpenInsertMenu) {
-      onOpenInsertMenu(handleOpenInsertMenu);
+      onOpenInsertMenu(isInstructionsReadOnly ? null : handleOpenInsertMenu);
     }
-  }, [editor, handleOpenInsertMenu, onOpenInsertMenu]);
+  }, [editor, handleOpenInsertMenu, isInstructionsReadOnly, onOpenInsertMenu]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {
