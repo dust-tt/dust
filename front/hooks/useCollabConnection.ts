@@ -39,12 +39,12 @@ export function useCollabConnection(
 ): {
   connection: CollabConnection | null;
   status: CollabStatus;
-  /** The shown connection has changes the server has not confirmed yet. */
-  syncing: boolean;
+  /** Since when the shown connection has changes the server has not confirmed, or null. */
+  syncingSinceMs: number | null;
 } {
   const [connection, setConnection] = useState<CollabConnection | null>(null);
   const [status, setStatus] = useState<CollabStatus>("connecting");
-  const [syncing, setSyncing] = useState(false);
+  const [syncingSinceMs, setSyncingSinceMs] = useState<number | null>(null);
   const [attempt, setAttempt] = useState(0);
   const shownRef = useRef<CollabConnection | null>(null);
   // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
@@ -67,7 +67,7 @@ export function useCollabConnection(
       lastThreadsRef.current = null;
       setConnection(null);
       setStatus("connecting");
-      setSyncing(false);
+      setSyncingSinceMs(null);
     },
     [url, documentName, userId, getTicket]
   );
@@ -110,7 +110,7 @@ export function useCollabConnection(
       provider.destroy();
       if (synced) {
         setStatus("offline");
-        setSyncing(false);
+        setSyncingSinceMs(null);
       }
       const delay = Math.min(
         RECONNECT_DELAY_MS * 2 ** failuresRef.current,
@@ -141,11 +141,13 @@ export function useCollabConnection(
         shownRef.current = next;
         setConnection(next);
         setStatus("live");
-        setSyncing(provider.hasUnsyncedChanges);
+        setSyncingSinceMs(provider.hasUnsyncedChanges ? Date.now() : null);
       },
       onUnsyncedChanges: ({ number }) => {
         if (synced && !closed) {
-          setSyncing(number > 0);
+          setSyncingSinceMs((since) =>
+            number > 0 ? (since ?? Date.now()) : null
+          );
         }
       },
       onDisconnect: onLost,
@@ -172,5 +174,5 @@ export function useCollabConnection(
     return () => connection?.close();
   }, [connection]);
 
-  return { connection, status, syncing };
+  return { connection, status, syncingSinceMs };
 }

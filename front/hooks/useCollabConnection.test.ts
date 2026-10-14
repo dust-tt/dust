@@ -56,16 +56,22 @@ describe("useCollabConnection", () => {
     const { result, unmount } = renderSession();
     await waitFor(() => expect(result.current.status).toBe("live"));
     // Joining sends the provider's own sync messages, confirmed shortly after going live.
-    await waitFor(() => expect(result.current.syncing).toBe(false));
+    await waitFor(() => expect(result.current.syncingSinceMs).toBeNull());
 
     hold = true;
     act(() => {
       result.current.connection?.document.getText("body").insert(0, "Hi");
     });
 
-    await waitFor(() => expect(result.current.syncing).toBe(true));
+    await waitFor(() => expect(result.current.syncingSinceMs).not.toBeNull());
+    // Later changes extend the same wait, so they do not restart its delay.
+    const since = result.current.syncingSinceMs;
+    act(() => {
+      result.current.connection?.document.getText("body").insert(2, "!");
+    });
+    expect(result.current.syncingSinceMs).toBe(since);
     release();
-    await waitFor(() => expect(result.current.syncing).toBe(false));
+    await waitFor(() => expect(result.current.syncingSinceMs).toBeNull());
     unmount();
   });
 
