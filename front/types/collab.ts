@@ -151,15 +151,24 @@ export type AgentEditMessage = z.infer<typeof agentEditMessageSchema>;
 export const saveStateSchema = z.object({
   /** Its last save failed. */
   failed: z.boolean(),
+  /**
+   * Where the file's version was last kept, after the file changed outside the live document and
+   * the document saved over it. Absent from older servers.
+   */
+  conflictCopy: z.string().min(1).nullable().default(null),
 });
 
 export type SaveState = z.infer<typeof saveStateSchema>;
 
 /** Nothing to show: the state of a document whose saves succeed. */
-export const DEFAULT_SAVE_STATE: SaveState = { failed: false };
+export const DEFAULT_SAVE_STATE: SaveState = {
+  failed: false,
+  conflictCopy: null,
+};
 
 /** Whether `state` has nothing to show, every field as in `DEFAULT_SAVE_STATE`. */
-export const isDefaultSaveState = (state: SaveState): boolean => !state.failed;
+export const isDefaultSaveState = (state: SaveState): boolean =>
+  !state.failed && state.conflictCopy === null;
 
 /**
  * The whole save state, sent to every editor when it changes, and to each editor that connects
