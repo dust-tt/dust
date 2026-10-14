@@ -227,7 +227,8 @@ export interface CommentsFocusRequest {
 /**
  * @cc [owner:adrien,label:react] document-comment-report-active
  * Each time the active thread changes, including to none, the hook MUST call
- * `activeComment.onChange` with the new id once; it MUST NOT call it on mount.
+ * `activeComment.onChange` with the new id once; it MUST NOT call it on mount. A change made
+ * without `activeComment` MUST be reported once it is given again.
  */
 export const useDocumentComments = ({
   editor,
@@ -399,11 +400,11 @@ export const useDocumentComments = ({
   const onActiveCommentChange = activeComment?.onChange;
   const reportedActiveId = useRef(state.activeId);
   useEffect(() => {
-    if (reportedActiveId.current === state.activeId) {
+    if (!onActiveCommentChange || reportedActiveId.current === state.activeId) {
       return;
     }
     reportedActiveId.current = state.activeId;
-    onActiveCommentChange?.(state.activeId);
+    onActiveCommentChange(state.activeId);
   }, [state.activeId, onActiveCommentChange]);
 
   const liveErrorMessage = (code: CommentRequestErrorCode): string => {

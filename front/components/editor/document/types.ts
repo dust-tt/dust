@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 export type DocumentCommentAvatarSize = "xs" | "xxs" | "3xs";
 
 export interface ActiveCommentBinding {
-  id: string | undefined;
+  id: string | null;
   onChange: (id: string | null) => void;
 }
 

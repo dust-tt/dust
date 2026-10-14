@@ -447,7 +447,7 @@ describe("useDocumentComments", () => {
   it("reports each change of the active thread, not the initial one", async () => {
     const onChange = vi.fn();
     const { result } = await renderCommentedEditor(SOURCE, {
-      activeComment: { id: undefined, onChange },
+      activeComment: { id: null, onChange },
     });
     expect(onChange).not.toHaveBeenCalled();
 

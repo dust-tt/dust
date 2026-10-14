@@ -75,7 +75,7 @@ export function FilePreviewPanel({
   const activeComment =
     target?.kind === "path"
       ? {
-          id: target.commentId,
+          id: target.commentId ?? null,
           onChange: (commentId: string | null) =>
             openPanel({
               type: "file_preview",

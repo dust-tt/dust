@@ -69,7 +69,10 @@ export type FilePreviewTarget =
   | { kind: "path"; filePath: string; commentId?: string }
   | { kind: "id"; fileId: string };
 
-const FILE_PREVIEW_COMMENT_PATTERN = /^(.+)@comment=([^/@]+)$/;
+const FILE_PREVIEW_COMMENT_SEPARATOR = "@comment=";
+const FILE_PREVIEW_COMMENT_PATTERN = new RegExp(
+  `^(.+)${FILE_PREVIEW_COMMENT_SEPARATOR}([^/@]+)$`
+);
 
 export function parseFilePreviewData(
   data: string | undefined
@@ -107,7 +110,7 @@ function filePreviewDataKey(target: FilePreviewTarget): string {
   switch (target.kind) {
     case "path":
       return target.commentId
-        ? `${target.filePath}@comment=${target.commentId}`
+        ? `${target.filePath}${FILE_PREVIEW_COMMENT_SEPARATOR}${target.commentId}`
         : target.filePath;
     case "id":
       return `${FILE_PREVIEW_FILE_ID_PREFIX}${target.fileId}`;
