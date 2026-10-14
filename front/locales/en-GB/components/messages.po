@@ -257,7 +257,7 @@ msgid "Guides & documentation"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Join the Slack community"
+msgid "Join the Slack Community"
 msgstr ""
 
 #: front/components/UserMenu.tsx

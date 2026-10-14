@@ -443,7 +443,7 @@ export function UserMenu({
                   }
                 />
                 <DropdownMenuItem
-                  label={t`Join the Slack community`}
+                  label={t`Join the Slack Community`}
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
