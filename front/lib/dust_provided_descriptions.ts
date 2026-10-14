@@ -44,7 +44,7 @@ const CODE_DEFINED_SKILL_DESCRIPTIONS: Record<
   frames: msg`Turn insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders.`,
   "go-deep": msg`Enable comprehensive analysis across company data, databases, and web sources — thorough analysis that may take several minutes.`,
   dust_pod_goal: msg`Keep a Pod's job moving with the next evidence-backed action`,
-  markdown_documents: msg`Write and edit Markdown documents that open in the editor, with images and Frames from the conversation or pod, and answer their comments.`,
+  markdown_documents: msg`Write and edit Markdown documents that open in the editor, with images, Frames and files from the conversation or pod, and answer their comments.`,
   mention_users: msg`Allow agents to mention and notify workspace users in conversations.`,
   pdf: msg`Read, OCR scans, extract text and tables, create, and edit PDFs in the Computer.`,
   pptx: msg`Read, edit, and create slide presentations`,

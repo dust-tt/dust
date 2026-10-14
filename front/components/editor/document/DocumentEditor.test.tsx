@@ -1743,7 +1743,7 @@ describe("Document file previews", () => {
   it("keeps a file preview mounted when the read-only preview re-renders", async () => {
     const renderPreview = () => (
       <DocumentEditor
-        initialContent={`${SOURCE_WITH_PREVIEWS}\n| A |\n| --- |\n| 1 |\n`}
+        initialContent={`${SOURCE_WITH_PREVIEWS}\n~~~\ncode\n~~~\n`}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
         resolveImageSource={NO_IMAGE_SOURCE}

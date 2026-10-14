@@ -1,8 +1,8 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
+import { DocumentFilePreviewDisplay } from "@app/components/editor/document/DocumentFilePreview";
 import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
 import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
-import { DocumentFilePreviewDisplay } from "@app/components/editor/document/DocumentFilePreview";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
@@ -11,12 +11,12 @@ import {
   extractAnchors,
   parseDfm,
 } from "@app/lib/markdown/dfm";
+import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
 import {
   FRAME_EMBED_COMPONENT_NAME,
   FRAME_EMBED_DIRECTIVE_NAME,
   parseFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
-import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
