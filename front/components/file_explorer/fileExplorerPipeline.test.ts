@@ -501,7 +501,7 @@ describe("getFileExplorerPipeline type filters", () => {
     ];
 
     const base = {
-      contentNodes: [] as const,
+      contentNodes: [],
       currentFolderPath: "",
       displayFramePackages: true,
       files,
