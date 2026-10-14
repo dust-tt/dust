@@ -18,7 +18,7 @@ use dfs_api::storage::{
 };
 use dfs_mount::{Errno, Remote};
 use dfs_protocol::{
-    ObjectId, ObjectRef, READ_MAX_BYTES,
+    ObjectId, ObjectRef, READ_MAX_BYTES, STAT_MAX_REFERENCES,
     rpc::{
         AllowGrant, CreateSessionRequest, CreateTenantRequest, DenyGrant, Grant, ObjectKind,
         dfs_client::DfsClient, grant,
@@ -32,7 +32,7 @@ const SUBJECT: &str = "u:mount-test";
 /// The content of the readable file, stored in its first block.
 const FILE_CONTENT: &[u8] = b"hello";
 /// More than one `Stat` request can carry.
-const MANY_REFERENCES: usize = 300;
+const MANY_REFERENCES: usize = STAT_MAX_REFERENCES + 4;
 
 /// The FDB network boots once per process and cannot restart once stopped, so every mount check
 /// runs under this one test, which holds the guard and drops it before the binary exits.

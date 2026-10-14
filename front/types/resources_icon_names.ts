@@ -207,6 +207,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ClickUpLogo",
   "CommandLineIcon",
   "ConfluenceLogo",
+  "ContentfulLogo",
   "ContentsquareLogo",
   "CostoryLogo",
   "CursorLogo",

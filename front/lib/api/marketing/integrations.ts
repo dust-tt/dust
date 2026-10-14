@@ -180,6 +180,8 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   pandadoc: "productivity",
   "pandadoc (europe)": "productivity",
   airbyte: "data",
+  contentful: "productivity",
+  "contentful (europe)": "productivity",
   n8n: "productivity",
   ahrefs: "data",
   webflow: "development",
