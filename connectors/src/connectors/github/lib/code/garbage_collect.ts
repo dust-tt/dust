@@ -10,10 +10,15 @@ import { heartbeat } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
-import { concurrentExecutor } from "@connectors/types";
+import { concurrentExecutor, withRetries } from "@connectors/types";
 import { Op } from "sequelize";
 
 const MAX_CONCURRENCY_DELETE = 10;
+
+// Large garbage collections issue thousands of deletes: a single slow one must not fail the whole
+// activity attempt and restart the collection.
+const DELETE_RETRIES = 3;
+const DELETE_DELAY_BETWEEN_RETRIES_MS = 5_000;
 
 export async function garbageCollectCodeSync(
   dataSourceConfig: DataSourceConfig,
@@ -38,12 +43,21 @@ export async function garbageCollectCodeSync(
       "GarbageCollectCodeSync: deleting files"
     );
 
+    const deleteDocumentWithRetries = withRetries(
+      logger,
+      deleteDataSourceDocument,
+      {
+        retries: DELETE_RETRIES,
+        delayBetweenRetriesMs: DELETE_DELAY_BETWEEN_RETRIES_MS,
+      }
+    );
+
     await concurrentExecutor(
       filesToDelete,
       async (f) => {
         await heartbeat();
 
-        await deleteDataSourceDocument(
+        await deleteDocumentWithRetries(
           dataSourceConfig,
           f.documentId,
           logger.bindings()
@@ -75,10 +89,21 @@ export async function garbageCollectCodeSync(
       "GarbageCollectCodeSync: deleting directories"
     );
 
+    const deleteFolderWithRetries = withRetries(
+      logger,
+      deleteDataSourceFolder,
+      {
+        retries: DELETE_RETRIES,
+        delayBetweenRetriesMs: DELETE_DELAY_BETWEEN_RETRIES_MS,
+      }
+    );
+
     await concurrentExecutor(
       directoriesToDelete,
       async (d) => {
-        await deleteDataSourceFolder({
+        await heartbeat();
+
+        await deleteFolderWithRetries({
           dataSourceConfig,
           folderId: d.internalId,
         });
