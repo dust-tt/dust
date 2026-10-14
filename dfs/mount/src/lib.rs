@@ -6,6 +6,7 @@
 //! The mount root is built by the mount itself: it lists the folders the caller configures.
 //! Operations inside dfs directories return `EOPNOTSUPP` until the server supports them.
 
+mod attributes;
 mod errno;
 mod fs;
 mod inodes;
