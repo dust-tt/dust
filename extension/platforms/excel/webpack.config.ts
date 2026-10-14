@@ -86,14 +86,10 @@ export const getConfig = async ({
         ),
       }
     : fileVars;
-  if (isDevelopment && !fileVars.WORKOS_AUTHKIT_URL) {
-    throw new Error("WORKOS_AUTHKIT_URL must be set in .env.development.");
-  }
   const signInProxy = isDevelopment
     ? getSignInProxy({
         addInOrigin: DEV_ADD_IN_ORIGIN,
         dustUrl: fileVars.DUST_US_URL,
-        authKitOrigin: fileVars.WORKOS_AUTHKIT_URL,
       })
     : null;
 

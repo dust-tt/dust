@@ -17,6 +17,9 @@ const DUST_API_PREFIXES = ["/api", "/sse", "/mcp"];
 const WORKOS_API_ORIGIN = "https://auth-api.dust.tt";
 const WORKOS_API_PREFIX = "/__wos";
 
+// The staging AuthKit host, which the local Dust uses.
+const AUTHKIT_ORIGIN = "https://energetic-venue-23-staging.authkit.app";
+
 export const AUTHKIT_MIRROR_PORT = 3015;
 
 // Pairs of `[upstream origin, local origin]`.
@@ -84,15 +87,13 @@ function restoreUpstreamOrigins(
 }
 
 function startAuthKitMirror({
-  authKitOrigin,
   serverOptions,
   rewrites,
 }: {
-  authKitOrigin: string;
   serverOptions: ServerOptions;
   rewrites: OriginRewrites;
 }) {
-  const upstream = new URL(authKitOrigin);
+  const upstream = new URL(AUTHKIT_ORIGIN);
 
   const server = https.createServer(serverOptions, (req, res) => {
     const proxyReq = https.request(
@@ -114,7 +115,7 @@ function startAuthKitMirror({
     proxyReq.on("error", (err) => {
       res.writeHead(502, { "content-type": "text/plain" });
       res.end(
-        `AuthKit mirror could not reach ${authKitOrigin}: ${err.message}`
+        `AuthKit mirror could not reach ${AUTHKIT_ORIGIN}: ${err.message}`
       );
     });
     req.pipe(proxyReq);
@@ -125,7 +126,7 @@ function startAuthKitMirror({
   });
   server.listen(AUTHKIT_MIRROR_PORT, () => {
     console.log(
-      `AuthKit mirror: https://localhost:${AUTHKIT_MIRROR_PORT} -> ${authKitOrigin}`
+      `AuthKit mirror: https://localhost:${AUTHKIT_MIRROR_PORT} -> ${AUTHKIT_ORIGIN}`
     );
   });
 }
@@ -135,14 +136,12 @@ function startAuthKitMirror({
 export function getSignInProxy({
   addInOrigin,
   dustUrl,
-  authKitOrigin,
 }: {
   addInOrigin: string;
   dustUrl: string;
-  authKitOrigin: string;
 }) {
   const rewrites: OriginRewrites = [
-    [authKitOrigin, `https://localhost:${AUTHKIT_MIRROR_PORT}`],
+    [AUTHKIT_ORIGIN, `https://localhost:${AUTHKIT_MIRROR_PORT}`],
     [WORKOS_API_ORIGIN, `${addInOrigin}${WORKOS_API_PREFIX}`],
   ];
 
@@ -175,6 +174,6 @@ export function getSignInProxy({
   return {
     proxy,
     startAuthKitMirror: (serverOptions: ServerOptions) =>
-      startAuthKitMirror({ authKitOrigin, serverOptions, rewrites }),
+      startAuthKitMirror({ serverOptions, rewrites }),
   };
 }
