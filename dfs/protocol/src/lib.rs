@@ -17,7 +17,8 @@ pub use reference::ObjectRef;
 /// Most references one `Stat` request may carry.
 pub const STAT_MAX_REFERENCES: usize = 256;
 
-/// Most UTF-8 bytes in an object name.
+/// Most UTF-8 bytes in an object name. Matches Linux `NAME_MAX` (255 bytes per path component), so
+/// every dfs name is a valid filename on a Linux mount.
 pub const NAME_MAX_BYTES: usize = 255;
 
 /// Whether `name` is a valid object name: 1 to `NAME_MAX_BYTES` UTF-8 bytes, without slash or NUL,
