@@ -751,6 +751,18 @@ describe("Document comments", () => {
     expect(marker.getAttribute("aria-current")).toBe("true");
   });
 
+  it("lifts the markers above the document content", async () => {
+    await renderDocument(SOURCE);
+
+    const marker = screen.getByRole("button", {
+      name: "Show comment by Daph, 1 message",
+    });
+    // jsdom has no layout, so this cannot check what a click hits. On narrow documents the
+    // content's right padding overlaps the markers' gutter and, without z-10, catches their
+    // clicks.
+    expect(marker.parentElement?.className).toContain("z-10");
+  });
+
   it("gives each comment of a line its own marker, stacked in the order the comments start", async () => {
     const thread = (id: string, name: string) =>
       `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote ${id}.\n`;
