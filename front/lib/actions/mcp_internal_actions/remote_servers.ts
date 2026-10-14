@@ -7015,6 +7015,123 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10056,
+    name: "Fireflies",
+    description:
+      "Fireflies tools to search meeting transcripts and summaries, read meeting analytics, and manage meeting sharing, privacy, channels and soundbites.",
+    url: "https://api.fireflies.ai/mcp",
+    icon: "FirefliesLogo",
+    documentationUrl:
+      "https://docs.fireflies.ai/getting-started/mcp-configuration",
+    connectionInstructions:
+      "Fireflies uses OAuth with dynamic client registration. Sign in with your Fireflies account to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      fireflies_search: "never_ask",
+      fireflies_fetch: "never_ask",
+      fireflies_get_transcript: "never_ask",
+      fireflies_get_transcripts: "never_ask",
+      fireflies_get_summary: "never_ask",
+      fireflies_get_active_meetings: "never_ask",
+      fireflies_get_analytics: "never_ask",
+      fireflies_list_channels: "never_ask",
+      fireflies_get_channel: "never_ask",
+      fireflies_get_soundbites: "never_ask",
+      fireflies_get_user: "never_ask",
+      fireflies_get_usergroups: "never_ask",
+      fireflies_get_user_contacts: "never_ask",
+      fireflies_get_rule_executions: "never_ask",
+      fireflies_share_meeting: "high",
+      fireflies_revoke_meeting_access: "high",
+      fireflies_update_meeting_privacy: "high",
+      fireflies_update_meeting_title: "high",
+      fireflies_move_meeting: "high",
+      fireflies_create_soundbite: "high",
+    },
+    toolDisplayLabels: {
+      fireflies_search: {
+        running: "Searching meetings on Fireflies",
+        done: "Searched meetings on Fireflies",
+      },
+      fireflies_fetch: {
+        running: "Fetching a meeting from Fireflies",
+        done: "Fetched a meeting from Fireflies",
+      },
+      fireflies_get_transcript: {
+        running: "Fetching a transcript from Fireflies",
+        done: "Fetched a transcript from Fireflies",
+      },
+      fireflies_get_transcripts: {
+        running: "Fetching transcripts from Fireflies",
+        done: "Fetched transcripts from Fireflies",
+      },
+      fireflies_get_summary: {
+        running: "Fetching a meeting summary from Fireflies",
+        done: "Fetched a meeting summary from Fireflies",
+      },
+      fireflies_get_active_meetings: {
+        running: "Fetching active meetings from Fireflies",
+        done: "Fetched active meetings from Fireflies",
+      },
+      fireflies_get_analytics: {
+        running: "Fetching analytics from Fireflies",
+        done: "Fetched analytics from Fireflies",
+      },
+      fireflies_list_channels: {
+        running: "Listing channels on Fireflies",
+        done: "Listed channels on Fireflies",
+      },
+      fireflies_get_channel: {
+        running: "Fetching a channel from Fireflies",
+        done: "Fetched a channel from Fireflies",
+      },
+      fireflies_get_soundbites: {
+        running: "Fetching soundbites from Fireflies",
+        done: "Fetched soundbites from Fireflies",
+      },
+      fireflies_get_user: {
+        running: "Fetching user details from Fireflies",
+        done: "Fetched user details from Fireflies",
+      },
+      fireflies_get_usergroups: {
+        running: "Fetching user groups from Fireflies",
+        done: "Fetched user groups from Fireflies",
+      },
+      fireflies_get_user_contacts: {
+        running: "Fetching contacts from Fireflies",
+        done: "Fetched contacts from Fireflies",
+      },
+      fireflies_get_rule_executions: {
+        running: "Fetching rule executions from Fireflies",
+        done: "Fetched rule executions from Fireflies",
+      },
+      fireflies_share_meeting: {
+        running: "Sharing a meeting on Fireflies",
+        done: "Shared a meeting on Fireflies",
+      },
+      fireflies_revoke_meeting_access: {
+        running: "Revoking meeting access on Fireflies",
+        done: "Revoked meeting access on Fireflies",
+      },
+      fireflies_update_meeting_privacy: {
+        running: "Updating meeting privacy on Fireflies",
+        done: "Updated meeting privacy on Fireflies",
+      },
+      fireflies_update_meeting_title: {
+        running: "Renaming a meeting on Fireflies",
+        done: "Renamed a meeting on Fireflies",
+      },
+      fireflies_move_meeting: {
+        running: "Moving meetings on Fireflies",
+        done: "Moved meetings on Fireflies",
+      },
+      fireflies_create_soundbite: {
+        running: "Creating a soundbite on Fireflies",
+        done: "Created a soundbite on Fireflies",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
