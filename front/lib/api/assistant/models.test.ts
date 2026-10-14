@@ -15,7 +15,10 @@ import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactor
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import {
@@ -34,7 +37,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import {
   GROK_4_5_MODEL_CONFIG,
-  GROK_4_6_MODEL_CONFIG,
+  GROK_4_7_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -473,24 +476,24 @@ describe("resolveModel", () => {
 });
 
 describe("pickPreferredLargeModel", () => {
-  it("prefers Grok 4.6 over previous Grok models", () => {
+  it("prefers Grok 4.7 over previous Grok models", () => {
     const selected = pickPreferredLargeModel([
       GROK_4_MODEL_CONFIG,
       GROK_4_5_MODEL_CONFIG,
-      GROK_4_6_MODEL_CONFIG,
+      GROK_4_7_MODEL_CONFIG,
     ]);
 
-    expect(selected.modelId).toBe(GROK_4_6_MODEL_CONFIG.modelId);
+    expect(selected.modelId).toBe(GROK_4_7_MODEL_CONFIG.modelId);
   });
 
   it("picks the first model in the preferred order", () => {
     const selected = pickPreferredLargeModel([
       GPT_5_5_MODEL_CONFIG,
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG,
     ]);
 
     expect(selected.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG.modelId
     );
   });
 
@@ -500,16 +503,16 @@ describe("pickPreferredLargeModel", () => {
     expect(selected.modelId).toBe(GPT_5_5_MODEL_CONFIG.modelId);
   });
 
-  it("prefers Sonnet 4.6 as the cost-effective pick under a cost_efficient cap", () => {
-    // Under a cost_efficient tier cap, Sonnet 4.6 (at low reasoning) remains
+  it("prefers Sonnet 5.5 as the cost-effective pick under a cost_efficient cap", () => {
+    // Under a cost_efficient tier cap, Sonnet 5.5 (at low reasoning) remains
     // the preferred selectable model over other cost-effective options.
     const selected = pickPreferredLargeModel([
       GPT_5_4_MINI_MODEL_CONFIG,
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG,
     ]);
 
     expect(selected.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG.modelId
     );
   });
 
@@ -518,7 +521,7 @@ describe("pickPreferredLargeModel", () => {
     const selected = pickPreferredLargeModel(models);
 
     expect(selected.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG.modelId
     );
   });
 });

@@ -7,7 +7,7 @@ import {
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_8_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { isModelId } from "@app/types/assistant/models/models";
@@ -26,7 +26,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import {
   GROK_4_5_MODEL_CONFIG,
-  GROK_4_6_MODEL_CONFIG,
+  GROK_4_7_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -164,10 +164,10 @@ export function getLargeWhitelistedModel(
 
 const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_5_MINI_MODEL_CONFIG,
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG,
   GEMINI_3_8_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  GROK_4_6_MODEL_CONFIG,
+  GROK_4_7_MODEL_CONFIG,
   GROK_4_5_MODEL_CONFIG,
 ];
 
