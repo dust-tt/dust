@@ -293,6 +293,8 @@ export async function createUserMessage(
 export interface AgentMessageModelResolution {
   resolvedModel: ResolvedRequestedModel;
   modelResolutionMethod: ModelResolutionMethodType;
+  // Run of the tier routing decision that picked the stream, billed with the agent message.
+  decisionRunId?: string;
 }
 
 export async function resolveModelForMentionedAgent(
@@ -556,7 +558,8 @@ export const createAgentMessages = async (
           resolution,
           `Missing model resolution for agent configuration ${configuration.sId}`
         );
-        const { resolvedModel, modelResolutionMethod } = resolution;
+        const { resolvedModel, modelResolutionMethod, decisionRunId } =
+          resolution;
 
         const agentMessageRow = await AgentMessageModel.create(
           {
@@ -570,6 +573,7 @@ export const createAgentMessages = async (
             resolvedModelId: resolvedModel.modelId,
             resolvedReasoningEffort: resolvedModel.reasoningEffort,
             modelResolutionMethod,
+            runIds: decisionRunId ? [decisionRunId] : null,
           },
           { transaction }
         );

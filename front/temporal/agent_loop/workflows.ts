@@ -352,7 +352,9 @@ export async function agentLoopWorkflow({
   // ask the user whether to continue.
   let creditSpendCheckpointPaused = false;
 
-  const runIds: string[] = [];
+  // Seeded with the runs made for the message before its loop started, so they are billed with
+  // this execution.
+  const runIds: string[] = [...(agentLoopArgs.dustRunIds ?? [])];
   const ongoingAgentLoop =
     authType.userId !== null && patched("track-user-agent-loops-in-redis")
       ? {

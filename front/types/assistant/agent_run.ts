@@ -151,6 +151,8 @@ export type AgentLoopArgs = {
 
   // RunIds from the specific agent loop execution. Used by tracking workflows
   // to process only this execution's runs (not all accumulated runs on the message).
+  // At launch, the runs made for the message before its loop started, which the
+  // execution then bills as its own.
   dustRunIds?: string[];
 
   // The step at which this agent loop execution started. Used to filter MCP actions
