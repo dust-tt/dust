@@ -48,6 +48,8 @@ export function modelForUsage(
     ...model,
     provider_id: usage.providerId,
     model_id: usage.modelId,
+    // The effort the call ran at, which a per-message effort change can move during a message.
+    reasoning_effort: usage.reasoningEffort ?? model.reasoning_effort,
   };
 }
 
