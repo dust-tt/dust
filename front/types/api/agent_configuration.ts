@@ -39,7 +39,7 @@ export const GetAgentConfigurationsQuerySchema = z.object({
 });
 
 export const GetAgentConfigurationsHistoryQuerySchema = z.object({
-  limit: z.number().int().min(1).optional(),
+  limit: z.preprocess(parseIntParam, z.number().int().min(1).optional()),
 });
 
 // Data sources
