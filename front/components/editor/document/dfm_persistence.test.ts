@@ -875,6 +875,9 @@ describe("TipTap's token parsing step", () => {
     '> Quoted [link](https://example.com "Title").\n>\n> - in a list\n',
     "```ts\nconst a = 1;\n```\n\nText with `code`.\n\n---\n\nAfter a rule.\n",
     "Before ![x](pod-abc/x.png) after.\n\n![Chart](pod-abc/chart.png)\n",
+    "| Left | Center | Right |\n| :--- | :---: | ---: |\n| **a** | `b` | c |\n",
+    'Intro\n\n::embed_frame{path="pod-abc/x.tsx"}\n\n- ::embed_frame{path="pod-abc/y.tsx"}\n',
+    'See :preview_file{path="pod-abc/report.pdf" title="Q3 report" contentType="application/pdf"} for details.\n',
     `Hi :comment-start{id=c1}there:comment-end{id=c1} now.\n\n${OPEN_THREAD}`,
   ])("loads and saves as TipTap's public parse does: %j", (source) => {
     publicParse.mockClear();
