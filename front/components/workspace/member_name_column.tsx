@@ -97,7 +97,7 @@ export function buildMemberEmailColumn<TRow extends MemberNameRow>(): ColumnDef<
   return {
     id: "email" as const,
     header: () => <Trans>Email</Trans>,
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (row) => row.email ?? "",
     cell: (info: CellContext<TRow, string>) => (
       <DataTable.CellContent>
