@@ -473,11 +473,11 @@ msgstr "teams"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "\"Sent via Agent\" Slack footer"
-msgstr "Pied de page Slack « Sent via Agent »"
+msgstr "Bas de page Slack « Sent via Agent »"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "remove footer user credentials sent via agent"
-msgstr "supprimer pied de page identifiants utilisateur sent via agent"
+msgstr "supprimer bas de page identifiants utilisateur sent via agent"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "Email agents"

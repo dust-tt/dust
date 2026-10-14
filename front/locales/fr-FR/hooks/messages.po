@@ -556,11 +556,11 @@ msgstr "Impossible de mettre à jour la suggestion de compétence"
 
 #: front/hooks/useSlackPersonalFooterRemovalToggle.ts
 msgid "Failed to update the Slack footer removal setting"
-msgstr "Impossible de mettre à jour le paramètre de retrait du pied de page Slack"
+msgstr "Impossible de mettre à jour le paramètre de retrait du bas de page Slack"
 
 #: front/hooks/useSlackPersonalFooterRemovalToggle.ts
 msgid "Could not update the Slack footer removal setting."
-msgstr "Impossible de mettre à jour le paramètre de retrait du pied de page Slack."
+msgstr "Impossible de mettre à jour le paramètre de retrait du bas de page Slack."
 
 #: front/hooks/useSoundNotification.ts
 msgid "Dust — Action required"
