@@ -34,7 +34,8 @@ impl Attributes {
     }
 }
 
-/// A dfs timestamp, in Unix milliseconds. A missing timestamp is the Unix epoch.
+/// Converts a dfs timestamp, already in milliseconds since the Unix epoch, to the `SystemTime` that
+/// `Attributes` (and FUSE libraries) use. A missing timestamp is the Unix epoch.
 fn time(milliseconds: Option<u64>) -> SystemTime {
     UNIX_EPOCH + Duration::from_millis(milliseconds.unwrap_or(0))
 }
