@@ -22,9 +22,11 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
+import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -60,6 +62,7 @@ export interface RunUsageType {
 
 export interface RunUsageWithRunKeyType extends RunUsageType {
   inferenceProvider: string | null;
+  reasoningEffort: ReasoningEffort | null;
   region: Region | null;
   runKey: string | null;
   runUsageModelId: ModelId;
@@ -81,6 +84,7 @@ interface PendingRunUsageParameters {
   inferenceProvider: string;
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
+  reasoningEffort: ReasoningEffort;
   region: Region | null;
   usageType: UsageType;
   useWorkspaceCredentials: boolean;
@@ -122,6 +126,7 @@ export class RunResource extends BaseResource<RunModel> {
           inferenceProvider: usage.inferenceProvider,
           region: usage.region,
           modelId: usage.modelId,
+          reasoningEffort: usage.reasoningEffort,
           promptTokens: 0,
           completionTokens: 0,
           reasoningTokens: null,
@@ -347,6 +352,10 @@ export class RunResource extends BaseResource<RunModel> {
       completionTokens: usage.completionTokens,
       reasoningTokens: usage.reasoningTokens,
       inferenceProvider: usage.inferenceProvider,
+      reasoningEffort:
+        usage.reasoningEffort && isReasoningEffort(usage.reasoningEffort)
+          ? usage.reasoningEffort
+          : null,
       region: usage.region,
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,

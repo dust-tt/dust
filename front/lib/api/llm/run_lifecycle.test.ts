@@ -227,6 +227,7 @@ function makeLifecycleParameters(): Parameters<
     inferenceProvider: "openai-responses",
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
     providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+    reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
     region: "us" as const,
     usageType: USAGE_TYPE_USER,
   };

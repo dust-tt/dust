@@ -109,6 +109,7 @@ export class RunFactory {
         inferenceProvider: GPT_5_MINI_MODEL_CONFIG.providerId,
         modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
         region: null,
         usageType: USAGE_TYPE_USER,
         useWorkspaceCredentials: false,

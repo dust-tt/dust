@@ -957,6 +957,7 @@ export abstract class LLM<
       inferenceProvider: this.metadata.inferenceProvider,
       modelId: this.modelId,
       providerId: this.modelConfig.providerId,
+      reasoningEffort: this.getReasoningEffortInEffect(streamParameters),
       region: this.metadata.region ?? null,
       usageType,
     });
