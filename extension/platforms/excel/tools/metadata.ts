@@ -14,9 +14,7 @@ Example:
   { "expression": "workbook.worksheets.load('name')" },
   { "expression": "workbook.worksheets.getItem('Sheet1').getRange('A1:C10').load(['address', 'values', 'format/fill/color'])" },
   { "expression": "workbook.tables.getCount()" }
-] }
-
-On a large sheet, read the address of the used range first. Then read the values in blocks.`;
+] }`;
 
 const readSchema = z.object({
   expression: z
@@ -38,7 +36,9 @@ export const EXCEL_TOOLS_METADATA = [
         .array(readSchema)
         .min(1)
         .max(MAX_READS)
-        .describe("The reads to run, in one batch."),
+        .describe(
+          "The reads to run. They are sent to Excel together, in one sync."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
