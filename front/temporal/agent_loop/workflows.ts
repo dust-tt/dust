@@ -157,13 +157,11 @@ async function runNonRetryableToolActivity(
   try {
     return await runActivity(authType, activityArgs);
   } catch (err) {
-    if (
-      !isToolActivityHeartbeatTimeout(err) ||
-      err.activityId === undefined ||
-      !patched("retry-never-started-tool-activity")
-    ) {
+    if (!isToolActivityHeartbeatTimeout(err) || err.activityId === undefined) {
       throw err;
     }
+
+    deprecatePatch("retry-never-started-tool-activity");
 
     const { workflowId, runId } = workflowInfo();
     const logContext = {
