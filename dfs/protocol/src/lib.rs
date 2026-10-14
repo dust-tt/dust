@@ -17,12 +17,17 @@ pub use reference::ObjectRef;
 /// Most references one `Stat` request may carry.
 pub const STAT_MAX_REFERENCES: usize = 256;
 
-/// Most UTF-8 bytes in an object name. Matches Linux `NAME_MAX` (255 bytes per path component), so
-/// every dfs name is a valid filename on a Linux mount.
+/// Most UTF-8 bytes in an object name. Equal to Linux `NAME_MAX` (255 bytes per path component), so
+/// every dfs name is a valid filename on a Linux mount. Not taken from `libc`, which does not define
+/// `NAME_MAX` on every platform.
 pub const NAME_MAX_BYTES: usize = 255;
 
 /// Whether `name` is a valid object name: 1 to `NAME_MAX_BYTES` UTF-8 bytes, without slash or NUL,
 /// and neither `.` nor `..`.
+/**
+ * @cc [owner:fontanierh,label:api] proto-name-rule
+ * `is_valid_name` MUST accept exactly the names `dfs-attribute-name` in `proto/dfs.proto` allows.
+ */
 pub fn is_valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= NAME_MAX_BYTES

@@ -61,8 +61,12 @@ pub struct Fs {
 }
 
 impl Fs {
-    /// Fails with `EINVAL` if a folder name is not a valid basename, or if a name or a folder
-    /// appears twice: a directory must not have two names.
+    /// A directory must not have two names, so each folder appears once.
+    /**
+     * @cc [owner:fontanierh,label:product] valid-folders
+     * `new` MUST fail with `EINVAL` unless every folder name is a valid object name, no name appears
+     * twice, and no folder ID appears twice.
+     */
     pub fn new(remote: Remote, folders: Vec<Folder>) -> Result<Self, Errno> {
         let mut names = HashSet::new();
         let mut ids = HashSet::new();
