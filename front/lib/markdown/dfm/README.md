@@ -62,7 +62,7 @@ inside a fenced code block or a code span is text, not a directive, so this READ
 examples would survive inside a DFM file. Everything the codec does not define passes through
 untouched. Images are ordinary Markdown too: a document shows a file of its conversation or pod
 with its path as the destination, `![Revenue](pod-<id>/charts/revenue.png)`, or a file by its id,
-`![Chart](fil_<id>)`. A Frame is embedded on a line of its own, `::frame{path="pod-<id>/dashboards/revenue.tsx"}`
+`![Chart](fil_<id>)`. A Frame is embedded on a line of its own, `::embed_frame{path="pod-<id>/dashboards/revenue.tsx"}`
 (`lib/markdown/frame_embed.ts`).
 
 **3. Annotations** is a `:::annotations` container at the very end of the file. It holds one

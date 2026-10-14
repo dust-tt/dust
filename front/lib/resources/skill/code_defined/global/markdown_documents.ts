@@ -54,7 +54,7 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 - Readers see an image only if they can read its file. In a document of a pod, embed images from the pod: copy a conversation's image into the pod, next to the document, with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_COPY_ACTION_NAME)}\`, then embed the copy's path.
 - Write alt text that says what the image shows.
 
-**Frames.** To show a Frame itself in a document, live and interactive, embed it on its own line, with a blank line before and after: \`::frame{path="pod-<id>/dashboards/revenue.tsx"}\`.
+**Frames.** To show a Frame itself in a document, live and interactive, embed it on its own line, with a blank line before and after: \`::embed_frame{path="pod-<id>/dashboards/revenue.tsx"}\`.
 - \`path\` is the Frame file's full path, as for images, and the only attribute. Anything else on the line keeps it as text.
 - Readers see the Frame only if they can read its file. In a document of a pod, embed a Frame of the pod.
 - Never write a Frame's code in the document: create the Frame as a file, then embed its path.
@@ -96,7 +96,7 @@ export const getMarkdownDocumentsInstructions = (
  * when skills are resolved without the run's user message. It MUST NOT be offered by itself in
  * other workspaces. Its instructions MUST tell agents how to write a document the editor can open,
  * how to embed an image by the file path `resolveDocumentImageSource` displays, how to embed a
- * Frame with the `::frame` line the editor reads, and to read and
+ * Frame with the `::embed_frame` line the editor reads, and to read and
  * change an existing document only with the `documents` tools, never the file tools; and, if and
  * only if the run's user message opens as that heading does, how to recognize and answer that
  * message and find the thread it omits in the document. It MUST bring the user mention tools

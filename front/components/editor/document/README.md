@@ -131,10 +131,10 @@ picked.
 
 ## Frames
 
-A line holding exactly `::frame{path="…"}` embeds a Frame: a `frameEmbed` node on its own line, keeping
+A line holding exactly `::embed_frame{path="…"}` embeds a Frame: a `frameEmbed` node on its own line, keeping
 its path. Anything else on the line, another attribute, or the line opening a list item keeps it
-as text, and text written back with such a line escapes it (`\::frame{`, `DocumentParagraph`) so
-it reopens as text. The host's optional
+as text. Text reading as such a line saves as `::embed\_frame{…}`, since the editor escapes `_` in
+text, so it reopens as text. The host's optional
 `renderFrame` displays it, in the editor and in the read-only preview; events inside it go to the
 Frame, never the editor. The file preview renders the Frame inline in a 600px high box, after
 loading it from its path through the file API, so only readers of the Frame's
@@ -154,7 +154,6 @@ the embed shows its path.
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
 | `DocumentTable.ts` | The `table` node, its rows and cells, and its GFM Markdown. |
 | `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `frameEmbed` node, its Markdown, and the host's renderers its view reads. |
-| `DocumentParagraph.ts` | StarterKit's paragraph, writing a `::frame` line of its text escaped. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the live status and the agent at work. |

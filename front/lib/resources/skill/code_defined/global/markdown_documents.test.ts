@@ -67,7 +67,7 @@ describe("markdownDocumentsSkill", () => {
         "![Revenue by quarter](pod-<id>/charts/revenue.png)"
       );
       expect(instructions).toContain(
-        '::frame{path="pod-<id>/dashboards/revenue.tsx"}'
+        '::embed_frame{path="pod-<id>/dashboards/revenue.tsx"}'
       );
       expect(instructions).toContain(
         getPrefixedToolName(FILES_SERVER_NAME, FILES_RESOLVE_ACTION_NAME)

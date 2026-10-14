@@ -38,7 +38,7 @@ interface MarkdownNode {
   children?: MarkdownNode[];
 }
 
-// The renderer reads any `::frame` leaf directive; the editor reads only the exact line
+// The renderer reads any `::embed_frame` leaf directive; the editor reads only the exact line
 // `parseFrameEmbedDirective` accepts, at the start of a top-level line and never opening a list
 // item, so the preview re-reads the directive's source the same way and shows anything else as
 // the text the editor keeps.

@@ -1367,7 +1367,7 @@ describe("Document tables", () => {
 
 describe("Document Frame embeds", () => {
   const SOURCE_WITH_FRAME =
-    'Intro\n\n::frame{path="pod-abc/dashboards/revenue.tsx"}\n\nOutro\n';
+    'Intro\n\n::embed_frame{path="pod-abc/dashboards/revenue.tsx"}\n\nOutro\n';
 
   const renderFrames = async (renderFrame?: DocumentProps["renderFrame"]) => {
     const { container } = render(
@@ -1420,7 +1420,7 @@ describe("Document Frame embeds", () => {
     expect(
       dom.editor
         .getMarkdown()
-        .match(/::frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
+        .match(/::embed_frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
     ).toHaveLength(2);
   });
   it("does not paste a Frame whose path it cannot write", async () => {
@@ -1462,14 +1462,14 @@ describe("Document Frame embeds", () => {
 
   it("shows in the read-only preview only the Frames the editor reads", async () => {
     const rejected = [
-      '::frame{path="pod-abc/b.tsx" title="B"}',
-      "::frame{path=pod-abc/c.tsx}",
-      '::frame[D]{path="pod-abc/d.tsx"}',
-      '   ::frame{path="pod-abc/e.tsx"}',
+      '::embed_frame{path="pod-abc/b.tsx" title="B"}',
+      "::embed_frame{path=pod-abc/c.tsx}",
+      '::embed_frame[D]{path="pod-abc/d.tsx"}',
+      '   ::embed_frame{path="pod-abc/e.tsx"}',
     ];
     render(
       <DocumentEditor
-        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::frame{path="pod-abc/quoted.tsx"}\n\n- ::frame{path="pod-abc/listed.tsx"}\n\n| A |\n| --- |\n| 1 |\n`}
+        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::embed_frame{path="pod-abc/quoted.tsx"}\n\n- ::embed_frame{path="pod-abc/listed.tsx"}\n\n| A |\n| --- |\n| 1 |\n`}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
         resolveImageSource={NO_IMAGE_SOURCE}
@@ -1484,7 +1484,7 @@ describe("Document Frame embeds", () => {
       expect(screen.getByText(line.trim())).toBeDefined();
     }
     expect(
-      screen.getByText('::frame{path="pod-abc/listed.tsx"}')
+      screen.getByText('::embed_frame{path="pod-abc/listed.tsx"}')
     ).toBeDefined();
   });
 });

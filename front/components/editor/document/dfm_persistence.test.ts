@@ -560,9 +560,9 @@ describe("saveDfm", () => {
 
   it("round-trips Frame embeds with their path", () => {
     for (const source of [
-      '::frame{path="pod-abc/dashboards/revenue.tsx"}\n',
-      '# Report\n\n::frame{path="conversation-c1/a &amp; b.tsx"}\n\nText.\n',
-      'Intro\n\n::frame{path="pod-abc/x.tsx"}\n\n::frame{path="pod-abc/y.tsx"}\n',
+      '::embed_frame{path="pod-abc/dashboards/revenue.tsx"}\n',
+      '# Report\n\n::embed_frame{path="conversation-c1/a &amp; b.tsx"}\n\nText.\n',
+      'Intro\n\n::embed_frame{path="pod-abc/x.tsx"}\n\n::embed_frame{path="pod-abc/y.tsx"}\n',
     ]) {
       expect(roundTrip(source)).toBe(source);
       expect(() =>
@@ -573,16 +573,16 @@ describe("saveDfm", () => {
 
   it("reads a Frame embed only from a line holding the directive alone", () => {
     for (const source of [
-      'See ::frame{path="pod-abc/x.tsx"} here.\n',
-      'See::frame{path="pod-abc/x.tsx"}\n',
-      '::frame{path="pod-abc/x.tsx" title="X"}\n',
+      'See ::embed_frame{path="pod-abc/x.tsx"} here.\n',
+      'See::embed_frame{path="pod-abc/x.tsx"}\n',
+      '::embed_frame{path="pod-abc/x.tsx" title="X"}\n',
     ]) {
       expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
     }
   });
 
   it("writes text that reads as a Frame embed so it reopens as text", () => {
-    const line = '::frame{path="pod-abc/x.tsx"}';
+    const line = '::embed_frame{path="pod-abc/x.tsx"}';
     for (const paragraph of [
       [{ type: "text", text: line }],
       [
@@ -598,7 +598,7 @@ describe("saveDfm", () => {
       if (saved.isErr()) {
         throw new Error(saved.error);
       }
-      expect(saved.value).toContain(`\\${line}`);
+      expect(saved.value).toContain(line.replace("_", "\\_"));
       expect(JSON.stringify(load(saved.value).content)).not.toContain(
         "frameEmbed"
       );
@@ -606,9 +606,9 @@ describe("saveDfm", () => {
   });
 
   it("reads a Frame line opening a list item as its text", () => {
-    const source = '- ::frame{path="pod-abc/x.tsx"}\n';
+    const source = '- ::embed_frame{path="pod-abc/x.tsx"}\n';
     expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
-    expect(roundTrip(source)).toBe('- \\::frame{path="pod-abc/x.tsx"}\n');
+    expect(roundTrip(source)).toBe('- ::embed\\_frame{path="pod-abc/x.tsx"}\n');
   });
 
   it("refuses content the editor cannot write as Markdown", () => {

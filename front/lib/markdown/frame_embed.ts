@@ -1,22 +1,15 @@
 import escape from "lodash/escape";
 import unescape from "lodash/unescape";
 
-export const FRAME_EMBED_DIRECTIVE_NAME = "frame";
+export const FRAME_EMBED_DIRECTIVE_NAME = "embed_frame";
 export const FRAME_EMBED_COMPONENT_NAME = "frame_embed";
 
 const FRAME_EMBED_DIRECTIVE_REGEX = new RegExp(
   String.raw`^::${FRAME_EMBED_DIRECTIVE_NAME}\{path="((?:[^"&<>'\n]|&(?:amp|lt|gt|quot|#39);)+)"\}[ \t]*(?:\n|$)`
 );
 
-const FRAME_EMBED_DIRECTIVE_START = String.raw`::${FRAME_EMBED_DIRECTIVE_NAME}\{`;
-
 const FRAME_EMBED_DIRECTIVE_START_REGEX = new RegExp(
-  String.raw`\n${FRAME_EMBED_DIRECTIVE_START}`
-);
-
-const FRAME_EMBED_LINE_START_REGEX = new RegExp(
-  String.raw`(^|\n)(${FRAME_EMBED_DIRECTIVE_START})`,
-  "g"
+  String.raw`\n::${FRAME_EMBED_DIRECTIVE_NAME}\{`
 );
 
 // marked looks for the block that interrupts a paragraph in the paragraph's source after its first
@@ -29,12 +22,12 @@ export function findFrameEmbedDirective(src: string): number {
 
 /**
  * @cc [owner:tdraier,label:product] frame-embed-directive
- * A frame embed MUST be read only from a line holding exactly `::frame{path="<path>"}`, trailing
- * spaces aside, its path HTML-escaped and non-empty; anything else MUST NOT parse, so a writer
- * never drops what the directive does not define. `serializeFrameEmbedDirective` MUST write a
- * line this function reads back to the same path for any path `isFrameEmbedPath` accepts.
- * `escapeFrameEmbedLines` MUST leave no line opening with `::frame{`, and its output MUST read
- * back as Markdown text unchanged.
+ * A frame embed MUST be read only from a line holding exactly `::embed_frame{path="<path>"}`,
+ * trailing spaces aside, its path HTML-escaped and non-empty; anything else MUST NOT parse, so a
+ * writer never drops what the directive does not define. `serializeFrameEmbedDirective` MUST write
+ * a line this function reads back to the same path for any path `isFrameEmbedPath` accepts. The
+ * directive name MUST keep a `_`, which the editor writes escaped in text, so text that reads as
+ * the directive saves as `::embed\_frame` and reopens as text.
  */
 export function parseFrameEmbedDirective(
   src: string
@@ -49,8 +42,4 @@ export function serializeFrameEmbedDirective(path: string): string {
 
 export function isFrameEmbedPath(path: string): boolean {
   return path.length > 0 && !/[\r\n]/.test(path);
-}
-
-export function escapeFrameEmbedLines(markdown: string): string {
-  return markdown.replace(FRAME_EMBED_LINE_START_REGEX, "$1\\$2");
 }
