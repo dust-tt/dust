@@ -29,6 +29,7 @@ import {
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import { makeMetronomePacer } from "@app/lib/metronome/pacing";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
@@ -49,22 +50,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { makeScript } from "./helpers";
 
-// Metronome publishes an 11 RPS API limit. Stay well under it so an audit run
-// never adds rate-limit pressure to production traffic on the same key.
-const METRONOME_MAX_RPS = 8;
-const METRONOME_MIN_INTERVAL_MS = 1000 / METRONOME_MAX_RPS;
-let metronomeNextSlotAt = 0;
-
-async function paceMetronome<T>(fn: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const slot = Math.max(now, metronomeNextSlotAt);
-  metronomeNextSlotAt = slot + METRONOME_MIN_INTERVAL_MS;
-  const wait = slot - now;
-  if (wait > 0) {
-    await new Promise((r) => setTimeout(r, wait));
-  }
-  return fn();
-}
+const paceMetronome = makeMetronomePacer({ maxRps: 8 });
 
 const setDiff = (a: string[], b: Set<string>): string[] =>
   a.filter((x) => !b.has(x));

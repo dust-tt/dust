@@ -10,6 +10,7 @@ import {
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
 } from "@app/lib/metronome/constants";
+import type { PaceFn } from "@app/lib/metronome/pacing";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
@@ -93,10 +94,7 @@ export interface SeatCreditAdjustment {
   kind: "empty_stray" | "carry_consumption";
 }
 
-// Wraps each Metronome call so a bulk caller (the backfill script over ~200
-// workspaces) can rate-limit; defaults to a passthrough for the single-workspace
-// webhook path.
-export type PaceFn = <T>(fn: () => Promise<T>) => Promise<T>;
+// Defaults to a passthrough for the single-workspace webhook path.
 const NO_PACING: PaceFn = (fn) => fn();
 
 export interface StackedSeatCreditsSummary {

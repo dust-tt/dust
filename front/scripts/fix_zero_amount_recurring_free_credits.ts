@@ -1,3 +1,4 @@
+import { makeMetronomePacer } from "@app/lib/metronome/pacing";
 /**
  * List (and optionally fix) recurring monthly/annual free credits in
  * Metronome whose currently-active segment has amount = 0.
@@ -42,22 +43,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
-// Metronome publishes an 11 RPS API limit. Cap the script at 10 RPS to leave
-// headroom for concurrent production traffic on the same API key.
-const METRONOME_MAX_RPS = 10;
-const METRONOME_MIN_INTERVAL_MS = 1000 / METRONOME_MAX_RPS;
-let metronomeNextSlotAt = 0;
-
-async function paceMetronome<T>(fn: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const slot = Math.max(now, metronomeNextSlotAt);
-  metronomeNextSlotAt = slot + METRONOME_MIN_INTERVAL_MS;
-  const wait = slot - now;
-  if (wait > 0) {
-    await new Promise((r) => setTimeout(r, wait));
-  }
-  return fn();
-}
+const paceMetronome = makeMetronomePacer();
 
 type Cadence = "MONTHLY" | "ANNUAL";
 

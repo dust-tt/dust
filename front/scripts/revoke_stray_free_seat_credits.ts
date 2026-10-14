@@ -23,6 +23,7 @@ import {
   revokePerUserCustomerCredit,
 } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
+import { makeMetronomePacer } from "@app/lib/metronome/pacing";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
@@ -31,22 +32,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
-// Metronome publishes an 11 RPS API limit. Cap this script well under it to
-// leave headroom for concurrent production traffic on the same API key.
-const METRONOME_MAX_RPS = 8;
-const METRONOME_MIN_INTERVAL_MS = 1000 / METRONOME_MAX_RPS;
-let metronomeNextSlotAt = 0;
-
-async function paceMetronome<T>(fn: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const slot = Math.max(now, metronomeNextSlotAt);
-  metronomeNextSlotAt = slot + METRONOME_MIN_INTERVAL_MS;
-  const wait = slot - now;
-  if (wait > 0) {
-    await new Promise((r) => setTimeout(r, wait));
-  }
-  return fn();
-}
+const paceMetronome = makeMetronomePacer({ maxRps: 8 });
 
 async function revokeStrayFreeSeatCreditsForWorkspace(
   workspace: LightWorkspaceType,
