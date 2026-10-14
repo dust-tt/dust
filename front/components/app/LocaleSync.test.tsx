@@ -1,4 +1,4 @@
-import { LocaleGate } from "@app/components/app/LocaleGate";
+import { LocaleSync } from "@app/components/app/LocaleSync";
 import { formatNumber, setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import { setLocaleOverride } from "@app/lib/i18n/locale_override";
@@ -33,15 +33,15 @@ vi.mock("@app/components/dev/devModeConstants", () => ({
 
 function localeSync(locale: SupportedLocale) {
   return (
-    <LocaleGate locale={locale} fallback={<span>Loading probe</span>}>
+    <LocaleSync locale={locale} fallback={<span>Loading probe</span>}>
       <span>
         <Trans>Save</Trans>
       </span>
-    </LocaleGate>
+    </LocaleSync>
   );
 }
 
-describe("LocaleGate", () => {
+describe("LocaleSync", () => {
   beforeAll(async () => {
     await loadCatalog("fr-FR");
     await loadCatalog("en-GB");

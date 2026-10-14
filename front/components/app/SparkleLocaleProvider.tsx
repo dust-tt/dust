@@ -14,7 +14,7 @@ interface SparkleLocaleProviderProps {
  * `getSparkleLocale` maps front's active locale to, and switch in the same render as front's
  * messages. Front MUST preload that sparkle locale before activating its own (see
  * `useLocaleSync`), otherwise sparkle renders English. Every app root that mounts `UserLocaleSync`
- * or `LocaleGate` MUST mount it, otherwise sparkle stays in English while front switches locale.
+ * or `LocaleSync` MUST mount it, otherwise sparkle stays in English while front switches locale.
  */
 /**
  * @cc [owner:ykmsd,label:product] sparkle-formats-in-front-format-locale

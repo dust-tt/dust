@@ -31,8 +31,7 @@ vi.mock("@app/lib/swr/workspaces", () => ({
 function buildJoinData(): GetJoinResponseBody {
   return {
     onboardingType: "email_invite",
-    workspace: { sId: "w_test", name: "Acme" },
-    workspaceLocale: "fr-FR",
+    workspace: { sId: "w_test", name: "Acme", locale: "fr-FR" },
     signInUrl: "https://example.com/sign-in",
     userExists: false,
   };

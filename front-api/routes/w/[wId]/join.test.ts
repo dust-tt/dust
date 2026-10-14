@@ -61,16 +61,15 @@ describe("GET /api/w/:wId/join", () => {
     expect(response.status).toBe(200);
     const data = (await response.json()) as {
       onboardingType: string;
-      workspace: { sId: string };
-      workspaceLocale: string;
+      workspace: { sId: string; name: string; locale: string };
       signInUrl: string;
     };
     expect(data.onboardingType).toBe("email_invite");
     expect(data.workspace).toEqual({
       sId: workspace.sId,
       name: workspace.name,
+      locale: "en-US",
     });
-    expect(data.workspaceLocale).toBe("en-US");
     expect(data.signInUrl).toBeDefined();
   });
 
@@ -87,8 +86,10 @@ describe("GET /api/w/:wId/join", () => {
     const response = await joinRequest(workspace.sId, { t: token });
 
     expect(response.status).toBe(200);
-    const data = (await response.json()) as { workspaceLocale: string };
-    expect(data.workspaceLocale).toBe("fr-FR");
+    const data = (await response.json()) as {
+      workspace: { locale: string };
+    };
+    expect(data.workspace.locale).toBe("fr-FR");
   });
 
   it("returns 404 for an invite token belonging to another workspace", async () => {

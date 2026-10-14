@@ -24,6 +24,13 @@ interface UserLocaleSyncProps {
  * locale) when the `localisation` flag is disabled, and the `userLocale` of `useUserLocale`
  * otherwise. It MUST be set before the UI locale is activated.
  */
+/**
+ * @cc [owner:sfriquet,label:product;react] locale-switch-never-blocks-rendering
+ * Rendering MUST NOT wait for the user locale or its catalog: the previously active locale stays
+ * active until the new catalog is loaded (see `stale-or-failed-load-not-activated`). Loading a
+ * catalog is a background sync exempt from `async-network-loading-state`: it MUST NOT show a
+ * loading state of its own.
+ */
 export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   const owner = useWorkspace();
   const { hasFeature } = useFeatureFlags();

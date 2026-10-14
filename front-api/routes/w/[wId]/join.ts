@@ -20,10 +20,8 @@ interface GetJoinErrorBody {
 }
 
 /**
- * Mounted at /api/w/:wId/join (no workspace auth — public endpoint).
- *
  * @cc [owner:ykmsd,label:product] join-locale-is-workspace-locale
- * The visitor of the join page has no Dust session, so the `workspaceLocale` of the response MUST
+ * The visitor of the join page has no Dust session, so the `workspace.locale` of the response MUST
  * be the locale of the workspace they are joining. It MUST NOT depend on the browser's locale, so
  * that the page renders in the same locale as the invitation email (see
  * `locale-of-the-notified-workspace`).
@@ -67,7 +65,7 @@ app.get(
       });
     }
 
-    const workspace = workspaceResource.toPublicJSON();
+    const workspace = workspaceResource.toInviteeJSON();
     const workspaceDomains = await workspaceResource.getVerifiedDomains();
 
     const token = isString(t) ? t : null;
@@ -150,7 +148,6 @@ app.get(
     return ctx.json({
       onboardingType,
       workspace,
-      workspaceLocale: workspaceResource.locale,
       signInUrl,
       userExists,
     });

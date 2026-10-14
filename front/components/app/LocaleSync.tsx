@@ -6,7 +6,7 @@ import { DEFAULT_LOCALE, PSEUDO_LOCALE } from "@app/types/locale";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
-interface LocaleGateProps {
+interface LocaleSyncProps {
   locale: SupportedLocale;
   // Rendered until the resolved locale is active.
   fallback: ReactNode;
@@ -24,7 +24,7 @@ interface LocaleGateProps {
  * locale changes. Once the load settles, `children` MUST be rendered, even when it failed and the
  * previous locale stays active.
  */
-export function LocaleGate({ locale, fallback, children }: LocaleGateProps) {
+export function LocaleSync({ locale, fallback, children }: LocaleSyncProps) {
   const localeOverride = useLocaleOverride();
   const resolvedLocale = localeOverride ?? locale;
   const formatLocale =
