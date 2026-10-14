@@ -1155,6 +1155,9 @@ const ConversationListItem = memo(
     }, []);
 
     const conversationLabel = getConversationDisplayTitle(conversation);
+    const dotStatus = showStatusDot
+      ? getConversationDotStatus(conversation)
+      : "idle";
 
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
@@ -1198,15 +1201,13 @@ const ConversationListItem = memo(
       <NavigationListItem
         key={conversation.sId}
         selected={activeConversationId === conversation.sId}
-        status={showStatusDot ? getConversationDotStatus(conversation) : "idle"}
-        label={conversationLabel}
-        labelAnimation={
-          showTypingAnimation
-            ? "typing"
-            : isAgentLoopStreaming
-              ? "streaming"
-              : "none"
+        status={
+          dotStatus === "idle" && isAgentLoopStreaming
+            ? "generating"
+            : dotStatus
         }
+        label={conversationLabel}
+        labelAnimation={showTypingAnimation ? "typing" : "none"}
         onTypingAnimationComplete={handleTypingAnimationComplete}
         scrollLabelOnHover
         href={getConversationRoute(owner.sId, conversation.sId)}
