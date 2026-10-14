@@ -6,10 +6,11 @@ import { readStoredText } from "@app/lib/api/documents/comment_signatures";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  readCanonicalFileContent,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
 import {
-  readFileWithRevision,
+  ABSENT_FILE_REVISION,
   writeFileWithRevision,
 } from "@app/lib/api/files/revisions";
 import { decodeBuffer } from "@app/lib/api/files/utils";
@@ -64,6 +65,7 @@ export class CollabSaveError extends Error {
     message: string
   ) {
     super(message);
+    this.name = "CollabSaveError";
   }
 }
 
@@ -116,8 +118,6 @@ export async function saveCollabSession(
 
 // A name taken by another copy made in the same minute gets a number: past this many, give up.
 const MAX_CONFLICT_COPY_NAMES = 5;
-// The revision that only matches a file that does not exist: the copy never overwrites one.
-const ABSENT_FILE_REVISION = "0";
 
 /** `notes (conflict 2026-10-14 14-05).md`, numbered from the second: `… 14-05 2).md`. */
 function conflictCopyPath(filePath: string, date: Date, index: number): string {
@@ -145,17 +145,17 @@ export async function keepConflictingFile(
   { dustFs, canonicalPath }: CollabAccess,
   last: CollabSave
 ): Promise<Result<{ lastSave: CollabSave; copyPath: string | null }, string>> {
-  const normalizedPath = DustFileSystem.normalizeScopedPath(canonicalPath);
-  const storagePath = normalizedPath && dustFs.toMountFilePath(normalizedPath);
-  if (!storagePath) {
-    return new Err("This file's storage does not support revisions.");
-  }
-  const read = await readFileWithRevision(storagePath);
+  const read = await readCanonicalFileContent(dustFs, canonicalPath);
   if (read.isErr()) {
     return new Err(read.error.message);
   }
   if (!read.value) {
     return new Err("The file was deleted while it was open.");
+  }
+  const { revision } = read.value;
+  if (revision === undefined) {
+    read.value.stream.on("error", () => undefined).destroy();
+    return new Err("This file's storage does not support revisions.");
   }
   const bytes = await streamToBoundedBuffer(
     read.value.stream,
@@ -174,7 +174,7 @@ export async function keepConflictingFile(
   const loaded = dfmToYDoc(text);
   const normalized = loaded.isOk() ? yDocToDfm(loaded.value) : null;
   const source = normalized?.isOk() ? normalized.value : text;
-  const lastSave = { revision: read.value.revision, source };
+  const lastSave = { revision, source };
   if (source === last.source) {
     return new Ok({ lastSave, copyPath: null });
   }

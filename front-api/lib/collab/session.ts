@@ -69,9 +69,6 @@ export const toSaveState = (session: CollabSession): SaveState => ({
 export const saveStateMessage = (state: SaveState) =>
   JSON.stringify({ type: "save_state", ...state } satisfies SaveStateMessage);
 
-// A file written again while its conflict is kept starts another round, at most this many per save.
-const MAX_CONFLICT_ROUNDS = 3;
-
 export const serverMessage = (message: CommentServerMessage) =>
   JSON.stringify(message);
 
@@ -422,6 +419,9 @@ export function recordSaveResult(
     document.broadcastStateless(saveStateMessage(toSaveState(session)));
   }
 }
+
+// A file written again while its conflict is kept starts another round, at most this many per save.
+const MAX_CONFLICT_ROUNDS = 3;
 
 /**
  * @cc [owner:tdraier,label:product;concurrency] collab-session-save-conflict

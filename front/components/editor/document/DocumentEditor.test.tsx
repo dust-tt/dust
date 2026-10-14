@@ -655,7 +655,7 @@ describe("Document comments", () => {
 
     expect(
       await screen.findByText(
-        /That version was saved as notes \(conflict 2026-10-14 14-05\)\.md\./
+        /Their version was saved as notes \(conflict 2026-10-14 14-05\)\.md\./
       )
     ).toBeDefined();
   });

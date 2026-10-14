@@ -56,7 +56,7 @@ const CollabEditor = lazy(
 /**
  * @cc [owner:tdraier,label:product] document-conflict-copy-note
  * While a live document's save state has a conflict copy, a note above its content MUST say the
- * file was changed outside the editor and name the copy by its file name.
+ * file was changed elsewhere and name the copy by its file name, until the session ends.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only
@@ -413,8 +413,8 @@ export const DocumentView = ({
         {conflictCopyName && (
           <p role="status" className="mb-6 text-muted-foreground copy-sm">
             <Trans>
-              This file was also changed outside the editor while it was open.
-              That version was saved as {conflictCopyName}.
+              Someone else changed this file while it was open here. Their
+              version was saved as {conflictCopyName}.
             </Trans>
           </p>
         )}
