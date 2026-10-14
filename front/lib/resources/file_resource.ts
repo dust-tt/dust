@@ -79,6 +79,7 @@ import {
   getFramesBasePath,
 } from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { DfsObjectId } from "@app/types/dfs";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,
@@ -1676,6 +1677,17 @@ export class FileResource extends BaseResource<FileModel> {
       content,
       contentType: this.contentType,
       filePath: this.getCloudStoragePath(auth, "processed"),
+    });
+  }
+
+  /** Stores the ID of the file's dfs object, unless one is already stored. */
+  async setDfsObjectId(
+    auth: Authenticator,
+    dfsObjectId: DfsObjectId
+  ): Promise<void> {
+    await this.update({ dfsObjectId }, undefined, {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      dfsObjectId: null,
     });
   }
 

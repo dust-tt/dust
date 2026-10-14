@@ -22,6 +22,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
 import type { SpaceGroupAccessType } from "@app/types/api/spaces";
+import type { DfsObjectId } from "@app/types/dfs";
 import type {
   GrantSpec,
   GrantType,
@@ -2351,6 +2352,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isProject() {
     return this.kind === "project";
+  }
+
+  /** Stores the ID of the pod's dfs folder, unless one is already stored. */
+  async setDfsObjectId(
+    auth: Authenticator,
+    dfsObjectId: DfsObjectId
+  ): Promise<void> {
+    await this.update({ dfsObjectId }, undefined, {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      dfsObjectId: null,
+    });
   }
 
   // A regular space or project is restricted when it is member-only: the workspace global group
