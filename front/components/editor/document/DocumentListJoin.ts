@@ -44,14 +44,9 @@ const joinListsAroundEmptyParagraph = (editor: Editor, bias: -1 | 1) => {
   return true;
 };
 
+// Backspace or Delete in an empty paragraph between two lists of the same type joins them, so
+// numbering continues.
 // TODO(louisjc): remove when TipTap joins the lists itself, ueberdosis/tiptap#8434.
-/**
- * @cc [owner:louisjc,label:product] join-lists-around-empty-paragraph
- * Backspace or Delete with the caret in an empty paragraph whose previous and next siblings are
- * lists of the same node type and numbering `type` MUST remove the paragraph and join the two
- * lists into one, in a single transaction, so numbering continues and one undo restores both
- * lists. Lists of different types, or any other caret position, MUST keep TipTap's behavior.
- */
 export const DocumentListJoin = Extension.create({
   name: "documentListJoin",
   priority: DOCUMENT_LIST_JOIN_PRIORITY,
