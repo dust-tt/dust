@@ -6,6 +6,8 @@ import { getBatchEndpoints } from "@app/lib/llms/batch";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { getSystemOneEndpoints } from "@app/lib/llms/system_one";
+import type { DustSystemOneEndpointConstructor } from "@app/lib/llms/system_one/dust_system_one_endpoint";
 import type {
   EndpointConfig,
   Where,
@@ -80,6 +82,20 @@ export async function selectPreferredBatchEndpointForWorkspace(
     );
 
   return batchEndpoint;
+}
+
+export async function selectPreferredSystemOneEndpointForWorkspace(
+  auth: Authenticator,
+  filter: Where<EndpointConfig>
+) {
+  const systemOneEndpoint =
+    await selectPreferredEndpointForWorkspace<DustSystemOneEndpointConstructor>(
+      auth,
+      getSystemOneEndpoints,
+      filter
+    );
+
+  return systemOneEndpoint;
 }
 
 // Resolves a legacy model id to its preferred stream endpoint for the
