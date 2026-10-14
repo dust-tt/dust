@@ -1566,6 +1566,22 @@ describe("Document Escape inside a host dialog", () => {
 
 describe("Document tables", () => {
   beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () => [],
+    });
+    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+      }),
+    });
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -1639,6 +1655,8 @@ describe("Document tables", () => {
 
   const openTableMenu = async () => {
     const user = userEvent.setup();
+    // TipTap's focus command focuses the editor on the next frame, which would close an open menu.
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     await user.click(await screen.findByRole("button", { name: "Edit table" }));
     return user;
   };
@@ -1666,23 +1684,26 @@ describe("Document tables", () => {
     };
     const choose = async (name: string) => {
       const user = await openTableMenu();
-      await user.click(screen.getByRole("menuitem", { name }));
+      await user.click(await screen.findByRole("menuitem", { name }));
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     };
 
     await choose("Add row below");
-    expect(rowTexts(editor)).toEqual(["Name|Count", "apple|3", "|"]);
+    await waitFor(() =>
+      expect(rowTexts(editor)).toEqual(["Name|Count", "apple|3", "|"])
+    );
     await choose("Add column right");
-    expect(rowTexts(editor)[0]).toBe("Name||Count");
+    await waitFor(() => expect(rowTexts(editor)[0]).toBe("Name||Count"));
     await choose("Add column left");
-    expect(shape()).toEqual([3, 4]);
+    await waitFor(() => expect(shape()).toEqual([3, 4]));
     await choose("Delete column");
-    expect(shape()).toEqual([3, 3]);
+    await waitFor(() => expect(shape()).toEqual([3, 3]));
     await choose("Delete row");
-    expect(shape()).toEqual([2, 3]);
-
-    const user = await openTableMenu();
-    await user.click(screen.getByRole("menuitem", { name: "Delete table" }));
-    expect(editor.state.doc.firstChild?.type.name).not.toBe("table");
+    await waitFor(() => expect(shape()).toEqual([2, 3]));
+    await choose("Delete table");
+    await waitFor(() =>
+      expect(editor.state.doc.firstChild?.type.name).not.toBe("table")
+    );
   });
 
   it("offers no row above the header row", async () => {
@@ -1695,7 +1716,7 @@ describe("Document tables", () => {
     await openTableMenu();
 
     expect(
-      screen.getByRole("menuitem", { name: "Add row below" })
+      await screen.findByRole("menuitem", { name: "Add row below" })
     ).toBeTruthy();
     expect(
       screen.queryByRole("menuitem", { name: "Add row above" })
@@ -1712,7 +1733,9 @@ describe("Document tables", () => {
     });
 
     const user = await openTableMenu();
-    await user.click(screen.getByRole("menuitem", { name: "Add row below" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add row below" })
+    );
 
     const table = editor.state.doc.firstChild;
     expect(table?.childCount).toBe(3);
