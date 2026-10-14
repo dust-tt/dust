@@ -93,11 +93,13 @@ export function useCollabConnection(
     let destroyed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let comments: CommentChannel | null = null;
+    let stopSaveState = () => {};
     const close = () => {
       if (destroyed) {
         return;
       }
       destroyed = true;
+      stopSaveState();
       comments?.close();
       if (!closed) {
         closed = true;
@@ -112,6 +114,7 @@ export function useCollabConnection(
       }
       closed = true;
       lastThreadsRef.current = comments?.getThreads() ?? lastThreadsRef.current;
+      stopSaveState();
       comments?.close();
       provider.destroy();
       if (synced) {
@@ -171,11 +174,11 @@ export function useCollabConnection(
 
     // Listening before the connection opens: the server tells a connection joining while saves
     // fail as soon as it is connected, before it has synced.
-    onStatelessMessage(provider, saveStateMessageSchema, ({ failed }) => {
-      if (!closed) {
-        setSaveFailed(failed);
-      }
-    });
+    stopSaveState = onStatelessMessage(
+      provider,
+      saveStateMessageSchema,
+      ({ failed }) => setSaveFailed(failed)
+    );
 
     return () => {
       clearTimeout(retry);

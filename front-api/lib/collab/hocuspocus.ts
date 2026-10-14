@@ -53,6 +53,19 @@ const commandRequestSchema = z.object({
   requestId: z.string().min(1),
 });
 
+/** A save failure is an error once, then each retry that fails again only a warning. */
+function logSaveFailure(
+  retries: number,
+  fields: Record<string, unknown>,
+  message: string
+): void {
+  if (retries === 0) {
+    logger.error({ ...fields, retries }, message);
+  } else {
+    logger.warn({ ...fields, retries }, message);
+  }
+}
+
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
   logger.warn({ documentName, reason }, "Collab connection refused");
@@ -92,7 +105,8 @@ function logUnexpected(
  * unless a connection is open or its last save failed. A direct connection that leaves
  * during that period does not extend it. A failed save MUST be retried after
  * `SAVE_RETRY_DELAY_MS`, the delay doubling at each failure up to `SAVE_RETRY_MAX_DELAY_MS`, until
- * one succeeds, the document unloads or `saveAllSessions` is called. Every time whether the last
+ * one succeeds, the document unloads or `saveAllSessions` is called, except a save whose writer
+ * cannot write, which only another edit fixes. Every time whether the last
  * save failed changes, every connection MUST be sent `save_state`, and a connection opening while
  * it failed MUST be sent it once connected.
  */
@@ -183,18 +197,14 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       if (!session || !writer) {
         return;
       }
-      // A failure is an error once, then each retry that fails again only a warning.
-      const level = session.saveRetries === 0 ? "error" : "warn";
       if (writer.canWrite !== true) {
-        logger[level](
-          {
-            documentName,
-            workspaceId: writer.workspaceId,
-            retries: session.saveRetries,
-          },
+        logSaveFailure(
+          session.saveRetries,
+          { documentName, workspaceId: writer.workspaceId },
           "Collab document changed without a writer"
         );
-        recordSaveResult(instance, document, true);
+        // A retry would save through the same writer: only an edit from one who can write fixes it.
+        recordSaveResult(instance, document, "failed_until_edited");
         throw new Error("The document was changed without a writer.");
       }
 
@@ -206,30 +216,36 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           session.lastSave
         );
       } catch (err) {
-        recordSaveResult(instance, document, true);
-        return logUnexpected(
-          { documentName, workspaceId: writer.workspaceId },
+        logSaveFailure(
+          session.saveRetries,
+          {
+            err: normalizeError(err),
+            documentName,
+            workspaceId: writer.workspaceId,
+          },
           "Collab save failed"
-        )(err);
+        );
+        recordSaveResult(instance, document, "failed");
+        throw err;
       }
       if (saved.isErr()) {
         // TODO(co-edition): a revision conflict never recovers. `session.lastSave` only moves on
         // success, so once another writer changes the file every later save conflicts too,
         // the document stays loaded and its edits never reach the file.
-        logger[level](
+        logSaveFailure(
+          session.saveRetries,
           {
             documentName,
             workspaceId: writer.workspaceId,
             reason: saved.error,
-            retries: session.saveRetries,
           },
           "Collab save failed"
         );
-        recordSaveResult(instance, document, true);
+        recordSaveResult(instance, document, "failed");
         throw new Error(saved.error);
       }
       session.lastSave = saved.value;
-      recordSaveResult(instance, document, false);
+      recordSaveResult(instance, document, "saved");
     },
 
     async onDisconnect({ instance, document }) {

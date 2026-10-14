@@ -42,9 +42,14 @@ export interface CollabSession {
   pendingMutations: Promise<void>;
 }
 
-// A failed save is retried after this delay, doubled at each failure up to the maximum.
+// A failed save is retried after this delay, doubled at each failure up to the maximum: longer
+// than a debounced store, short enough that a passing storage error clears before people notice,
+// and at most every few minutes for a failure that lasts.
 export const SAVE_RETRY_DELAY_MS = 30 * 1000;
 const SAVE_RETRY_MAX_DELAY_MS = 5 * 60 * 1000;
+
+/** How a save ended: `failed_until_edited` is not retried, since only an edit can fix it. */
+export type SaveOutcome = "saved" | "failed" | "failed_until_edited";
 
 export const saveStateMessage = (failed: boolean) =>
   JSON.stringify({ type: "save_state", failed } satisfies SaveStateMessage);
@@ -334,26 +339,29 @@ export async function writeSessionSource(
 }
 
 /**
- * Records whether `document`'s last save failed, tells its connections when that changes, and
- * while saves fail, schedules a retry.
+ * Records how `document`'s last save ended, tells its connections when whether it failed
+ * changes, and schedules a retry after a failure a retry can fix.
  */
 export function recordSaveResult(
   hocuspocus: Hocuspocus<CollabAccess>,
   document: Document,
-  failed: boolean
+  outcome: SaveOutcome
 ): void {
   const session = getSession(document);
   if (!session) {
     return;
   }
+  const failed = outcome !== "saved";
   if (session.saveFailed !== failed) {
     session.saveFailed = failed;
     document.broadcastStateless(saveStateMessage(failed));
   }
-  if (!failed) {
+  if (outcome !== "failed") {
     clearTimeout(session.saveRetryTimer);
     session.saveRetryTimer = undefined;
-    session.saveRetries = 0;
+    if (outcome === "saved") {
+      session.saveRetries = 0;
+    }
     return;
   }
   if (session.saveRetryTimer !== undefined) {
