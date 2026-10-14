@@ -5,7 +5,7 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_OPUS_5_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -164,7 +164,7 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
       },
       modelSelection: {
         providerId: "anthropic",
-        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
+        modelId: CLAUDE_OPUS_5_5_MODEL_ID,
         reasoningEffort: "extreme",
       },
     });
@@ -176,7 +176,7 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
   it("persists a valid modelSelection as the user message requestedModel", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       method: "POST",
-      // Opus 4.8 is premium: entitlement comes from the plan.
+      // Opus 5.5 is premium: entitlement comes from the plan.
       plan: "creditPriced",
     });
 
@@ -193,7 +193,7 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
 
     const modelSelection = {
       providerId: "anthropic" as const,
-      modelId: CLAUDE_OPUS_4_8_MODEL_ID,
+      modelId: CLAUDE_OPUS_5_5_MODEL_ID,
       reasoningEffort: "medium" as const,
     };
 
@@ -240,7 +240,7 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
       },
       modelSelection: {
         providerId: "anthropic",
-        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
+        modelId: CLAUDE_OPUS_5_5_MODEL_ID,
         reasoningEffort: "light",
       },
     });
