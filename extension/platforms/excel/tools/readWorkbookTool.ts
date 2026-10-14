@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { checkSteps } from "@extension/platforms/excel/tools/checkSteps";
 import {
   parseExpression,
   type Step,
@@ -41,17 +42,6 @@ function isReadTarget(value: unknown): value is ReadTarget {
     isLoadableClientObject(value) ||
     value instanceof OfficeExtension.ClientResult
   );
-}
-
-/**
- * TODO(office_addin): check each step against an allowlist of the read-only properties and
- * methods of the Office.js Excel API. Until then, every step is accepted.
- *
- * TODO(office_addin): check the `load` step with the allowlist. An expression that gives an
- * object must end with `load(...)` with one argument, and `load` must be the last step.
- */
-function checkSteps(steps: Step[]): Result<undefined, string> {
-  return new Ok(undefined);
 }
 
 /**
