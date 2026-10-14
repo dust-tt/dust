@@ -96,7 +96,7 @@ async function getDocumentConversation(
  * The agent a comment runs. A conversation message runs at most one agent, so only the first agent
  * mentioned is kept; users are notified apart from the conversation.
  */
-function commentAgentMention(body: string): {
+function getAgentMentionFromComment(body: string): {
   agent: AgentMention | undefined;
   skippedAgents: number;
 } {
@@ -215,7 +215,9 @@ export async function postCommentMention(
     return new Ok(undefined);
   }
 
-  const { agent, skippedAgents } = commentAgentMention(newMessage.message.body);
+  const { agent, skippedAgents } = getAgentMentionFromComment(
+    newMessage.message.body
+  );
   if (skippedAgents > 0) {
     logger.warn(
       {
