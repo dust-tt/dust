@@ -85,7 +85,7 @@ impl FileResource {
      * Object(NotFound); unreadable objects MUST return Object(NotAuthorized) before checking kind.
      * Readable directories MUST return IsDirectory. FDB failures MUST propagate unchanged.
      */
-    pub async fn fetch_file_for_session(
+    pub async fn fetch_for_session(
         tx: &Transaction,
         session: &SessionResource,
         object_id: &ObjectId,

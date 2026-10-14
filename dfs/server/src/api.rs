@@ -263,7 +263,7 @@ impl Dfs for API {
             let session = session.as_ref();
             async move {
                 let (file, object) =
-                    FileResource::fetch_file_for_session(&tx, session, &object_id).await?;
+                    FileResource::fetch_for_session(&tx, session, &object_id).await?;
                 file.read(&tx, offset, length)
                     .await
                     .map(|data| ReadData { data, object })

@@ -111,9 +111,9 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
 
     let old = fdb::database()?.create_trx()?;
     let (file, attributes) =
-        FileResource::fetch_file_for_session(&old, &session, &object.object_id).await?;
+        FileResource::fetch_for_session(&old, &session, &object.object_id).await?;
     let (foreign, _) =
-        FileResource::fetch_file_for_session(&old, &other_session, &object.object_id).await?;
+        FileResource::fetch_for_session(&old, &other_session, &object.object_id).await?;
     assert_eq!(attributes.id, object.object_id.into());
     assert_eq!(attributes.store_version, old.get_read_version().await?);
     assert_eq!(attributes.mode, 0o400);
@@ -151,7 +151,7 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
 
     let fresh = fdb::database()?.create_trx()?;
     let (file, attributes) =
-        FileResource::fetch_file_for_session(&fresh, &session, &object.object_id).await?;
+        FileResource::fetch_for_session(&fresh, &session, &object.object_id).await?;
     let before = fresh
         .get(&attrs_key, false)
         .await?
