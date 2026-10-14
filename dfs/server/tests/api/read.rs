@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use dfs_api::storage::{
     fdb,
     resources::{
-        file::{BLOCK_SIZE_BYTES, READ_MAX_BYTES},
+        file::BLOCK_SIZE_BYTES,
         keys::{namespace_subspace, tenant_subspace},
         object::ObjectResource,
         session::SessionResource,
@@ -10,7 +10,7 @@ use dfs_api::storage::{
     },
 };
 use dfs_protocol::{
-    ObjectId,
+    ObjectId, READ_MAX_BYTES,
     rpc::{
         AllowGrant, DenyGrant, ErrorCode, Grant, GrantUpdate, ObjectKind, ReadRequest,
         dfs_client::DfsClient, grant,

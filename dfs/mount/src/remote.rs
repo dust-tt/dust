@@ -1,7 +1,7 @@
 use crate::errno::Errno;
 use dfs_protocol::{
-    ObjectRef, STAT_MAX_REFERENCES,
-    rpc::{Attr, Empty, Session, StatRequest, dfs_client::DfsClient},
+    ObjectId, ObjectRef, STAT_MAX_REFERENCES,
+    rpc::{Attr, Empty, ReadData, ReadRequest, Session, StatRequest, dfs_client::DfsClient},
 };
 use tonic::{Request, metadata::AsciiMetadataValue, transport::Channel};
 
@@ -82,5 +82,25 @@ impl Remote {
             }));
         }
         Ok(results)
+    }
+
+    /// Reads up to `length` bytes of the file `object` from `offset`, with its attributes. The data
+    /// is shorter than `length` only at the end of the file. `length` is at most `READ_MAX_BYTES`.
+    pub async fn read(
+        &self,
+        object: ObjectId,
+        offset: u64,
+        length: u32,
+    ) -> Result<ReadData, Errno> {
+        let response = self
+            .client
+            .clone()
+            .read(self.request(ReadRequest {
+                object_id: object,
+                offset,
+                length,
+            }))
+            .await?;
+        Ok(response.into_inner())
     }
 }

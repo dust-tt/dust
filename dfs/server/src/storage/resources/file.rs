@@ -1,7 +1,7 @@
 use std::fmt;
 
 use dfs_protocol::{
-    ObjectId,
+    ObjectId, READ_MAX_BYTES,
     rpc::{Attr, ObjectKind},
 };
 use foundationdb::{FdbBindingError, Transaction};
@@ -18,7 +18,6 @@ use crate::storage::{
 
 const FAMILY: &str = "block";
 pub const BLOCK_SIZE_BYTES: usize = 64 * 1024;
-pub const READ_MAX_BYTES: u32 = 1024 * 1024;
 
 #[derive(Debug)]
 pub enum Error {
