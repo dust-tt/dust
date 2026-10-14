@@ -877,6 +877,7 @@ export async function postUserMessage(
         routing: runningAgentMessage
           ? undefined
           : {
+              type: "decide",
               conversation: conversationResource,
               message: {
                 content,
@@ -3330,6 +3331,7 @@ export async function updateAgentMessageWithFinalStatus(
   const defaultModelResolution = messageAgent
     ? await resolveModelForMentionedAgent(auth, {
         agent: messageAgent,
+        routing: { type: "follow_current", conversation },
       })
     : null;
 

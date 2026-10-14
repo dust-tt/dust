@@ -9,6 +9,7 @@ import {
   buildTierRoutingRequest,
   TIER_QUESTION_NAME,
 } from "@app/lib/api/assistant/tier_routing/prompt";
+import type { AutoTierRoutingState } from "@app/lib/api/assistant/tier_routing/state";
 import {
   getAutoTierRoutingState,
   nextAutoTierRoutingState,
@@ -26,13 +27,18 @@ import type { AgentResource } from "@app/lib/resources/agent_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import type { UserMessageContext } from "@app/types/assistant/conversation";
+import type {
+  ConversationMetadata,
+  ConversationWithoutContentType,
+  UserMessageContext,
+} from "@app/types/assistant/conversation";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
 } from "@app/types/assistant/models/auto";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Bounds the latency routing adds to posting a message. Measured 2026-10-14: 200-750ms warm,
 // about 1.1s on a cold connection.
@@ -49,8 +55,9 @@ const ROUTABLE_STREAM_CONFIGS: Record<
   auto_complex: AUTO_COMPLEX_MODEL_CONFIG,
 };
 
-export type RouteAutoTierParams = {
-  agent: AgentResource;
+// A posted message: ask the decision model which tier it needs.
+export type DecideAutoTierRouting = {
+  type: "decide";
   conversation: ConversationResource;
   message: {
     content: string;
@@ -59,10 +66,25 @@ export type RouteAutoTierParams = {
   };
 };
 
+// A steered message, promoted after the running agent message ends: run on the current tier.
+export type FollowCurrentAutoTierRouting = {
+  type: "follow_current";
+  conversation: ConversationWithoutContentType;
+};
+
+export type AutoTierRouting =
+  | DecideAutoTierRouting
+  | FollowCurrentAutoTierRouting;
+
 export type AutoTierRoute = {
   streamId: ModelStreamIdType;
-  // The decision's run, billed with the agent message it routes.
-  decisionRunId: string;
+  // The decision's run, billed with the agent message it routes. Absent when no decision was made.
+  decisionRunId?: string;
+};
+
+type RoutingContext = {
+  configured: RoutableStreamId;
+  state: AutoTierRoutingState | null;
 };
 
 async function renderRecentHistory(
@@ -106,20 +128,17 @@ async function canRunConfiguredStream(
 }
 
 /**
- * Picks the stream an auto agent's message runs on: the cheapest tier up to the agent's configured
- * one that the decision model judges enough. Returns null when routing does not apply, in which
- * case the message resolves its configured stream as before.
- */
-/**
  * @cc [owner:pmilliotte,label:product;security] tier-routing-preserves-access
  * Routing MUST NOT apply to a message whose user cannot run the agent's configured stream: such a
  * message keeps resolving the configured stream, so it hits the same tier access error as without
  * routing.
  */
-export async function routeAutoTier(
+// Null when routing does not apply to the agent's messages in this conversation.
+async function getRoutingContext(
   auth: Authenticator,
-  { agent, conversation, message }: RouteAutoTierParams
-): Promise<AutoTierRoute | null> {
+  agent: AgentResource,
+  metadata: ConversationMetadata
+): Promise<RoutingContext | null> {
   const configured = agent.modelConfiguration.modelId;
   if (!isRoutableStreamId(configured)) {
     return null;
@@ -130,11 +149,7 @@ export async function routeAutoTier(
     return null;
   }
 
-  const state = getAutoTierRoutingState(
-    conversation.metadata,
-    agent.sId,
-    configured
-  );
+  const state = getAutoTierRoutingState(metadata, agent.sId, configured);
   if (state?.status === "settled") {
     return null;
   }
@@ -143,6 +158,24 @@ export async function routeAutoTier(
   if (!canRun) {
     return null;
   }
+
+  return { configured, state };
+}
+
+async function decideAutoTier(
+  auth: Authenticator,
+  agent: AgentResource,
+  { conversation, message }: DecideAutoTierRouting
+): Promise<AutoTierRoute | null> {
+  const routingContext = await getRoutingContext(
+    auth,
+    agent,
+    conversation.metadata
+  );
+  if (!routingContext) {
+    return null;
+  }
+  const { configured, state } = routingContext;
 
   const endpoint = await selectPreferredSystemOneEndpointForWorkspace(auth, {
     model: { eq: GPT_6_LUNA },
@@ -223,4 +256,45 @@ export async function routeAutoTier(
   ]);
 
   return { streamId: routed, decisionRunId: llm.getTraceId() };
+}
+
+/**
+ * @cc [owner:pmilliotte,label:product] steered-message-follows-current-tier
+ * A steered message MUST run on the agent's current routed stream when its routing is still
+ * active, without a new decision, and on the configured stream otherwise.
+ */
+async function followCurrentAutoTier(
+  auth: Authenticator,
+  agent: AgentResource,
+  { conversation }: FollowCurrentAutoTierRouting
+): Promise<AutoTierRoute | null> {
+  const routingContext = await getRoutingContext(
+    auth,
+    agent,
+    conversation.metadata
+  );
+  if (!routingContext?.state) {
+    return null;
+  }
+
+  return { streamId: routingContext.state.currentStreamId };
+}
+
+/**
+ * Picks the stream an auto agent's message runs on, up to the agent's configured one. Returns null
+ * when routing does not apply, in which case the message resolves its configured stream as before.
+ */
+export async function applyAutoTierRouting(
+  auth: Authenticator,
+  agent: AgentResource,
+  routing: AutoTierRouting
+): Promise<AutoTierRoute | null> {
+  switch (routing.type) {
+    case "decide":
+      return decideAutoTier(auth, agent, routing);
+    case "follow_current":
+      return followCurrentAutoTier(auth, agent, routing);
+    default:
+      assertNever(routing);
+  }
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert";
-import type { RouteAutoTierParams } from "@app/lib/api/assistant/tier_routing";
-import { routeAutoTier } from "@app/lib/api/assistant/tier_routing";
+import type { DecideAutoTierRouting } from "@app/lib/api/assistant/tier_routing";
+import { applyAutoTierRouting } from "@app/lib/api/assistant/tier_routing";
 import { Authenticator } from "@app/lib/auth";
 import { DustOpenAIGptSixLunaGlobalOpenAIDecisionsSystemOne } from "@app/lib/llms/system_one/endpoints/openai_gpt_six_luna_global_openai_decisions";
 import type { DecisionResult } from "@app/lib/model_constructors/types/output/decisions";
@@ -80,10 +80,15 @@ beforeEach(() => {
   decision.calls = 0;
 });
 
+type RoutingSetUp = {
+  agent: AgentResource;
+  decide: DecideAutoTierRouting;
+};
+
 async function setUp(
   auth: Authenticator,
   modelId: ModelStreamIdType
-): Promise<RouteAutoTierParams> {
+): Promise<RoutingSetUp> {
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
     { model: { providerId: modelId, modelId } }
@@ -99,28 +104,42 @@ async function setUp(
 
   return {
     agent,
-    conversation,
-    message: {
-      content: "Say hi.",
-      context: {
-        username: "user",
-        fullName: null,
-        email: null,
-        profilePictureUrl: null,
-        timezone: "UTC",
-        origin: "web",
+    decide: {
+      type: "decide",
+      conversation,
+      message: {
+        content: "Say hi.",
+        context: {
+          username: "user",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          timezone: "UTC",
+          origin: "web",
+        },
+        userId: auth.user()?.sId ?? null,
       },
-      userId: auth.user()?.sId ?? null,
     },
   };
 }
 
-describe("routeAutoTier", () => {
+function decide(auth: Authenticator, { agent, decide }: RoutingSetUp) {
+  return applyAutoTierRouting(auth, agent, decide);
+}
+
+function followCurrent(auth: Authenticator, { agent, decide }: RoutingSetUp) {
+  return applyAutoTierRouting(auth, agent, {
+    type: "follow_current",
+    conversation: decide.conversation.toJSON(),
+  });
+}
+
+describe("applyAutoTierRouting", () => {
   it("does not route when the feature flag is off", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const params = await setUp(auth, "auto");
 
-    expect(await routeAutoTier(auth, params)).toBeNull();
+    expect(await decide(auth, params)).toBeNull();
     expect(decision.calls).toBe(0);
   });
 
@@ -129,7 +148,7 @@ describe("routeAutoTier", () => {
     await FeatureFlagFactory.basic(auth, "auto_tier_routing");
     const params = await setUp(auth, "auto_fast");
 
-    expect(await routeAutoTier(auth, params)).toBeNull();
+    expect(await decide(auth, params)).toBeNull();
     expect(decision.calls).toBe(0);
   });
 
@@ -139,9 +158,9 @@ describe("routeAutoTier", () => {
     const params = await setUp(auth, "auto");
     decision.probabilities = [0.9, 0.1];
 
-    const route = await routeAutoTier(auth, params);
+    const route = await decide(auth, params);
 
-    assert(route, "expected a route");
+    assert(route?.decisionRunId, "expected a routing decision");
     expect(route.streamId).toBe("auto_fast");
     const run = await RunResource.fetchByDustRunId(auth, {
       dustRunId: route.decisionRunId,
@@ -155,8 +174,8 @@ describe("routeAutoTier", () => {
     const params = await setUp(auth, "auto");
     decision.probabilities = [0.2, 0.8];
 
-    const first = await routeAutoTier(auth, params);
-    const second = await routeAutoTier(auth, params);
+    const first = await decide(auth, params);
+    const second = await decide(auth, params);
 
     expect(first?.streamId).toBe("auto");
     expect(second).toBeNull();
@@ -169,8 +188,8 @@ describe("routeAutoTier", () => {
     const params = await setUp(auth, "auto");
     decision.fails = true;
 
-    const first = await routeAutoTier(auth, params);
-    const second = await routeAutoTier(auth, params);
+    const first = await decide(auth, params);
+    const second = await decide(auth, params);
 
     expect(first?.streamId).toBe("auto");
     expect(second?.streamId).toBe("auto");
@@ -192,7 +211,42 @@ describe("routeAutoTier", () => {
     const params = await setUp(auth, "auto_complex");
     decision.probabilities = [0.9, 0.05, 0.05];
 
-    expect(await routeAutoTier(auth, params)).toBeNull();
+    expect(await decide(auth, params)).toBeNull();
     expect(decision.calls).toBe(0);
+  });
+
+  describe("follow_current", () => {
+    it("keeps the configured stream before any decision", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      await FeatureFlagFactory.basic(auth, "auto_tier_routing");
+      const params = await setUp(auth, "auto");
+
+      expect(await followCurrent(auth, params)).toBeNull();
+      expect(decision.calls).toBe(0);
+    });
+
+    it("runs on the routed stream without a new decision", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      await FeatureFlagFactory.basic(auth, "auto_tier_routing");
+      const params = await setUp(auth, "auto");
+      decision.probabilities = [0.9, 0.1];
+      await decide(auth, params);
+
+      const route = await followCurrent(auth, params);
+
+      expect(route).toEqual({ streamId: "auto_fast" });
+      expect(decision.calls).toBe(1);
+    });
+
+    it("keeps the configured stream once routing settled", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      await FeatureFlagFactory.basic(auth, "auto_tier_routing");
+      const params = await setUp(auth, "auto");
+      decision.probabilities = [0.2, 0.8];
+      await decide(auth, params);
+
+      expect(await followCurrent(auth, params)).toBeNull();
+      expect(decision.calls).toBe(1);
+    });
   });
 });
