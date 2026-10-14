@@ -1228,9 +1228,7 @@ describe("approving agent suggestions", () => {
     expect((await response.json()).batch.state).toBe("approved");
 
     const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
-    expect(updated?.modelConfiguration.modelId).toBe(
-      "claude-haiku-5-5"
-    );
+    expect(updated?.modelConfiguration.modelId).toBe("claude-haiku-5-5");
     expect(updated?.modelConfiguration.reasoningEffort).toBe("medium");
   });
 
