@@ -36,6 +36,27 @@ export DUST_FDB_DATA_DIR="${DUST_FDB_DATA_DIR:-${DUST_DATA_ROOT}/fdb/data}"
 export DUST_FDB_LOG_DIR="${DUST_FDB_LOG_DIR:-${DUST_INFRA_LOG_DIR}/fdb}"
 export FDB_PORT="${FDB_PORT:-4500}"
 export FDB_CLUSTER_FILE="${FDB_CLUSTER_FILE:-${DUST_DATA_ROOT}/fdb/fdb.cluster}"
+# Dust Flow Support (dfs-api). Master key must be 64 printable ASCII chars (dfs/server auth).
+# Same names as dust-hive envgen: DFS_MASTER_KEY for the server, DFS_API_* for front.
+ensure_dfs_master_key() {
+  local key_file="${DFS_MASTER_KEY_FILE:-${DUST_INFRA_LOG_DIR}/dfs-master-key}"
+  if [ -z "${DFS_MASTER_KEY:-}" ]; then
+    if [ -f "${key_file}" ]; then
+      DFS_MASTER_KEY="$(tr -d '\n' <"${key_file}")"
+    else
+      mkdir -p "$(dirname "${key_file}")"
+      DFS_MASTER_KEY="$(openssl rand -hex 32)"
+      echo "$DFS_MASTER_KEY" >"${key_file}"
+    fi
+  fi
+  export DFS_MASTER_KEY
+}
+
+export DFS_PORT="${DFS_PORT:-50051}"
+export DFS_LISTEN="${DFS_LISTEN:-127.0.0.1:${DFS_PORT}}"
+ensure_dfs_master_key
+export DFS_API_URL="${DFS_API_URL:-http://127.0.0.1:${DFS_PORT}}"
+export DFS_API_MASTER_KEY="${DFS_API_MASTER_KEY:-$DFS_MASTER_KEY}"
 
 export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
@@ -143,6 +164,13 @@ apply_local_overrides() {
   export DUST_FRONT_API="http://localhost:3000"
   export DUST_FRONT_INTERNAL_API="http://localhost:3000"
   export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL="http://localhost:3000"
+
+  # Local dfs-api (mprocs bacon dfs-api). Cloud DFS_* from 1Password must not win.
+  export DFS_PORT="${DFS_PORT:-50051}"
+  export DFS_LISTEN="${DFS_LISTEN:-127.0.0.1:${DFS_PORT}}"
+  ensure_dfs_master_key
+  export DFS_API_URL="http://127.0.0.1:${DFS_PORT}"
+  export DFS_API_MASTER_KEY="$DFS_MASTER_KEY"
 
   if [[ -n "${CODESPACE_NAME:-}" ]]; then
     BASE_API_URL="https://${CODESPACE_NAME}-3000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
