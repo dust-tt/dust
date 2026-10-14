@@ -591,8 +591,8 @@ FileResult {
 
 Each input has exactly one result, in input order. Files larger than 1 MiB or that cannot fit in
 the 4 MiB encoded reply budget receive individual `CAPACITY` errors without being downloaded. The
-reply budget accounts for every result, including errors. Attributes and contents share one FDB
-snapshot. All returned attributes carry the same `object.store_version`.
+reply budget reserves conservative overhead for every result, including errors. Attributes and
+contents share one FDB snapshot. All returned attributes carry the same `object.store_version`.
 
 ## Filesystem mutations
 
