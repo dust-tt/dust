@@ -1,23 +1,19 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { getNovuClient } from "@app/lib/notifications";
+import {
+  filterUsersByNotifyCondition,
+  getNovuClient,
+} from "@app/lib/notifications";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import type { NotificationCondition } from "@app/types/notification_preferences";
-import {
-  CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  CONVERSATION_UNREAD_TRIGGER_ID,
-  DEFAULT_NOTIFICATION_CONDITION,
-  isNotificationCondition,
-} from "@app/types/notification_preferences";
+import { CONVERSATION_UNREAD_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -30,47 +26,23 @@ export const filterMembersByNotifyCondition = async (
   auth: Authenticator,
   members: UserResource[],
   spaceModelId: ModelId
-): Promise<UserResource[]> => {
-  const userModelIds = members.map((p) => p.id);
-
-  // Bulk query for general and project-level preferences.
-  const generalPreferences =
-    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
-      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-      userModelIds
-    );
-
-  const projectPreferenceMap =
-    await UserProjectPreferencesResource.fetchNotificationPreferenceMap(auth, {
-      spaceModelId,
-      userModelIds,
-    });
-
-  const generalPreferenceMap = new Map<number, NotificationCondition>();
-  for (const [userModelId, value] of generalPreferences) {
-    if (isNotificationCondition(value)) {
-      generalPreferenceMap.set(userModelId, value);
-    }
-  }
-
-  return members.filter((member) => {
-    // Project-level preference overrides the general one if present.
-    const notifyCondition =
-      projectPreferenceMap.get(member.id) ??
-      generalPreferenceMap.get(member.id) ??
-      DEFAULT_NOTIFICATION_CONDITION;
-    switch (notifyCondition) {
-      case "all_messages":
-        return true;
-      case "only_mentions":
-        return false;
-      case "never":
-        return false;
-      default:
-        assertNever(notifyCondition);
-    }
+): Promise<UserResource[]> =>
+  filterUsersByNotifyCondition(auth, {
+    users: members,
+    spaceModelId,
+    shouldNotify: (_member, notifyCondition) => {
+      switch (notifyCondition) {
+        case "all_messages":
+          return true;
+        case "only_mentions":
+          return false;
+        case "never":
+          return false;
+        default:
+          assertNever(notifyCondition);
+      }
+    },
   });
-};
 
 /**
  * Trigger notifications for users added to a project.

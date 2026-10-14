@@ -50,6 +50,8 @@ const ChannelsSchema = z.object({
 
 type ChannelsType = z.infer<typeof ChannelsSchema>;
 
+const NO_CHANNELS: ChannelsType = { inApp: false, chat: false, email: false };
+
 const DigestResultSchema = z.object({
   digest: ReadableMentionsSchema.nullable(),
 });
@@ -142,7 +144,7 @@ export const documentCommentMentionNotificationWorkflow = workflow(
       async () =>
         subscriber.subscriberId
           ? getConversationChannels(subscriber.subscriberId)
-          : { inApp: false, chat: false, email: false },
+          : NO_CHANNELS,
       { outputSchema: ChannelsSchema }
     );
 

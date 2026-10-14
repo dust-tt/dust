@@ -4,10 +4,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
-import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
+import {
+  filterUsersByNotifyCondition,
+  getActiveSubscriberAuth,
+  getNovuClient,
+} from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -19,13 +22,7 @@ import {
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
-import type { NotificationCondition } from "@app/types/notification_preferences";
-import {
-  CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  DEFAULT_NOTIFICATION_CONDITION,
-  DOCUMENT_COMMENT_MENTION_TRIGGER_ID,
-  isNotificationCondition,
-} from "@app/types/notification_preferences";
+import { DOCUMENT_COMMENT_MENTION_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -47,7 +44,7 @@ export type DocumentCommentMentionPayloadType = z.infer<
   typeof DocumentCommentMentionPayloadSchema
 >;
 
-interface ReadableDocument {
+interface DocumentRouteAndSpace {
   route: string;
   spaceModelId: ModelId | null;
 }
@@ -61,7 +58,7 @@ interface ReadableDocument {
 export async function getReadableDocument(
   auth: Authenticator,
   documentPath: string
-): Promise<ReadableDocument | null> {
+): Promise<DocumentRouteAndSpace | null> {
   const scope = parseScopedPrefix(documentPath);
   if (!scope) {
     return null;
@@ -108,33 +105,6 @@ export async function getReadableDocument(
   }
 }
 
-async function dropNeverNotified(
-  auth: Authenticator,
-  users: UserResource[],
-  spaceModelId: ModelId | null
-): Promise<UserResource[]> {
-  const userModelIds = users.map((user) => user.id);
-  const generalPreferences =
-    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
-      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-      userModelIds
-    );
-  const projectPreferences = spaceModelId
-    ? await UserProjectPreferencesResource.fetchNotificationPreferenceMap(
-        auth,
-        { spaceModelId, userModelIds }
-      )
-    : new Map<ModelId, NotificationCondition>();
-  return users.filter((user) => {
-    const general = generalPreferences.get(user.id);
-    const notifyCondition =
-      projectPreferences.get(user.id) ??
-      (isNotificationCondition(general) ? general : undefined) ??
-      DEFAULT_NOTIFICATION_CONDITION;
-    return notifyCondition !== "never";
-  });
-}
-
 /**
  * @cc [owner:adrien,label:product;security] document-comment-mention-notification
  * Each user mentioned in a new comment message MUST be notified once, except its author, users
@@ -172,27 +142,27 @@ export async function triggerDocumentCommentMentionNotifications(
     return new Ok(undefined);
   }
 
-  const readers = removeNulls(
-    await concurrentExecutor(
-      await UserResource.fetchByIds([...mentionedUserIds]),
-      async (user) => {
-        const userAuth = await getActiveSubscriberAuth(user.sId, workspaceId);
-        const document = userAuth
-          ? await getReadableDocument(userAuth, documentPath)
-          : null;
-        return document ? { user, document } : null;
-      },
-      { concurrency: 4 }
-    )
-  );
-  if (readers.length === 0) {
+  const document = await getReadableDocument(auth, documentPath);
+  if (!document) {
     return new Ok(undefined);
   }
 
-  const recipients = await dropNeverNotified(
-    auth,
-    readers.map(({ user }) => user),
-    readers[0].document.spaceModelId
+  const subscribers = await filterUsersByNotifyCondition(auth, {
+    users: await UserResource.fetchByIds([...mentionedUserIds]),
+    spaceModelId: document.spaceModelId,
+    shouldNotify: (_user, notifyCondition) => notifyCondition !== "never",
+  });
+  const recipients = removeNulls(
+    await concurrentExecutor(
+      subscribers,
+      async (user) => {
+        const userAuth = await getActiveSubscriberAuth(user.sId, workspaceId);
+        return userAuth && (await getReadableDocument(userAuth, documentPath))
+          ? user
+          : null;
+      },
+      { concurrency: 4 }
+    )
   );
   if (recipients.length === 0) {
     return new Ok(undefined);
@@ -204,7 +174,7 @@ export async function triggerDocumentCommentMentionNotifications(
     commentId: newMessage.commentId,
     authorName: author.fullName(),
     fileName: getFileNameFromScopedPath(documentPath),
-    route: readers[0].document.route,
+    route: document.route,
   };
   const transactionIdPrefix = makeDocumentCommentMentionWorkflowId({
     workspaceId,
