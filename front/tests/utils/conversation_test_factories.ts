@@ -21,6 +21,12 @@ import assert from "assert";
 import { createResourceTest } from "./generic_resource_tests";
 import { SpaceFactory } from "./SpaceFactory";
 
+/** The agent `makeExtra`'s run context runs. */
+export const TEST_AGENT_CONFIGURATION = {
+  sId: "test_agent",
+  name: "Test agent",
+};
+
 export function makeExtra(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -35,7 +41,7 @@ export function makeExtra(
     },
     stepContext,
     // A real agent loop always runs an agent; tools that show it, such as on live documents, read it.
-    agentConfiguration: { sId: "test_agent", name: "Test agent" },
+    agentConfiguration: TEST_AGENT_CONFIGURATION,
   } as unknown as AgentLoopRunContext;
   return { auth, runContext } as unknown as ToolHandlerExtra & {
     runContext: AgentLoopRunContext;

@@ -13,7 +13,11 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DfmDocument } from "@app/lib/markdown/dfm";
 import { parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { CollabAgent } from "@app/types/collab";
-import { contentTypeFromFileName } from "@app/types/files";
+import {
+  contentTypeFromFileName,
+  isMarkdownContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -210,17 +214,20 @@ export const collabAgentOf = ({
 
 /**
  * @cc [owner:PopDaph,label:product;concurrency] document-open-session-source
- * For a Markdown document a live session holds, MUST return the session's source, the session
- * showing `agent` reading it; for a document no session holds, or a path that is not a Markdown
- * document, MUST return null without reading the file. A collab server that cannot answer MUST be
- * an error, as in `readCollabSource`.
+ * For a file stored as Markdown (`isMarkdownContentType`, as for a live session) that a live
+ * session holds, MUST return the session's source, the session showing `agent` reading it; for a
+ * file no session holds, or one not stored as Markdown, MUST return null without reading the file.
+ * A collab server that cannot answer MUST be an error, as in `readCollabSource`.
  */
 export async function readOpenDocumentSource(
   auth: Authenticator,
-  scopedPath: string,
+  { scopedPath, contentType }: { scopedPath: string; contentType: string },
   agent?: CollabAgent
 ): Promise<Result<string | null, DfmStoredDocumentError>> {
-  const filePath = resolveDocumentPath(scopedPath);
+  if (!isMarkdownContentType(stripMimeParameters(contentType))) {
+    return new Ok(null);
+  }
+  const filePath = DustFileSystem.resolveScopedPath(scopedPath);
   if (filePath.isErr()) {
     return new Ok(null);
   }

@@ -19,7 +19,6 @@ import { collabAgentOf } from "@app/lib/api/documents/read_write";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
-/** The agent as the editors of a live document show it reading or editing. */
 const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
   add_comment: async (
     { path, quote, occurrence, comment },

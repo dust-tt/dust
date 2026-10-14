@@ -112,7 +112,7 @@ async function catText(
 
 /**
  * @cc [owner:PopDaph,label:product;concurrency] files-cat-collab-session
- * While a live session holds a Markdown document, `cat` MUST page through the session's source
+ * While a live session holds a file stored as Markdown, `cat` MUST page through the session's source
  * (`readOpenDocumentSource`) rather than the file, which lags the session until its next save, and
  * the session MUST show the running agent reading it. A collab server that cannot answer MUST NOT
  * fail the read: it MUST be logged and the file read as without a session. Any other file MUST be
@@ -171,18 +171,24 @@ export async function catHandler(
 
   const live = await readOpenDocumentSource(
     auth,
-    path,
+    { scopedPath: path, contentType: mimeType },
     isAgentLoopRunContext(runContext) ? collabAgentOf(runContext) : undefined
   );
   if (live.isErr()) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        path,
-        reason: live.error.message,
-      },
-      "Could not read a live document, reading its file"
-    );
+    // A refusal is expected, for an agent without a user; anything else is a collab server failure.
+    const log = {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      path,
+      code: live.error.code,
+    };
+    if (live.error.code === "refused") {
+      logger.info(log, "Live document not served, reading its file");
+    } else {
+      logger.warn(
+        { ...log, reason: live.error.message },
+        "Could not read a live document, reading its file"
+      );
+    }
   } else if (live.value !== null) {
     const source = Buffer.from(live.value, "utf8");
     if (byteOffset !== undefined && byteOffset >= source.byteLength) {

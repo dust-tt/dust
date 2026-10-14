@@ -5,6 +5,7 @@ import { readCollabSource } from "@app/lib/api/collab/client";
 import {
   makeExtra,
   setupProjectConversation,
+  TEST_AGENT_CONFIGURATION,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { Err, Ok } from "@app/types/shared/result";
@@ -385,8 +386,10 @@ describe("catHandler", () => {
   });
 
   describe("a Markdown document open in a live session", () => {
-    // The agent `makeExtra` runs.
-    const AGENT = { agentId: "test_agent", name: "Test agent" };
+    const AGENT = {
+      agentId: TEST_AGENT_CONFIGURATION.sId,
+      name: TEST_AGENT_CONFIGURATION.name,
+    };
 
     async function setupMarkdown() {
       const { auth, conversation } = await setupProjectConversation();
@@ -434,6 +437,23 @@ describe("catHandler", () => {
       );
 
       expect(textOf(await catHandler({ path }, extra))).toBe("1: # Stored");
+    });
+
+    it("reads the session of a file stored as Markdown whatever its name", async () => {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile("# Stored\n", "text/markdown");
+      vi.mocked(readCollabSource).mockResolvedValue(
+        new Ok({ open: true, source: "# Live\n" })
+      );
+
+      expect(
+        textOf(
+          await catHandler(
+            { path: `conversation-${conversation.sId}/notes` },
+            makeExtra(auth, conversation)
+          )
+        )
+      ).toBe("1: # Live");
     });
 
     it("never asks the collab server about a file that is not Markdown", async () => {
