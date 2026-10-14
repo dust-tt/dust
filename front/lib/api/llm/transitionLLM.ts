@@ -409,7 +409,7 @@ function convertAggregatedItem(
 /**
  * Maps new model ErrorType to old LLMErrorType with correct retryability.
  */
-function mapErrorType(errorType: ErrorType): {
+export function mapErrorType(errorType: ErrorType): {
   type: LLMErrorType;
   isRetryable: boolean;
 } {
