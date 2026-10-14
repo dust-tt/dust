@@ -17,7 +17,10 @@ import {
 } from "@app/components/editor/document/DocumentTable";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
-import { serializeFrameEmbedDirective } from "@app/lib/markdown/frame_embed";
+import {
+  parseFrameEmbedHeight,
+  serializeFrameEmbedDirective,
+} from "@app/lib/markdown/frame_embed";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
@@ -239,7 +242,13 @@ const framesOpeningListItemsAsText = (node: JSONContent): JSONContent => {
     content[0] = {
       type: "paragraph",
       content: [
-        { type: "text", text: serializeFrameEmbedDirective(first.attrs.path) },
+        {
+          type: "text",
+          text: serializeFrameEmbedDirective(
+            first.attrs.path,
+            parseFrameEmbedHeight(first.attrs.height)
+          ),
+        },
       ],
     };
   }

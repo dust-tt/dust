@@ -1,7 +1,6 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
 import { DocumentFilePreviewDisplay } from "@app/components/editor/document/DocumentFilePreview";
-import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
 import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
@@ -16,6 +15,7 @@ import {
   FRAME_EMBED_COMPONENT_NAME,
   FRAME_EMBED_DIRECTIVE_NAME,
   parseFrameEmbedDirective,
+  parseFrameEmbedHeight,
 } from "@app/lib/markdown/frame_embed";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
@@ -73,7 +73,7 @@ function withFrameEmbeds(
       data: {
         ...node.data,
         hName: FRAME_EMBED_COMPONENT_NAME,
-        hProperties: { path: parsed.path },
+        hProperties: { path: parsed.path, height: parsed.height },
       },
     };
   }
@@ -99,9 +99,14 @@ function frameEmbedDirective() {
 
 const MARKDOWN_PLUGINS = [frameEmbedDirective, filePreviewDirective];
 
-const FrameEmbed = ({ path }: DocumentFramePathProps) => (
+interface FrameEmbedDirectiveProps {
+  path: string;
+  height?: unknown;
+}
+
+const FrameEmbed = ({ path, height }: FrameEmbedDirectiveProps) => (
   <div className="my-6">
-    <DocumentFrameDisplay path={path} />
+    <DocumentFrameDisplay path={path} height={parseFrameEmbedHeight(height)} />
   </div>
 );
 

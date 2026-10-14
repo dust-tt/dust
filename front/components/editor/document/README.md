@@ -137,14 +137,16 @@ conversation's files only once an entry is picked.
 
 ## Frames
 
-A line holding exactly `::embed_frame{path="…"}` embeds a Frame: a `frameEmbed` node on its own line, keeping
-its path. Anything else on the line, another attribute, or the line opening a list item keeps it
-as text. Text reading as such a line saves as `::embed\_frame{…}`, since the editor escapes `_` in
+A line holding exactly `::embed_frame{path="…"}`, or `::embed_frame{path="…" height="…"}` with a height in
+pixels, embeds a Frame: a `frameEmbed` node on its own line, keeping its path and height. Anything
+else on the line, another attribute, or the line opening a list item keeps it as text. Text reading as such a line saves as `::embed\_frame{…}`, since the editor escapes `_` in
 text, so it reopens as text. The host's optional
 `renderFrame` displays it, in the editor and in the read-only preview; events inside it go to the
-Frame, never the editor. The file preview renders the Frame inline in a 600px high box, after
-loading it from its path through the file API, so only readers of the Frame's
-file see it (`DocumentFrameEmbed`). Without a renderer, or for a path that is not a readable Frame,
+Frame, never the editor. The file preview renders the Frame inline in a box of its height, 600px
+by default, after loading it from its path through the file API, so only readers of the Frame's
+file see it (`DocumentFrameEmbed`). While editable, hovering a Frame shows a menu at its top right
+with a height slider and a remove action; the slider previews the height while dragged and saves
+it on release, each action its own undo step. Without a renderer, or for a path that is not a readable Frame,
 the embed shows its path.
 
 ## File previews
@@ -170,6 +172,7 @@ opens the file through the file API. Without it, the reference shows as its titl
 | `DocumentTable.ts` | The `table` node, its rows and cells, and its GFM Markdown. |
 | `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `frameEmbed` node, its Markdown, and the host's renderers its view reads. |
 | `DocumentImageMenu.tsx` | The width slider, reset and remove menu over a hovered image. |
+| `DocumentFrameMenu.tsx` | The height slider and remove menu over a hovered Frame. |
 | `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |

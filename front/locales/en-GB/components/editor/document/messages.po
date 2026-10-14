@@ -171,6 +171,24 @@ msgstr ""
 msgid "All comments"
 msgstr ""
 
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgctxt "toolbar over a hovered Frame embedded in a document"
+msgid "Frame"
+msgstr ""
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgid "Frame height"
+msgstr ""
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr ""
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgid "Remove Frame"
+msgstr ""
+
 #: front/components/editor/document/DocumentImageMenu.tsx
 msgctxt "toolbar over a hovered image"
 msgid "Image"
@@ -178,10 +196,6 @@ msgstr ""
 
 #: front/components/editor/document/DocumentImageMenu.tsx
 msgid "Image width"
-msgstr ""
-
-#: front/components/editor/document/DocumentImageMenu.tsx
-msgid "{value} px"
 msgstr ""
 
 #: front/components/editor/document/DocumentImageMenu.tsx

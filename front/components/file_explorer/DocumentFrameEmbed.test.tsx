@@ -25,7 +25,7 @@ const AUTH = { vizUrl: "https://viz.dust.tt" } as AuthContextValue;
 const renderEmbed = (path: string) =>
   render(
     <AuthContext.Provider value={AUTH}>
-      <DocumentFrameEmbed owner={owner} path={path} />
+      <DocumentFrameEmbed owner={owner} path={path} height={600} />
     </AuthContext.Provider>
   );
 

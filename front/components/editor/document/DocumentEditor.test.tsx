@@ -135,12 +135,14 @@ async function renderDocument(
     answer,
     resolveImageSource = NO_IMAGE_SOURCE,
     readOnly,
+    renderFrame,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
     answer?: SessionAnswer;
     resolveImageSource?: DocumentProps["resolveImageSource"];
     readOnly?: boolean;
+    renderFrame?: DocumentProps["renderFrame"];
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -158,6 +160,7 @@ async function renderDocument(
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
       readOnly={readOnly}
+      renderFrame={renderFrame}
       collabView={{
         status: "live",
         binding: {
@@ -1670,6 +1673,133 @@ describe("Document Frame embeds", () => {
     expect(
       screen.getByText('::embed_frame{path="pod-abc/listed.tsx"}')
     ).toBeDefined();
+  });
+});
+
+describe("Document Frame menu", () => {
+  // The height slider measures itself.
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const SOURCE_WITH_FRAMES =
+    'Intro\n\n::embed_frame{path="pod-abc/a.tsx" height="400"}\n\n::embed_frame{path="pod-abc/b.tsx"}\n\nOutro\n';
+
+  const renderFrames = async ({ readOnly = false } = {}) => {
+    const { dom } = await renderDocument(SOURCE_WITH_FRAMES, {
+      readOnly,
+      renderFrame: (path, height) => (
+        <iframe title={`Frame ${path}`} style={{ height }} />
+      ),
+    });
+    return dom;
+  };
+
+  const frameView = (dom: HTMLElement, path: string) => {
+    const view = within(dom)
+      .getByTitle(`Frame ${path}`)
+      .closest("[data-node-view-wrapper]");
+    if (!(view instanceof HTMLElement)) {
+      throw new Error(`No node view for ${path}.`);
+    }
+    return view;
+  };
+
+  const hoverFrame = (dom: HTMLElement, path: string) => {
+    const view = frameView(dom, path);
+    fireEvent.mouseEnter(view);
+    return view;
+  };
+
+  it("shows each Frame at its height, 600px by default", async () => {
+    const dom = await renderFrames();
+
+    expect(within(dom).getByTitle("Frame pod-abc/a.tsx").style.height).toBe(
+      "400px"
+    );
+    expect(within(dom).getByTitle("Frame pod-abc/b.tsx").style.height).toBe(
+      "600px"
+    );
+  });
+
+  it("shows when a Frame is hovered and hides when the pointer leaves it", async () => {
+    const dom = await renderFrames();
+    expect(screen.queryByRole("toolbar", { name: "Frame" })).toBeNull();
+
+    const view = hoverFrame(dom, "pod-abc/a.tsx");
+    expect(screen.getByRole("toolbar", { name: "Frame" })).toBeInTheDocument();
+
+    fireEvent.mouseLeave(view);
+    expect(screen.queryByRole("toolbar", { name: "Frame" })).toBeNull();
+  });
+
+  it("removes only the hovered Frame, as one undoable edit", async () => {
+    const dom = await renderFrames();
+    const before = dom.editor.getMarkdown();
+    hoverFrame(dom, "pod-abc/b.tsx");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Frame" }));
+
+    expect(dom.editor.getMarkdown()).not.toContain("pod-abc/b.tsx");
+    expect(dom.editor.getMarkdown()).toContain(
+      '::embed_frame{path="pod-abc/a.tsx" height="400"}'
+    );
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toBe(before);
+  });
+
+  it("changes the hovered Frame's height with the slider, as its own undoable edit", async () => {
+    const dom = await renderFrames();
+    hoverFrame(dom, "pod-abc/b.tsx");
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Frame height" }), {
+      key: "Home",
+    });
+
+    expect(dom.editor.getMarkdown()).toContain(
+      '::embed_frame{path="pod-abc/b.tsx" height="200"}'
+    );
+    expect(dom.editor.getMarkdown()).toContain(
+      '::embed_frame{path="pod-abc/a.tsx" height="400"}'
+    );
+    expect(within(dom).getByTitle("Frame pod-abc/b.tsx").style.height).toBe(
+      "200px"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Frame" }));
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      '::embed_frame{path="pod-abc/b.tsx" height="200"}'
+    );
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      '::embed_frame{path="pod-abc/b.tsx"}'
+    );
+  });
+
+  it("does not show in a read-only document", async () => {
+    const dom = await renderFrames({ readOnly: true });
+
+    hoverFrame(dom, "pod-abc/a.tsx");
+
+    expect(screen.queryByRole("toolbar", { name: "Frame" })).toBeNull();
   });
 });
 
