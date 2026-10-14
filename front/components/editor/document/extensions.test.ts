@@ -135,8 +135,8 @@ describe("numbered lists", () => {
         <p></p>
         <ul><li>c</li></ul>`;
       pressInEmptyParagraph(live, html, ["Backspace"]);
-      expect(editor?.getJSON().content?.map(({ type }) => type)).toContain(
-        "bulletList"
+      expect(editor?.getJSON().content?.map(({ type }) => type)).toEqual(
+        expect.arrayContaining(["orderedList", "bulletList"])
       );
     });
   });
@@ -146,7 +146,9 @@ describe("numbered lists", () => {
       <ol><li>a</li></ol>
       <p></p>
       <ol><li>c</li></ol>`;
-    pressInEmptyParagraph(false, html, ["Backspace"]);
+    expect(pressInEmptyParagraph(false, html, ["Backspace"])).toBe(
+      "1. a\n2. c"
+    );
     editor?.commands.undo();
     expect(
       editor?.getJSON().content?.filter(({ type }) => type === "orderedList")
