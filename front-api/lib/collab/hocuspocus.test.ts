@@ -6,6 +6,8 @@ import {
   dispatchSessionCommentMentions,
 } from "@app/lib/api/collab/comments";
 import {
+  CollabSaveError,
+  keepConflictingFile,
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
@@ -38,6 +40,7 @@ import {
 } from "@front-api/lib/collab/hocuspocus";
 import {
   SAVE_RETRY_DELAY_MS,
+  getSession,
   readSessionSource,
   showAgentActivity,
   writeSessionSource,
@@ -61,9 +64,11 @@ vi.mock("@app/lib/api/collab/access", async (importActual) => {
   };
 });
 
-vi.mock("@app/lib/api/collab/session_file", () => ({
+vi.mock("@app/lib/api/collab/session_file", async (importActual) => ({
+  ...(await importActual<typeof import("@app/lib/api/collab/session_file")>()),
   loadCollabSession: vi.fn(),
   saveCollabSession: vi.fn(),
+  keepConflictingFile: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/collab/comments", () => ({
@@ -197,7 +202,7 @@ describe("createCollabHocuspocus", () => {
 
   it("keeps a document whose save failed after the grace period", async () => {
     vi.mocked(saveCollabSession).mockResolvedValue(
-      new Err("This file changed since it was loaded.")
+      new Err(new CollabSaveError("failed", "The storage is down."))
     );
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);
@@ -216,7 +221,7 @@ describe("createCollabHocuspocus", () => {
 
   it("tells every connection when a save fails, retries it, and tells them once it saves", async () => {
     vi.mocked(saveCollabSession).mockResolvedValueOnce(
-      new Err("This file changed since it was loaded.")
+      new Err(new CollabSaveError("failed", "The storage is down."))
     );
     const hocuspocus = createCollabHocuspocus();
     const writer = await collabAccess(true);
@@ -245,10 +250,153 @@ describe("createCollabHocuspocus", () => {
     expect(broadcast).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps the file's version after a conflict, tells everyone, and saves over it", async () => {
+    const COPY = "user-u1/notes (conflict 2026-10-14 14-05).md";
+    vi.mocked(saveCollabSession)
+      .mockResolvedValueOnce(
+        new Err(new CollabSaveError("revision_conflict", "File changed."))
+      )
+      .mockImplementation(
+        async (_file, _live, last) =>
+          new Ok({ revision: "10", source: last.source })
+      );
+    vi.mocked(keepConflictingFile).mockResolvedValueOnce(
+      new Ok({ lastSave: { revision: "9", source: "Theirs." }, copyPath: COPY })
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await collabAccess(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    const document = hocuspocus.documents.get(DOCUMENT_NAME);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    const broadcast = vi.spyOn(document, "broadcastStateless");
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    const lastRevisions = vi
+      .mocked(saveCollabSession)
+      .mock.calls.map(([, , last]) => last.revision);
+    expect(lastRevisions).toEqual(["1", "9"]);
+    expect(broadcast).toHaveBeenCalledWith(saveState(false, COPY));
+    expect(broadcast).not.toHaveBeenCalledWith(saveState(true));
+  });
+
+  it("stops saving over a file rewritten at every round, and fails the save", async () => {
+    vi.mocked(saveCollabSession).mockResolvedValue(
+      new Err(new CollabSaveError("revision_conflict", "File changed."))
+    );
+    vi.mocked(keepConflictingFile).mockImplementation(
+      async () =>
+        new Ok({
+          lastSave: { revision: "9", source: "Theirs." },
+          copyPath: "user-u1/notes (conflict 2026-10-14 14-05).md",
+        })
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await collabAccess(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    const document = hocuspocus.documents.get(DOCUMENT_NAME);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    const broadcast = vi.spyOn(document, "broadcastStateless");
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    // The first save, then one per round.
+    expect(saveCollabSession).toHaveBeenCalledTimes(4);
+    expect(keepConflictingFile).toHaveBeenCalledTimes(3);
+    expect(broadcast).toHaveBeenLastCalledWith(
+      saveState(true, "user-u1/notes (conflict 2026-10-14 14-05).md")
+    );
+  });
+
+  it("saves the next round through whoever edited while the conflict was kept", async () => {
+    const first = await collabAccess(true);
+    const second: CollabAccess = {
+      ...first,
+      auth: (await collabAccess(true)).auth,
+    };
+    vi.mocked(saveCollabSession)
+      .mockResolvedValueOnce(
+        new Err(new CollabSaveError("revision_conflict", "File changed."))
+      )
+      .mockImplementation(
+        async (_file, _live, last) =>
+          new Ok({ revision: "10", source: last.source })
+      );
+    const hocuspocus = createCollabHocuspocus();
+    vi.useFakeTimers();
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      first
+    );
+    const document = hocuspocus.documents.get(DOCUMENT_NAME);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    vi.mocked(keepConflictingFile).mockImplementationOnce(async () => {
+      // Another person edits while the file's version is being kept.
+      const session = getSession(document);
+      if (session) {
+        session.lastChangedBy = second;
+      }
+      return new Ok({
+        lastSave: { revision: "9", source: "Theirs." },
+        copyPath: null,
+      });
+    });
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    const writers = vi
+      .mocked(saveCollabSession)
+      .mock.calls.map(([writer]) => writer.auth);
+    expect(writers).toEqual([first.auth, second.auth]);
+  });
+
+  it("fails the save when a conflicting file cannot be kept", async () => {
+    vi.mocked(saveCollabSession).mockResolvedValue(
+      new Err(new CollabSaveError("revision_conflict", "File changed."))
+    );
+    vi.mocked(keepConflictingFile).mockResolvedValue(
+      new Err(new Error("The file was deleted while it was open."))
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const writer = await collabAccess(true);
+    vi.useFakeTimers();
+
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      writer
+    );
+    const document = hocuspocus.documents.get(DOCUMENT_NAME);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    const broadcast = vi.spyOn(document, "broadcastStateless");
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    expect(saveCollabSession).toHaveBeenCalledTimes(1);
+    expect(broadcast).toHaveBeenLastCalledWith(saveState(true));
+  });
+
   /** A document whose saves fail, edited once by `writer`. */
   async function withFailingSaves() {
     vi.mocked(saveCollabSession).mockResolvedValue(
-      new Err("This file changed since it was loaded.")
+      new Err(new CollabSaveError("failed", "The storage is down."))
     );
     vi.mocked(applyCommentRequest).mockClear();
     const hocuspocus = createCollabHocuspocus();
@@ -389,8 +537,8 @@ describe("createCollabHocuspocus", () => {
   });
 });
 
-function saveState(failed: boolean) {
-  return JSON.stringify({ type: "save_state", failed });
+function saveState(failed: boolean, conflictCopy: string | null = null) {
+  return JSON.stringify({ type: "save_state", failed, conflictCopy });
 }
 
 async function ticketFor(auth: Authenticator, path: string) {

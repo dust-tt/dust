@@ -3,11 +3,7 @@ import {
   applyCommentRequest,
   dispatchSessionCommentMentions,
 } from "@app/lib/api/collab/comments";
-import type { CollabSave } from "@app/lib/api/collab/session_file";
-import {
-  loadCollabSession,
-  saveCollabSession,
-} from "@app/lib/api/collab/session_file";
+import { loadCollabSession } from "@app/lib/api/collab/session_file";
 import {
   concurrentExecutor,
   setTimeoutAsync,
@@ -20,7 +16,6 @@ import {
   isDefaultSaveState,
   parseSessionName,
 } from "@app/types/collab";
-import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
@@ -28,6 +23,7 @@ import { authenticateConnection } from "@front-api/lib/collab/connection_access"
 import {
   getSession,
   recordSaveResult,
+  saveSession,
   saveStateMessage,
   toSaveState,
   serverMessage,
@@ -110,7 +106,8 @@ function logUnexpected(
  * one succeeds, the document unloads or `saveAllSessions` is called, except a save whose writer
  * cannot write, which only another edit fixes. Every time the session's save state
  * (`toSaveState`) changes, every connection MUST be sent it as `save_state`, and a connection
- * opening while it differs from `DEFAULT_SAVE_STATE` MUST be sent it once connected.
+ * opening while it differs from `DEFAULT_SAVE_STATE` MUST be sent it once connected. The state
+ * includes the last copy kept after a save conflict (`collab-session-save-conflict`).
  */
 /**
  * @cc [owner:tdraier,label:security;product] collab-comment-threads
@@ -172,6 +169,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         saveFailed: false,
         saveRetryTimer: undefined,
         saveRetries: 0,
+        conflictCopy: undefined,
         lastChangedBy: undefined,
         lastCommenter: undefined,
         graceTimer: undefined,
@@ -210,13 +208,9 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         throw new Error("The document was changed without a writer.");
       }
 
-      let saved: Result<CollabSave, string>;
+      let saved: Awaited<ReturnType<typeof saveSession>>;
       try {
-        saved = await saveCollabSession(
-          writer,
-          { doc: document, comments: session.comments },
-          session.lastSave
-        );
+        saved = await saveSession(document, writer);
       } catch (err) {
         logSaveFailure(
           session.saveRetries,
@@ -231,20 +225,18 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         throw err;
       }
       if (saved.isErr()) {
-        // TODO(co-edition): a revision conflict never recovers. `session.lastSave` only moves on
-        // success, so once another writer changes the file every later save conflicts too,
-        // the document stays loaded and its edits never reach the file.
         logSaveFailure(
           session.saveRetries,
           {
             documentName,
             workspaceId: writer.workspaceId,
-            reason: saved.error,
+            reason: saved.error.message,
+            code: saved.error.code,
           },
           "Collab save failed"
         );
         recordSaveResult(instance, document, "failed");
-        throw new Error(saved.error);
+        throw new Error(saved.error.message);
       }
       session.lastSave = saved.value;
       recordSaveResult(instance, document, "saved");

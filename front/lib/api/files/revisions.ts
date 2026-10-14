@@ -11,6 +11,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { FileMetadata } from "@google-cloud/storage";
 import type { Readable } from "stream";
 
+/** The revision that only matches a file that does not exist: a write with it never overwrites. */
+export const ABSENT_FILE_REVISION = "0";
+
 const parseRevision = (
   generation: string | number | undefined
 ): Result<string, DustFileSystemError> => {

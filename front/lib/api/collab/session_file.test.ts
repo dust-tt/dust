@@ -1,5 +1,6 @@
 import { openCollabAccess } from "@app/lib/api/collab/access";
 import {
+  keepConflictingFile,
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
@@ -9,6 +10,7 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import { writeConversationFile } from "@app/tests/utils/conversation_files";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { writeUserFile } from "@app/tests/utils/user_files";
@@ -230,6 +232,152 @@ describe("saveCollabSession", () => {
       ...lastSave,
       revision: "7",
     });
-    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.code).toBe("revision_conflict");
+  });
+
+  describe("keepConflictingFile", () => {
+    const COPY_NAME =
+      /notes \(conflict \d{4}-\d{2}-\d{2} \d{2}-\d{2}( \d)?\)\.md$/;
+
+    // A conversation's file: the storage there keeps revisions, unlike a user's own files.
+    async function loadConversationFile(text: string, name = "notes.md") {
+      const { authenticator: auth } = await createResourceTest({});
+      const path = await writeConversationFile(auth, name, text);
+      const file = await openCollabAccess(auth, path);
+      if (file.isErr()) {
+        throw new Error(file.error.message);
+      }
+      const loaded = await loadCollabSession(file.value);
+      if (loaded.isErr()) {
+        throw new Error(loaded.error);
+      }
+      return { file: file.value, ...loaded.value };
+    }
+
+    // Straight to storage, around the session, the way a sandbox writes.
+    async function writeAround(
+      file: Awaited<ReturnType<typeof loadConversationFile>>["file"],
+      text: string
+    ) {
+      const written = await file.dustFs.write(
+        file.canonicalPath,
+        text,
+        "text/markdown"
+      );
+      if (written.isErr()) {
+        throw written.error;
+      }
+    }
+
+    async function readText(
+      file: Awaited<ReturnType<typeof loadConversationFile>>["file"],
+      path: string
+    ) {
+      const read = await file.dustFs.readBuffer(path);
+      return read.isOk() && read.value ? read.value.toString("utf8") : null;
+    }
+
+    it("keeps the file's exact bytes next to it, then the session saves over it", async () => {
+      const { file, content, lastSave } =
+        await loadConversationFile("# Notes\n");
+      typeInto(content, "Ours.");
+      const theirs = "# Notes\n\nTheirs,  *spelled* their way.\n";
+      await writeAround(file, theirs);
+
+      const conflict = await saveCollabSession(file, content, lastSave);
+      expect(conflict.isErr() && conflict.error.code).toBe("revision_conflict");
+
+      const kept = await keepConflictingFile(file, lastSave);
+      if (kept.isErr()) {
+        throw kept.error;
+      }
+      const { copyPath } = kept.value;
+      expect(copyPath).toMatch(COPY_NAME);
+      expect(await readText(file, copyPath ?? "")).toBe(theirs);
+
+      const saved = await saveCollabSession(file, content, kept.value.lastSave);
+      expect(saved.isOk()).toBe(true);
+      expect(await readText(file, file.canonicalPath)).toContain("Ours.");
+    });
+
+    it("keeps no copy when the file holds the same content", async () => {
+      const { file, lastSave } = await loadConversationFile("# Notes\n");
+      await writeAround(file, "# Notes\n");
+
+      const writesBefore = fileStorageMock.saveFileCalls.length;
+
+      const kept = await keepConflictingFile(file, lastSave);
+      expect(kept.isOk() && kept.value.copyPath).toBeNull();
+      expect(kept.isOk() && kept.value.lastSave.revision).not.toBe(
+        lastSave.revision
+      );
+      expect(fileStorageMock.saveFileCalls).toHaveLength(writesBefore);
+    });
+
+    it("numbers a copy whose name is taken", async () => {
+      const { file, lastSave } = await loadConversationFile("# Notes\n");
+      await writeAround(file, "# Notes\n\nFirst.\n");
+      const first = await keepConflictingFile(file, lastSave);
+      await writeAround(file, "# Notes\n\nSecond.\n");
+      const second = await keepConflictingFile(file, lastSave);
+
+      const firstPath = first.isOk() ? first.value.copyPath : null;
+      const secondPath = second.isOk() ? second.value.copyPath : null;
+      expect(firstPath).toMatch(COPY_NAME);
+      expect(secondPath).toMatch(COPY_NAME);
+      expect(secondPath).not.toBe(firstPath);
+      expect(await readText(file, firstPath ?? "")).toContain("First.");
+    });
+
+    it("keeps the raw text of a file the editor cannot open", async () => {
+      const { file, lastSave } = await loadConversationFile("# Notes\n");
+      const theirs = "# Notes\n\n- [ ] A task list the editor refuses\n";
+      await writeAround(file, theirs);
+
+      const kept = await keepConflictingFile(file, lastSave);
+      if (kept.isErr()) {
+        throw kept.error;
+      }
+      expect(kept.value.lastSave.source).toBe(theirs);
+      expect(await readText(file, kept.value.copyPath ?? "")).toBe(theirs);
+    });
+
+    it("keeps the copy in the file's own folder", async () => {
+      const { file, lastSave } = await loadConversationFile(
+        "# Notes\n",
+        "plans/notes.md"
+      );
+      await writeAround(file, "# Notes\n\nTheirs.\n");
+
+      const kept = await keepConflictingFile(file, lastSave);
+      const copyPath = kept.isOk() ? kept.value.copyPath : null;
+      expect(copyPath).toMatch(/\/plans\/notes \(conflict [^/]+\)\.md$/);
+    });
+
+    it("fails without a copy when the file is larger than a save can write", async () => {
+      const { file, lastSave } = await loadConversationFile("# Notes\n");
+      await writeAround(
+        file,
+        "a".repeat(WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES + 1)
+      );
+
+      const writesBefore = fileStorageMock.saveFileCalls.length;
+
+      const kept = await keepConflictingFile(file, lastSave);
+      expect(kept.isErr()).toBe(true);
+      expect(fileStorageMock.saveFileCalls).toHaveLength(writesBefore);
+    });
+
+    it("fails without writing anything when the file was deleted", async () => {
+      const { file, lastSave } = await loadConversationFile("# Notes\n");
+      const deleted = await file.dustFs.delete(file.canonicalPath);
+      expect(deleted.isOk()).toBe(true);
+
+      const writesBefore = fileStorageMock.saveFileCalls.length;
+
+      const kept = await keepConflictingFile(file, lastSave);
+      expect(kept.isErr()).toBe(true);
+      expect(fileStorageMock.saveFileCalls).toHaveLength(writesBefore);
+    });
   });
 });

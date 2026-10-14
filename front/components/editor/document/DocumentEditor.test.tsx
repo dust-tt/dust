@@ -638,6 +638,28 @@ describe("Document comments", () => {
     container.remove();
   });
 
+  it("names the copy kept after the file changed outside the editor", async () => {
+    render(
+      <DocumentView
+        initialContent={SOURCE}
+        collabView={{
+          status: "live",
+          binding: null,
+          conflictCopy: "conversation-c1/notes (conflict 2026-10-14 14-05).md",
+        }}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+        resolveImageSource={NO_IMAGE_SOURCE}
+      />
+    );
+
+    expect(
+      await screen.findByText(
+        /Their version was saved as notes \(conflict 2026-10-14 14-05\)\.md\./
+      )
+    ).toBeDefined();
+  });
+
   it("shows the comments button in the host's container when given one", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);

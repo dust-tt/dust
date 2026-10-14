@@ -1,5 +1,10 @@
 import type { CollabAccess } from "@app/lib/api/collab/access";
 import type { CollabSave } from "@app/lib/api/collab/session_file";
+import {
+  CollabSaveError,
+  keepConflictingFile,
+  saveCollabSession,
+} from "@app/lib/api/collab/session_file";
 import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
@@ -36,6 +41,8 @@ export interface CollabSession {
   /** The save retried next while saves fail, and how many were retried since the last success. */
   saveRetryTimer: ReturnType<typeof setTimeout> | undefined;
   saveRetries: number;
+  /** Where the file's version was last kept after a save conflict, for editors joining later. */
+  conflictCopy: string | undefined;
   /** The connection that last changed the text. */
   lastChangedBy: CollabAccess | undefined;
   /** The connection that last changed the threads, which saves them when nobody changed the text. */
@@ -56,6 +63,7 @@ export type SaveOutcome = "saved" | "failed" | "failed_until_edited";
 /** The session's save state, as its editors show it. */
 export const toSaveState = (session: CollabSession): SaveState => ({
   failed: session.saveFailed,
+  conflictCopy: session.conflictCopy ?? null,
 });
 
 export const saveStateMessage = (state: SaveState) =>
@@ -409,5 +417,81 @@ export function recordSaveResult(
   if (session.saveFailed !== failed) {
     session.saveFailed = failed;
     document.broadcastStateless(saveStateMessage(toSaveState(session)));
+  }
+}
+
+// A file written again while its conflict is kept starts another round, at most this many per save.
+const MAX_CONFLICT_ROUNDS = 3;
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] collab-session-save-conflict
+ * Each round MUST save with `saveCollabSession` through the connection that last changed the
+ * document by then, `writer` when none did, and fail without saving when it cannot write. When a
+ * save fails with `revision_conflict`, the file's version MUST be kept with `keepConflictingFile`
+ * before the session saves over it: the session's last save becomes the file as now stored, and
+ * when a copy was written, its path MUST be recorded in the session's save state and that state
+ * sent to every connection. It MUST then save again, at most `MAX_CONFLICT_ROUNDS` times, and
+ * return the first failure it cannot recover: any failure but a conflict, a conflict whose file
+ * cannot be kept, or a conflict past the last round.
+ */
+export async function saveSession(
+  document: Document,
+  writer: CollabAccess
+): Promise<Result<CollabSave, CollabSaveError>> {
+  const session = getSession(document);
+  if (!session) {
+    return new Err(
+      new CollabSaveError("failed", "The document has no session.")
+    );
+  }
+  for (let round = 0; ; round++) {
+    // Someone may have edited while the last round awaited: save through whoever changed it last.
+    const current = session.lastChangedBy ?? session.lastCommenter ?? writer;
+    if (current.canWrite !== true) {
+      return new Err(
+        new CollabSaveError(
+          "failed",
+          "The document was changed without a writer."
+        )
+      );
+    }
+    const saved = await saveCollabSession(
+      current,
+      { doc: document, comments: session.comments },
+      session.lastSave
+    );
+    if (
+      saved.isOk() ||
+      saved.error.code !== "revision_conflict" ||
+      round === MAX_CONFLICT_ROUNDS
+    ) {
+      return saved;
+    }
+    const kept = await keepConflictingFile(current, session.lastSave);
+    if (kept.isErr()) {
+      logger.warn(
+        {
+          documentName: document.name,
+          workspaceId: current.workspaceId,
+          reason: kept.error.message,
+        },
+        "Collab conflict not kept"
+      );
+      return saved;
+    }
+    session.lastSave = kept.value.lastSave;
+    const { copyPath } = kept.value;
+    if (copyPath) {
+      session.conflictCopy = copyPath;
+      logger.info(
+        {
+          documentName: document.name,
+          workspaceId: current.workspaceId,
+          copyPath,
+        },
+        "Collab conflict kept as a copy"
+      );
+      document.broadcastStateless(saveStateMessage(toSaveState(session)));
+    }
   }
 }

@@ -55,6 +55,7 @@ export default function CollabEditor(props: CollabEditorProps) {
         status,
         showSaving,
         saveFailed: saveState.failed,
+        conflictCopy: saveState.conflictCopy,
         agent,
         participants,
         binding: {
