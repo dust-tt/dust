@@ -7,6 +7,11 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { FrameToolCallPair } from "@app/types/api/frame_publication";
+import {
+  FRAME_TOOL_CALL_REF_MAX_LENGTH,
+  FrameToolCallPairSchema,
+} from "@app/types/api/frame_publication";
 
 /**
  * One row per immutable Frames v2 publication; `createdAt` is its publication time. The
@@ -21,6 +26,28 @@ export class FramePublicationModel extends WorkspaceAwareModel<FramePublicationM
   declare fileId: ForeignKey<FileModel["id"]>;
   declare publicationId: string;
   declare publishedByUserId: ForeignKey<UserModel["id"]> | null;
+  /**
+   * Frame-level union of literal tools.call(server, tool) pairs from the publication's
+   * function contracts. Each inner array is exactly `[server, tool]`.
+   */
+  declare requiredTools: CreationOptional<FrameToolCallPair[]>;
+}
+
+function assertRequiredTools(
+  value: unknown
+): asserts value is FrameToolCallPair[] {
+  if (!Array.isArray(value)) {
+    throw new Error("requiredTools must be an array of [server, tool] pairs.");
+  }
+  for (const pair of value) {
+    const parsed = FrameToolCallPairSchema.safeParse(pair);
+    if (!parsed.success) {
+      throw new Error(
+        "requiredTools entries must be length-2 string pairs " +
+          `(non-empty, at most ${FRAME_TOOL_CALL_REF_MAX_LENGTH} characters each).`
+      );
+    }
+  }
 }
 
 FramePublicationModel.init(
@@ -42,6 +69,16 @@ FramePublicationModel.init(
     publicationId: {
       type: DataTypes.STRING(255),
       allowNull: false,
+    },
+    requiredTools: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.STRING(255))),
+      allowNull: false,
+      defaultValue: [],
+      validate: {
+        isToolCallPairs(value: unknown) {
+          assertRequiredTools(value);
+        },
+      },
     },
   },
   {
