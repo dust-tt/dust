@@ -1,9 +1,9 @@
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { Step } from "@extension/platforms/excel/tools/parseExpression";
 
-// The Office.js types that an expression can go through. The key is the name that the allowlist
-// uses, and the value is the Office.js type. Example: `Range` is `Excel.Range`.
-type ExcelTypes = {
+// The Office.js classes that an expression can go through. The key is the name of the class in
+// the allowlist, and the value is the Office.js class. Example: `Range` is `Excel.Range`.
+type ExcelClasses = {
   Workbook: Excel.Workbook;
   WorksheetCollection: Excel.WorksheetCollection;
   Worksheet: Excel.Worksheet;
@@ -19,27 +19,24 @@ type ExcelTypes = {
   PivotLayout: Excel.PivotLayout;
   ChartCollection: Excel.ChartCollection;
   Chart: Excel.Chart;
+  ChartSeriesCollection: Excel.ChartSeriesCollection;
+  ChartSeries: Excel.ChartSeries;
 };
 
-// The type that a member gives. `"Value"` is a `ClientResult`, as from `getCount()`: the
-// expression must stop there. Example: `workbook.tables.getCount()` is allowed, but
-// `workbook.tables.getCount().value` is not.
-type TypeName = keyof ExcelTypes | "Value";
+// The name of a class in the allowlist, or `ClientResult`. A `ClientResult` is a value, as from
+// `getCount()`: the expression must stop there.
+type ExcelClass = keyof ExcelClasses | "ClientResult";
 
-// For each type, the members that only read, and the type that each member gives.
+// For each class, the members that only read, and the class of the object that each member
+// gives.
 // Example: in `Workbook`, the line `worksheets: "WorksheetCollection"` allows
 // `workbook.worksheets`, and the next step must be in `WorksheetCollection`.
 //
-// The keys must be members of the Office.js type, so the compiler finds a wrong name.
 // A method that changes the workbook (`delete`, `clear`, `insert`, `set`, `add`...) must not be
-// in this list: Office.js sends every call that is in the queue, also when the read fails later.
-//
-// A sub-object that the list does not contain can still be read with a path in `load`.
-// Example: `workbook.getSelectedRange()` with `load: ["format/fill/color"]`.
+// in this list.
 const ALLOWLIST: {
-  [T in keyof ExcelTypes]: Partial<Record<keyof ExcelTypes[T], TypeName>>;
+  [C in keyof ExcelClasses]: Partial<Record<keyof ExcelClasses[C], ExcelClass>>;
 } = {
-  // `workbook.getSelectedRange()`
   Workbook: {
     worksheets: "WorksheetCollection",
     tables: "TableCollection",
@@ -48,16 +45,14 @@ const ALLOWLIST: {
     getSelectedRange: "Range",
     getActiveCell: "Range",
   },
-  // `workbook.worksheets.getItem('Sheet1')`
   WorksheetCollection: {
     getItem: "Worksheet",
     getItemOrNullObject: "Worksheet",
     getActiveWorksheet: "Worksheet",
     getFirst: "Worksheet",
     getLast: "Worksheet",
-    getCount: "Value",
+    getCount: "ClientResult",
   },
-  // `workbook.worksheets.getItem('Sheet1').getRange('A1:C10')`
   Worksheet: {
     tables: "TableCollection",
     names: "NamedItemCollection",
@@ -71,7 +66,6 @@ const ALLOWLIST: {
     getNext: "Worksheet",
     getPrevious: "Worksheet",
   },
-  // `workbook.getSelectedRange().getEntireRow()`
   Range: {
     worksheet: "Worksheet",
     getCell: "Range",
@@ -86,16 +80,14 @@ const ALLOWLIST: {
     getResizedRange: "Range",
     getUsedRange: "Range",
     getUsedRangeOrNullObject: "Range",
-    getCellProperties: "Value",
+    getCellProperties: "ClientResult",
   },
-  // `workbook.tables.getItem('Sales')`
   TableCollection: {
     getItem: "Table",
     getItemOrNullObject: "Table",
     getItemAt: "Table",
-    getCount: "Value",
+    getCount: "ClientResult",
   },
-  // `workbook.tables.getItem('Sales').getDataBodyRange()`
   Table: {
     worksheet: "Worksheet",
     columns: "TableColumnCollection",
@@ -104,45 +96,38 @@ const ALLOWLIST: {
     getDataBodyRange: "Range",
     getTotalRowRange: "Range",
   },
-  // `workbook.names.getItem('TaxRate')`
   NamedItemCollection: {
     getItem: "NamedItem",
     getItemOrNullObject: "NamedItem",
-    getCount: "Value",
+    getCount: "ClientResult",
   },
-  // `workbook.names.getItem('TaxRate').getRange()`
   NamedItem: {
     getRange: "Range",
     getRangeOrNullObject: "Range",
   },
-  // `workbook.tables.getItem('Sales').columns.getItem('Price')`
   TableColumnCollection: {
     getItem: "TableColumn",
     getItemOrNullObject: "TableColumn",
     getItemAt: "TableColumn",
-    getCount: "Value",
+    getCount: "ClientResult",
   },
-  // `workbook.tables.getItem('Sales').columns.getItem('Price').getDataBodyRange()`
   TableColumn: {
     getRange: "Range",
     getHeaderRowRange: "Range",
     getDataBodyRange: "Range",
     getTotalRowRange: "Range",
   },
-  // `workbook.pivotTables.getItem('PivotTable1')`
   PivotTableCollection: {
     getItem: "PivotTable",
     getItemOrNullObject: "PivotTable",
-    getCount: "Value",
+    getCount: "ClientResult",
   },
-  // `workbook.pivotTables.getItem('PivotTable1').getDataSourceString()`
   PivotTable: {
     worksheet: "Worksheet",
     layout: "PivotLayout",
-    getDataSourceString: "Value",
-    getDataSourceType: "Value",
+    getDataSourceString: "ClientResult",
+    getDataSourceType: "ClientResult",
   },
-  // `workbook.pivotTables.getItem('PivotTable1').layout.getDataBodyRange()`
   PivotLayout: {
     getRange: "Range",
     getDataBodyRange: "Range",
@@ -150,56 +135,118 @@ const ALLOWLIST: {
     getColumnLabelRange: "Range",
     getFilterAxisRange: "Range",
   },
-  // `workbook.worksheets.getItem('Sheet1').charts.getItemAt(0)`
   ChartCollection: {
     getItem: "Chart",
     getItemOrNullObject: "Chart",
     getItemAt: "Chart",
-    getCount: "Value",
+    getCount: "ClientResult",
   },
-  // `workbook.worksheets.getItem('Sheet1').charts.getItemAt(0)`, with `load: ["name", "title/text"]`.
-  // `getImage()` is not in the list: it gives a large base64 image.
+  // To read the data of a chart, use `load`, for example `load(['name', 'title/text'])`.
+  // TODO(office_addin): allow `getImage()`. The tool returns only text, and the model sees a
+  // base64 string in text as characters, not as an image. To allow it, return each image as an
+  // `image` content block.
   Chart: {
     worksheet: "Worksheet",
+    series: "ChartSeriesCollection",
+  },
+  ChartSeriesCollection: {
+    getItemAt: "ChartSeries",
+    getCount: "ClientResult",
+  },
+  ChartSeries: {
+    getDimensionValues: "ClientResult",
+    getDimensionDataSourceString: "ClientResult",
   },
 };
 
 /**
- * Checks that each step is in the allowlist, from the type of the step before it. Returns an
- * error at the first step that is not allowed.
+ * Returns the class of the object that `step` gives on an object of class `currentClass`, or an
+ * error if the step is not allowed.
  *
- * Example: for `workbook.worksheets.getItem('Sheet1')`, it starts at `Workbook`. `worksheets`
- * gives `WorksheetCollection`, then `getItem` gives `Worksheet`. For
- * `workbook.worksheets.getItem('Sheet1').delete()`, it returns an error, because `delete` is not
- * in `Worksheet`.
+ * Examples:
+ *   - On `Workbook`, `worksheets` gives `WorksheetCollection`.
+ *   - On `Worksheet`, `delete()` gives an error, because `delete` is not in the allowlist.
+ */
+function nextClass(
+  currentClass: ExcelClass,
+  step: Step
+): Result<ExcelClass, string> {
+  if (currentClass === "ClientResult") {
+    return new Err(
+      `"${step.name}" is not allowed after a method that gives a value.`
+    );
+  }
+  const members: Partial<Record<string, ExcelClass>> = ALLOWLIST[currentClass];
+  const next = Object.hasOwn(members, step.name)
+    ? members[step.name]
+    : undefined;
+  if (next === undefined) {
+    return new Err(
+      `"${step.name}" is not allowed on ${currentClass}. Allowed: ${Object.keys(members).join(", ")}.`
+    );
+  }
+  return new Ok(next);
+}
+
+/**
+ * Checks the `load` step. `objectClass` is the class of the object to load.
  *
- * The `load` properties are not checked: a load only reads.
+ * The properties in `load` are not checked: a load only reads, and Office.js gives an error for a
+ * property that it does not know.
  *
- * TODO(office_addin): check the `load` step. An expression that gives an object must end with
- * `load(...)` with one argument, and `load` must be the last step.
+ * Examples:
+ *   - `workbook.worksheets.load('name').getItem('Sheet1')` is not allowed: `load` is not the last
+ *     step.
+ *   - `workbook.tables.getCount().load('x')` is not allowed: a value has nothing to load.
+ *   - `workbook.getSelectedRange().load()` is not allowed: it loads all the properties, which can
+ *     be very large.
+ */
+function checkLoad(
+  step: Step,
+  objectClass: ExcelClass,
+  isLastStep: boolean
+): Result<undefined, string> {
+  if (!isLastStep) {
+    return new Err('"load" must be the last step of the expression.');
+  }
+  if (objectClass === "ClientResult") {
+    return new Err('"load" is not allowed after a method that gives a value.');
+  }
+  if (step.kind !== "call" || step.args.length !== 1) {
+    return new Err(
+      "\"load\" needs one argument, for example load(['address', 'values'])."
+    );
+  }
+  return new Ok(undefined);
+}
+
+/**
+ * Checks the steps of an expression, one at a time, from `Workbook`. The expression must end
+ * with `load(...)`, because an Office.js object is empty until it is loaded. Only an expression
+ * that gives a value, as from `getCount()`, has no `load`.
+ *
+ * Examples:
+ *   - `workbook.worksheets.getItem('Sheet1').load('name')` is allowed. `worksheets` gives
+ *     `WorksheetCollection`, `getItem` gives `Worksheet`, then `load` loads the worksheet.
+ *   - `workbook.tables.getCount()` is allowed: it gives a value.
+ *   - `workbook.getSelectedRange()` is not allowed: there is no `load`.
  */
 export function checkSteps(steps: Step[]): Result<undefined, string> {
-  let type: TypeName = "Workbook";
-  for (const step of steps) {
-    if (type === "Value") {
-      return new Err(
-        `"${step.name}" is not allowed after a method that gives a value.`
-      );
+  let currentClass: ExcelClass = "Workbook";
+  for (const [index, step] of steps.entries()) {
+    if (step.name === "load") {
+      return checkLoad(step, currentClass, index === steps.length - 1);
     }
-    const members: Partial<Record<string, TypeName>> = ALLOWLIST[type];
-    // Only the own keys of the list. Without this, `constructor` or `toString` would come from
-    // the prototype of the object.
-    const next = Object.hasOwn(members, step.name)
-      ? members[step.name]
-      : undefined;
-    if (next === undefined) {
-      // The allowed names help the agent to fix the expression. Example:
-      // `"getFormat" is not allowed on Range. Allowed: worksheet, getCell, ...`
-      return new Err(
-        `"${step.name}" is not allowed on ${type}. Allowed: ${Object.keys(members).join(", ")}.`
-      );
+    const next = nextClass(currentClass, step);
+    if (next.isErr()) {
+      return next;
     }
-    type = next;
+    currentClass = next.value;
+  }
+  if (currentClass !== "ClientResult") {
+    return new Err(
+      "End the expression with load(...), for example load(['address', 'values'])."
+    );
   }
   return new Ok(undefined);
 }
