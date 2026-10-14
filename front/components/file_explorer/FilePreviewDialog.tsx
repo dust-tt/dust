@@ -12,6 +12,7 @@ import { SourceModeFileIcon } from "@app/components/file_explorer/SourceModeFile
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { isEditableTarget } from "@app/lib/utils/dom";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -103,12 +104,7 @@ export function FilePreviewDialog({
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable
-      ) {
+      if (isEditableTarget(e.target)) {
         return;
       }
       if (e.key === "ArrowLeft" && onPrev) {

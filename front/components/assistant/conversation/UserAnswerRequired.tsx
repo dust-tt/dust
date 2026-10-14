@@ -5,6 +5,7 @@ import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { isEditableTarget } from "@app/lib/utils/dom";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -29,14 +30,6 @@ type SubmissionState = {
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   return (
     e.key.length === 1 && e.key !== " " && !e.altKey && !e.ctrlKey && !e.metaKey
-  );
-}
-
-function isEditableTarget(target: EventTarget) {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
   );
 }
 

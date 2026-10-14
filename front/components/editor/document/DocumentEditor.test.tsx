@@ -136,6 +136,7 @@ async function renderDocument(
     resolveImageSource = NO_IMAGE_SOURCE,
     readOnly,
     renderFrame,
+    focusOnOpen,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
@@ -143,6 +144,7 @@ async function renderDocument(
     resolveImageSource?: DocumentProps["resolveImageSource"];
     readOnly?: boolean;
     renderFrame?: DocumentProps["renderFrame"];
+    focusOnOpen?: boolean;
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -174,6 +176,7 @@ async function renderDocument(
           }),
           connected: true,
           comments: session.channel,
+          focusOnOpen,
         },
       }}
     />
@@ -918,6 +921,72 @@ describe("Document comments", () => {
     );
     const { from, to } = field.editor.state.selection;
     expect(field.editor.state.doc.textBetween(from, to)).toBe("gentle");
+  });
+});
+
+describe("Document caret on open", () => {
+  // TipTap moves focus on the next animation frame.
+  const nextFrame = () =>
+    new Promise((resolve) => requestAnimationFrame(resolve));
+  // jsdom lays nothing out; ProseMirror measures ranges when it scrolls to the selection.
+  const layoutStubs = [
+    [Element.prototype, "scrollIntoView", vi.fn()],
+    [Range.prototype, "getClientRects", () => []],
+    [
+      Range.prototype,
+      "getBoundingClientRect",
+      () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 }),
+    ],
+  ] as const;
+  let originals: (PropertyDescriptor | undefined)[] = [];
+
+  beforeEach(() => {
+    originals = layoutStubs.map(([target, key, value]) => {
+      const original = Object.getOwnPropertyDescriptor(target, key);
+      Object.defineProperty(target, key, { configurable: true, value });
+      return original;
+    });
+  });
+
+  afterEach(() => {
+    layoutStubs.forEach(([target, key], i) => {
+      const original = originals[i];
+      if (original) {
+        Object.defineProperty(target, key, original);
+      } else {
+        Reflect.deleteProperty(target, key);
+      }
+    });
+  });
+
+  it("places the caret at the document's start", async () => {
+    const { dom, editor } = await renderDocument("# Title\n\nBody.\n", {
+      focusOnOpen: true,
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(dom));
+    expect(editor.state.selection.from).toBe(1);
+  });
+
+  it("leaves focus in a field the user is typing in", async () => {
+    const field = document.createElement("textarea");
+    document.body.append(field);
+    field.focus();
+    try {
+      await renderDocument("# Title\n", { focusOnOpen: true });
+      await act(nextFrame);
+
+      expect(document.activeElement).toBe(field);
+    } finally {
+      field.remove();
+    }
+  });
+
+  it("does not take focus without focusOnOpen", async () => {
+    const { dom } = await renderDocument("# Title\n");
+    await act(nextFrame);
+
+    expect(document.activeElement).not.toBe(dom);
   });
 });
 

@@ -10,13 +10,18 @@ import { useImageSourceResolver } from "@app/components/editor/document/useImage
 import { useShowSaving } from "@app/components/editor/document/useShowSaving";
 import { useCollabConnection } from "@app/hooks/useCollabConnection";
 import { useLingui } from "@lingui/react/macro";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface CollabEditorProps extends DocumentProps {
   live: CollabConnectionSettings;
 }
 
 /** A Document in a live session: the file read-only until the shared document has synced. */
+/**
+ * @cc [owner:PopDaph,label:product] collab-caret-on-open
+ * Only the editor bound to the first connection MUST get `focusOnOpen`: an editor bound to a later
+ * connection, after a reconnect, MUST NOT move the caret.
+ */
 export default function CollabEditor(props: CollabEditorProps) {
   const { t } = useLingui();
   const { connection, status, syncingSinceMs, saveState } = useCollabConnection(
@@ -30,6 +35,12 @@ export default function CollabEditor(props: CollabEditorProps) {
     connection?.provider.awareness ?? null
   );
   const resolveImageSource = useImageSourceResolver(props.resolveImageSource);
+  const [openedConnectionId, setOpenedConnectionId] = useState<number | null>(
+    null
+  );
+  if (connection && openedConnectionId === null) {
+    setOpenedConnectionId(connection.id);
+  }
   const extensions = useMemo(
     () =>
       connection
@@ -62,6 +73,7 @@ export default function CollabEditor(props: CollabEditorProps) {
           extensions,
           connected: status === "live",
           comments: connection.comments,
+          focusOnOpen: connection.id === openedConnectionId,
         },
       }}
     />

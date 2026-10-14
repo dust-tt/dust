@@ -1,18 +1,10 @@
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useAppRouter } from "@app/lib/platform";
+import { isEditableTarget } from "@app/lib/utils/dom";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  );
-}
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const { toggleNavigationBar } = useDesktopNavigation();
