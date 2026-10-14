@@ -123,7 +123,11 @@ function JoinError({ error, onRetry }: JoinError) {
   );
 }
 
-function JoinContent({ joinData }: { joinData: GetJoinResponseBody }) {
+interface JoinContentProps {
+  joinData: GetJoinResponseBody;
+}
+
+function JoinContent({ joinData }: JoinContentProps) {
   const { t } = useLingui();
   const { onboardingType, signInUrl, userExists, workspace } = joinData;
   const workspaceName = workspace.name;
