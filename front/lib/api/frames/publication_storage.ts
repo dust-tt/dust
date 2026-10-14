@@ -4,13 +4,13 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
 import {
   buildFrameFunctionsTarArchive,
   FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
   parseFrameFunctionsTarArchive,
 } from "@app/lib/api/frames/functions_archive";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import { withFramePublishTimingResult } from "@app/lib/api/frames/publish_timing";
 import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
 import { SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX } from "@app/lib/api/sandbox/env_vars";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -59,7 +59,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
-const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
 
 export type FramePublicationSourceFile = {
   relativePath: string;
@@ -352,7 +351,12 @@ export async function storeFramePublication(
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
   }
-): Promise<Result<{ publicationId: string }, FramePublicationError>> {
+): Promise<
+  Result<
+    { publicationId: string; descriptor: FramePublicationDescriptor },
+    FramePublicationError
+  >
+> {
   const frameIdentity = getFrameIdentity(auth, frame);
   if (frameIdentity.isErr()) {
     return frameIdentity;
@@ -459,7 +463,7 @@ export async function storeFramePublication(
       },
     });
 
-  return new Ok({ publicationId: identity.publicationId });
+  return new Ok({ publicationId: identity.publicationId, descriptor });
 }
 
 /**
@@ -599,22 +603,79 @@ export async function loadFramePublicationDescriptor(
   return descriptor;
 }
 
+function functionDefinitionsFromBundles({
+  descriptor,
+  bundles,
+}: {
+  descriptor: FramePublicationDescriptor;
+  bundles: Map<string, string>;
+}): Result<FramePublicationFunctionDefinition[], FramePublicationError> {
+  const definitions: FramePublicationFunctionDefinition[] = [];
+  for (const [index, fn] of descriptor.manifest.functions.entries()) {
+    const bundleCode = bundles.get(fn.name);
+    if (bundleCode === undefined) {
+      return new Err(
+        new FramePublicationError(
+          "publication_not_found",
+          `Frame publication function artifact not found: ${fn.name}`
+        )
+      );
+    }
+
+    const contract = descriptor.functions[index];
+    if (!contract || sha256(bundleCode) !== contract.bundleSha256) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_function_artifact",
+          `Frame publication function bundle hash mismatch: ${fn.name}`
+        )
+      );
+    }
+
+    definitions.push({
+      name: fn.name,
+      description: fn.description,
+      executionMode: fn.executionMode,
+      defaultStake: fn.defaultStake,
+      bundleCode,
+      userIdentity: contract.userIdentity,
+      inputSchema: contract.inputSchema,
+      outputSchema: contract.outputSchema,
+    });
+  }
+  return new Ok(definitions);
+}
+
 async function loadFramePublicationFunctionDefinitions(
   auth: Authenticator,
   {
     frame,
     descriptor,
     publicationId,
+    functionArtifacts,
   }: {
     frame: FileResource;
     descriptor: FramePublicationDescriptor;
     publicationId: string;
+    functionArtifacts?: FramePublicationFunctionArtifact[];
   }
 ): Promise<
   Result<FramePublicationFunctionDefinition[], FramePublicationError>
 > {
   if (descriptor.manifest.functions.length === 0) {
     return new Ok([]);
+  }
+
+  if (functionArtifacts) {
+    return functionDefinitionsFromBundles({
+      descriptor,
+      bundles: new Map(
+        functionArtifacts.map((artifact) => [
+          artifact.name,
+          artifact.bundleCode,
+        ])
+      ),
+    });
   }
 
   const bundles = await loadFramePublicationFunctionBundles(auth, {
@@ -625,53 +686,10 @@ async function loadFramePublicationFunctionDefinitions(
     return bundles;
   }
 
-  const definitions = await concurrentExecutor(
-    descriptor.manifest.functions,
-    async (fn, index) => {
-      const bundleCode = bundles.value.get(fn.name);
-      if (bundleCode === undefined) {
-        return new Err(
-          new FramePublicationError(
-            "publication_not_found",
-            `Frame publication function artifact not found: ${fn.name}`
-          )
-        );
-      }
-
-      const contract = descriptor.functions[index];
-      if (!contract || sha256(bundleCode) !== contract.bundleSha256) {
-        return new Err(
-          new FramePublicationError(
-            "invalid_function_artifact",
-            `Frame publication function bundle hash mismatch: ${fn.name}`
-          )
-        );
-      }
-
-      return new Ok({
-        name: fn.name,
-        description: fn.description,
-        executionMode: fn.executionMode,
-        defaultStake: fn.defaultStake,
-        bundleCode,
-        userIdentity: contract.userIdentity,
-        inputSchema: contract.inputSchema,
-        outputSchema: contract.outputSchema,
-      });
-    },
-    { concurrency: FRAME_PUBLICATION_READ_CONCURRENCY }
-  );
-
-  const definitionError = definitions.find((definition) => definition.isErr());
-  if (definitionError?.isErr()) {
-    return definitionError;
-  }
-
-  return new Ok(
-    definitions.flatMap((definition) =>
-      definition.isOk() ? [definition.value] : []
-    )
-  );
+  return functionDefinitionsFromBundles({
+    descriptor,
+    bundles: bundles.value,
+  });
 }
 
 export async function activateFramePublication(
@@ -680,18 +698,33 @@ export async function activateFramePublication(
     frame,
     publicationId,
     publishedByAgentConfigurationId,
+    descriptor: providedDescriptor,
+    uiBundleCode: providedUiBundleCode,
+    functionArtifacts,
   }: {
     frame: FileResource;
     publicationId: string;
     publishedByAgentConfigurationId?: string;
+    /** When set (publish path), skip re-fetching publication.json from GCS. */
+    descriptor?: FramePublicationDescriptor;
+    /** When set (publish path), skip re-fetching ui/bundle.js from GCS. */
+    uiBundleCode?: string;
+    /** When set (publish path), skip re-fetching functions.tar from GCS. */
+    functionArtifacts?: FramePublicationFunctionArtifact[];
   }
 ): Promise<Result<void, FramePublicationError>> {
-  const descriptor = await loadFramePublicationDescriptor(auth, {
-    frame,
-    publicationId,
-  });
-  if (descriptor.isErr()) {
-    return descriptor;
+  let descriptor: FramePublicationDescriptor;
+  if (providedDescriptor) {
+    descriptor = providedDescriptor;
+  } else {
+    const loaded = await loadFramePublicationDescriptor(auth, {
+      frame,
+      publicationId,
+    });
+    if (loaded.isErr()) {
+      return loaded;
+    }
+    descriptor = loaded.value;
   }
 
   const frameIdentity = getFrameIdentity(auth, frame);
@@ -701,32 +734,41 @@ export async function activateFramePublication(
 
   const functionDefinitions = await loadFramePublicationFunctionDefinitions(
     auth,
-    { frame, descriptor: descriptor.value, publicationId }
+    {
+      frame,
+      descriptor,
+      publicationId,
+      functionArtifacts,
+    }
   );
   if (functionDefinitions.isErr()) {
     return functionDefinitions;
   }
 
   let uiBundleCode: string;
-  try {
-    uiBundleCode = await getPrivateUploadBucket().fetchFileContent(
-      getFramePublicationUiBundlePath({
-        ...frameIdentity.value,
-        publicationId,
-      })
-    );
-  } catch (error) {
-    if (!isGCSNotFoundError(error)) {
-      throw error;
+  if (providedUiBundleCode !== undefined) {
+    uiBundleCode = providedUiBundleCode;
+  } else {
+    try {
+      uiBundleCode = await getPrivateUploadBucket().fetchFileContent(
+        getFramePublicationUiBundlePath({
+          ...frameIdentity.value,
+          publicationId,
+        })
+      );
+    } catch (error) {
+      if (!isGCSNotFoundError(error)) {
+        throw error;
+      }
+      return new Err(
+        new FramePublicationError(
+          "publication_not_found",
+          `Frame publication UI bundle not found: ${publicationId}`
+        )
+      );
     }
-    return new Err(
-      new FramePublicationError(
-        "publication_not_found",
-        `Frame publication UI bundle not found: ${publicationId}`
-      )
-    );
   }
-  if (sha256(uiBundleCode) !== descriptor.value.ui.bundleSha256) {
+  if (sha256(uiBundleCode) !== descriptor.ui.bundleSha256) {
     return new Err(
       new FramePublicationError(
         "invalid_publication",
@@ -752,7 +794,7 @@ export async function activateFramePublication(
     await frame.setActiveFramePublication(
       {
         publicationId,
-        description: descriptor.value.manifest.description,
+        description: descriptor.manifest.description,
         publishedByAgentConfigurationId,
       },
       transaction
@@ -822,40 +864,57 @@ export async function publishFramePublication(
     FramePublicationError | SandboxFunctionError
   >
 > {
+  const timingContext = {
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    frameId: frame.sId,
+    sourceFileCount: sourceFiles.length,
+    functionCount: functionArtifacts.length,
+    databaseCount: manifest.databases.length,
+  };
+
   const publication = await withFramePublishLock<
     { publicationId: string },
     FramePublicationError | SandboxFunctionError
   >(frame.sId, async () => {
-    const storedPublication = await storeFramePublication(auth, {
-      frame,
-      functionArtifacts,
-      manifest,
-      sourceFiles,
-      uiBundleCode,
-    });
+    // DB reconcile runs during build (shared Frame-sandbox staging). Store then
+    // activate using in-memory artifacts — no GCS re-fetch of what we just wrote.
+    const storedPublication = await withFramePublishTimingResult(
+      "store",
+      timingContext,
+      () =>
+        storeFramePublication(auth, {
+          frame,
+          functionArtifacts,
+          manifest,
+          sourceFiles,
+          uiBundleCode,
+        })
+    );
     if (storedPublication.isErr()) {
       return storedPublication;
     }
 
-    const reconciliation = await reconcileFramePublicationDatabases(auth, {
-      frame,
-      manifest,
-      sourceFiles,
-    });
-    if (reconciliation.isErr()) {
-      return reconciliation;
-    }
-
-    const activation = await activateFramePublication(auth, {
-      frame,
-      publicationId: storedPublication.value.publicationId,
-      publishedByAgentConfigurationId,
-    });
+    const activation = await withFramePublishTimingResult(
+      "activate",
+      {
+        ...timingContext,
+        publicationId: storedPublication.value.publicationId,
+      },
+      () =>
+        activateFramePublication(auth, {
+          frame,
+          publicationId: storedPublication.value.publicationId,
+          publishedByAgentConfigurationId,
+          descriptor: storedPublication.value.descriptor,
+          uiBundleCode,
+          functionArtifacts,
+        })
+    );
     if (activation.isErr()) {
       return activation;
     }
 
-    return storedPublication;
+    return new Ok({ publicationId: storedPublication.value.publicationId });
   });
   if (publication.isErr()) {
     const error = publication.error;
