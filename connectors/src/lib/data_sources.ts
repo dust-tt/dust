@@ -337,10 +337,14 @@ export async function deleteDataSourceDocument(
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axiosWithTimeout.delete(
-      endpoint,
-      dustRequestConfig
-    );
+    dustRequestResult = await withRetries(
+      localLogger,
+      () => axiosWithTimeout.delete(endpoint, dustRequestConfig),
+      {
+        retries: 3,
+        shouldRetry: (e) => isTimeoutError(e),
+      }
+    )();
   } catch (e) {
     localLogger.error({ error: e }, "Error deleting document from Dust.");
     throw e;

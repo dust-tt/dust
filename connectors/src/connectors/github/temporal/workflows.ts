@@ -57,12 +57,18 @@ const { githubEnsureCodeSyncEnabledActivity } = proxyActivities<
   startToCloseTimeout: "10 minute",
 });
 
-const {
-  githubCleanupCodeSyncActivity,
-  githubCreateGcsIndexActivity,
-  githubProcessIndexFileActivity,
-} = proxyActivities<typeof activitiesSyncCode>({
-  startToCloseTimeout: "30 minute",
+const { githubCreateGcsIndexActivity, githubProcessIndexFileActivity } =
+  proxyActivities<typeof activitiesSyncCode>({
+    startToCloseTimeout: "30 minute",
+  });
+
+// Garbage collecting a repository that lost many files can take hours (one delete per file). The
+// heartbeat timeout catches stalled or lost attempts, so the overall timeout can stay generous.
+const { githubCleanupCodeSyncActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "300 minute",
+  heartbeatTimeout: "20 minute",
 });
 
 // Unpacking a large repository can take hours on a busy worker. The heartbeat timeout catches

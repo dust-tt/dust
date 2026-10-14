@@ -78,6 +78,8 @@ export async function garbageCollectCodeSync(
     await concurrentExecutor(
       directoriesToDelete,
       async (d) => {
+        await heartbeat();
+
         await deleteDataSourceFolder({
           dataSourceConfig,
           folderId: d.internalId,
