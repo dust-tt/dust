@@ -8,7 +8,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   sId: z.string(),
@@ -21,6 +20,7 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
+  validate("query", GetSkillHistoryQuerySchema),
   async (ctx): HandlerResult<GetSkillHistoryResponseBody> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
@@ -38,22 +38,7 @@ app.get(
       });
     }
 
-    const rawLimit = ctx.req.query("limit");
-    const queryValidation = GetSkillHistoryQuerySchema.safeParse({
-      limit: typeof rawLimit === "string" ? parseInt(rawLimit, 10) : undefined,
-    });
-    if (!queryValidation.success) {
-      const pathError = fromError(queryValidation.error).toString();
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid query parameters: ${pathError}`,
-        },
-      });
-    }
-
-    const { limit } = queryValidation.data;
+    const { limit } = ctx.req.valid("query");
 
     let skillVersionResources = await skill.listVersions(auth);
 
