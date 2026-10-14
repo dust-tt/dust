@@ -177,6 +177,12 @@ pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Resul
 
     let too_long = "é".repeat(128);
     let rejections = [
+        (
+            ObjectId::default(),
+            "unset-id",
+            ObjectKind::File,
+            "ObjectInvalidId",
+        ),
         (ObjectId::new_v7(), "", ObjectKind::File, "InvalidName"),
         (ObjectId::new_v7(), ".", ObjectKind::File, "InvalidName"),
         (ObjectId::new_v7(), "..", ObjectKind::File, "InvalidName"),
@@ -224,6 +230,7 @@ pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Resul
             directory::Error::NameTooLong => "NameTooLong",
             directory::Error::UnsupportedKind => "UnsupportedKind",
             directory::Error::AlreadyExists => "AlreadyExists",
+            directory::Error::Object(object::Error::InvalidId) => "ObjectInvalidId",
             directory::Error::Object(object::Error::AlreadyExists) => "ObjectAlreadyExists",
             other => anyhow::bail!("expected {expected}, got {other:?}"),
         };

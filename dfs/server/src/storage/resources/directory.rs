@@ -96,6 +96,10 @@ impl DirectoryResource {
         &self.object
     }
 
+    /**
+     * @cc [owner:spolu,label:backend;error-handling] directory-create-input-id
+     * An invalid child object ID MUST return Object(InvalidId) without staging writes.
+     */
     pub async fn create_child(
         &mut self,
         tx: &Transaction,
@@ -107,7 +111,7 @@ impl DirectoryResource {
     ) -> Result<ObjectResource, storage::Error<Error>> {
         object_id
             .validate()
-            .map_err(storage::Error::<Error>::InvalidObjectId)?;
+            .map_err(|_| Error::Object(object::Error::InvalidId))?;
         Self::validate_name(&name)?;
         if kind == ObjectKind::Symlink {
             return Err(Error::UnsupportedKind.into());

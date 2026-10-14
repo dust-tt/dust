@@ -3,3 +3,4 @@ API error conversions MUST preserve each resource's status mapping, including wh
 resource errors in one transaction. Database and stored-data decoding failures MUST return INTERNAL
 with protocol ErrorDetails and a generic public message. Database, decoding, and transaction error
 details MUST NOT be included in the response.
+Each resource's ErrorCode mapping MUST be shared by its Status and ErrorDetails conversions.
