@@ -25,6 +25,18 @@ const rootDir = path.resolve(__dirname);
 
 const DEV_SERVER_PORT = 3014;
 
+const PUBLIC_PATH = "/excel/";
+const DEV_ORIGIN = `https://localhost:${DEV_SERVER_PORT}`;
+const PROD_ORIGIN = "https://addins.dust.tt";
+
+const toProdManifest = (content: Buffer) => {
+  const manifest = content.toString();
+  if (!manifest.includes(DEV_ORIGIN)) {
+    throw new Error(`manifest.xml no longer points at ${DEV_ORIGIN}.`);
+  }
+  return manifest.replaceAll(DEV_ORIGIN, PROD_ORIGIN);
+};
+
 // `npx office-addin-dev-certs install` writes these files. It also adds its CA to the keychain.
 const DEV_CERTS_DIR = path.join(os.homedir(), ".office-addin-dev-certs");
 
@@ -116,7 +128,7 @@ export const getConfig = async ({
       assetModuleFilename: isDevelopment
         ? "[hash][ext][query]"
         : "assets/[hash][ext][query]",
-      publicPath: isDevelopment ? "/" : "/excel/",
+      publicPath: PUBLIC_PATH,
     },
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
@@ -250,8 +262,9 @@ export const getConfig = async ({
             new CopyPlugin({
               patterns: [
                 {
-                  from: resolvePath("./manifest.prod.xml"),
+                  from: resolvePath("./manifest.xml"),
                   to: "manifest.xml",
+                  transform: toProdManifest,
                 },
               ],
             }),
@@ -272,6 +285,7 @@ export const getConfig = async ({
       },
       static: {
         directory: buildDirPath,
+        publicPath: PUBLIC_PATH,
       },
     },
   };

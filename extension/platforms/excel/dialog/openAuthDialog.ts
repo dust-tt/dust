@@ -4,7 +4,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 // The only page of the auth dialog (`auth.ts`). It is on the add-in domain, as Office requires
 // for the first page of a dialog and for `messageParent`.
-const AUTH_DIALOG_PATH = "auth.html";
+const AUTH_DIALOG_PATH = "/excel/auth.html";
 
 // Office errors are returned as `office_error_<number>`. The numbers are listed at
 // https://learn.microsoft.com/en-us/office/dev/add-ins/develop/dialog-handle-errors-events
@@ -40,13 +40,11 @@ export function openAuthDialog({
     code_challenge: codeChallenge,
     ...(organizationId ? { organizationId } : {}),
   });
-  // Resolve next to taskpane.html: /auth.html in dev, /excel/auth.html in production.
-  const url = new URL(AUTH_DIALOG_PATH, window.location.href);
-  url.search = params.toString();
+  const url = `${window.location.origin}${AUTH_DIALOG_PATH}?${params}`;
 
   return new Promise((resolve) => {
     Office.context.ui.displayDialogAsync(
-      url.toString(),
+      url,
       { height: 60, width: 30, displayInIframe: false },
       (asyncResult) => {
         if (asyncResult.status === Office.AsyncResultStatus.Failed) {
