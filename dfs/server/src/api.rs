@@ -4,11 +4,11 @@ use dfs_protocol::{
     READ_FILES_MAX_OBJECTS, STAT_MAX_REFERENCES,
     error::status,
     rpc::{
-        ApplyRequest, Attr, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest,
-        Empty, EntryPage, ErrorCode, ErrorDetails, FileResult, FilesBatch, GrantPage,
-        ListGrantsRequest, ListRequest, LookupRequest, OperationBatch, ReadData, ReadFilesRequest,
-        ReadRequest, RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest,
-        Tenant, UpdateGrantsRequest, dfs_server::Dfs,
+        ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
+        ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
+        LookupRequest, OperationBatch, ReadData, ReadFilesRequest, ReadRequest,
+        RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
+        UpdateGrantsRequest, dfs_server::Dfs,
     },
 };
 use prost::Message;
@@ -224,7 +224,8 @@ impl Dfs for API {
             async move { ObjectResource::stat(&tx, session, object_ids, include_metadata).await }
         })
         .await?;
-        Ok(Response::new(attr_batch(attributes)?))
+        let batch: AttrBatch = attributes.into_iter().collect();
+        Ok(Response::new(within_message_budget(batch)?))
     }
 
     /**
@@ -253,7 +254,8 @@ impl Dfs for API {
             }
         })
         .await?;
-        Ok(Response::new(attr_batch(attributes)?))
+        let batch: AttrBatch = attributes.into_iter().collect();
+        Ok(Response::new(within_message_budget(batch)?))
     }
 
     async fn list(&self, request: Request<ListRequest>) -> Result<Response<EntryPage>, Status> {
@@ -286,10 +288,7 @@ impl Dfs for API {
             }
         })
         .await?;
-        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
-            return Err(status(ErrorCode::Capacity));
-        }
-        Ok(Response::new(response))
+        Ok(Response::new(within_message_budget(response)?))
     }
 
     /**
@@ -366,25 +365,11 @@ impl Dfs for API {
     }
 }
 
-fn attr_batch<E: Into<ErrorDetails>>(results: Vec<Result<Attr, E>>) -> Result<AttrBatch, Status> {
-    let results = results
-        .into_iter()
-        .map(|result| match result {
-            Ok(object) => AttrResult {
-                object: Some(object),
-                error: None,
-            },
-            Err(error) => AttrResult {
-                object: None,
-                error: Some(error.into()),
-            },
-        })
-        .collect();
-    let batch = AttrBatch { results };
-    if batch.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+fn within_message_budget<M: Message>(message: M) -> Result<M, Status> {
+    if message.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
         return Err(status(ErrorCode::Capacity));
     }
-    Ok(batch)
+    Ok(message)
 }
 
 /**
