@@ -27,9 +27,10 @@ interface UserLocaleSyncProps {
 /**
  * @cc [owner:sfriquet,label:product;react] locale-switch-never-blocks-rendering
  * Rendering MUST NOT wait for the user locale or its catalog: the previously active locale stays
- * active until the new catalog is loaded (see `stale-or-failed-load-not-activated`). Loading a
- * catalog is a background sync exempt from `async-network-loading-state`: it MUST NOT show a
- * loading state of its own.
+ * active until the new catalog is loaded (see `stale-or-failed-load-not-activated` on
+ * `useLocaleSync`). Loading a catalog is a background sync exempt from
+ * `async-network-loading-state` (see `loading-state-owned-by-caller` on `useLocaleSync`): it
+ * MUST NOT show a loading state, neither on the first load nor on later locale switches.
  */
 export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   const owner = useWorkspace();

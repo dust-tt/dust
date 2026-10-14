@@ -21,8 +21,8 @@ interface LocaleSyncProps {
  * @cc [owner:ykmsd,label:product;react] children-after-resolved-locale-ready
  * `children` MUST NOT be rendered before the catalog load of the resolved locale has settled;
  * `fallback` MUST be rendered instead, including again from the render in which the resolved
- * locale changes. Once the load settles, `children` MUST be rendered, even when it failed and the
- * previous locale stays active.
+ * locale changes to a locale whose catalog load has not settled yet. Once the load settles,
+ * `children` MUST be rendered, even when it failed and the previous locale stays active.
  */
 export function LocaleSync({ locale, fallback, children }: LocaleSyncProps) {
   const localeOverride = useLocaleOverride();

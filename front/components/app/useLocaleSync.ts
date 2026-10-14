@@ -40,6 +40,18 @@ interface UseLocaleSyncProps {
  * `formatLocale`, and it MUST be set before `locale` is activated.
  */
 /**
+ * @cc [owner:sfriquet,label:product] stale-or-failed-load-not-activated
+ * A catalog that finishes loading after `locale` changed again MUST NOT be activated, and a failed
+ * load MUST leave the active locale unchanged.
+ */
+/**
+ * @cc [owner:ykmsd,label:react] loading-state-owned-by-caller
+ * Loading a catalog is a background sync exempt from `async-network-loading-state`: the hook MUST
+ * NOT show a loading state of its own. Callers decide whether one is shown, using `onReady`
+ * (`UserLocaleSync` shows none, see `locale-switch-never-blocks-rendering`; `LocaleSync` renders
+ * its `fallback`, see `children-after-resolved-locale-ready`).
+ */
+/**
  * @cc [owner:sfriquet,label:react] ready-after-resolved-locale-load
  * `onReady` MUST be called once the catalog load of `locale` settles, whether it succeeded or
  * failed, and MUST NOT be called for a load whose locale is no longer the current `locale`.
