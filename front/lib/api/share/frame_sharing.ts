@@ -1,5 +1,6 @@
 import { runOnRedis } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
+import { frameServesPublicFunctions } from "@app/lib/api/sandbox_functions/workspace_user";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import type { EmailRecipient } from "@app/lib/notifications/transactional_emails";
@@ -500,6 +501,41 @@ function notifyFrameSharingInvitations(
       },
       "Failed to send Frame sharing notifications"
     );
+  });
+}
+
+type AcceptsAnyVerifiedEmailInput = {
+  shareScope: FileShareScope;
+  workspace: LightWorkspaceType;
+};
+
+/**
+ * @cc [owner:achilleburah,label:security;product] any-email-only-for-public-functions
+ * True MUST be returned only for a `public` share of a Frame with active functions for which
+ * frameServesPublicFunctions holds. Only then MAY an email verify for the share without a grant.
+ */
+export async function acceptsAnyVerifiedEmail(
+  file: FileResource,
+  { shareScope, workspace }: AcceptsAnyVerifiedEmailInput
+): Promise<boolean> {
+  if (shareScope !== "public" || !(await file.hasActiveFrameFunctions())) {
+    return false;
+  }
+
+  const auth = await Authenticator.fromJSON({
+    authMethod: "anonymous",
+    workspaceId: workspace.sId,
+    userId: null,
+    role: "none",
+    groupIds: [],
+    subscriptionId: null,
+    isByok: false,
+  });
+
+  return frameServesPublicFunctions({
+    workspace: auth.getNonNullableWorkspace(),
+    plan: auth.plan(),
+    frame: file,
   });
 }
 

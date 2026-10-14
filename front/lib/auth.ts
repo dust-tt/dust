@@ -107,6 +107,8 @@ export type AuthMethodType =
   | "sandbox_token"
   | "internal";
 
+export type AnyAuthMethodType = AuthMethodType | "anonymous";
+
 /** Principal used by poke when there is no provisioned Dust user (e.g. Cloudflare Access). */
 export type PokePrincipal = {
   email: string;
@@ -143,6 +145,16 @@ export interface AuthenticatorType {
   globalGroupModelId?: ModelId | null;
 }
 
+export type AnonymousAuthenticatorType = Omit<
+  AuthenticatorType,
+  "authMethod"
+> & {
+  authMethod: "anonymous";
+  userId: null;
+  role: Extract<RoleType, "none">;
+  groupIds: [];
+};
+
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
  * It acts as a central place to enforce permissioning across all of Dust.
@@ -150,7 +162,7 @@ export interface AuthenticatorType {
  * It explicitly does not store a reference to the current user to make sure our permissions are
  * workspace oriented. Use `getUserFromSession` if needed.
  */
-export class Authenticator {
+export class Authenticator<M extends AnyAuthMethodType = AuthMethodType> {
   _key?: KeyAuthType;
   // Attribution-only key reference. Records which API key a request should be
   // *attributed* to for usage analytics, independently of `_key`. It never
@@ -163,7 +175,7 @@ export class Authenticator {
   // list would make the auth grow with the workspace.
   _requestedGroupModelIds: ModelId[] | "all" | null;
   _workspace: WorkspaceResource | null;
-  _authMethod: AuthMethodType;
+  _authMethod: M;
   _providersHealth: ProvidersHealth | null;
   _clientIp?: string;
   // Governance grants the caller holds, resolved by the factory (see `resolvePermissions`)
@@ -197,7 +209,7 @@ export class Authenticator {
     user?: UserResource | null;
     role: RoleType;
     requestedGroupModelIds?: ModelId[] | "all" | null;
-    authMethod: AuthMethodType;
+    authMethod: M;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
     attributionKey?: { id: ModelId; name: string };
@@ -1503,7 +1515,7 @@ export class Authenticator {
     return this._authMethod === "sandbox_token";
   }
 
-  authMethod(): AuthMethodType {
+  authMethod(): M {
     return this._authMethod;
   }
 
@@ -1676,7 +1688,7 @@ export class Authenticator {
   // fetch and cached on the instance; falls back to a lazy query for auths that did not provide it
   // (e.g. system/internal auths). Returns null for a non-member or an auth with no workspace — a
   // workspace always has a global group, so null is about this auth, not a missing group.
-  async getGlobalGroupModelId(): Promise<ModelId | null> {
+  async getGlobalGroupModelId(this: Authenticator): Promise<ModelId | null> {
     if (this._globalGroupModelId !== undefined) {
       return this._globalGroupModelId;
     }
@@ -1777,18 +1789,30 @@ export class Authenticator {
    * target grants the caller (`getAllowedVerbs`). `verb` is a grant verb (instance verbs like
    * read/write/admin, or type-level capabilities like "create").
    */
-  hasPermission(verb: GrantVerb, target: WithAccessControl): boolean {
+  hasPermission(
+    this: Authenticator,
+    verb: GrantVerb,
+    target: WithAccessControl
+  ): boolean {
     return target.getAllowedVerbs(this).has(verb);
   }
 
-  can(verb: GrantVerb, target: WithAccessControl): boolean {
+  can(
+    this: Authenticator,
+    verb: GrantVerb,
+    target: WithAccessControl
+  ): boolean {
     return this.hasPermission(verb, target);
   }
 
   /**
    * Whether the caller holds `verb` on EVERY one of the given targets (conjunction).
    */
-  hasPermissionForAll(verb: GrantVerb, targets: WithAccessControl[]): boolean {
+  hasPermissionForAll(
+    this: Authenticator,
+    verb: GrantVerb,
+    targets: WithAccessControl[]
+  ): boolean {
     return targets.every((target) => this.hasPermission(verb, target));
   }
 
@@ -1827,10 +1851,13 @@ export class Authenticator {
   // internal flow re-authenticates with the workspace system key (e.g. run_agent
   // sub-agents). This is attribution only: `_key` is left untouched, so role,
   // caps and system-key checks keep operating on the actual (system) key.
-  withAttributionKey(attributionKey: {
-    id: ModelId;
-    name: string;
-  }): Authenticator {
+  withAttributionKey(
+    this: Authenticator,
+    attributionKey: {
+      id: ModelId;
+      name: string;
+    }
+  ): Authenticator {
     return new Authenticator({
       authMethod: this._authMethod,
       key: this._key,
@@ -1855,7 +1882,7 @@ export class Authenticator {
    * `permissions`: both would otherwise grow with the workspace (at least one grant per space), and
    * serialized auths travel in size-limited Temporal payloads.
    */
-  toJSON(): AuthenticatorType {
+  toJSON(this: Authenticator): AuthenticatorType {
     const workspace = this._workspace;
     assert(workspace, "Workspace is required to serialize Authenticator");
     const scope = this._requestedGroupModelIds;
@@ -1883,7 +1910,13 @@ export class Authenticator {
     };
   }
 
-  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
+  static async fromJSON(
+    authType: AnonymousAuthenticatorType
+  ): Promise<Authenticator<"anonymous">>;
+  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator>;
+  static async fromJSON(
+    authType: AuthenticatorType | AnonymousAuthenticatorType
+  ): Promise<Authenticator<AnyAuthMethodType>> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
         ? WorkspaceResource.fetchById(authType.workspaceId)
