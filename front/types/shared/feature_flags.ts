@@ -209,6 +209,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "Nils-Fedrigo",
   },
+  auto_tier_routing: {
+    description:
+      "Route Standard and Premium agents to a lower model tier per message when a quick decision model judges it enough",
+    stage: "dust_only",
+    owner: "pmilliotte",
+  },
   automatic_model_health_routing: {
     description:
       "Let a model-health breach seen on this workspace's traffic degrade the endpoint",

@@ -870,6 +870,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "archive_inactive_agents"
   | "audit_logs"
   | "automatic_model_health_routing"
+  | "auto_tier_routing"
   | "claude_4_opus_feature"
   | "group_seat_provisioning"
   | "group_limits"
