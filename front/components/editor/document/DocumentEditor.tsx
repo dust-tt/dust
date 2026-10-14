@@ -56,8 +56,9 @@ const CollabEditor = lazy(
  */
 /**
  * @cc [owner:PopDaph,label:product] document-conflict-copy-note
- * While a live document's save state has a conflict copy, a note above its content MUST say the
- * file was changed elsewhere and name the copy by its file name, until the session ends.
+ * While a live document's save state, as its current connection was last told, has a conflict
+ * copy, a note above its content MUST say the file was changed elsewhere and name the copy by its
+ * file name. A lost connection forgets it; the next one is told again while the session keeps it.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only

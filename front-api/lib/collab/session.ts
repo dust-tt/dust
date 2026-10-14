@@ -425,13 +425,14 @@ const MAX_CONFLICT_ROUNDS = 3;
 
 /**
  * @cc [owner:PopDaph,label:product;concurrency] collab-session-save-conflict
- * A save MUST write the session through `writer` with `saveCollabSession`. When it fails with
- * `revision_conflict`, the file's version MUST be kept with `keepConflictingFile` before the session
- * saves over it: the session's last save becomes the file as now stored, and when a copy was
- * written, its path MUST be recorded in the session's save state and that state sent to every
- * connection. It MUST then save again, at most `MAX_CONFLICT_ROUNDS` times, and return the first
- * failure it cannot recover: any failure but a conflict, a conflict whose file cannot be kept, or a
- * conflict past the last round.
+ * Each round MUST save with `saveCollabSession` through the connection that last changed the
+ * document by then, `writer` when none did, and fail without saving when it cannot write. When a
+ * save fails with `revision_conflict`, the file's version MUST be kept with `keepConflictingFile`
+ * before the session saves over it: the session's last save becomes the file as now stored, and
+ * when a copy was written, its path MUST be recorded in the session's save state and that state
+ * sent to every connection. It MUST then save again, at most `MAX_CONFLICT_ROUNDS` times, and
+ * return the first failure it cannot recover: any failure but a conflict, a conflict whose file
+ * cannot be kept, or a conflict past the last round.
  */
 export async function saveSession(
   document: Document,
@@ -444,8 +445,18 @@ export async function saveSession(
     );
   }
   for (let round = 0; ; round++) {
+    // Someone may have edited while the last round awaited: save through whoever changed it last.
+    const current = session.lastChangedBy ?? session.lastCommenter ?? writer;
+    if (current.canWrite !== true) {
+      return new Err(
+        new CollabSaveError(
+          "failed",
+          "The document was changed without a writer."
+        )
+      );
+    }
     const saved = await saveCollabSession(
-      writer,
+      current,
       { doc: document, comments: session.comments },
       session.lastSave
     );
@@ -456,12 +467,12 @@ export async function saveSession(
     ) {
       return saved;
     }
-    const kept = await keepConflictingFile(writer, session.lastSave);
+    const kept = await keepConflictingFile(current, session.lastSave);
     if (kept.isErr()) {
       logger.warn(
         {
           documentName: document.name,
-          workspaceId: writer.workspaceId,
+          workspaceId: current.workspaceId,
           reason: kept.error.message,
         },
         "Collab conflict not kept"
@@ -475,7 +486,7 @@ export async function saveSession(
       logger.info(
         {
           documentName: document.name,
-          workspaceId: writer.workspaceId,
+          workspaceId: current.workspaceId,
           copyPath,
         },
         "Collab conflict kept as a copy"

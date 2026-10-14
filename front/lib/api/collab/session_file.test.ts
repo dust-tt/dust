@@ -10,7 +10,7 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { writeConversationFile } from "@app/tests/utils/conversation_files";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { writeUserFile } from "@app/tests/utils/user_files";
@@ -241,28 +241,8 @@ describe("saveCollabSession", () => {
 
     // A conversation's file: the storage there keeps revisions, unlike a user's own files.
     async function loadConversationFile(text: string, name = "notes.md") {
-      fileStorageMock.enableVersioning();
-      fileStorageMock.setFileMetadata(() => ({
-        contentType: "text/markdown",
-        size: "0",
-      }));
       const { authenticator: auth } = await createResourceTest({});
-      const conversation = await ConversationFactory.createPlain(auth);
-      const path = `conversation-${conversation.sId}/${name}`;
-      const dustFs = await DustFileSystem.fromScopedPath(auth, path);
-      if (dustFs.isErr()) {
-        throw dustFs.error;
-      }
-      const written = await writeCanonicalFileContent(
-        auth,
-        dustFs.value,
-        path,
-        Buffer.from(text, "utf8"),
-        "text/markdown"
-      );
-      if (written.isErr()) {
-        throw written.error;
-      }
+      const path = await writeConversationFile(auth, name, text);
       const file = await openCollabAccess(auth, path);
       if (file.isErr()) {
         throw new Error(file.error.message);
@@ -378,8 +358,11 @@ describe("saveCollabSession", () => {
         "a".repeat(WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES + 1)
       );
 
+      const writesBefore = fileStorageMock.saveFileCalls.length;
+
       const kept = await keepConflictingFile(file, lastSave);
       expect(kept.isErr()).toBe(true);
+      expect(fileStorageMock.saveFileCalls).toHaveLength(writesBefore);
     });
 
     it("fails without writing anything when the file was deleted", async () => {
@@ -387,8 +370,11 @@ describe("saveCollabSession", () => {
       const deleted = await file.dustFs.delete(file.canonicalPath);
       expect(deleted.isOk()).toBe(true);
 
+      const writesBefore = fileStorageMock.saveFileCalls.length;
+
       const kept = await keepConflictingFile(file, lastSave);
       expect(kept.isErr()).toBe(true);
+      expect(fileStorageMock.saveFileCalls).toHaveLength(writesBefore);
     });
   });
 });

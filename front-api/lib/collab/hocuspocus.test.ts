@@ -40,6 +40,7 @@ import {
 } from "@front-api/lib/collab/hocuspocus";
 import {
   SAVE_RETRY_DELAY_MS,
+  getSession,
   readSessionSource,
   showAgentActivity,
   writeSessionSource,
@@ -319,6 +320,50 @@ describe("createCollabHocuspocus", () => {
     expect(broadcast).toHaveBeenLastCalledWith(
       saveState(true, "user-u1/notes (conflict 2026-10-14 14-05).md")
     );
+  });
+
+  it("saves the next round through whoever edited while the conflict was kept", async () => {
+    const first = await collabAccess(true);
+    const second: CollabAccess = {
+      ...first,
+      auth: (await collabAccess(true)).auth,
+    };
+    vi.mocked(saveCollabSession)
+      .mockResolvedValueOnce(
+        new Err(new CollabSaveError("revision_conflict", "File changed."))
+      )
+      .mockImplementation(
+        async (_file, _live, last) =>
+          new Ok({ revision: "10", source: last.source })
+      );
+    const hocuspocus = createCollabHocuspocus();
+    vi.useFakeTimers();
+    const connection = await hocuspocus.openDirectConnection(
+      DOCUMENT_NAME,
+      first
+    );
+    const document = hocuspocus.documents.get(DOCUMENT_NAME);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+    vi.mocked(keepConflictingFile).mockImplementationOnce(async () => {
+      // Another person edits while the file's version is being kept.
+      const session = getSession(document);
+      if (session) {
+        session.lastChangedBy = second;
+      }
+      return new Ok({
+        lastSave: { revision: "9", source: "Theirs." },
+        copyPath: null,
+      });
+    });
+    await connection.transact((doc) => typeInto(doc, "Edit."));
+    await connection.disconnect();
+
+    const writers = vi
+      .mocked(saveCollabSession)
+      .mock.calls.map(([writer]) => writer.auth);
+    expect(writers).toEqual([first.auth, second.auth]);
   });
 
   it("fails the save when a conflicting file cannot be kept", async () => {
