@@ -111,7 +111,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
-import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type { RoleGrant } from "@app/types/resource_permissions";
@@ -2784,23 +2783,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
       },
     });
-  }
-
-  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
-    const agents = await this.listActiveAgents(auth);
-
-    const sortedAgents = agents
-      .map((agent) => ({
-        sId: agent.sId,
-        name: agent.name,
-        pictureUrl: agent.pictureUrl,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return {
-      count: sortedAgents.length,
-      agents: sortedAgents,
-    };
   }
 
   private async updateActiveAgentsRequirements(
