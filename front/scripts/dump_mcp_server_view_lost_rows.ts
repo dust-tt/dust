@@ -77,8 +77,8 @@ async function findLostViews(
       kind: "regular",
     },
   });
-  const regularSpaceIds = new Set(regularSpaces.map((space) => space.id));
-  return views.filter((view) => regularSpaceIds.has(view.vaultId));
+  const regularSpaceModelIds = new Set(regularSpaces.map((space) => space.id));
+  return views.filter((view) => regularSpaceModelIds.has(view.vaultId));
 }
 
 // Rows are read as `row_to_json` so every column comes along, including ones a model omits, with
