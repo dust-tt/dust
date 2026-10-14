@@ -1814,6 +1814,10 @@ msgstr "The workspace default limit could not be loaded."
 msgid "Name"
 msgstr "Name"
 
+#: front/components/workspace/member_name_column.tsx
+msgid "Email"
+msgstr "Email"
+
 #: front/components/workspace/member_spend_limit_helpers.ts
 msgid "Enter a whole number of credits between {minFormatted} and {maxFormatted}."
 msgstr "Enter a whole number of credits between {minFormatted} and {maxFormatted}."

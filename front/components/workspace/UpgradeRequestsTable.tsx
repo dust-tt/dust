@@ -46,7 +46,7 @@ function UpgradeRequestSkeletonCell({
 }: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "name":
-      return <MemberNameSkeleton rowIndex={rowIndex} />;
+      return <MemberNameSkeleton rowIndex={rowIndex} hasEmailColumn={false} />;
     case "reason":
       return <LoadingBlock className="h-3 w-40 max-w-full" />;
     case "requested":
@@ -64,7 +64,7 @@ function UpgradeRequestSkeletonCell({
   }
 }
 
-const nameColumn = buildMemberNameColumn<RowData>();
+const nameColumn = buildMemberNameColumn<RowData>({ hasEmailColumn: false });
 
 function seatAwuCredits(
   seatType: MembershipSeatType | null,
