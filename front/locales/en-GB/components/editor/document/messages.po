@@ -267,6 +267,10 @@ msgid "{name} is writing"
 msgstr ""
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Changes not saved"
+msgstr ""
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Saving…"
 msgstr ""
 

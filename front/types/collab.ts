@@ -146,3 +146,27 @@ export const agentEditMessageSchema = z.object({
 });
 
 export type AgentEditMessage = z.infer<typeof agentEditMessageSchema>;
+
+/** How the collab server stands saving a live document to its file, as its editors show it. */
+export const saveStateSchema = z.object({
+  /** Its last save failed. */
+  failed: z.boolean(),
+});
+
+export type SaveState = z.infer<typeof saveStateSchema>;
+
+/** Nothing to show: the state of a document whose saves succeed. */
+export const DEFAULT_SAVE_STATE: SaveState = { failed: false };
+
+/** Whether `state` has nothing to show, every field as in `DEFAULT_SAVE_STATE`. */
+export const isDefaultSaveState = (state: SaveState): boolean => !state.failed;
+
+/**
+ * The whole save state, sent to every editor when it changes, and to each editor that connects
+ * while it differs from `DEFAULT_SAVE_STATE`.
+ */
+export const saveStateMessageSchema = saveStateSchema.extend({
+  type: z.literal("save_state"),
+});
+
+export type SaveStateMessage = z.infer<typeof saveStateMessageSchema>;

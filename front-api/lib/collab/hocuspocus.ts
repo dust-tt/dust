@@ -17,6 +17,7 @@ import logger from "@app/logger/logger";
 import type { CommentRequestErrorCode } from "@app/types/collab";
 import {
   commentClientMessageSchema,
+  isDefaultSaveState,
   parseSessionName,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
@@ -26,6 +27,9 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { authenticateConnection } from "@front-api/lib/collab/connection_access";
 import {
   getSession,
+  recordSaveResult,
+  saveStateMessage,
+  toSaveState,
   serverMessage,
   startSession,
   stopWrites,
@@ -50,6 +54,19 @@ const commandRequestSchema = z.object({
   type: z.literal("command"),
   requestId: z.string().min(1),
 });
+
+/** A save failure is an error once, then each retry that fails again only a warning. */
+function logSaveFailure(
+  retries: number,
+  fields: Record<string, unknown>,
+  message: string
+): void {
+  if (retries === 0) {
+    logger.error({ ...fields, retries }, message);
+  } else {
+    logger.warn({ ...fields, retries }, message);
+  }
+}
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -88,7 +105,12 @@ function logUnexpected(
  * Hocuspocus keeps the document instead of unloading it. Once its last WebSocket client leaves,
  * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
  * unless a connection is open or its last save failed. A direct connection that leaves
- * during that period does not extend it.
+ * during that period does not extend it. A failed save MUST be retried after
+ * `SAVE_RETRY_DELAY_MS`, the delay doubling with each retry up to `SAVE_RETRY_MAX_DELAY_MS`, until
+ * one succeeds, the document unloads or `saveAllSessions` is called, except a save whose writer
+ * cannot write, which only another edit fixes. Every time the session's save state
+ * (`toSaveState`) changes, every connection MUST be sent it as `save_state`, and a connection
+ * opening while it differs from `DEFAULT_SAVE_STATE` MUST be sent it once connected.
  */
 /**
  * @cc [owner:tdraier,label:security;product] collab-comment-threads
@@ -99,9 +121,10 @@ function logUnexpected(
  * connection that last changed its text, or through the latest commenter's when none did, and the
  * message it added handed to `dispatchSessionCommentMentions` without waiting for it. A command its
  * document unloaded before it finished MUST change nothing. Every command carrying a request id
- * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
- * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
- * the later ones. Any other message that is not a valid client message MUST be ignored.
+ * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document,
+ * found the document's last save failed at its turn, or did not finish within
+ * `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold the later ones. Any
+ * other message that is not a valid client message MUST be ignored.
  */
 export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
   const hocuspocus = new Hocuspocus<CollabAccess>({
@@ -147,6 +170,8 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         comments: content.comments,
         lastSave,
         saveFailed: false,
+        saveRetryTimer: undefined,
+        saveRetries: 0,
         lastChangedBy: undefined,
         lastCommenter: undefined,
         graceTimer: undefined,
@@ -166,7 +191,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
     // while people type. LIVE_SESSION.md keeps the Yjs state in a durable store between
     // saves instead, since each write is a new file revision that agents' conditional
     // writes conflict with.
-    async onStoreDocument({ document, documentName }) {
+    async onStoreDocument({ document, documentName, instance }) {
       const session = getSession(document);
       // Not `lastContext`: a direct connection's disconnect stores the document with its own
       // context, even when it changed nothing.
@@ -175,11 +200,13 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         return;
       }
       if (writer.canWrite !== true) {
-        session.saveFailed = true;
-        logger.error(
+        logSaveFailure(
+          session.saveRetries,
           { documentName, workspaceId: writer.workspaceId },
           "Collab document changed without a writer"
         );
+        // A retry would save through the same writer: only an edit from one who can write fixes it.
+        recordSaveResult(instance, document, "failed_until_edited");
         throw new Error("The document was changed without a writer.");
       }
 
@@ -191,18 +218,24 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           session.lastSave
         );
       } catch (err) {
-        session.saveFailed = true;
-        return logUnexpected(
-          { documentName, workspaceId: writer.workspaceId },
+        logSaveFailure(
+          session.saveRetries,
+          {
+            err: normalizeError(err),
+            documentName,
+            workspaceId: writer.workspaceId,
+          },
           "Collab save failed"
-        )(err);
+        );
+        recordSaveResult(instance, document, "failed");
+        throw err;
       }
       if (saved.isErr()) {
         // TODO(co-edition): a revision conflict never recovers. `session.lastSave` only moves on
         // success, so once another writer changes the file every later save conflicts too,
         // the document stays loaded and its edits never reach the file.
-        session.saveFailed = true;
-        logger.error(
+        logSaveFailure(
+          session.saveRetries,
           {
             documentName,
             workspaceId: writer.workspaceId,
@@ -210,10 +243,11 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           },
           "Collab save failed"
         );
+        recordSaveResult(instance, document, "failed");
         throw new Error(saved.error);
       }
       session.lastSave = saved.value;
-      session.saveFailed = false;
+      recordSaveResult(instance, document, "saved");
     },
 
     async onDisconnect({ instance, document }) {
@@ -233,13 +267,21 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       session.graceTimer = setTimeout(() => {
         session.graceTimer = undefined;
         document.removeDirectConnection();
-        // Unloading would drop the edits the file does not have.
-        // TODO(co-edition): retry the failed save; until the next edit, its edits only live
-        // in memory.
+        // Unloading would drop the edits the file does not have. The retried save unloads it once
+        // it succeeds, with no grace period left.
         if (!session.saveFailed) {
           void instance.unloadDocument(document);
         }
       }, UNLOAD_GRACE_PERIOD_MS);
+    },
+
+    // A connection joining while saves fail learns it here, the others when it changes.
+    async connected({ connection }) {
+      const session = getSession(connection.document);
+      const state = session && toSaveState(session);
+      if (state && !isDefaultSaveState(state)) {
+        connection.sendStateless(saveStateMessage(state));
+      }
     },
 
     async onStateless({ connection, document, documentName, payload }) {
@@ -303,9 +345,11 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       const run = async () => {
         // Unloaded while the command waited or ran: a reload reads the file into a new document,
         // and storing this one would cancel that document's debounced store, keyed by name.
-        const result: CommandResult = document.isDestroyed
-          ? new Err("unavailable")
-          : await apply();
+        // While saves fail, an accepted comment would only live in memory.
+        const result: CommandResult =
+          document.isDestroyed || session.saveFailed
+            ? new Err("unavailable")
+            : await apply();
         if (document.isDestroyed || result.isErr()) {
           connection.sendStateless(
             refusedMessage(
@@ -316,8 +360,6 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           return;
         }
 
-        // TODO(co-edition): refuse commands while `session.saveFailed`: an accepted comment
-        // only lives in memory until a save succeeds, and is lost if none ever does.
         // TODO(co-edition): a command still applies after its sender left, whose channel already
         // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;

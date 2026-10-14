@@ -114,6 +114,8 @@ interface DocumentViewProps extends DocumentProps {
     status: CollabStatus;
     /** Changes wait to be confirmed by the server, per `document-saving-delay`. */
     showSaving?: boolean;
+    /** The server fails to save the document. */
+    saveFailed?: boolean;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: AgentEvent | null;
     participants?: CollabParticipant[];
@@ -358,6 +360,7 @@ export const DocumentView = ({
               collabView && {
                 status: collabView.status,
                 showSaving: collabView.showSaving ?? false,
+                saveFailed: collabView.saveFailed ?? false,
               }
             }
           />,

@@ -118,7 +118,7 @@ export const CollabAgentIndicator = ({
   );
 };
 
-type StatusIconState = "saved" | "saving" | "disconnected";
+type StatusIconState = "saved" | "saving" | "unsaved" | "disconnected";
 
 const STATUS_ICONS: Record<
   StatusIconState,
@@ -129,6 +129,7 @@ const STATUS_ICONS: Record<
     icon: RefreshCw05,
     className: "animate-spin text-orange-500 motion-reduce:animate-none",
   },
+  unsaved: { icon: AlertCircle, className: "text-warning-500" },
   disconnected: { icon: ZapOff, className: "text-warning-500" },
 };
 
@@ -136,9 +137,11 @@ const STATUS_ICONS: Record<
 const statusIcon = ({
   status,
   showSaving,
+  saveFailed,
 }: {
   status: CollabStatus;
   showSaving: boolean;
+  saveFailed: boolean;
 }): { state: StatusIconState; label: MessageDescriptor } => {
   switch (status) {
     case "connecting":
@@ -148,6 +151,9 @@ const statusIcon = ({
     case "refused":
       return { state: "disconnected", label: msg`Live editing unavailable` };
     case "live":
+      if (saveFailed) {
+        return { state: "unsaved", label: msg`Changes not saved` };
+      }
       return showSaving
         ? { state: "saving", label: msg`Saving…` }
         : { state: "saved", label: msg`Saved` };
@@ -157,7 +163,7 @@ const statusIcon = ({
 };
 
 interface DocumentStatusIconProps {
-  live?: { status: CollabStatus; showSaving: boolean };
+  live?: { status: CollabStatus; showSaving: boolean; saveFailed: boolean };
 }
 
 /**
@@ -165,8 +171,9 @@ interface DocumentStatusIconProps {
  * Shown next to the host's file name instead of the status badge, a live document's status MUST
  * be one icon with its state as label and tooltip: a green check once live, unless changes show
  * as saving (`document-saving-delay`); an orange spinning arrow circle while they do, or while
- * connecting; a red disconnected icon when the live session is lost or refused. A document without
- * a live session MUST show no icon.
+ * connecting; a red alert icon, "Changes not saved", while the server fails to save the document,
+ * over any other live state; a red disconnected icon when the live session is lost or refused. A
+ * document without a live session MUST show no icon.
  */
 export const DocumentStatusIcon = ({ live }: DocumentStatusIconProps) => {
   const { t } = useLingui();

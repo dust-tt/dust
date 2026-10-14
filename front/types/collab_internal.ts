@@ -33,11 +33,13 @@ export type CollabSourceReadResponse = z.infer<
   typeof collabSourceReadResponseSchema
 >;
 
+// `unsaved`: refused, since the session's saves fail and the change would only live in memory.
 export const COLLAB_SOURCE_WRITE_RESULTS = [
   "written",
   "changed",
   "closed",
   "busy",
+  "unsaved",
 ] as const;
 
 /** How long a write may wait for its turn on the collab server, kept below its caller's timeout. */
