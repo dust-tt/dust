@@ -259,7 +259,7 @@ message GrantUpdate {
 }
 
 // @cc [owner:spolu,label:api] dfs-stat-limit
-// Object references MUST contain between 1 and 256 elements, inclusive. Repeated references count
+// Object references MUST contain between 1 and 4096 elements, inclusive. Repeated references count
 // toward this limit and MUST retain their individual results.
 message StatRequest {
   repeated ObjectRef object_ids = 1;
@@ -267,7 +267,7 @@ message StatRequest {
 }
 
 // @cc [owner:spolu,label:api;performance] dfs-attr-batch-size
-// Responses MUST contain at most 256 results and fit within 4 MiB. If requested metadata
+// Responses MUST contain at most 4096 results and fit within 4 MiB. If requested metadata
 // would exceed the budget, the RPC MUST fail with CAPACITY; requested metadata MUST NOT be silently
 // omitted from a successful result.
 message AttrBatch {

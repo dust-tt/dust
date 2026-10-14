@@ -192,7 +192,7 @@ impl Dfs for API {
 
     /**
      * @cc [owner:spolu,label:api;security] stat-batch-results
-     * Stat MUST accept 1-256 valid references and preserve their order and duplicates. Missing and
+     * Stat MUST accept 1-4096 valid references and preserve their order and duplicates. Missing and
      * unreadable real objects MUST return per-result NOT_FOUND without dropping other results.
      * Each result MUST contain exactly one of object or error.
      * Requested metadata MUST be returned on every successful result. Responses larger than the
