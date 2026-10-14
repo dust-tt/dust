@@ -17,6 +17,7 @@ import logger from "@app/logger/logger";
 import type { CommentRequestErrorCode } from "@app/types/collab";
 import {
   commentClientMessageSchema,
+  isDefaultSaveState,
   parseSessionName,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
@@ -28,6 +29,7 @@ import {
   getSession,
   recordSaveResult,
   saveStateMessage,
+  toSaveState,
   serverMessage,
   startSession,
   stopWrites,
@@ -106,9 +108,9 @@ function logUnexpected(
  * during that period does not extend it. A failed save MUST be retried after
  * `SAVE_RETRY_DELAY_MS`, the delay doubling at each failure up to `SAVE_RETRY_MAX_DELAY_MS`, until
  * one succeeds, the document unloads or `saveAllSessions` is called, except a save whose writer
- * cannot write, which only another edit fixes. Every time whether the last
- * save failed changes, every connection MUST be sent `save_state`, and a connection opening while
- * it failed MUST be sent it once connected.
+ * cannot write, which only another edit fixes. Every time the session's save state
+ * (`toSaveState`) changes, every connection MUST be sent it as `save_state`, and a connection
+ * opening while it differs from `DEFAULT_SAVE_STATE` MUST be sent it once connected.
  */
 /**
  * @cc [owner:tdraier,label:security;product] collab-comment-threads
@@ -275,8 +277,10 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
 
     // A connection joining while saves fail learns it here, the others when it changes.
     async connected({ connection }) {
-      if (getSession(connection.document)?.saveFailed) {
-        connection.sendStateless(saveStateMessage(true));
+      const session = getSession(connection.document);
+      const state = session && toSaveState(session);
+      if (state && !isDefaultSaveState(state)) {
+        connection.sendStateless(saveStateMessage(state));
       }
     },
 

@@ -87,7 +87,7 @@ describe("useCollabConnection", () => {
     await server.listen();
     const { result, unmount } = renderSession();
     await waitFor(() => expect(result.current.status).toBe("live"));
-    expect(result.current.saveFailed).toBe(true);
+    expect(result.current.saveState.failed).toBe(true);
 
     act(() => {
       server.hocuspocus.documents
@@ -96,7 +96,7 @@ describe("useCollabConnection", () => {
           JSON.stringify({ type: "save_state", failed: false })
         );
     });
-    await waitFor(() => expect(result.current.saveFailed).toBe(false));
+    await waitFor(() => expect(result.current.saveState.failed).toBe(false));
     unmount();
   });
 
@@ -122,7 +122,7 @@ describe("useCollabConnection", () => {
       timeout: 5000,
     });
     expect(connections).toBe(2);
-    expect(result.current.saveFailed).toBe(false);
+    expect(result.current.saveState.failed).toBe(false);
     unmount();
   });
 

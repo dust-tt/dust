@@ -19,8 +19,9 @@ interface CollabEditorProps extends DocumentProps {
 /** A Document in a live session: the file read-only until the shared document has synced. */
 export default function CollabEditor(props: CollabEditorProps) {
   const { t } = useLingui();
-  const { connection, status, syncingSinceMs, saveFailed } =
-    useCollabConnection(props.live);
+  const { connection, status, syncingSinceMs, saveState } = useCollabConnection(
+    props.live
+  );
   // Here rather than in the icon, which mounts again with each connection.
   const showSaving = useShowSaving(syncingSinceMs);
   const agent = useCollabAgentActivity(connection?.provider ?? null);
@@ -53,7 +54,7 @@ export default function CollabEditor(props: CollabEditorProps) {
       collabView={{
         status,
         showSaving,
-        saveFailed,
+        saveFailed: saveState.failed,
         agent,
         participants,
         binding: {

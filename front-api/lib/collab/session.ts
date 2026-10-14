@@ -6,6 +6,7 @@ import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 import type {
+  SaveState,
   SaveStateMessage,
   CollabAgent,
   AgentActivity,
@@ -51,8 +52,13 @@ const SAVE_RETRY_MAX_DELAY_MS = 5 * 60 * 1000;
 /** How a save ended: `failed_until_edited` is not retried, since only an edit can fix it. */
 export type SaveOutcome = "saved" | "failed" | "failed_until_edited";
 
-export const saveStateMessage = (failed: boolean) =>
-  JSON.stringify({ type: "save_state", failed } satisfies SaveStateMessage);
+/** The session's save state, as its editors show it. */
+export const toSaveState = (session: CollabSession): SaveState => ({
+  failed: session.saveFailed,
+});
+
+export const saveStateMessage = (state: SaveState) =>
+  JSON.stringify({ type: "save_state", ...state } satisfies SaveStateMessage);
 
 export const serverMessage = (message: CommentServerMessage) =>
   JSON.stringify(message);
@@ -354,7 +360,7 @@ export function recordSaveResult(
   const failed = outcome !== "saved";
   if (session.saveFailed !== failed) {
     session.saveFailed = failed;
-    document.broadcastStateless(saveStateMessage(failed));
+    document.broadcastStateless(saveStateMessage(toSaveState(session)));
   }
   if (outcome !== "failed") {
     clearTimeout(session.saveRetryTimer);
