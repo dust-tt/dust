@@ -108,4 +108,22 @@ describe("parseFramePublicationDescriptor", () => {
       "publication.json is not valid JSON"
     );
   });
+
+  it("reads a stored legacy optional user identity as workspace_user_required", () => {
+    const result = parseFramePublicationDescriptor(
+      Buffer.from(
+        JSON.stringify({
+          ...publication,
+          functions: [
+            { ...publication.functions[0], userIdentity: "optional" },
+          ],
+        })
+      )
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(result.isOk() && result.value.functions[0]?.userIdentity).toBe(
+      "workspace_user_required"
+    );
+  });
 });

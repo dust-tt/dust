@@ -11,7 +11,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
-import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
+import { SandboxFunctionUserIdentityPolicySchema } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -54,7 +54,7 @@ const jsonSchemaValue = z.custom<JSONSchema>(
 const functionSchemaFileSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
-  userIdentity: z.enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES),
+  userIdentity: SandboxFunctionUserIdentityPolicySchema,
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
 });

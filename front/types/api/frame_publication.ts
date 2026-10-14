@@ -6,7 +6,7 @@ import {
   isSafeFrameRelativePath,
 } from "@app/types/api/frame_manifest";
 import { FRAME_PUBLICATION_FILE } from "@app/types/api/frame_storage";
-import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
+import { SandboxFunctionUserIdentityPolicySchema } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -44,7 +44,7 @@ export const FramePublicationDescriptorSchema = z
       z.object({
         name: FrameFunctionManifestSchema.shape.name,
         bundleSha256: Sha256Schema,
-        userIdentity: z.enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES),
+        userIdentity: SandboxFunctionUserIdentityPolicySchema,
         inputSchema: JsonSchemaSchema,
         outputSchema: JsonSchemaSchema,
       })

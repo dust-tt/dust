@@ -36,7 +36,7 @@ describe("getFunctionSchema", () => {
 
   test("nulls a malformed (non-Zod) schema field", async () => {
     const s = await getFunctionSchema(fx("bad-schema.ts"));
-    expect(s.userIdentity).toBe("optional");
+    expect(s.userIdentity).toBe("workspace_user_required");
     expect(s.input_schema).toBeNull();
     expect(s.output_schema).toBeNull();
   });
@@ -54,6 +54,11 @@ describe("getFunctionSchema", () => {
   test("accepts the frame_author_required user identity policy", async () => {
     const s = await getFunctionSchema(fx("frame-author.ts"));
     expect(s.userIdentity).toBe("frame_author_required");
+  });
+
+  test("maps the legacy optional user identity policy to workspace_user_required", async () => {
+    const s = await getFunctionSchema(fx("optional.ts"));
+    expect(s.userIdentity).toBe("workspace_user_required");
   });
 
   test("accepts the public user identity policy", async () => {
