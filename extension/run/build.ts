@@ -42,6 +42,8 @@ async function main() {
         const info = stats.toJson();
         console.error("Webpack compilation errors:");
         info.errors?.forEach((error) => console.error(error));
+        reject(new Error("Webpack compilation failed"));
+        return;
       }
       if (stats?.hasWarnings()) {
         const info = stats.toJson();

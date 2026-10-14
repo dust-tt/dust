@@ -104,9 +104,12 @@ export const getConfig = async ({
     },
     output: {
       path: buildDirPath,
-      filename: "[name].js",
-      chunkFilename: "[id].chunk.js",
-      publicPath: "/",
+      clean: true,
+      filename: isDevelopment ? "[name].js" : "assets/[name].[contenthash].js",
+      chunkFilename: isDevelopment
+        ? "[id].chunk.js"
+        : "assets/[id].[contenthash].chunk.js",
+      publicPath: isDevelopment ? "/" : "/excel/",
     },
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
@@ -180,7 +183,9 @@ export const getConfig = async ({
           test: /\.woff2$/i,
           type: "asset/resource",
           generator: {
-            filename: "static/fonts/[name][ext]",
+            filename: isDevelopment
+              ? "static/fonts/[name][ext]"
+              : "assets/[name].[contenthash][ext]",
           },
         },
       ],

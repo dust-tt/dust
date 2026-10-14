@@ -32,6 +32,29 @@ function getExposedHeaders(response: Response): string[] {
 }
 
 describe("cors middleware", () => {
+  it.each(["https://addins.dust.tt", "https://office-addins.dust.tt"])(
+    "allows Office add-in API requests from %s",
+    async (origin) => {
+      const preflight = await createApp().request("/api/workos/authenticate", {
+        method: "OPTIONS",
+        headers: {
+          Origin: origin,
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers":
+            "authorization,content-type,x-dust-extension-version",
+        },
+      });
+      expect(preflight.status).toBe(200);
+      expect(preflight.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+
+      const response = await createApp().request("/", {
+        headers: { Origin: origin },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+    }
+  );
+
   it("allows revision-checked file saves from the app origin", async () => {
     const response = await createApp().request(
       "/api/w/wsId/files/path/conversation-cId/notes.json",

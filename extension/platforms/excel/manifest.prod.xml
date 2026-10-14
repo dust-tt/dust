@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xsi:type="TaskPaneApp">
+  <Id>b1bce6ae-4273-4324-8dc6-30c827eb2a8d</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Dust</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Dust"/>
+  <Description DefaultValue="Dust in Excel."/>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://addins.dust.tt/excel/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Dust.Group">
+                <Label resid="Dust.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Dust.Icon16"/>
+                  <bt:Image size="32" resid="Dust.Icon32"/>
+                  <bt:Image size="80" resid="Dust.Icon80"/>
+                </Icon>
+                <Control xsi:type="Button" id="Dust.Button">
+                  <Label resid="Dust.Label"/>
+                  <Supertip>
+                    <Title resid="Dust.Label"/>
+                    <Description resid="Dust.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Dust.Icon16"/>
+                    <bt:Image size="32" resid="Dust.Icon32"/>
+                    <bt:Image size="80" resid="Dust.Icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="Dust.Taskpane"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Dust.Icon16" DefaultValue="https://dust.tt/static/favicon.png"/>
+        <bt:Image id="Dust.Icon32" DefaultValue="https://dust.tt/static/favicon@2x.png"/>
+        <bt:Image id="Dust.Icon80" DefaultValue="https://dust.tt/static/favicon@3x.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Dust.Taskpane" DefaultValue="https://addins.dust.tt/excel/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Dust.Label" DefaultValue="Dust"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Dust.Tooltip" DefaultValue="Open Dust."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
