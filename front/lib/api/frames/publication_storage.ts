@@ -324,6 +324,8 @@ export function buildFramePublicationContracts({
       userIdentity: artifact.userIdentity,
       inputSchema: artifact.inputSchema,
       outputSchema: artifact.outputSchema,
+      // Populated by tools.call extraction on the next stack commit; empty until then.
+      toolCalls: [],
     });
   }
 
