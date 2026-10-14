@@ -621,7 +621,7 @@ describe("publishFrameFromSource replacing a legacy Frame", () => {
     vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(
       new Ok({
         bundleCode: "export default true;",
-        userIdentity: "optional",
+        userIdentity: "workspace_user_required",
         inputSchema: { type: "object" },
         outputSchema: { type: "object" },
       })

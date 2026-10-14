@@ -105,7 +105,7 @@ async function createFramePublicationFunction({
   adminAuth,
   frame,
   publicationId,
-  userIdentity = "optional",
+  userIdentity = "workspace_user_required",
 }: {
   adminAuth: Authenticator;
   frame: Awaited<ReturnType<typeof FileFactory.create>>;
@@ -151,7 +151,7 @@ async function setupFrameV2Function({
   withFramesV2FeatureFlag = true,
   withSandboxFunctionInvocationFeatureFlag = true,
   standalone = false,
-  userIdentity = "optional",
+  userIdentity = "workspace_user_required",
   addCallerToSpace = false,
   withSourcePath = userIdentity === "frame_author_required",
 }: {

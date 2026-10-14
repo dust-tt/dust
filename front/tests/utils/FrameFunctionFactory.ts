@@ -70,7 +70,7 @@ export async function createTestFrameFunction(
     space,
     slug = "greet",
     description = "Greet someone.",
-    userIdentity = "optional",
+    userIdentity = "workspace_user_required",
     executionMode = "durable",
     inputSchema: functionInputSchema = inputSchema,
     outputSchema: functionOutputSchema = outputSchema,
@@ -181,7 +181,7 @@ export async function makeTestFrameFunction({
           {
             name: "run-function",
             description: "Run the Frame function.",
-            userIdentity: "optional",
+            userIdentity: "workspace_user_required",
             executionMode: "durable",
             defaultStake: "low",
             bundleCode:

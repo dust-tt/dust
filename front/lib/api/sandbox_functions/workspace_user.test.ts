@@ -77,7 +77,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     const authorization = await authorizeSandboxFunctionInvocation(
       userlessAuth,
       {
-        userIdentity: "optional",
+        userIdentity: "workspace_user_required",
         origin: "delegated",
         owner: { kind: "frame", frame },
       }
@@ -126,7 +126,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     });
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
-      userIdentity: "optional",
+      userIdentity: "workspace_user_required",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });

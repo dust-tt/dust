@@ -231,7 +231,7 @@ describe("buildSandboxFunctionOnReadySandbox", () => {
       "schema.json": JSON.stringify({
         name: "greet",
         description: null,
-        userIdentity: "optional",
+        userIdentity: "workspace_user_required",
         input_schema: null,
         output_schema: { type: "object" },
       }),
@@ -244,7 +244,7 @@ describe("buildSandboxFunctionOnReadySandbox", () => {
             JSON.stringify({
               name: "greet",
               description: null,
-              userIdentity: "optional",
+              userIdentity: "workspace_user_required",
               input_schema: null,
               output_schema: { type: "object" },
             })

@@ -77,7 +77,7 @@ async function setup() {
           {
             name: "get-status",
             description: "Get the status.",
-            userIdentity: "optional",
+            userIdentity: "workspace_user_required",
             executionMode: "durable",
             defaultStake: "never_ask",
             bundleCode:
