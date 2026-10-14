@@ -4,6 +4,7 @@ import {
   documentCommentsPluginKey,
   getDocumentComments,
 } from "@app/components/editor/document/DocumentComments";
+import type { ActiveCommentBinding } from "@app/components/editor/document/types";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
@@ -48,9 +49,11 @@ async function renderCommentedEditor(
     verify,
     isSavable,
     live,
+    activeComment,
   }: {
     /** The session's comment side; an accepting one by default, none with null. */
     live?: CommentChannel | null;
+    activeComment?: ActiveCommentBinding;
     verify?: DfmMessageVerifier;
     isSavable?: (document: JSONContent) => boolean;
   } = {}
@@ -86,6 +89,7 @@ async function renderCommentedEditor(
         isSavable: isSavable ?? document.isSavable,
         verify: currentVerify,
         live: session,
+        activeComment,
       });
       return { document, comments };
     },
@@ -418,6 +422,36 @@ describe("useDocumentComments", () => {
     });
 
     expect(saved()).toBe("Hi there\n");
+  });
+
+  it("reveals the requested thread once its text is in the document", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    const onChange = vi.fn();
+    const { result } = await renderCommentedEditor(SOURCE, {
+      activeComment: { id: "c1", onChange },
+    });
+
+    await waitFor(() => expect(result.current.comments.activeId).toBe("c1"));
+    expect(result.current.comments.focusRequest?.threadId).toBe("c1");
+    expect(result.current.comments.listOpen).toBe(false);
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("c1");
+  });
+
+  it("reports each change of the active thread, not the initial one", async () => {
+    const onChange = vi.fn();
+    const { result } = await renderCommentedEditor(SOURCE, {
+      activeComment: { id: undefined, onChange },
+    });
+    expect(onChange).not.toHaveBeenCalled();
+
+    act(() => result.current.comments.select("c1"));
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith("c1"));
+    act(() => result.current.comments.select(null));
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(null));
+    expect(onChange).toHaveBeenCalledTimes(2);
   });
 
   it("keeps a pending draft when a comment is revealed", async () => {

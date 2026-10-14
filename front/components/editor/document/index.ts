@@ -3,6 +3,7 @@ export {
   hasOpenDocumentLayer,
 } from "@app/components/editor/document/DocumentEditor";
 export type {
+  ActiveCommentBinding,
   DocumentCommentAvatarSize,
   DocumentEmbeddableFile,
   DocumentEmbeddableFiles,

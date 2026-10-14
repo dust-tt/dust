@@ -243,6 +243,7 @@ export const DocumentView = ({
   mountPortalContainer,
   headerControlsContainer,
   statusContainer,
+  activeComment,
   readOnly = false,
   collabView,
   commentAuthor,
@@ -276,6 +277,7 @@ export const DocumentView = ({
     isSavable,
     verify: verifyCommentMessage,
     live: live.binding?.comments,
+    activeComment,
   });
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

@@ -60,7 +60,7 @@ export function FilePreviewPanel({
   owner,
 }: FilePreviewPanelProps) {
   const { t } = useLingui();
-  const { data } = useConversationSidePanelContext();
+  const { data, openPanel } = useConversationSidePanelContext();
   const { isFullScreen, enterFullScreen, exitFullScreen, closePanel } =
     useSidePanelFullScreen(DEFAULT_RIGHT_PANEL_SIZE);
   const isMobile = useIsMobile();
@@ -72,6 +72,19 @@ export function FilePreviewPanel({
   );
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
+  const activeComment =
+    target?.kind === "path"
+      ? {
+          id: target.commentId,
+          onChange: (commentId: string | null) =>
+            openPanel({
+              type: "file_preview",
+              kind: "path",
+              filePath: target.filePath,
+              commentId: commentId ?? undefined,
+            }),
+        }
+      : undefined;
 
   const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
     fileId,
@@ -284,6 +297,7 @@ export function FilePreviewPanel({
           markdown={markdown}
           markdownHeaderControlsContainer={documentControls}
           markdownStatusContainer={documentStatus}
+          markdownActiveComment={activeComment}
           owner={owner}
           preview={preview}
         />

@@ -1,5 +1,8 @@
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
-import type { DocumentFilePreview } from "@app/components/editor/document";
+import type {
+  ActiveCommentBinding,
+  DocumentFilePreview,
+} from "@app/components/editor/document";
 import { DocumentEditor } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -359,6 +362,7 @@ interface FilePreviewContentProps {
   markdownHeaderControlsContainer?: HTMLElement | null;
   /** Where the rich editor shows its save or live status icon, such as next to the file name. */
   markdownStatusContainer?: HTMLElement | null;
+  markdownActiveComment?: ActiveCommentBinding;
   /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
   markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
@@ -373,6 +377,7 @@ interface RichMarkdownDocumentProps {
   owner: LightWorkspaceType;
   headerControlsContainer?: HTMLElement | null;
   statusContainer?: HTMLElement | null;
+  activeComment?: ActiveCommentBinding;
 }
 
 const renderFilePreview = (preview: DocumentFilePreview) => (
@@ -394,6 +399,7 @@ function RichMarkdownDocument({
   owner,
   headerControlsContainer,
   statusContainer,
+  activeComment,
 }: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
   const verifyCommentMessage = useDfmMessageVerifier({
@@ -446,6 +452,7 @@ function RichMarkdownDocument({
         initialContent={editor.initialContent}
         headerControlsContainer={headerControlsContainer}
         statusContainer={statusContainer}
+        activeComment={activeComment}
         live={live}
         commentAuthor={
           user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
@@ -485,6 +492,7 @@ export function FilePreviewContent({
   markdownContent,
   markdownHeaderControlsContainer,
   markdownStatusContainer,
+  markdownActiveComment,
   markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
@@ -564,6 +572,7 @@ export function FilePreviewContent({
               owner={owner}
               headerControlsContainer={markdownHeaderControlsContainer}
               statusContainer={markdownStatusContainer}
+              activeComment={markdownActiveComment}
             />
           </div>
         );

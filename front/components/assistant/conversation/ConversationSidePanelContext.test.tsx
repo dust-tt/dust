@@ -149,6 +149,32 @@ describe("ConversationSidePanelProvider history", () => {
     expect(result.current.currentPanel).toBeUndefined();
   });
 
+  it("a document's open comment updates in place", () => {
+    const { result } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({
+        type: "file_preview",
+        kind: "path",
+        filePath: "pod-p/plan.md",
+      })
+    );
+    act(() =>
+      result.current.openPanel(
+        {
+          type: "file_preview",
+          kind: "path",
+          filePath: "pod-p/plan.md",
+          commentId: "c1",
+        },
+        { keepCurrent: true }
+      )
+    );
+    expect(result.current.data).toBe("pod-p/plan.md@comment=c1");
+
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
+  });
+
   it("remembers a Frame without its timestamp", () => {
     const { result } = renderSidePanel();
     act(() =>
@@ -312,6 +338,15 @@ describe("ConversationSidePanelProvider hash encoding", () => {
         filePath: "conversation-abc/plan.md",
       },
       "conversation-abc/plan.md",
+    ],
+    [
+      {
+        type: "file_preview",
+        kind: "path",
+        filePath: "pod-abc/notes@v2.md",
+        commentId: "c1",
+      },
+      "pod-abc/notes@v2.md@comment=c1",
     ],
     [{ type: "file_preview", kind: "id", fileId: "fil_1" }, "id:fil_1"],
     [{ type: "files" }, "files"],
