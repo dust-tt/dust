@@ -27,15 +27,17 @@ function buildLoginUrl() {
 }
 
 // Tracks the open once the frame successfully loads, not again when it is refetched.
+// Takes the objects as returned by their hooks so the null checks stay out of SharedFramePage.
 function useTrackSharedFrameOpen({
-  frameId,
-  workspaceId,
-  requiresEmailVerification,
+  frameMetadata,
+  shareMetadata,
 }: {
-  frameId: string | null;
-  workspaceId: string | null;
-  requiresEmailVerification: boolean;
+  frameMetadata: ReturnType<typeof usePublicFrame>["frameMetadata"];
+  shareMetadata: ReturnType<typeof useShareFrameMetadata>["shareMetadata"];
 }) {
+  const frameId = frameMetadata?.sId;
+  const workspaceId = shareMetadata?.workspaceId;
+  const requiresEmailVerification = !!shareMetadata?.requiresEmailVerification;
   const trackedFrameIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!frameId || !workspaceId || trackedFrameIdRef.current === frameId) {
@@ -100,11 +102,7 @@ export function SharedFramePage() {
     shareToken: shareMetadata ? token : null,
   });
 
-  useTrackSharedFrameOpen({
-    frameId: frameMetadata?.sId ?? null,
-    workspaceId: shareMetadata?.workspaceId ?? null,
-    requiresEmailVerification: !!shareMetadata?.requiresEmailVerification,
-  });
+  useTrackSharedFrameOpen({ frameMetadata, shareMetadata });
 
   // Show the email form when:
   // 1. Metadata says the scope requires email verification, AND
