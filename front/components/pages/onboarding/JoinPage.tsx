@@ -1,6 +1,7 @@
 import Custom404 from "@app/components/pages/Custom404";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
+import { useNoWorkspaceLocaleSync } from "@app/hooks/useNoWorkspaceLocaleSync";
 import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
 import {
@@ -14,9 +15,25 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-export function JoinPage() {
+interface JoinPageProps {
+  onReady?: () => void;
+}
+
+/**
+ * @cc [owner:ykmsd,label:product] join-page-in-workspace-locale
+ * The page MUST be synced with `useNoWorkspaceLocaleSync`, with the `workspaceLocale` of the join
+ * data as preferred locale once loaded and none (`DEFAULT_LOCALE`) before or on error. The
+ * invitation MUST NOT be shown until the load of the workspace locale has settled, so that it is
+ * never shown in a locale it is about to switch away from.
+ */
+/**
+ * @cc [owner:ykmsd,label:product] join-page-ready-after-locale
+ * `onReady` MUST be called each time a locale load of `useNoWorkspaceLocaleSync` settles, so that
+ * the startup loading screen is dismissed once `DEFAULT_LOCALE` is active and never before.
+ */
+export function JoinPage({ onReady }: JoinPageProps) {
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
@@ -33,6 +50,19 @@ export function JoinPage() {
     wId,
     token,
     conversationId,
+  });
+
+  const workspaceLocale = joinData?.workspaceLocale ?? null;
+  const [isWorkspaceLocaleReady, setIsWorkspaceLocaleReady] = useState(false);
+
+  const onLocaleReady = useCallback(() => {
+    setIsWorkspaceLocaleReady(workspaceLocale !== null);
+    onReady?.();
+  }, [workspaceLocale, onReady]);
+
+  useNoWorkspaceLocaleSync({
+    preferredLocale: workspaceLocale,
+    onReady: onLocaleReady,
   });
 
   // Redirect when the API returns a redirect URL (e.g. invalid/expired token).
@@ -80,7 +110,7 @@ export function JoinPage() {
     return <Custom404 />;
   }
 
-  if (!joinData) {
+  if (!joinData || !isWorkspaceLocaleReady) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner />

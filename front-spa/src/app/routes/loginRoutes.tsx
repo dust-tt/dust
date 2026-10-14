@@ -1,12 +1,16 @@
 import config from "@dust-tt/front/lib/api/config";
+import { safeLazy } from "@dust-tt/sparkle";
+import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { AuthenticatedPage } from "@spa/app/layouts/AuthenticatedPage";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { withSuspense } from "@spa/app/routes/withSuspense";
+import { Suspense } from "react";
 import type { RouteObject } from "react-router-dom";
 
-const JoinPage = withSuspense(
-  () => import("@dust-tt/front/components/pages/onboarding/JoinPage"),
-  "JoinPage"
+const JoinPage = safeLazy(() =>
+  import("@dust-tt/front/components/pages/onboarding/JoinPage").then(
+    (module) => ({ default: module.JoinPage })
+  )
 );
 const LoginErrorPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/LoginErrorPage"),
@@ -24,6 +28,18 @@ const SsoEnforcedPage = withSuspense(
   () => import("@dust-tt/front/components/pages/SsoEnforcedPage"),
   "SsoEnforcedPage"
 );
+
+// The join page dismisses the startup loading screen itself, once its locale is active. Until then,
+// the startup loading screen covers the page, so it needs no Suspense fallback of its own.
+function JoinRoute() {
+  const signalAppReady = useAppReadyContext();
+
+  return (
+    <Suspense fallback={null}>
+      <JoinPage onReady={signalAppReady} />
+    </Suspense>
+  );
+}
 
 // Redirect /logout to the API server's WorkOS logout endpoint
 function LogoutRedirect() {
@@ -46,11 +62,9 @@ export const loginAuthenticatedRoutes: RouteObject[] = [
 
 // Unauthenticated routes
 export const loginUnauthenticatedRoutes: RouteObject[] = [
+  { path: "/w/:wId/join", element: <JoinRoute /> },
   {
     element: <UnauthenticatedPage />,
-    children: [
-      { path: "/w/:wId/join", element: <JoinPage /> },
-      { path: "/login-error", element: <LoginErrorPage /> },
-    ],
+    children: [{ path: "/login-error", element: <LoginErrorPage /> }],
   },
 ];

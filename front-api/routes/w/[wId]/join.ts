@@ -142,6 +142,7 @@ app.get(
     return ctx.json({
       onboardingType,
       workspace,
+      workspaceLocale: workspaceResource.locale,
       signInUrl,
       userExists,
     });
