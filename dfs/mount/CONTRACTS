@@ -16,4 +16,4 @@ In the library, only `remote.rs` sends requests to the dfs server. Other modules
 @cc [owner:fontanierh,label:security] hide-unreadable
 An object the session cannot read MUST look missing: operations on it fail with `ENOENT` and
 listings leave it out, the root's included. `EACCES` is only for an object the session can read
-but not use as asked, and for an expired session.
+but not use as asked, and for an invalid session (expired, revoked or unknown).

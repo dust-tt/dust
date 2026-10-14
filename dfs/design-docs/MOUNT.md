@@ -1,4 +1,4 @@
-# dfs-mount
+# dfs:// mount design
 
 `dfs-mount` is the library behind the dfs FUSE client, which mounts dfs as a filesystem on Linux.
 It serves one dfs session as a filesystem. Sandboxes are its main consumer.
@@ -22,7 +22,7 @@ The mount root is not a dfs object. It lists the folders the caller configures, 
 of its choice: `/mnt/dfs/conversation/` is the conversation folder itself. The root is read-only.
 The server's virtual `root` and `shared` references are not used.
 
-[URI.md](../design-docs/URI.md#sandbox-paths) specifies root entries as symlinks to anchors
+[URI.md](URI.md#sandbox-paths) specifies root entries as symlinks to anchors
 (`conversation -> conv-<sId>--<folder-id>`), so that a sandbox path is directly a URI. Without
 symlinks (see [Future work](#future-work)), the caller maps a root name back to its folder ID.
 
@@ -34,7 +34,7 @@ server reply to its session. Like the server, it hides what the session cannot r
 - `ENOENT`: the object does not exist, or the session cannot read it. The server answers
   `NOT_FOUND` in both cases.
 - `EACCES`: the session can read the object but not do what was asked (`FORBIDDEN`), or the
-  session has expired.
+  session is invalid (expired, revoked or unknown).
 
 Listing the root checks the configured folders with one `Stat` and leaves out the ones the session
 cannot read.
@@ -47,9 +47,9 @@ kernel forgets every lookup of it, and the number is never reused during the lif
 
 ### Errors
 
-Failures without dfs error details (transport errors) are `EIO`. Unsupported operations return
-`EOPNOTSUPP`, never `ENOSYS`: FUSE reads `ENOSYS` as "never supported" and stops sending that
-operation for the rest of the mount.
+Failures without dfs error details, such as transport errors, map from their gRPC code, and are
+`EIO` when no closer errno fits. Unsupported operations return `EOPNOTSUPP`, never `ENOSYS`: FUSE
+reads `ENOSYS` as "never supported" and stops sending that operation for the rest of the mount.
 
 ### Async operations
 
