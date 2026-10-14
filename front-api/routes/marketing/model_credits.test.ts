@@ -16,6 +16,7 @@ describe("GET /api/marketing/model-credits", () => {
     expect(typeof model.modelMaker).toBe("string");
     expect(typeof model.modelMakerDisplayName).toBe("string");
     expect(typeof model.inputCreditsPerMTokens).toBe("number");
+    expect(typeof model.cachedInputCreditsPerMTokens).toBe("number");
     expect(typeof model.outputCreditsPerMTokens).toBe("number");
   });
 

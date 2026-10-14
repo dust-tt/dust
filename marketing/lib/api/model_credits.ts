@@ -11,6 +11,8 @@ const modelCreditSchema = z.object({
   modelMaker: z.string(),
   modelMakerDisplayName: z.string(),
   inputCreditsPerMTokens: z.number(),
+  // Optional until front-api serving this field is deployed everywhere.
+  cachedInputCreditsPerMTokens: z.number().optional(),
   outputCreditsPerMTokens: z.number(),
 });
 
