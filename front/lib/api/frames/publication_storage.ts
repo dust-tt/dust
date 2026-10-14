@@ -5,6 +5,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import {
+  extractFrameFunctionToolCalls,
+  sortAndDedupeToolCalls,
+} from "@app/lib/api/frames/extract_tool_calls";
+import {
   buildFrameFunctionsTarArchive,
   FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
   parseFrameFunctionsTarArchive,
@@ -36,7 +40,10 @@ import {
   getFrameV2NameFromManifestPath,
   isSafeFrameRelativePath,
 } from "@app/types/api/frame_manifest";
-import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
+import type {
+  FramePublicationDescriptor,
+  FrameToolCallPair,
+} from "@app/types/api/frame_publication";
 import {
   FRAME_PUBLICATION_SCHEMA_VERSION,
   FramePublicationDescriptorSchema,
@@ -191,7 +198,20 @@ function checkPublicFrameFunction({
 type FramePublicationContracts = Pick<
   FramePublicationDescriptor,
   "databases" | "functions"
->;
+> & {
+  /** Frame-level union of every function's toolCalls, sorted and deduped. */
+  requiredTools: FrameToolCallPair[];
+};
+
+function sourceContentByPath(
+  sourceFilesByPath: ReadonlyMap<string, FramePublicationSourceFile>
+): Map<string, string> {
+  const sourceByPath = new Map<string, string>();
+  for (const [relativePath, sourceFile] of sourceFilesByPath) {
+    sourceByPath.set(relativePath, sourceFile.content.toString("utf8"));
+  }
+  return sourceByPath;
+}
 
 export function buildFramePublicationContracts({
   functionArtifacts,
@@ -297,7 +317,9 @@ export function buildFramePublicationContracts({
     functionArtifactsByName.set(artifact.name, artifact);
   }
 
+  const sourceByPath = sourceContentByPath(sourceFilesByPath);
   const functions: FramePublicationDescriptor["functions"] = [];
+  const requiredTools: FrameToolCallPair[] = [];
   for (const fn of manifest.functions) {
     const artifact = functionArtifactsByName.get(fn.name);
     if (!artifact) {
@@ -318,18 +340,45 @@ export function buildFramePublicationContracts({
     if (publicCheck.isErr()) {
       return publicCheck;
     }
+
+    const toolCallsResult = extractFrameFunctionToolCalls({
+      entryPoint: fn.entryPoint,
+      sourceByPath,
+    });
+    if (toolCallsResult.isErr()) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_function_artifact",
+          `Frame function "${fn.name}": ${toolCallsResult.error.message}`
+        )
+      );
+    }
+    const toolCalls = toolCallsResult.value;
+    if (toolCalls.length > 0 && fn.executionMode === "fast") {
+      return new Err(
+        new FramePublicationError(
+          "invalid_function_artifact",
+          `Frame function "${fn.name}" calls Dust tools, so its manifest entry must declare ` +
+            '`"executionMode": "durable"`. Fast functions cannot call tools.'
+        )
+      );
+    }
+    requiredTools.push(...toolCalls);
     functions.push({
       name: fn.name,
       bundleSha256: sha256(artifact.bundleCode),
       userIdentity: artifact.userIdentity,
       inputSchema: artifact.inputSchema,
       outputSchema: artifact.outputSchema,
-      // Populated by tools.call extraction on the next stack commit; empty until then.
-      toolCalls: [],
+      toolCalls,
     });
   }
 
-  return new Ok({ databases, functions });
+  return new Ok({
+    databases,
+    functions,
+    requiredTools: sortAndDedupeToolCalls(requiredTools),
+  });
 }
 
 /**
