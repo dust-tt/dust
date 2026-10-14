@@ -70,6 +70,7 @@ vi.mock("@temporalio/workflow", () => {
     },
     defineSignal: (name: string) => name,
     deprecatePatch,
+    isCancellation: () => false,
     log: {
       error: workflowLogError,
       warn: vi.fn(),
@@ -364,6 +365,28 @@ describe("never started tool activity rescheduling", () => {
 
     expect(runToolActivity).toHaveBeenCalledOnce();
     expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledOnce();
+  });
+
+  it("rethrows the tool heartbeat timeout when the claim fails", async () => {
+    const heartbeatTimeout = makeToolHeartbeatTimeout();
+    claimToolActivityNeverStartedActivity.mockRejectedValue(
+      new Error("redis down")
+    );
+    runToolActivity.mockRejectedValue(heartbeatTimeout);
+
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledOnce();
+    expect(workflowLogError).toHaveBeenCalledWith(
+      "Sandbox child tool activity failed.",
+      { actionModelId: 123, error: heartbeatTimeout }
+    );
   });
 
   it("does not reschedule when replaying without the patch marker", async () => {

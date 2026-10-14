@@ -51,6 +51,7 @@ import {
   ActivityCancellationType,
   CancellationScope,
   deprecatePatch,
+  isCancellation,
   log,
   patched,
   proxyActivities,
@@ -144,8 +145,9 @@ const { claimToolActivityNeverStartedActivity } = proxyActivities<
  * @cc [owner:tdraier,label:error-handling;concurrency] retry-never-started-once
  * The tool activity MUST be rescheduled at most once, and only after a `runToolActivity` heartbeat
  * timeout for which `claimToolActivityNeverStartedActivity` returned true. Any other failure, or a
- * failure of the rescheduled attempt, MUST be rethrown unchanged. Relies on every agent loop worker
- * running `runToolActivity`'s `claim-start-before-work`.
+ * failure of the rescheduled attempt, MUST be rethrown unchanged; a non-cancellation failure of the
+ * claim MUST rethrow the original timeout. Relies on every agent loop worker running
+ * `runToolActivity`'s `claim-start-before-work`.
  */
 async function runNonRetryableToolActivity(
   runActivity: typeof runToolActivity,
@@ -164,19 +166,34 @@ async function runNonRetryableToolActivity(
     }
 
     const { workflowId, runId } = workflowInfo();
-    const neverStarted = await claimToolActivityNeverStartedActivity({
-      workflowId,
-      runId,
+    const logContext = {
+      actionId: activityArgs.actionId,
       activityId: err.activityId,
-    });
+      workspaceId: authType.workspaceId,
+    };
+    let neverStarted: boolean;
+    try {
+      neverStarted = await claimToolActivityNeverStartedActivity({
+        workflowId,
+        runId,
+        activityId: err.activityId,
+      });
+    } catch (claimErr) {
+      if (isCancellation(claimErr)) {
+        throw claimErr;
+      }
+      log.error("Failed to claim tool activity as never started.", {
+        ...logContext,
+        error: claimErr,
+      });
+      throw err;
+    }
     if (!neverStarted) {
+      log.warn("Tool activity timed out after it started.", logContext);
       throw err;
     }
 
-    log.warn("Rescheduling tool activity that never started.", {
-      actionId: activityArgs.actionId,
-      workspaceId: authType.workspaceId,
-    });
+    log.warn("Rescheduling tool activity that never started.", logContext);
     return runActivity(authType, activityArgs);
   }
 }
