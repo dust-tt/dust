@@ -1680,15 +1680,27 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  /** Stores the ID of the file's dfs object, unless one is already stored. */
+  /**
+   * Stores the ID of the file's dfs object, unless one is already stored, and returns the stored ID (null if
+   * the row no longer exists).
+   */
   async setDfsObjectId(
     auth: Authenticator,
     dfsObjectId: DfsObjectId
-  ): Promise<void> {
-    await this.update({ dfsObjectId }, undefined, {
-      workspaceId: auth.getNonNullableWorkspace().id,
+  ): Promise<DfsObjectId | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const [affectedCount] = await this.update({ dfsObjectId }, undefined, {
+      workspaceId,
       dfsObjectId: null,
     });
+    if (affectedCount > 0) {
+      return dfsObjectId;
+    }
+    const stored = await FileModel.findOne({
+      where: { id: this.id, workspaceId },
+      attributes: ["dfsObjectId"],
+    });
+    return stored?.dfsObjectId ?? null;
   }
 
   async setUseCaseMetadata(auth: Authenticator, metadata: FileUseCaseMetadata) {
