@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr ""
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Back"
+msgstr ""
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Loading files…"
 msgstr ""
 
@@ -356,6 +360,19 @@ msgstr ""
 
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
+msgstr ""
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding a Frame"
+msgid "Frame"
+msgstr ""
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr ""
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
 msgstr ""
 
 #: front/components/editor/document/blocks.ts

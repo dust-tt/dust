@@ -7,6 +7,8 @@ import { compareStrings } from "@app/lib/i18n/format";
 import { usePodFiles } from "@app/lib/swr/pods";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
+  getFileDisplayName,
+  isFrameContentType,
   isSupportedImageContentType,
   stripMimeParameters,
 } from "@app/types/files";
@@ -16,8 +18,10 @@ import { useCallback, useMemo, useState } from "react";
 
 /**
  * @cc [owner:tdraier,label:product] document-embeddable-files
- * The files a document offers to embed MUST be the images among `entries`, by the content type
- * of their linked file when they have one. Each MUST keep its entry's path.
+ * The files a document offers to embed MUST be the Frames and images among `entries`, by the
+ * content type of their linked file when they have one. A Frame MUST have a linked file, since
+ * only those render. Each MUST keep its entry's path. A Frames v2 MUST be named by its folder (see
+ * `frame-name-is-the-source-folder`).
  */
 export function getDocumentEmbeddableFiles(
   entries: FileSystemEntry[]
@@ -30,6 +34,21 @@ export function getDocumentEmbeddableFiles(
       const contentType = stripMimeParameters(
         entry.fileResourceContentType ?? entry.contentType
       );
+      if (isFrameContentType(contentType)) {
+        return entry.fileId
+          ? [
+              {
+                kind: "frame",
+                path: entry.path,
+                name: getFileDisplayName({
+                  contentType,
+                  fileName: entry.fileName,
+                  mountFilePath: entry.path,
+                }),
+              },
+            ]
+          : [];
+      }
       return isSupportedImageContentType(contentType)
         ? [{ kind: "image", path: entry.path, name: entry.fileName }]
         : [];
