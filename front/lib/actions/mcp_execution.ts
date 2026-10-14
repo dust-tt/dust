@@ -1,6 +1,8 @@
 import type { ToolOutputOffloadDescriptor } from "@app/lib/actions/action_output_limits";
 import {
+  computeTextByteSize,
   FILE_OFFLOAD_SNIPPET_LENGTH,
+  FILE_OFFLOAD_TEXT_SIZE_BYTES,
   TOOL_OUTPUT_OFFLOAD_META_KEY,
 } from "@app/lib/actions/action_output_limits";
 import type {
@@ -84,6 +86,64 @@ function sanitizeStringsDeep<T>(input: T): T {
     ) as T;
   }
   return input;
+}
+
+// Some remote MCP servers return one text block per record (e.g. Looker, one per query row). Each
+// block becomes an output item row plus a GCS object, and small blocks evade the text offload.
+const MAX_UNMERGED_TOOL_OUTPUT_BLOCKS = 50;
+// Same as the per-text-block hard limit enforced on remote MCP server results.
+const MAX_MERGED_TEXT_BLOCK_BYTES = 2 * 1024 * 1024;
+
+/**
+ * @cc [owner:tdraier,label:performance] merge-text-runs-past-block-threshold
+ * When `content` has more than `MAX_UNMERGED_TOOL_OUTPUT_BLOCKS` blocks, consecutive `text` blocks
+ * each smaller than `FILE_OFFLOAD_TEXT_SIZE_BYTES` MUST be merged into `text` blocks joining their
+ * texts with "\n", each merged block staying within `MAX_MERGED_TEXT_BLOCK_BYTES`. All other blocks
+ * MUST be kept unchanged, and block order MUST be preserved. Otherwise `content` MUST be returned
+ * unchanged.
+ */
+export function mergeTextBlockRuns(
+  content: CallToolResult["content"]
+): CallToolResult["content"] {
+  if (content.length <= MAX_UNMERGED_TOOL_OUTPUT_BLOCKS) {
+    return content;
+  }
+
+  const merged: CallToolResult["content"] = [];
+  let textRun: string[] = [];
+  let textRunBytes = 0;
+  const flushTextRun = () => {
+    if (textRun.length > 0) {
+      merged.push({ type: "text", text: textRun.join("\n") });
+      textRun = [];
+      textRunBytes = 0;
+    }
+  };
+
+  for (const block of content) {
+    const textBytes =
+      block.type === "text" ? computeTextByteSize(block.text) : null;
+    if (
+      block.type !== "text" ||
+      textBytes === null ||
+      textBytes >= FILE_OFFLOAD_TEXT_SIZE_BYTES
+    ) {
+      flushTextRun();
+      merged.push(block);
+      continue;
+    }
+
+    // Counts the "\n" separator.
+    const mergedBytes = textBytes + 1;
+    if (textRunBytes + mergedBytes > MAX_MERGED_TEXT_BLOCK_BYTES) {
+      flushTextRun();
+    }
+    textRun.push(block.text);
+    textRunBytes += mergedBytes;
+  }
+  flushTextRun();
+
+  return merged;
 }
 
 function getFileName(resource: { uri: string }): string {
@@ -293,13 +353,18 @@ export async function processToolResults(
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
 
+  // Sandbox function outputs are a single GCS object read by code: keep their block structure.
+  const contentBlocks = isAgentLoopRunContext(runContext)
+    ? mergeTextBlockRuns(toolCallResultContent)
+    : toolCallResultContent;
+
   const timestamp = Date.now();
   const processBlocksStarted = performance.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
     file: FileResource | null;
   }[] = await concurrentExecutor(
-    toolCallResultContent,
+    contentBlocks,
     async (block, idx) => {
       const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,

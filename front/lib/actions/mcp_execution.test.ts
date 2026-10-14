@@ -11,6 +11,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import {
   getAugmentedInputs,
+  mergeTextBlockRuns,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type {
@@ -609,6 +610,24 @@ describe("processToolResults", () => {
     }
   });
 
+  it("should merge many text blocks into a single output item", async () => {
+    const { auth, toolContext } = await setupTest();
+
+    const rows = Array.from({ length: 100 }, (_, i) => `row ${i}`);
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: rows.map((text) => ({ type: "text", text })),
+    });
+
+    expect(outputItems).toHaveLength(1);
+    expect(outputItems[0].content).toEqual({
+      type: "text",
+      text: rows.join("\n"),
+    });
+  });
+
   it("should keep large sandbox text content as-is", async () => {
     const { auth, toolContext } = await setupTest({
       mcpServerName: "sandbox",
@@ -1019,6 +1038,21 @@ describe("processToolResults", () => {
     );
   });
 
+  it("should keep many text blocks separate in a sandbox function run context", async () => {
+    const { auth, toolContext } = await setupSandboxFunctionTest();
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: Array.from({ length: 100 }, (_, i) => ({
+        type: "text",
+        text: `row ${i}`,
+      })),
+    });
+
+    expect(outputItems).toHaveLength(100);
+  });
+
   it("should keep large JSON inline in a sandbox function run context (no offload stub)", async () => {
     const { auth, toolContext } = await setupSandboxFunctionTest();
 
@@ -1200,5 +1234,88 @@ describe("processToolResults", () => {
         action.id
       );
     expect(refetched?.outputGcsPath).toBeNull();
+  });
+});
+
+describe("mergeTextBlockRuns", () => {
+  const textBlocks = (count: number, prefix: string) =>
+    Array.from({ length: count }, (_, i) => ({
+      type: "text" as const,
+      text: `${prefix}${i}`,
+    }));
+
+  it("returns the content unchanged at or below the block threshold", () => {
+    const belowThreshold = textBlocks(2, "row ");
+    const atThreshold = textBlocks(50, "row ");
+
+    expect(mergeTextBlockRuns(belowThreshold)).toBe(belowThreshold);
+    expect(mergeTextBlockRuns(atThreshold)).toBe(atThreshold);
+  });
+
+  it("merges each run of consecutive text blocks and keeps other blocks in order", () => {
+    const image = {
+      type: "image" as const,
+      data: "aGVsbG8=",
+      mimeType: "image/png",
+    };
+    const content = [...textBlocks(30, "a"), image, ...textBlocks(30, "b")];
+
+    expect(mergeTextBlockRuns(content)).toEqual([
+      {
+        type: "text",
+        text: textBlocks(30, "a")
+          .map((b) => b.text)
+          .join("\n"),
+      },
+      image,
+      {
+        type: "text",
+        text: textBlocks(30, "b")
+          .map((b) => b.text)
+          .join("\n"),
+      },
+    ]);
+  });
+
+  it("keeps text blocks at or above the offload threshold unmerged", () => {
+    const largeBlock = {
+      type: "text" as const,
+      text: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
+    };
+    const content = [
+      ...textBlocks(30, "a"),
+      largeBlock,
+      ...textBlocks(30, "b"),
+    ];
+
+    const merged = mergeTextBlockRuns(content);
+
+    expect(merged).toHaveLength(3);
+    expect(merged[1]).toBe(largeBlock);
+  });
+
+  it("splits merged text so each merged block stays within 2MB", () => {
+    const blockText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES - 1);
+    const content = Array.from({ length: 200 }, () => ({
+      type: "text" as const,
+      text: blockText,
+    }));
+
+    const merged = mergeTextBlockRuns(content);
+
+    expect(merged.length).toBeGreaterThan(1);
+    for (const block of merged) {
+      expect(block.type).toBe("text");
+      if (block.type === "text") {
+        expect(Buffer.byteLength(block.text, "utf8")).toBeLessThanOrEqual(
+          2 * 1024 * 1024
+        );
+      }
+    }
+    expect(
+      merged
+        .map((block) => (block.type === "text" ? block.text : ""))
+        .join("\n")
+    ).toBe(content.map((block) => block.text).join("\n"));
   });
 });
