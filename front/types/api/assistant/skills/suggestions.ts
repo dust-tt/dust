@@ -1,3 +1,4 @@
+import { parseIntParam } from "@app/lib/api/pagination";
 // Contract types and schemas for the skill suggestions endpoint
 // (`/api/w/:wId/assistant/skills/:sId/suggestions`). Used by the skill
 // suggestions route so validation has a single source of truth.
@@ -18,7 +19,7 @@ const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
 export const GetSkillSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
   kind: z.enum(SKILL_SUGGESTION_KINDS).optional(),
-  limit: z.string().optional(),
+  limit: z.preprocess(parseIntParam, z.number().int().optional()),
 });
 
 export type GetSkillSuggestionsQuery = z.infer<

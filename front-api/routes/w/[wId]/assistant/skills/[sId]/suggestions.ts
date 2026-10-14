@@ -24,80 +24,56 @@ import uniq from "lodash/uniq";
 const app = skillApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
-  const auth = ctx.get("auth");
-  const skill = ctx.get("skill");
+app.get(
+  "/",
+  validate("query", GetSkillSuggestionsQuerySchema),
+  async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
+    const auth = ctx.get("auth");
+    const skill = ctx.get("skill");
 
-  // Hono path-param fetch returns single-value query; for `states` we want all
-  // repeats too. Build the input object explicitly.
-  const queryInput = {
-    states: ctx.req.queries("states"),
-    kind: ctx.req.query("kind"),
-    limit: ctx.req.query("limit"),
-  };
-  const queryValidation = GetSkillSuggestionsQuerySchema.safeParse(queryInput);
-  if (!queryValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid query parameters: ${queryValidation.error.message}`,
-      },
+    const { states, kind, limit } = ctx.req.valid("query");
+
+    if (!(await hasReinforcementEnabled(auth))) {
+      return ctx.json({ suggestions: [], referencedSkills: [] });
+    }
+
+    const suggestions =
+      await SkillSuggestionResource.listBySkillConfigurationId(
+        auth,
+        skill.sId,
+        {
+          states,
+          sources: ["reinforcement"],
+          kinds: kind ? [kind] : undefined,
+          limit,
+        }
+      );
+
+    const referencedSkills = await SkillResource.fetchByIds(
+      auth,
+      uniq(suggestions.flatMap((s) => s.getReferencedSkillIds())),
+      {
+        onlyActive: true,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      }
+    );
+
+    return ctx.json({
+      suggestions: suggestions.map((s) => s.toJSON()),
+      referencedSkills: referencedSkills.map((referencedSkill) => {
+        const {
+          instructions,
+          instructionsHtml,
+          tools,
+          ...referencedSkillWithoutInstructionsAndTools
+        } = referencedSkill.toJSON(auth);
+        return referencedSkillWithoutInstructionsAndTools;
+      }),
     });
   }
-
-  const { states, kind, limit } = queryValidation.data;
-
-  const parsedLimit = limit ? parseInt(limit, 10) : undefined;
-  if (parsedLimit !== undefined && isNaN(parsedLimit)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid limit parameter: must be a number",
-      },
-    });
-  }
-
-  if (!(await hasReinforcementEnabled(auth))) {
-    return ctx.json({ suggestions: [], referencedSkills: [] });
-  }
-
-  const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
-    auth,
-    skill.sId,
-    {
-      states,
-      sources: ["reinforcement"],
-      kinds: kind ? [kind] : undefined,
-      limit: parsedLimit,
-    }
-  );
-
-  const referencedSkills = await SkillResource.fetchByIds(
-    auth,
-    uniq(suggestions.flatMap((s) => s.getReferencedSkillIds())),
-    {
-      onlyActive: true,
-      withInstructions: false,
-      withTools: false,
-      withFileAttachments: false,
-    }
-  );
-
-  return ctx.json({
-    suggestions: suggestions.map((s) => s.toJSON()),
-    referencedSkills: referencedSkills.map((referencedSkill) => {
-      const {
-        instructions,
-        instructionsHtml,
-        tools,
-        ...referencedSkillWithoutInstructionsAndTools
-      } = referencedSkill.toJSON(auth);
-      return referencedSkillWithoutInstructionsAndTools;
-    }),
-  });
-});
+);
 
 app.patch(
   "/",
