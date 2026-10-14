@@ -1,13 +1,17 @@
 import { execSync } from "child_process";
-import Dotenv from "dotenv-webpack";
+import dotenv from "dotenv";
+import DotenvPlugin from "dotenv-webpack";
 import fs from "fs";
 import HtmlWebpackPlugin from "html-webpack-plugin";
+import os from "os";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import type { Configuration } from "webpack";
 import webpack from "webpack";
 import type { Configuration as DevServerConfiguration } from "webpack-dev-server";
 import WebpackBar from "webpackbar";
+
+import logger from "@app/logger/logger";
 
 import type { Environment } from "../../config/env";
 import { getImportMetaEnv } from "../../config/webpack_env";
@@ -18,6 +22,28 @@ import {
 
 const rootDir = path.resolve(__dirname);
 
+const DEV_SERVER_PORT = 3014;
+
+// `npx office-addin-dev-certs install` writes these files. It also adds its CA to the keychain.
+const DEV_CERTS_DIR = path.join(os.homedir(), ".office-addin-dev-certs");
+
+// Excel desktop rejects a certificate that the system does not trust, and it gives no way to
+// accept one. Excel on the web accepts the self-signed certificate of the dev server, after a
+// warning, so the installed certificates stay optional.
+const getDevServerHttps = (): DevServerConfiguration["server"] => {
+  const key = path.join(DEV_CERTS_DIR, "localhost.key");
+  const cert = path.join(DEV_CERTS_DIR, "localhost.crt");
+  if (fs.existsSync(key) && fs.existsSync(cert)) {
+    return { type: "https", options: { key, cert } };
+  }
+
+  logger.warn(
+    "No office-addin-dev-certs found: Excel desktop will reject the certificate of the dev " +
+      "server. Run `npx office-addin-dev-certs install`."
+  );
+  return "https";
+};
+
 const resolvePath = (...segments: string[]) =>
   path.resolve(rootDir, ...segments);
 
@@ -26,7 +52,7 @@ const getCommitHash = () => {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim();
   } catch (e) {
-    console.error(e);
+    logger.error({ error: e }, "Failed to read the git commit hash.");
     return "development";
   }
 };
@@ -43,6 +69,16 @@ export const getConfig = async ({
   const version = packageJson.version;
 
   const buildDirPath = resolvePath("./build");
+
+  const envPath = resolvePath(
+    isDevelopment ? "../../.env.development" : "../../.env.production"
+  );
+  // The Dust URLs of the add-in, over the ones of `envPath`. Development only.
+  const excelEnvPath = resolvePath("../../.env.development.excel");
+  // The dev server proxies `/api` to the local Dust.
+  const localDustUrl = isDevelopment
+    ? dotenv.parse(fs.readFileSync(envPath, "utf8")).DUST_US_URL
+    : undefined;
 
   return {
     mode: isDevelopment ? "development" : "production",
@@ -156,11 +192,7 @@ export const getConfig = async ({
         // CellContext can resolve the cell API base URL in the webpack
         // build (Vite only injects these in the SPA).
         "import.meta.env": JSON.stringify(
-          getImportMetaEnv(
-            resolvePath(
-              isDevelopment ? "../../.env.development" : "../../.env.production"
-            )
-          )
+          getImportMetaEnv(isDevelopment ? excelEnvPath : envPath)
         ),
       }),
       new WebpackBar({
@@ -184,11 +216,12 @@ export const getConfig = async ({
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
       }),
-      new Dotenv({
-        path: isDevelopment
-          ? resolvePath("../../.env.development")
-          : resolvePath("../../.env.production"),
-      }),
+      // `dotenv-webpack` gives `path` priority over `defaults`, so the add-in's own URLs win.
+      new DotenvPlugin(
+        isDevelopment
+          ? { path: excelEnvPath, defaults: envPath }
+          : { path: envPath }
+      ),
       new HtmlWebpackPlugin({
         template: resolvePath("./taskpane.html"),
         filename: "taskpane.html",
@@ -201,8 +234,9 @@ export const getConfig = async ({
       }),
     ],
     devServer: {
-      port: 3014,
-      server: "https",
+      port: DEV_SERVER_PORT,
+      server: getDevServerHttps(),
+      proxy: [{ context: ["/api"], target: localDustUrl }],
       hot: true,
       client: {
         overlay: {
