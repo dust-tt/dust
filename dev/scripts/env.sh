@@ -36,7 +36,7 @@ export DUST_FDB_DATA_DIR="${DUST_FDB_DATA_DIR:-${DUST_DATA_ROOT}/fdb/data}"
 export DUST_FDB_LOG_DIR="${DUST_FDB_LOG_DIR:-${DUST_INFRA_LOG_DIR}/fdb}"
 export FDB_PORT="${FDB_PORT:-4500}"
 export FDB_CLUSTER_FILE="${FDB_CLUSTER_FILE:-${DUST_DATA_ROOT}/fdb/fdb.cluster}"
-# Dust Flow Support (dfs-api). Master key must be 64 printable ASCII chars (dfs/server auth).
+# Dust File System (dfs-api). Master key must be 64 printable ASCII chars (dfs/server auth).
 # Same names as dust-hive envgen: DFS_MASTER_KEY for the server, DFS_API_* for front.
 ensure_dfs_master_key() {
   local key_file="${DFS_MASTER_KEY_FILE:-${DUST_INFRA_LOG_DIR}/dfs-master-key}"
