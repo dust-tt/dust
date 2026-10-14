@@ -17,6 +17,9 @@ import { fromError } from "zod-validation-error";
 export { FRAME_PUBLICATION_FILE };
 export const FRAME_PUBLICATION_SCHEMA_VERSION = 1;
 
+/** Same ceiling as Sequelize `STRING(255)` for persisted tools.call pairs. */
+export const FRAME_TOOL_CALL_REF_MAX_LENGTH = 255;
+
 const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
 const RelativePathSchema = z.string().refine(isSafeFrameRelativePath);
 const JsonSchemaSchema = z.custom<JSONSchema>(
@@ -26,6 +29,17 @@ const JsonSchemaSchema = z.custom<JSONSchema>(
     validateJsonSchema(value).isValid,
   { message: "Invalid JSON schema" }
 );
+
+/**
+ * Literal `tools.call(server, tool)` pair captured at publish time.
+ * Exactly two non-empty strings, each at most FRAME_TOOL_CALL_REF_MAX_LENGTH.
+ */
+export const FrameToolCallPairSchema = z.tuple([
+  z.string().min(1).max(FRAME_TOOL_CALL_REF_MAX_LENGTH),
+  z.string().min(1).max(FRAME_TOOL_CALL_REF_MAX_LENGTH),
+]);
+
+export type FrameToolCallPair = z.infer<typeof FrameToolCallPairSchema>;
 
 export const FramePublicationDescriptorSchema = z
   .object({
@@ -47,6 +61,8 @@ export const FramePublicationDescriptorSchema = z
         userIdentity: z.enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES),
         inputSchema: JsonSchemaSchema,
         outputSchema: JsonSchemaSchema,
+        // Defaults so publications written before toolCalls still parse.
+        toolCalls: z.array(FrameToolCallPairSchema).default([]),
       })
     ),
     databases: z.array(
