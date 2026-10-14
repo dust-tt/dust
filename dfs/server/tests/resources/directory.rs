@@ -11,7 +11,10 @@ use dfs_api::storage::{
         tenant::TenantResource,
     },
 };
-use dfs_protocol::{ObjectId, rpc::ObjectKind};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{Grant, GrantUpdate, ObjectKind},
+};
 use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpack};
 
 mod apply;
@@ -74,6 +77,25 @@ async fn fetch_directory(
         .await?
         .context("missing directory")?;
     Ok(DirectoryResource::try_from(object)?)
+}
+
+async fn attach(
+    tx: &Transaction,
+    tenant: &TenantResource,
+    object_id: ObjectId,
+    grant: Grant,
+) -> Result<()> {
+    let mut object = ObjectResource::fetch(tx, tenant, &object_id)
+        .await?
+        .context("missing object")?;
+    object.update_grants(
+        tx,
+        &[GrantUpdate {
+            grant,
+            remove: false,
+        }],
+    )?;
+    Ok(())
 }
 
 async fn tenant_records(tx: &Transaction, tenant: &TenantResource) -> Result<Vec<Vec<u8>>> {
