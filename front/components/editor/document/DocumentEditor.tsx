@@ -9,6 +9,8 @@ import {
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsList";
 import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentEmbeds";
+import type { DocumentFrameMenuProps } from "@app/components/editor/document/DocumentFrameMenu";
+import { DocumentFrameMenu } from "@app/components/editor/document/DocumentFrameMenu";
 import { DocumentImageMenu } from "@app/components/editor/document/DocumentImageMenu";
 import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
@@ -265,7 +267,13 @@ export const DocumentView = ({
     resolveImageSource,
   });
   const embeds = useMemo(
-    () => ({ renderFrame, renderFilePreview, editable }),
+    () => ({
+      renderFrame,
+      renderFilePreview,
+      renderFrameMenu: editable
+        ? (props: DocumentFrameMenuProps) => <DocumentFrameMenu {...props} />
+        : undefined,
+    }),
     [renderFrame, renderFilePreview, editable]
   );
   const blockMenu = useDocumentBlockMenu(editor, editable, embeddableFiles);

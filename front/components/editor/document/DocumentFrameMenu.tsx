@@ -8,7 +8,7 @@ const FRAME_HEIGHT_STEP_PX = 10;
 
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
 
-interface DocumentFrameMenuProps {
+export interface DocumentFrameMenuProps {
   height: number;
   onPreviewHeight: (height: number) => void;
   onEndPreview: () => void;
