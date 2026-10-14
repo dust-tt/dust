@@ -553,7 +553,11 @@ export async function dustProjectMountFilesIncrementalSyncActivity({
   const directoryEntries = sortEntriesByScopedPathDepth(
     files.filter(isMountDirectoryEntry)
   );
-  const fileEntries = files.filter(isMountFileEntry);
+  // Oldest first: a failed attempt resumes from the max synced lastModifiedMs, so syncing newer
+  // files first would make the retry skip the older ones left behind.
+  const fileEntries = files
+    .filter(isMountFileEntry)
+    .sort((a, b) => a.lastModifiedMs - b.lastModifiedMs);
 
   localLogger.info(
     {
