@@ -9,95 +9,151 @@ const FRAME_MIME_TYPES = new Set([
   "application/vnd.dust.frame.slideshow",
 ]);
 
-async function fetchFileRefsRecursively(
-  text: string,
+const MAX_PREFETCHED_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_PREFETCHED_TOTAL_BYTES = 50 * 1024 * 1024;
+
+/**
+ * @cc [owner:tdraier,label:performance] prefetch-size-budget
+ * A single render MUST NOT buffer more than `MAX_PREFETCHED_FILE_BYTES` for one file nor more than
+ * `MAX_PREFETCHED_TOTAL_BYTES` across all fetched files, including nested frames. A file exceeding
+ * either limit MUST be skipped (left out of the returned files) and its body read aborted, rather
+ * than failing the render.
+ */
+async function prefetchFileRefs(
+  code: string,
   frontApiUrl: string,
   headers: Record<string, string>,
-  visited: Set<string>
+  identifier: string
 ): Promise<PreFetchedFile[]> {
-  const refs = extractFileRefs(text);
-  const results: PreFetchedFile[] = [];
+  const visited = new Set<string>();
+  let remainingBytes = MAX_PREFETCHED_TOTAL_BYTES;
 
-  await Promise.all(
-    refs.map(async (ref) => {
-      // The files endpoint accepts the "conversation/" and "pod/" prefixes (and
-      // their canonical "conversation-{id}/" / "pod-{id}/" forms), but not the
-      // legacy "project/" prefix, which older frame code may still reference and
-      // which maps to the same Pod files. Rewrite only the request path; the
-      // prefetched file stays keyed by the original scopedPath (`key`) so the
-      // frame's useFile("project/...") lookup still resolves.
-      // Package-relative refs (`./data.csv`) are fetched under the synthetic
-      // `frame/` scope and keyed as `./…` for useFile lookup.
-      let requestPath: string;
-      let key: string;
-      if (ref.type === "fileId") {
-        key = ref.fileId;
-        requestPath = ref.fileId;
-      } else if (ref.type === "frameRelative") {
-        key = `./${ref.relativePath}`;
-        requestPath = `frame/${ref.relativePath}`;
-      } else if (ref.scopedPath.startsWith("project/")) {
-        logger.info(
-          { scopedPath: ref.scopedPath },
-          "Legacy project/ file scope referenced in frame"
-        );
-        key = ref.scopedPath;
-        requestPath = `pod/${ref.scopedPath.slice("project/".length)}`;
-      } else {
-        key = ref.scopedPath;
-        requestPath = ref.scopedPath;
+  async function readBodyWithinBudget(
+    response: Response
+  ): Promise<Buffer | null> {
+    const declaredBytes = Number(response.headers.get("content-length"));
+    if (
+      declaredBytes > MAX_PREFETCHED_FILE_BYTES ||
+      declaredBytes > remainingBytes
+    ) {
+      await response.body?.cancel();
+      return null;
+    }
+    if (!response.body) {
+      return Buffer.alloc(0);
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let readBytes = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        return Buffer.concat(chunks);
       }
-
-      if (visited.has(key)) {
-        return;
+      readBytes += value.byteLength;
+      remainingBytes -= value.byteLength;
+      if (readBytes > MAX_PREFETCHED_FILE_BYTES || remainingBytes < 0) {
+        remainingBytes += readBytes;
+        await reader.cancel();
+        return null;
       }
-      visited.add(key);
+      chunks.push(value);
+    }
+  }
 
-      const fileEndpoint = `${frontApiUrl}/api/v1/viz/files/${requestPath}`;
+  async function fetchRefs(text: string): Promise<PreFetchedFile[]> {
+    const refs = extractFileRefs(text);
+    const results: PreFetchedFile[] = [];
 
-      try {
-        const fileResponse = await fetch(fileEndpoint, {
-          headers,
-          cache: "no-store",
-        });
-
-        if (!fileResponse.ok) {
-          logger.warn(
-            { key, statusCode: fileResponse.status },
-            "Failed to fetch file ref"
+    await Promise.all(
+      refs.map(async (ref) => {
+        // The files endpoint accepts the "conversation/" and "pod/" prefixes (and
+        // their canonical "conversation-{id}/" / "pod-{id}/" forms), but not the
+        // legacy "project/" prefix, which older frame code may still reference and
+        // which maps to the same Pod files. Rewrite only the request path; the
+        // prefetched file stays keyed by the original scopedPath (`key`) so the
+        // frame's useFile("project/...") lookup still resolves.
+        // Package-relative refs (`./data.csv`) are fetched under the synthetic
+        // `frame/` scope and keyed as `./…` for useFile lookup.
+        let requestPath: string;
+        let key: string;
+        if (ref.type === "fileId") {
+          key = ref.fileId;
+          requestPath = ref.fileId;
+        } else if (ref.type === "frameRelative") {
+          key = `./${ref.relativePath}`;
+          requestPath = `frame/${ref.relativePath}`;
+        } else if (ref.scopedPath.startsWith("project/")) {
+          logger.info(
+            { scopedPath: ref.scopedPath },
+            "Legacy project/ file scope referenced in frame"
           );
+          key = ref.scopedPath;
+          requestPath = `pod/${ref.scopedPath.slice("project/".length)}`;
+        } else {
+          key = ref.scopedPath;
+          requestPath = ref.scopedPath;
+        }
+
+        if (visited.has(key)) {
           return;
         }
+        visited.add(key);
 
-        const arrayBuffer = await fileResponse.arrayBuffer();
-        const mimeType =
-          fileResponse.headers.get("content-type") ||
-          "application/octet-stream";
+        const fileEndpoint = `${frontApiUrl}/api/v1/viz/files/${requestPath}`;
 
-        results.push({
-          data: Buffer.from(arrayBuffer).toString("base64"),
-          fileId: key,
-          mimeType,
-        });
-
-        // Recursively fetch refs from nested frames.
-        if (FRAME_MIME_TYPES.has(mimeType)) {
-          const nestedText = Buffer.from(arrayBuffer).toString("utf-8");
-          const nested = await fetchFileRefsRecursively(
-            nestedText,
-            frontApiUrl,
+        try {
+          const fileResponse = await fetch(fileEndpoint, {
             headers,
-            visited
-          );
-          results.push(...nested);
-        }
-      } catch (_err) {
-        logger.error({ key }, "Failed to fetch file ref");
-      }
-    })
-  );
+            cache: "no-store",
+          });
 
-  return results;
+          if (!fileResponse.ok) {
+            logger.warn(
+              { key, statusCode: fileResponse.status },
+              "Failed to fetch file ref"
+            );
+            return;
+          }
+
+          const body = await readBodyWithinBudget(fileResponse);
+          if (!body) {
+            logger.warn(
+              {
+                identifier,
+                key,
+                contentLength: fileResponse.headers.get("content-length"),
+              },
+              "Skipped prefetching file ref over size budget"
+            );
+            return;
+          }
+
+          const mimeType =
+            fileResponse.headers.get("content-type") ||
+            "application/octet-stream";
+
+          results.push({
+            data: body.toString("base64"),
+            fileId: key,
+            mimeType,
+          });
+
+          // Recursively fetch refs from nested frames.
+          if (FRAME_MIME_TYPES.has(mimeType)) {
+            results.push(...(await fetchRefs(body.toString("utf-8"))));
+          }
+        } catch (_err) {
+          logger.error({ key }, "Failed to fetch file ref");
+        }
+      })
+    );
+
+    return results;
+  }
+
+  return fetchRefs(code);
 }
 
 interface ServerSideVisualizationWrapperProps {
@@ -157,11 +213,11 @@ export async function ServerSideVisualizationWrapper({
       }
 
       // SERVER-SIDE: Recursively fetch all file refs (including nested frame imports).
-      preFetchedFiles = await fetchFileRefsRecursively(
+      preFetchedFiles = await prefetchFileRefs(
         prefetchedCode,
         process.env.DUST_FRONT_API ?? "",
         headers,
-        new Set()
+        identifier
       );
     } else {
       logger.warn(
