@@ -4,7 +4,7 @@ use dfs_api::storage::{
     resources::{
         file::{self, BLOCK_SIZE_BYTES, FileResource},
         keys::tenant_subspace,
-        object::ObjectResource,
+        object::{self, ObjectResource},
         session::SessionResource,
         tenant::TenantResource,
     },
@@ -35,6 +35,32 @@ async fn fetch(tx: &Transaction, tenant: &TenantResource, id: ObjectId) -> Resul
             .await?
             .context("missing file")?,
     )?)
+}
+
+pub(crate) async fn batch_fetch_rejects_invalid_ids_and_preserves_transaction_errors() -> Result<()>
+{
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    let tx = fdb::database()?.create_trx()?;
+    tx.set_read_version(1);
+    assert!(matches!(
+        FileResource::fetch_many_for_session(
+            &tx,
+            &session,
+            &[ObjectId::new_v7(), ObjectId::default()],
+        )
+        .await,
+        Err(storage::Error::Resource(file::Error::Object(
+            object::Error::InvalidId
+        )))
+    ));
+    let Err(storage::Error::Transaction(error)) =
+        FileResource::fetch_many_for_session(&tx, &session, &[ObjectId::new_v7()]).await
+    else {
+        anyhow::bail!("expected a transaction failure, not a per-file error");
+    };
+    assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1007));
+    Ok(())
 }
 
 pub(crate) async fn reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks() -> Result<()> {

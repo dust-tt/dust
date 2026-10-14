@@ -89,14 +89,41 @@ impl FileResource {
         session: &SessionResource,
         object_id: &ObjectId,
     ) -> Result<(Self, Attr), storage::Error<Error>> {
-        let (object, mode) = ObjectResource::modes_for_session(tx, session, &[*object_id])
+        Self::fetch_many_for_session(tx, session, &[*object_id])
             .await?
             .into_iter()
             .next()
-            .flatten()
-            .ok_or(Error::Object(object::Error::NotFound))?;
-        let attributes = object.attr(tx, mode).await?;
-        Ok((Self::try_from(object)?, attributes))
+            .ok_or(Error::Object(object::Error::NotFound))?
+            .map_err(Into::into)
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] file-batch-fetch-for-session
+     * Callers MUST fetch before staging writes and MUST NOT stage writes concurrently with it.
+     * Fetch MUST evaluate all modes together in the caller's transaction and preserve input order
+     * and duplicates. Missing and unreadable objects MUST return per-file Object(NotFound) and
+     * Object(NotAuthorized), checking access before kind. Successful files and attributes MUST use
+     * the objects fetched during authorization, with no optional metadata. Storage failures MUST
+     * propagate through the outer result so FDB transaction failures remain retryable.
+     */
+    pub async fn fetch_many_for_session(
+        tx: &Transaction,
+        session: &SessionResource,
+        object_ids: &[ObjectId],
+    ) -> Result<Vec<Result<(Self, Attr), Error>>, storage::Error<Error>> {
+        let objects = ObjectResource::modes_for_session(tx, session, object_ids).await?;
+        try_join_all(objects.into_iter().map(|entry| async move {
+            let Some((object, mode)) = entry else {
+                return Ok(Err(Error::Object(object::Error::NotFound)));
+            };
+            let attributes = match object.attr(tx, mode).await {
+                Ok(attributes) => attributes,
+                Err(storage::Error::Resource(error)) => return Ok(Err(Error::Object(error))),
+                Err(error) => return Err(error.into()),
+            };
+            Ok(Self::try_from(object).map(|file| (file, attributes)))
+        }))
+        .await
     }
 
     /**

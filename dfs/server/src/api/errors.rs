@@ -24,22 +24,36 @@ mod tests;
 // This replaces the original resource or decoding error variant with its API status inside the
 // transaction closure. Resource modules still return typed errors and remain independent of tonic.
 
-impl From<file::Error> for Status {
+// Share each resource's mapping between RPC statuses and individual batch errors.
+impl From<file::Error> for ErrorCode {
     fn from(error: file::Error) -> Self {
         match error {
-            file::Error::IsDirectory => status(ErrorCode::IsDirectory),
-            file::Error::UnsupportedKind => status(ErrorCode::Unsupported),
-            file::Error::InvalidLength => status(ErrorCode::InvalidInput),
+            file::Error::IsDirectory => ErrorCode::IsDirectory,
+            file::Error::UnsupportedKind => ErrorCode::Unsupported,
+            file::Error::InvalidLength => ErrorCode::InvalidInput,
             file::Error::Object(error) => error.into(),
             file::Error::InvalidBlock => {
                 tracing::error!(%error, "file read failed");
-                status(ErrorCode::Internal)
+                ErrorCode::Internal
             }
         }
     }
 }
 
-// Share the mapping between RPC statuses and individual batch errors.
+impl From<file::Error> for ErrorDetails {
+    fn from(error: file::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<file::Error> for Status {
+    fn from(error: file::Error) -> Self {
+        status(error.into())
+    }
+}
+
 impl From<object::Error> for ErrorCode {
     fn from(error: object::Error) -> Self {
         match error {

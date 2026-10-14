@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use dfs_protocol::{
-    STAT_MAX_REFERENCES,
+    READ_FILES_MAX_OBJECTS, STAT_MAX_REFERENCES,
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
@@ -30,6 +30,7 @@ use crate::{
 
 pub(crate) mod auth;
 mod errors;
+mod read_files;
 
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
@@ -279,8 +280,21 @@ impl Dfs for API {
         &self,
         request: Request<ReadFilesRequest>,
     ) -> Result<Response<FilesBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let ReadFilesRequest { object_ids } = request.into_inner();
+        if object_ids.is_empty() || object_ids.len() > READ_FILES_MAX_OBJECTS {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        let response = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let object_ids = &object_ids;
+            async move { read_files::read_files(&tx, session, object_ids).await }
+        })
+        .await?;
+        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+            return Err(status(ErrorCode::Capacity));
+        }
+        Ok(Response::new(response))
     }
 
     async fn apply(
