@@ -7,7 +7,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   aId: z.string(),
@@ -24,6 +23,7 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
+  validate("query", GetAgentConfigurationsHistoryQuerySchema),
   async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
@@ -39,27 +39,7 @@ app.get(
       });
     }
 
-    // The schema expects `limit` as a number; query params arrive as strings,
-    // so we parseInt before validation.
-    const queryRaw = ctx.req.query();
-    const queryValidation = GetAgentConfigurationsHistoryQuerySchema.safeParse({
-      ...queryRaw,
-      limit:
-        typeof queryRaw.limit === "string"
-          ? parseInt(queryRaw.limit, 10)
-          : undefined,
-    });
-    if (!queryValidation.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid query parameters: ${fromError(queryValidation.error).toString()}`,
-        },
-      });
-    }
-
-    const { limit } = queryValidation.data;
+    const { limit } = ctx.req.valid("query");
 
     const versions = await agent.listVersions(auth, { limit });
 
