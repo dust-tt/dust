@@ -154,10 +154,11 @@ const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
 // Slack prefixes the status with the app name: "Dust is thinking...".
 function makeSlackAssistantThreadStatus(
   i18n: I18n,
-  agentName: string,
+  mention: MentionMatch,
   status: "thinking" | "queued"
 ) {
-  const isDefaultAgent = agentName === "dust";
+  const { agentName } = mention;
+  const isDefaultAgent = mention.agentId === "dust";
   switch (status) {
     case "thinking":
       return isDefaultAgent
@@ -1392,7 +1393,7 @@ async function answerMessage(
     }
   );
   await streamHandler.setThinking(
-    makeSlackAssistantThreadStatus(i18n, mention.agentName, "thinking")
+    makeSlackAssistantThreadStatus(i18n, mention, "thinking")
   );
 
   const buildSlackMessageError = (
@@ -1532,7 +1533,7 @@ async function answerMessage(
   const isPendingUserMessage = userMessage.visibility === "pending";
   if (isPendingUserMessage) {
     await streamHandler.setThinking(
-      makeSlackAssistantThreadStatus(i18n, mention.agentName, "queued"),
+      makeSlackAssistantThreadStatus(i18n, mention, "queued"),
       i18n._("Queued...")
     );
   }
@@ -1563,7 +1564,7 @@ async function answerMessage(
   conversation = pendingUserMessageRes.value;
   if (isPendingUserMessage) {
     await streamHandler.setThinking(
-      makeSlackAssistantThreadStatus(i18n, mention.agentName, "thinking")
+      makeSlackAssistantThreadStatus(i18n, mention, "thinking")
     );
   }
 
