@@ -591,6 +591,10 @@ msgid "Agents use your memory when answering, so their responses, including in S
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
+msgid "To keep your memory private, agents won't rely on it in conversations with other participants."
+msgstr ""
+
+#: front/components/UserSettingsPopover.tsx
 msgid "About you"
 msgstr ""
 
