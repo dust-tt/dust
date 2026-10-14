@@ -91,6 +91,11 @@ const CollabEditor = lazy(
  * its activity MUST show before the participants, wherever the comments button shows, and not
  * with the save and live statuses.
  */
+/**
+ * @cc [owner:adrien,label:product] document-active-comment-after-sync
+ * A live document MUST NOT open `activeComment` nor report its changes until its session is
+ * live, so the thread opens once, in the editor that stays, with its reply field.
+ */
 export const DocumentEditor = (props: DocumentProps) =>
   props.live ? (
     <Suspense
@@ -207,10 +212,11 @@ const handleDocumentEscape = (
 export const hasOpenDocumentLayer = (root: ParentNode) =>
   root.querySelector("[data-document-layer]") !== null;
 
-/** The editor's binding to the shared document, and whether it still waits for one. */
+/** The editor's binding to the shared document, and whether it still waits for one or is live. */
 const collabEditorMode = (collabView: DocumentViewProps["collabView"]) => ({
   binding: collabView?.binding ?? undefined,
   waiting: collabView?.binding === null,
+  ready: !collabView || collabView.binding?.connected === true,
 });
 
 interface DocumentEditingControlsProps {
@@ -243,6 +249,7 @@ export const DocumentView = ({
   mountPortalContainer,
   headerControlsContainer,
   statusContainer,
+  activeComment,
   readOnly = false,
   collabView,
   commentAuthor,
@@ -276,6 +283,7 @@ export const DocumentView = ({
     isSavable,
     verify: verifyCommentMessage,
     live: live.binding?.comments,
+    activeComment: live.ready ? activeComment : undefined,
   });
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

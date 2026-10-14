@@ -6,6 +6,11 @@ import type { ReactNode } from "react";
 
 export type DocumentCommentAvatarSize = "xs" | "xxs" | "3xs";
 
+export interface ActiveCommentBinding {
+  id: string | null;
+  onChange: (id: string | null) => void;
+}
+
 export interface DocumentProps {
   /** The DFM source of the file. Remount with a new key to open another document. */
   initialContent: string;
@@ -23,6 +28,7 @@ export interface DocumentProps {
    * statuses show in the badge above the document.
    */
   statusContainer?: HTMLElement | null;
+  activeComment?: ActiveCommentBinding;
   readOnly?: boolean;
   /**
    * Edits the document live with everyone else in the session; without it, the document is

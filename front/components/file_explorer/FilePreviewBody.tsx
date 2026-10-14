@@ -1,3 +1,4 @@
+import type { ActiveCommentBinding } from "@app/components/editor/document";
 import type { FilePreviewContentData } from "@app/components/file_explorer/FilePreviewContent";
 import { FilePreviewContent } from "@app/components/file_explorer/FilePreviewContent";
 import type { FilePreviewDownloadAction } from "@app/components/file_explorer/FilePreviewFallback";
@@ -33,6 +34,7 @@ interface FilePreviewBodyProps {
   markdownHeaderControlsContainer?: HTMLElement | null;
   /** Where the rich editor shows its save or live status icon, such as next to the file name. */
   markdownStatusContainer?: HTMLElement | null;
+  markdownActiveComment?: ActiveCommentBinding;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
   owner?: LightWorkspaceType;
   preview: FilePreviewContentData;
@@ -46,6 +48,7 @@ export function FilePreviewBody({
   markdown,
   markdownHeaderControlsContainer,
   markdownStatusContainer,
+  markdownActiveComment,
   onMarkdownViewModeChange,
   owner,
   preview,
@@ -97,6 +100,7 @@ export function FilePreviewBody({
       markdownContent={markdown.content}
       markdownHeaderControlsContainer={markdownHeaderControlsContainer}
       markdownStatusContainer={markdownStatusContainer}
+      markdownActiveComment={markdownActiveComment}
       markdownRichEditor={markdown.richEditor}
       markdownViewMode={markdown.viewMode}
       onMarkdownContentChange={markdown.canEdit ? markdown.setDraft : undefined}

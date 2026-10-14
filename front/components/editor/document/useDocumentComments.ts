@@ -16,6 +16,7 @@ import {
   scrollToCommentHighlight,
   withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
+import type { ActiveCommentBinding } from "@app/components/editor/document/types";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
@@ -45,6 +46,7 @@ interface UseDocumentCommentsProps {
   isSavable: (document: JSONContent) => boolean;
   verify?: DfmMessageVerifier;
   live?: CommentChannel;
+  activeComment?: ActiveCommentBinding;
 }
 
 interface Verification {
@@ -84,6 +86,11 @@ const UNANCHORED_MESSAGE = msg`The selected text can no longer take a comment. S
 const UNSAVABLE_MESSAGE = msg`This comment can't be saved in this document. Try shortening or simplifying it.`;
 
 /** The draft's text, shown as its quote and sent as the one agents get. */
+const jumpToComment = (editor: Editor, id: string) => {
+  editor.commands.setActiveComment(id);
+  scrollToCommentHighlight(editor, id);
+};
+
 const getDraftQuote = (doc: Node, draft: DocumentCommentDraft) =>
   doc.textBetween(draft.from, draft.to, " ");
 
@@ -215,6 +222,19 @@ export interface CommentsFocusRequest {
  * MUST be returned with a reason, never thrown; applying a suggestion whose resolution the session
  * refuses MUST keep the text change and return that reason.
  */
+/**
+ * @cc [owner:adrien,label:react] document-comment-reveal-on-open
+ * When `activeComment.id` names a thread whose text is in the document and that is not already
+ * active, the hook MUST activate it once each time the id is set and scroll its highlight into
+ * view, without moving focus. While a draft is pending, or for a thread not in the document, it
+ * MUST change nothing.
+ */
+/**
+ * @cc [owner:adrien,label:react] document-comment-report-active
+ * Each time the active thread changes, including to none, the hook MUST call
+ * `activeComment.onChange` with the new id once; it MUST NOT call it on mount. A change made
+ * without `activeComment` MUST be reported once it is given again.
+ */
 export const useDocumentComments = ({
   editor,
   canComment,
@@ -222,6 +242,7 @@ export const useDocumentComments = ({
   isSavable,
   verify,
   live,
+  activeComment,
 }: UseDocumentCommentsProps) => {
   const { t } = useLingui();
   const state =
@@ -357,6 +378,38 @@ export const useDocumentComments = ({
     setListOpen(false);
     requestFocus(id);
   };
+
+  const revealCommentId = activeComment?.id;
+  const revealedCommentId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!revealCommentId) {
+      revealedCommentId.current = null;
+      return;
+    }
+    if (
+      !editor ||
+      revealedCommentId.current === revealCommentId ||
+      state.draft ||
+      !state.quotes.has(revealCommentId)
+    ) {
+      return;
+    }
+    revealedCommentId.current = revealCommentId;
+    if (state.activeId === revealCommentId) {
+      return;
+    }
+    jumpToComment(editor, revealCommentId);
+  }, [editor, revealCommentId, state.activeId, state.draft, state.quotes]);
+
+  const onActiveCommentChange = activeComment?.onChange;
+  const reportedActiveId = useRef(state.activeId);
+  useEffect(() => {
+    if (!onActiveCommentChange || reportedActiveId.current === state.activeId) {
+      return;
+    }
+    reportedActiveId.current = state.activeId;
+    onActiveCommentChange(state.activeId);
+  }, [state.activeId, onActiveCommentChange]);
 
   const liveErrorMessage = (code: CommentRequestErrorCode): string => {
     switch (code) {
@@ -625,9 +678,8 @@ export const useDocumentComments = ({
     },
     /** Activates a thread from the list and scrolls to its text. */
     jumpTo: (id: string) => {
-      select(id);
       if (editor) {
-        scrollToCommentHighlight(editor, id);
+        jumpToComment(editor, id);
       }
     },
     /** Starts a comment on the selection, in a card floating under it. */

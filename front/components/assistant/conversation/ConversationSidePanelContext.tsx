@@ -66,8 +66,13 @@ const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
 
 // Content fragments without a sandbox path are addressed by id instead.
 export type FilePreviewTarget =
-  | { kind: "path"; filePath: string }
+  | { kind: "path"; filePath: string; commentId?: string }
   | { kind: "id"; fileId: string };
+
+const FILE_PREVIEW_COMMENT_SEPARATOR = "@comment=";
+const FILE_PREVIEW_COMMENT_PATTERN = new RegExp(
+  `^(.+)${FILE_PREVIEW_COMMENT_SEPARATOR}([^/@]+)$`
+);
 
 export function parseFilePreviewData(
   data: string | undefined
@@ -76,8 +81,15 @@ export function parseFilePreviewData(
     return null;
   }
 
-  return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
-    ? { kind: "id", fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
+  if (data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)) {
+    return {
+      kind: "id",
+      fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length),
+    };
+  }
+  const withComment = FILE_PREVIEW_COMMENT_PATTERN.exec(data);
+  return withComment
+    ? { kind: "path", filePath: withComment[1], commentId: withComment[2] }
     : { kind: "path", filePath: data };
 }
 
@@ -97,7 +109,9 @@ export function parseSuggestionPreviewData(
 function filePreviewDataKey(target: FilePreviewTarget): string {
   switch (target.kind) {
     case "path":
-      return target.filePath;
+      return target.commentId
+        ? `${target.filePath}${FILE_PREVIEW_COMMENT_SEPARATOR}${target.commentId}`
+        : target.filePath;
     case "id":
       return `${FILE_PREVIEW_FILE_ID_PREFIX}${target.fileId}`;
     default:
@@ -139,10 +153,13 @@ function panelDataKey(params: OpenPanelParams): string {
 
 // What makes two panels "the same view" for history purposes. Unlike the hash key, a Frame's
 // timestamp is ignored: streaming refreshes the same Frame with a new timestamp, and that must
-// update the shown panel rather than stack a copy of it.
+// update the shown panel rather than stack a copy of it. Likewise a document's open comment.
 function panelIdentityKey(params: OpenPanelParams): string {
   if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
     return `${params.type}:${params.fileId}`;
+  }
+  if (params.type === FILE_PREVIEW_SIDE_PANEL_TYPE && params.kind === "path") {
+    return `${params.type}:${params.filePath}`;
   }
   return `${params.type}:${panelDataKey(params)}`;
 }
@@ -425,7 +442,8 @@ export function ConversationSidePanelProvider({
    * @cc [owner:tdraier,label:product;react] side-panel-keep-current
    * Opening a panel MUST stack the shown one in the history when its type changes, or when the
    * caller asks to keep it (`keepCurrent`), even for the same type, so closing returns to it; any
-   * other panel of the same type MUST replace the shown one.
+   * other panel of the same type MUST replace the shown one. The same document with another open
+   * comment MUST update the shown panel in place, never stack.
    */
   const applyPanel = useCallback(
     (

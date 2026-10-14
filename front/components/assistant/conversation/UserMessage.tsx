@@ -583,6 +583,7 @@ function DocumentCommentChip({ documentComment }: DocumentCommentChipProps) {
           type: "file_preview",
           kind: "path",
           filePath: documentComment.documentPath,
+          commentId: documentComment.commentId,
         })
       }
     />

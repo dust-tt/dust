@@ -43,7 +43,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
@@ -60,7 +60,7 @@ export function FilePreviewPanel({
   owner,
 }: FilePreviewPanelProps) {
   const { t } = useLingui();
-  const { data } = useConversationSidePanelContext();
+  const { data, openPanel } = useConversationSidePanelContext();
   const { isFullScreen, enterFullScreen, exitFullScreen, closePanel } =
     useSidePanelFullScreen(DEFAULT_RIGHT_PANEL_SIZE);
   const isMobile = useIsMobile();
@@ -72,6 +72,25 @@ export function FilePreviewPanel({
   );
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
+  const filePath = target?.kind === "path" ? target.filePath : null;
+  const openCommentId = target?.kind === "path" ? target.commentId : undefined;
+  const onActiveCommentChange = useCallback(
+    (commentId: string | null) => {
+      if (!filePath || (commentId ?? undefined) === openCommentId) {
+        return;
+      }
+      openPanel({
+        type: "file_preview",
+        kind: "path",
+        filePath,
+        commentId: commentId ?? undefined,
+      });
+    },
+    [openPanel, filePath, openCommentId]
+  );
+  const activeComment = filePath
+    ? { id: openCommentId ?? null, onChange: onActiveCommentChange }
+    : undefined;
 
   const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
     fileId,
@@ -284,6 +303,7 @@ export function FilePreviewPanel({
           markdown={markdown}
           markdownHeaderControlsContainer={documentControls}
           markdownStatusContainer={documentStatus}
+          markdownActiveComment={activeComment}
           owner={owner}
           preview={preview}
         />

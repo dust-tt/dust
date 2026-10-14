@@ -135,12 +135,16 @@ async function renderDocument(
     answer,
     resolveImageSource = NO_IMAGE_SOURCE,
     readOnly,
+    activeComment,
+    connected = true,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
     answer?: SessionAnswer;
     resolveImageSource?: DocumentProps["resolveImageSource"];
     readOnly?: boolean;
+    activeComment?: DocumentProps["activeComment"];
+    connected?: boolean;
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -148,7 +152,15 @@ async function renderDocument(
     throw new Error(live.error);
   }
   const session = commentSession(live.value.comments, answer);
-  const { container } = render(
+  const extensions = buildCollabExtensions({
+    t: (descriptor) => descriptor.id ?? "",
+    document: live.value.doc,
+    awareness: null,
+    user: CollabUserFactory.build(),
+    comments: session.channel,
+    resolveImageSource,
+  });
+  const view = (isConnected: boolean) => (
     <DocumentView
       initialContent={initialContent}
       commentAuthor={AUTHOR}
@@ -158,23 +170,18 @@ async function renderDocument(
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
       readOnly={readOnly}
+      activeComment={activeComment}
       collabView={{
-        status: "live",
+        status: isConnected ? "live" : "connecting",
         binding: {
-          extensions: buildCollabExtensions({
-            t: (descriptor) => descriptor.id ?? "",
-            document: live.value.doc,
-            awareness: null,
-            user: CollabUserFactory.build(),
-            comments: session.channel,
-            resolveImageSource,
-          }),
-          connected: true,
+          extensions,
+          connected: isConnected,
           comments: session.channel,
         },
       }}
     />
   );
+  const { container, rerender } = render(view(connected));
   const dom = await waitFor(() => {
     const element = container.querySelector(".tiptap");
     if (!hasEditor(element)) {
@@ -182,7 +189,13 @@ async function renderDocument(
     }
     return element;
   });
-  return { dom, editor: dom.editor, session, doc: live.value.doc };
+  return {
+    dom,
+    editor: dom.editor,
+    session,
+    doc: live.value.doc,
+    connect: () => rerender(view(true)),
+  };
 }
 
 const highlight = (dom: HTMLElement, id: string) => {
@@ -279,6 +292,21 @@ describe("Document comments", () => {
     });
     expect(floatingCard()?.contains(thread)).toBe(true);
     await waitFor(() => expect(document.activeElement).toBe(thread));
+  });
+
+  it("opens a linked comment only once the session is live", async () => {
+    const { editor, connect } = await renderDocument(SOURCE, {
+      activeComment: { id: "c1", onChange: vi.fn() },
+      connected: false,
+    });
+    const activeId = () =>
+      documentCommentsPluginKey.getState(editor.state)?.activeId;
+
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(activeId()).toBeNull();
+
+    connect();
+    await waitFor(() => expect(activeId()).toBe("c1"));
   });
 
   it("closes the card on Escape outside its fields and clears the active comment", async () => {
