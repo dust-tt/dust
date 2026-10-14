@@ -83,3 +83,75 @@ describe("buildDocumentExtensions", () => {
     }
   });
 });
+
+describe("numbered lists", () => {
+  // Presses `keys` with the caret in the empty paragraph, at position 8 in both documents below.
+  // Keys go through the view like a browser's: `keyboardShortcut` would not move the caret.
+  function pressInEmptyParagraph(live: boolean, html: string, keys: string[]) {
+    const built = new Editor({
+      extensions: buildDocumentEditorExtensions(translate, {
+        live,
+        resolveImageSource: () => null,
+      }),
+      content: html,
+    });
+    editor = built;
+    built.commands.setTextSelection(8);
+    keys.forEach((key) =>
+      built.view.someProp("handleKeyDown", (handle) =>
+        handle(built.view, new KeyboardEvent("keydown", { key }))
+      )
+    );
+    return built.getMarkdown().trim();
+  }
+
+  describe.each([false, true])("live: %s", (live) => {
+    it("keeps one list when an emptied item is removed with Backspace", () => {
+      const html = `
+        <ol>
+          <li>a</li>
+          <li></li>
+          <li>c</li>
+        </ol>`;
+      expect(
+        pressInEmptyParagraph(live, html, ["Backspace", "Backspace"])
+      ).toBe("1. a\n2. c");
+    });
+
+    it.each(["Backspace", "Delete"])(
+      "joins two lists when %s removes the empty paragraph between them",
+      (key) => {
+        const html = `
+          <ol><li>a</li></ol>
+          <p></p>
+          <ol><li>c</li></ol>`;
+        expect(pressInEmptyParagraph(live, html, [key])).toBe("1. a\n2. c");
+      }
+    );
+
+    it("keeps a numbered and a bulleted list apart", () => {
+      const html = `
+        <ol><li>a</li></ol>
+        <p></p>
+        <ul><li>c</li></ul>`;
+      pressInEmptyParagraph(live, html, ["Backspace"]);
+      expect(editor?.getJSON().content?.map(({ type }) => type)).toEqual(
+        expect.arrayContaining(["orderedList", "bulletList"])
+      );
+    });
+  });
+
+  it("restores both lists with one undo", () => {
+    const html = `
+      <ol><li>a</li></ol>
+      <p></p>
+      <ol><li>c</li></ol>`;
+    expect(pressInEmptyParagraph(false, html, ["Backspace"])).toBe(
+      "1. a\n2. c"
+    );
+    editor?.commands.undo();
+    expect(
+      editor?.getJSON().content?.filter(({ type }) => type === "orderedList")
+    ).toHaveLength(2);
+  });
+});
