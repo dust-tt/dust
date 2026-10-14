@@ -23,7 +23,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_8_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
@@ -299,7 +299,7 @@ function getFastModelConfig(auth: Authenticator): FastModel | null {
   }
   if (providers.has("anthropic")) {
     return {
-      model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+      model: CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "none",
     };
   }
