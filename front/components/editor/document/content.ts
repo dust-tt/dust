@@ -9,6 +9,11 @@ import {
 } from "@app/components/editor/document/DocumentCommentAnchor";
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
+import {
+  hasExtraCells,
+  TABLE_CELL_NODE_NAME,
+  withColumnAlignments,
+} from "@app/components/editor/document/DocumentTable";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
 import type { Result } from "@app/types/shared/result";
@@ -68,11 +73,12 @@ const isSupportedMarkdownToken = (token: MarkdownToken) =>
   !(token.type === "list_item" && token.task) &&
   (token.type !== "code" ||
     token.raw?.startsWith("```") ||
-    token.codeBlockStyle === "indented");
+    token.codeBlockStyle === "indented") &&
+  !(token.type === "table" && hasExtraCells(token));
 
 /** A Markdown element the editor cannot keep and can name. */
 export type UnsupportedElement =
-  | "table"
+  | "table_extra_cells"
   | "html"
   | "task_list"
   | "tilde_fence"
@@ -80,7 +86,7 @@ export type UnsupportedElement =
   | "reference_definition";
 
 const UNSUPPORTED_ELEMENT_NAMES: Record<UnsupportedElement, string> = {
-  table: "a table",
+  table_extra_cells: "a table row with more cells than its header",
   html: "HTML",
   task_list: "a task list",
   tilde_fence: "a code block fenced with ~~~",
@@ -100,7 +106,7 @@ const unsupportedElement = (
         ? "tilde_fence"
         : "indented_fence";
     case "table":
-      return "table";
+      return hasExtraCells(token) ? "table_extra_cells" : null;
     case "html":
       return "html";
     case "def":
@@ -217,20 +223,45 @@ const imagesInParagraphs = (node: JSONContent): JSONContent => {
 const parseMarkdown = (markdown: string): JSONContent =>
   imagesInParagraphs(documentMarkdown.parse(markdown));
 
+const withoutEdgeSpaces = (inlines: JSONContent[]): JSONContent[] => {
+  const trimmed = [...inlines];
+  if (trimmed[0]?.type === "text") {
+    trimmed[0] = { ...trimmed[0], text: trimmed[0].text?.trimStart() };
+  }
+  const last = trimmed.length - 1;
+  if (trimmed[last]?.type === "text") {
+    trimmed[last] = { ...trimmed[last], text: trimmed[last].text?.trimEnd() };
+  }
+  return trimmed.filter((inline) => inline.type !== "text" || inline.text);
+};
+
+const asWritten = (node: JSONContent): JSONContent => {
+  if (node.type === TABLE_CELL_NODE_NAME) {
+    return {
+      ...node,
+      content: node.content?.map((paragraph) => ({
+        ...paragraph,
+        content: withoutEdgeSpaces(paragraph.content ?? []),
+      })),
+    };
+  }
+  const aligned = node.type === "table" ? withColumnAlignments(node) : node;
+  return aligned.content
+    ? { ...aligned, content: aligned.content.map(asWritten) }
+    : aligned;
+};
+
+const comparable = (document: JSONContent) =>
+  normalizeTextNodes(
+    documentSchema.nodeFromJSON(asWritten(withoutTrailingParagraphs(document)))
+  );
+
 /** Compares in the editor's form, comment marks included, as the user would reopen it. */
 const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
   const reopened = anchorsToMarks(parseMarkdown(markdown), documentSchema);
   return (
     reopened.isOk() &&
-    normalizeTextNodes(
-      documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
-    ).eq(
-      normalizeTextNodes(
-        documentSchema.nodeFromJSON(
-          withoutTrailingParagraphs(reopened.value.document)
-        )
-      )
-    )
+    comparable(document).eq(comparable(reopened.value.document))
   );
 };
 
@@ -357,7 +388,9 @@ const serializeReadingBack = (
 /**
  * @cc [owner:flvndvd,label:product] document-markdown-save
  * Markdown output MUST reopen with the same content and formatting, ignoring empty trailing
- * paragraphs. A failed conversion MUST NOT reach persistence or acknowledge the draft.
+ * paragraphs, spaces at the edges of a table cell, which GFM trims, and a cell's alignment where
+ * it differs from its column's, which GFM holds per column. A failed conversion MUST NOT reach
+ * persistence or acknowledge the draft.
  */
 /**
  * @cc [owner:tdraier,label:product] document-anchors-in-formatting

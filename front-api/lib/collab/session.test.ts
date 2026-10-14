@@ -236,10 +236,10 @@ describe("readSessionSource and writeSessionSource", () => {
     await hocuspocus.openDirectConnection(name, reader);
     const base = await openSource(hocuspocus, name);
 
-    const table = await writeSessionSource(hocuspocus, {
+    const taskList = await writeSessionSource(hocuspocus, {
       file: agent,
       base,
-      source: "| a | b |\n|---|---|\n| 1 | 2 |\n",
+      source: "Intro.\n\n- [ ] todo\n",
     });
     const unwritable = await writeSessionSource(hocuspocus, {
       file: reader,
@@ -247,7 +247,7 @@ describe("readSessionSource and writeSessionSource", () => {
       source: EDITED,
     });
 
-    expect(table.isErr()).toBe(true);
+    expect(taskList.isErr()).toBe(true);
     expect(unwritable.isErr()).toBe(true);
     expect(await openSource(hocuspocus, name)).toBe(base);
   });

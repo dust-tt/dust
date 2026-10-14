@@ -10,7 +10,7 @@ import type {
   DocumentProps,
   CollabStatus,
 } from "@app/components/editor/document/types";
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
+import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
@@ -177,7 +177,7 @@ async function renderDocument(
     }
     return element;
   });
-  return { dom, editor: dom.editor, session };
+  return { dom, editor: dom.editor, session, doc: live.value.doc };
 }
 
 const highlight = (dom: HTMLElement, id: string) => {
@@ -1014,13 +1014,13 @@ describe("Document for a file the editor cannot open", () => {
     );
 
   it("renders the body read-only, without anchors or threads, under the reason", async () => {
-    // A table: valid DFM the editor cannot keep.
+    // A task list: valid DFM the editor cannot keep.
     const { container } = renderRefused(
-      `# Plan\n\nSee :comment-start{id=c1}this:comment-end{id=c1}.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Daph |\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
+      `# Plan\n\nSee :comment-start{id=c1}this:comment-end{id=c1}.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Daph |\n\n- [ ] Review\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This document can't be edited here yet because it has a table."
+      "This document can't be edited here yet because it has a task list."
     );
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Ship" })).toBeInTheDocument();
@@ -1040,8 +1040,7 @@ describe("Document for a file the editor cannot open", () => {
 
   it("logs a refused document once, with its reason and without its content", async () => {
     const warn = vi.spyOn(datadogLogger, "warn");
-    const source =
-      "Intro.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Secret |\n";
+    const source = "Intro.\n\n- [ ] Ship to Secret\n";
 
     // A live document mounts again for each connection.
     renderRefused(source).unmount();
@@ -1051,7 +1050,8 @@ describe("Document for a file the editor cannot open", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(
       {
-        reason: "The Markdown uses formatting the editor cannot keep: a table.",
+        reason:
+          "The Markdown uses formatting the editor cannot keep: a task list.",
       },
       "Document opened read-only"
     );
@@ -1318,5 +1318,49 @@ describe("Document Escape inside a host dialog", () => {
     fireEvent.keyDown(field, { key: "Escape" });
 
     expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+  });
+});
+
+describe("Document tables", () => {
+  const TABLE = "| Name | Count |\n| --- | --- |\n| apple | 3 |\n";
+
+  const cellText = (editor: Editor, text: string) => {
+    let from = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (from === -1 && node.isText && node.text?.includes(text)) {
+        from = pos + (node.text?.indexOf(text) ?? 0);
+      }
+    });
+    return { from, to: from + text.length };
+  };
+
+  it("writes a cell edit to the session as the table's Markdown", async () => {
+    const { editor, doc } = await renderDocument(TABLE);
+
+    act(() => {
+      editor
+        .chain()
+        .setTextSelection(cellText(editor, "apple"))
+        .insertContent("pear | plum")
+        .run();
+    });
+
+    expect(yDocToDfm({ doc, comments: [] })).toEqual(
+      new Ok("| Name | Count |\n| --- | --- |\n| pear \\| plum | 3 |\n")
+    );
+  });
+
+  it("does not split a cell or break its line on Enter", async () => {
+    const { dom, editor } = await renderDocument(TABLE);
+    const before = editor.state.doc;
+
+    act(() => {
+      editor.commands.setTextSelection(cellText(editor, "apple").to);
+    });
+    for (const modifiers of [{}, { shiftKey: true }, { metaKey: true }]) {
+      fireEvent.keyDown(dom, { key: "Enter", ...modifiers });
+    }
+
+    expect(editor.state.doc.eq(before)).toBe(true);
   });
 });

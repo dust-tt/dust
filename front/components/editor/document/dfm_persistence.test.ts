@@ -202,11 +202,6 @@ describe("loadDfm", () => {
 
   it.each([
     [
-      "a table",
-      "| a | b |\n|---|---|\n| 1 | 2 |\n",
-      "The Markdown uses formatting the editor cannot keep: a table.",
-    ],
-    [
       "a task list",
       "Intro.\n\n- [ ] todo\n",
       "The Markdown uses formatting the editor cannot keep: a task list.",
@@ -241,11 +236,6 @@ describe("loadDfm", () => {
       "- item\n\n  ~~~\n  code\n  ~~~\n",
       "The Markdown uses formatting the editor cannot keep: a code block fenced with ~~~.",
     ],
-    [
-      "a table in a quote",
-      "> | a | b |\n> |---|---|\n> | 1 | 2 |\n",
-      "The Markdown uses formatting the editor cannot keep: a table.",
-    ],
   ])("refuses %s, naming it", (_, source, reason) => {
     const loaded = loadDfm(source);
 
@@ -255,7 +245,7 @@ describe("loadDfm", () => {
   // Each source makes the editor write one of its own refusals: rewording one without updating
   // the log allowlist fails here instead of silently logging it as invalid DFM.
   it.each([
-    ["an unsupported element", "| a | b |\n|---|---|\n| 1 | 2 |\n"],
+    ["an unsupported element", "Intro.\n\n- [ ] todo\n"],
     ["Markdown that changes when saved", "A\n\n* a\n+ b\n"],
     [
       "an anchor the editor cannot show",
@@ -301,7 +291,7 @@ describe("loadDfm", () => {
     ],
     [
       "Markdown the editor cannot reproduce",
-      "| a | b |\n|---|---|\n| 1 | 2 |\n",
+      "Intro.\n\n- [ ] todo\n",
       "formatting the editor cannot keep",
     ],
     [
@@ -325,6 +315,21 @@ describe("loadDfm", () => {
 });
 
 describe("saveDfm", () => {
+  it.each([
+    [
+      "in one cell",
+      "| a | :comment-start{id=c1}b:comment-end{id=c1} |\n| --- | --- |\n| 1 | 2 |",
+    ],
+    [
+      "across cells",
+      "| :comment-start{id=c1}a | b |\n| --- | --- |\n| 1 | 2:comment-end{id=c1} |",
+    ],
+  ])("writes back a comment %s as it reads", (_, body) => {
+    const source = `${body}\n\n${OPEN_THREAD}`;
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
   it("round-trips a file through load and save", () => {
     const source = `---\ntitle: x\n---\n\n# Title\n\nSome **bold** text.\n\n- one\n- two\n\n${THREAD}`;
 

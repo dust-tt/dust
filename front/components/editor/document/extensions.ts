@@ -6,6 +6,11 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
+import {
+  DocumentTable,
+  DocumentTableCell,
+  DocumentTableRow,
+} from "@app/components/editor/document/DocumentTable";
 import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
 import { cn } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
@@ -104,6 +109,17 @@ const buildSchemaExtensions = ({
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),
+  DocumentTable.configure({
+    HTMLAttributes: {
+      class: "my-6 w-full table-fixed border-collapse text-sm",
+    },
+  }),
+  DocumentTableRow,
+  DocumentTableCell.configure({
+    HTMLAttributes: {
+      class: "border border-border px-3 py-1.5 align-top [&>p]:my-0",
+    },
+  }),
   DocumentMarkdown,
 ];
 
