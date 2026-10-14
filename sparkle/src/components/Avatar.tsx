@@ -124,8 +124,13 @@ const textVariants = cva("select-none font-semibold", {
   },
 });
 
+// AvatarStack's remaining-count labels ("+3", "9+") are rendered as is. A name like
+// "jane+eu Doe" contains "+" too but has letters, so it still gets its initial.
+const isCounterLabel = (name: string) =>
+  /\+/.test(name) && !/\p{L}/u.test(name);
+
 const getColor = (name: string) => {
-  if (/\+/.test(name)) {
+  if (isCounterLabel(name)) {
     return "bg-primary-300";
   }
   let hash = 0;
@@ -146,7 +151,7 @@ const getColor = (name: string) => {
 };
 
 const getTextVariant = (name: string) => {
-  if (/\+/.test(name)) {
+  if (isCounterLabel(name)) {
     return "text-muted-foreground";
   }
   let hash = 0;
@@ -282,7 +287,7 @@ export function Avatar({
         <span className={textVariants({ size })}>{emojiToUse}</span>
       ) : name ? (
         <span className={cn(textVariants({ size }), getTextVariant(name))}>
-          {/\+/.test(name) ? name : name[0].toUpperCase()}
+          {isCounterLabel(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
         <User01 className="h-1/2 w-1/2 text-foreground opacity-20" />
