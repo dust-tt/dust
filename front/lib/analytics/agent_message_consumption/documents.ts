@@ -1,21 +1,22 @@
 import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/llm_documents";
-import type { AgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import type {
+  AgentMessageConsumptionAnalyticsInput,
+  BilledRunUsage,
+} from "@app/lib/analytics/agent_message_consumption/load";
 import { buildToolConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/tool_documents";
-import type { AllocationSkipReason } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
-import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
+import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export type ConsumptionDocumentsSkipReason =
-  | AllocationSkipReason
   | {
       code: "credit_mismatch";
       context: {
         attributionVersion: number;
         indexedCreditMicro: number;
-        billedCreditMicro: number;
+        reconciledCreditMicro: number;
         documentCount: number;
       };
     }
@@ -25,8 +26,51 @@ export type ConsumptionDocumentsSkipReason =
     };
 
 /**
- * Projects one complete message attribution into the document grain of the consumption index:
- * one LLM document per run usage and one tool document per action.
+ * @cc [owner:sfriquet,label:product;backend] index-latest-reconciled-items
+ * The indexed snapshot MUST be the items of the newest attribution version stored for the message
+ * that carry a reconciled amount, each credited its stored `reconciledCreditAmountMicro`. Items of
+ * older versions and items without a reconciled amount MUST NOT be indexed, and the allocation MUST
+ * NOT be recomputed from the message's current bill, usages or actions.
+ */
+function readReconciledConsumption(
+  input: AgentMessageConsumptionAnalyticsInput
+): MessageConsumptionAllocation<BilledRunUsage> | null {
+  if (input.items.length === 0) {
+    return null;
+  }
+
+  const attributionVersion = Math.max(
+    ...input.items.map((item) => item.attributionVersion)
+  );
+  const reconciledCreditMicroByItem = new Map<
+    AgentMessageConsumptionItemResource,
+    number
+  >();
+  for (const item of input.items) {
+    if (
+      item.attributionVersion === attributionVersion &&
+      item.reconciledCreditAmountMicro !== null
+    ) {
+      reconciledCreditMicroByItem.set(item, item.reconciledCreditAmountMicro);
+    }
+  }
+
+  const items = [...reconciledCreditMicroByItem.keys()];
+  const runUsageModelIds = new Set(items.map((item) => item.runUsageId));
+
+  return {
+    attributionVersion,
+    items,
+    messageUsages: input.usages.filter((usage) =>
+      runUsageModelIds.has(usage.runUsageModelId)
+    ),
+    reconciledCreditAmounts: { byItem: reconciledCreditMicroByItem },
+  };
+}
+
+/**
+ * Projects the reconciled attribution of one message into the document grain of the consumption
+ * index: one LLM document per run usage and one tool document per action.
  *
  * Documents stay with the agent message and execution agent that incurred the cost. The separate
  * attributed agent identity rolls hidden helpers up to their user-facing parent for analytics.
@@ -36,8 +80,13 @@ export type ConsumptionDocumentsSkipReason =
  * only its direct charge because the parent Computer action owns the model-visible call and result
  * footprint.
  *
- * LLM documents receive the remaining model cost. Together, all credit_micro values reconcile to
- * the authoritative message charge.
+ * LLM documents receive the remaining model cost.
+ */
+/**
+ * @cc [owner:sfriquet,label:product;backend] documents-add-up-to-reconciled-items
+ * The documents' `credit_micro` MUST add up exactly to the reconciled amounts of the indexed items,
+ * otherwise the result MUST be a `credit_mismatch` error and no document is returned. They MUST NOT
+ * be compared with the message's current `costCredits`, which can be newer than the reconciliation.
  */
 export function buildAgentMessageConsumptionAnalyticsDocuments(
   input: AgentMessageConsumptionAnalyticsInput
@@ -45,40 +94,31 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
   AgentMessageConsumptionAnalyticsData[],
   ConsumptionDocumentsSkipReason
 > {
-  const allocationResult = buildLatestMessageConsumptionAllocation({
-    actions: input.actions,
-    billedCredits: input.billedCredits,
-    dustRunIds: input.dustRunIds,
-    hasUnbilledExecution: input.hasUnbilledExecution,
-    items: input.items,
-    runs: input.runs,
-    usages: input.usages,
-  });
-  if (allocationResult.isErr()) {
-    return allocationResult;
+  const reconciledConsumption = readReconciledConsumption(input);
+  if (!reconciledConsumption) {
+    return new Ok([]);
   }
-  const allocation = allocationResult.value;
 
   const documents = [
-    ...buildLlmConsumptionDocuments(input, allocation),
-    ...buildToolConsumptionDocuments(input, allocation),
+    ...buildLlmConsumptionDocuments(input, reconciledConsumption),
+    ...buildToolConsumptionDocuments(input, reconciledConsumption),
   ];
 
   const indexedCreditMicro = documents.reduce(
     (total, document) => total + document.credit_micro,
     0
   );
-
-  // This is the final safety check before indexing: every per-usage/action document must reconcile
-  // exactly to the authoritative message charge.
-  const billedCreditMicro = roundCreditsToMicroCredits(input.billedCredits);
-  if (indexedCreditMicro !== billedCreditMicro) {
+  let reconciledCreditMicro = 0;
+  for (const creditMicro of reconciledConsumption.reconciledCreditAmounts.byItem.values()) {
+    reconciledCreditMicro += creditMicro;
+  }
+  if (indexedCreditMicro !== reconciledCreditMicro) {
     return new Err({
       code: "credit_mismatch",
       context: {
-        attributionVersion: allocation.attributionVersion,
+        attributionVersion: reconciledConsumption.attributionVersion,
         indexedCreditMicro,
-        billedCreditMicro,
+        reconciledCreditMicro,
         documentCount: documents.length,
       },
     });

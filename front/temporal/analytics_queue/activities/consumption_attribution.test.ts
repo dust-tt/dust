@@ -43,13 +43,15 @@ const message: AgentMessageRef = {
 describe("storeAgentMessageConsumptionAttributionForMessageActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(Authenticator, "fromJSON").mockResolvedValue({} as Authenticator);
+    vi.spyOn(Authenticator, "fromJSON").mockResolvedValue({
+      getNonNullableWorkspace: () => ({ sId: "workspace_1" }),
+    } as Authenticator);
   });
 
   it("publishes the settled credit cost after attribution is ready", async () => {
     vi.mocked(
       computeAndStoreAgentMessageConsumptionAttribution
-    ).mockResolvedValue({ costCredits: 12 });
+    ).mockResolvedValue(new Ok({ costCredits: 12 }));
 
     await storeAgentMessageConsumptionAttributionForMessageActivity(authType, {
       message,
@@ -67,15 +69,37 @@ describe("storeAgentMessageConsumptionAttributionForMessageActivity", () => {
     });
   });
 
-  it("does not publish while attribution is incomplete", async () => {
+  it("does not publish when the message has no attribution to store", async () => {
     vi.mocked(
       computeAndStoreAgentMessageConsumptionAttribution
-    ).mockResolvedValue(undefined);
+    ).mockResolvedValue(new Ok(undefined));
 
     await storeAgentMessageConsumptionAttributionForMessageActivity(authType, {
       message,
     });
 
+    expect(publishConversationRelatedEvent).not.toHaveBeenCalled();
+  });
+
+  it("throws an Error naming the skip reason when attribution does not reconcile", async () => {
+    vi.mocked(
+      computeAndStoreAgentMessageConsumptionAttribution
+    ).mockResolvedValue(
+      new Err({
+        code: "incomplete_attribution",
+        context: { attributionVersion: 10, completeModel: false },
+      })
+    );
+
+    await expect(
+      storeAgentMessageConsumptionAttributionForMessageActivity(authType, {
+        message,
+      })
+    ).rejects.toThrow(
+      new Error(
+        '[ConsumptionAttribution] Reconciliation failed: incomplete_attribution {"attributionVersion":10,"completeModel":false}'
+      )
+    );
     expect(publishConversationRelatedEvent).not.toHaveBeenCalled();
   });
 });
@@ -118,5 +142,21 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
         message,
       })
     ).rejects.toBe(error);
+  });
+
+  it("throws an Error naming the skip reason when the documents do not add up", async () => {
+    vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
+      new Err({ code: "empty_documents", context: {} })
+    );
+
+    await expect(
+      storeAgentMessageConsumptionAnalyticsActivity(authType, {
+        message,
+      })
+    ).rejects.toThrow(
+      new Error(
+        "[ConsumptionAnalytics] Consumption documents skipped: empty_documents {}"
+      )
+    );
   });
 });
