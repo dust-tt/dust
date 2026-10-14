@@ -15,4 +15,4 @@ pub use id::{InvalidId, ObjectId};
 pub use reference::ObjectRef;
 
 /// Most references one `Stat` request may carry.
-pub const STAT_MAX_REFERENCES: usize = 256;
+pub const STAT_MAX_REFERENCES: usize = 4_096;

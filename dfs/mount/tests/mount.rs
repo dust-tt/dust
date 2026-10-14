@@ -18,7 +18,7 @@ use dfs_api::storage::{
 };
 use dfs_mount::{Errno, Remote};
 use dfs_protocol::{
-    ObjectId, ObjectRef,
+    ObjectId, ObjectRef, STAT_MAX_REFERENCES,
     rpc::{
         AllowGrant, CreateSessionRequest, CreateTenantRequest, DenyGrant, Grant, ObjectKind,
         dfs_client::DfsClient, grant,
@@ -30,7 +30,7 @@ use tonic::{Request, transport::Channel};
 const MASTER_KEY: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const SUBJECT: &str = "u:mount-test";
 /// More than one `Stat` request can carry.
-const MANY_REFERENCES: usize = 300;
+const MANY_REFERENCES: usize = STAT_MAX_REFERENCES + 4;
 
 /// The FDB network boots once per process and cannot restart once stopped, so every mount check
 /// runs under this one test, which holds the guard and drops it before the binary exits.

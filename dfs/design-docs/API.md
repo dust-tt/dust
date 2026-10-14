@@ -420,7 +420,7 @@ Virtual projections are supported.
 
 ```text
 StatRequest {
-  object_ids: ObjectRef[]        // From 1 to 256 references.
+  object_ids: ObjectRef[]        // From 1 to 4096 references.
   include_metadata?: bool       // Defaults to false; true includes ExtendedMetadata.
 }
 ```
