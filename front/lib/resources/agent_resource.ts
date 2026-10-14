@@ -109,6 +109,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type {
@@ -3458,6 +3459,18 @@ export class AgentResource
       description: this.description,
       userFavorite,
     };
+  }
+
+  static toAgentsUsageJSON(agents: AgentResource[]): AgentsUsageType {
+    const usageAgents = agents
+      .map((agent) => ({
+        sId: agent.sId,
+        name: agent.name,
+        pictureUrl: agent.pictureUrl,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return { count: usageAgents.length, agents: usageAgents };
   }
 
   toSearchModelJSON(): Pick<AgentSearchListItemType, "model" | "status"> {

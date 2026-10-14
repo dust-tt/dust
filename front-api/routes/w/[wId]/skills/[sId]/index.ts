@@ -1,3 +1,4 @@
+import { listAgentsUsingSkill } from "@app/lib/api/skills/agents_using_skill";
 import type { SkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
@@ -146,7 +147,7 @@ app.get(
     const serializedSkill = { ...skill.toJSON(auth), isFavorite };
 
     if (withRelations === "true") {
-      const usage = await skill.fetchUsage(auth);
+      const usage = await listAgentsUsingSkill(auth, skill);
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
       const childSkills = await skill.fetchChildSkills(auth);
