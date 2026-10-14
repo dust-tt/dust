@@ -13,8 +13,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ChainedCommands, Editor } from "@tiptap/core";
-import { isTextSelection } from "@tiptap/core";
-import type { EditorState } from "@tiptap/pm/state";
+import { findParentNode, isTextSelection } from "@tiptap/core";
+import type { EditorState, Selection } from "@tiptap/pm/state";
 import { CellSelection } from "@tiptap/pm/tables";
 import { useEditorState } from "@tiptap/react";
 import type { BubbleMenuProps } from "@tiptap/react/menus";
@@ -23,23 +23,18 @@ import { useMemo } from "react";
 
 const TABLE_TOOLBAR_ATTRIBUTE = "data-document-table-toolbar";
 
+const findTable = findParentNode((node) => node.type.name === "table");
+
+const isCellSelection = (selection: Selection): selection is CellSelection =>
+  selection instanceof CellSelection;
+
+const isElement = (node: Node | null): node is Element =>
+  node instanceof Element;
+
 /** Whether the cursor sits in a table without selecting text, which the selection toolbar owns. */
-const isInTable = (state: EditorState) => {
-  const { selection } = state;
-  if (selection instanceof CellSelection) {
-    return true;
-  }
-  if (!isTextSelection(selection) || !selection.empty) {
-    return false;
-  }
-  const { $from } = selection;
-  for (let depth = $from.depth; depth > 0; depth--) {
-    if ($from.node(depth).type.name === "table") {
-      return true;
-    }
-  }
-  return false;
-};
+const isInTable = ({ selection }: EditorState) =>
+  isCellSelection(selection) ||
+  (isTextSelection(selection) && selection.empty && !!findTable(selection));
 
 const isInFirstRow = (state: EditorState) => {
   const { $from } = state.selection;
@@ -64,9 +59,9 @@ const showTableToolbar: NonNullable<BubbleMenuProps["shouldShow"]> = ({
     ));
 
 const tableElement = (editor: Editor) => {
-  const { node } = editor.view.domAtPos(editor.state.selection.from);
-  const element = node instanceof Element ? node : node.parentElement;
-  return element?.closest("table") ?? null;
+  const table = findTable(editor.state.selection);
+  const dom = table ? editor.view.nodeDOM(table.pos) : null;
+  return isElement(dom) ? dom : null;
 };
 
 /** Keeps the editor's selection, and so the toolbar, while a control is pressed. */

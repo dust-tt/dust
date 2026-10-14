@@ -442,7 +442,7 @@ msgstr "Tableau"
 
 #: front/components/editor/document/blocks.ts
 msgid "Rows and columns, with a header row"
-msgstr "Des lignes et des colonnes, avec une ligne d'en-tête"
+msgstr "Des lignes et des colonnes, avec une ligne d’en-tête"
 
 #: front/components/editor/document/blocks.ts
 msgid "Divider"

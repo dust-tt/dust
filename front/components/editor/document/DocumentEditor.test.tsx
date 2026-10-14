@@ -1714,10 +1714,11 @@ describe("Document tables", () => {
     const user = await openTableMenu();
     await user.click(screen.getByRole("menuitem", { name: "Add row below" }));
 
+    const table = editor.state.doc.firstChild;
+    expect(table?.childCount).toBe(3);
+    expect(table?.lastChild?.textContent).toBe("");
     const aligns: unknown[] = [];
-    editor.state.doc.firstChild?.lastChild?.forEach((cell) =>
-      aligns.push(cell.attrs.align)
-    );
+    table?.lastChild?.forEach((cell) => aligns.push(cell.attrs.align));
     expect(aligns).toEqual([null, "right"]);
   });
 
