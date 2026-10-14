@@ -424,7 +424,7 @@ export function recordSaveResult(
 const MAX_CONFLICT_ROUNDS = 3;
 
 /**
- * @cc [owner:tdraier,label:product;concurrency] collab-session-save-conflict
+ * @cc [owner:PopDaph,label:product;concurrency] collab-session-save-conflict
  * A save MUST write the session through `writer` with `saveCollabSession`. When it fails with
  * `revision_conflict`, the file's version MUST be kept with `keepConflictingFile` before the session
  * saves over it: the session's last save becomes the file as now stored, and when a copy was

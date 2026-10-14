@@ -132,7 +132,7 @@ function conflictCopyPath(filePath: string, date: Date, index: number): string {
 }
 
 /**
- * @cc [owner:tdraier,label:product;concurrency;security] collab-session-conflict-copy
+ * @cc [owner:PopDaph,label:product;concurrency;security] collab-session-conflict-copy
  * After a save refused with `revision_conflict`, the file as now stored MUST be kept before
  * anything overwrites it: when its content, read through the codec when the codec accepts it,
  * differs from `last.source`, its exact bytes MUST be written next to it under a new name, only
