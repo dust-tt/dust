@@ -128,10 +128,7 @@ export async function triggerDocumentCommentMentionNotifications(
     newMessage,
   }: { documentPath: string; newMessage: NewCommentMessage }
 ): Promise<Result<void, DustError<"internal_error">>> {
-  const author = auth.user();
-  if (!author) {
-    return new Ok(undefined);
-  }
+  const author = auth.getNonNullableUser();
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const mentionedUserIds = new Set(
