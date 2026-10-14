@@ -30,7 +30,8 @@ pub const NAME_MAX_BYTES: usize = 255;
 /// and neither `.` nor `..`.
 /**
  * @cc [owner:fontanierh,label:api] proto-name-rule
- * `is_valid_name` MUST accept exactly the names `dfs-attribute-name` in `proto/dfs.proto` allows.
+ * `is_valid_name` MUST accept exactly the stored basenames that `dfs-attribute-name` in
+ * `proto/dfs.proto` allows for real non-root objects.
  */
 pub fn is_valid_name(name: &str) -> bool {
     !name.is_empty()
