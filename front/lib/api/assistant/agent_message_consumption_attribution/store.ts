@@ -584,6 +584,9 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     includeUnavailable: true,
     runs,
   });
+  if (billedCredits === null && usages.every(isUnavailableRunUsage)) {
+    return new Ok({});
+  }
   const unconsumedToolResultRunUsageModelIds =
     runUsageModelIdsWithUnconsumedToolResults({ runs, status, usages });
 
@@ -738,10 +741,16 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
 
 /**
  * @cc [owner:sfriquet,label:product;backend] reconcile-current-version-or-fail
- * For a message with a tracked status and runs, the items of
- * `AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION` MUST reconcile against the message's bill,
- * otherwise the result MUST be an `Err` carrying the allocation skip reason. An older attribution
- * version MUST NOT be reconciled in their place.
+ * For a message with a tracked status and runs, other than one skipped by
+ * `unbilled-unavailable-calls-skipped`, the items of `AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION`
+ * MUST reconcile against the message's bill, otherwise the result MUST be an `Err` carrying the
+ * allocation skip reason. An older attribution version MUST NOT be reconciled in their place.
+ */
+/**
+ * @cc [owner:sfriquet,label:product;backend] unbilled-unavailable-calls-skipped
+ * When the message's `costCredits` is null and every one of its run usages is `unavailable`, the
+ * result MUST be `Ok` with no consumption update, and no item MUST be written. A null
+ * `costCredits` alongside a reported run usage MUST fail with `no_billed_credits`.
  */
 /**
  * @cc [owner:sfriquet,label:product;backend] failed-reconciliation-keeps-evidence

@@ -519,6 +519,49 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input).toBeNull();
   });
 
+  it("returns null when only unavailable model calls ran and nothing was billed", async () => {
+    const context = await setupSettledMessage();
+    const { run } = await RunFactory.createWithUnavailableUsage(context.auth);
+    await AgentMessageModel.update(
+      { costCredits: null, runIds: [run.dustRunId] },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).toBeNull();
+  });
+
+  it("loads a reported model call that was never billed", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      { costCredits: null },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).toMatchObject({
+      usages: [{ runModelId: context.run.id }],
+    });
+  });
+
   it("loads a failed message that was billed before it failed", async () => {
     const context = await setupSettledMessage();
     await AgentMessageModel.update(
