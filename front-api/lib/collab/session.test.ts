@@ -2,6 +2,7 @@ import {
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
+import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import { toSessionName } from "@app/types/collab";
 import { Ok } from "@app/types/shared/result";
 import {
@@ -179,6 +180,94 @@ describe("readSessionSource and writeSessionSource", () => {
     const [[writer, live]] = vi.mocked(saveCollabSession).mock.calls;
     expect(writer).toBe(agent);
     expect(live.comments.map(({ id }) => id)).toEqual(["c1"]);
+  });
+
+  it("save replies through the latest one to change the threads when nobody changed the text", async () => {
+    const reply = (text: string, at: string) =>
+      `::message{author=agent:agt_1 name="Agent" at=${at}}\n\n${text}\n`;
+    const withReplies = (...replies: string[]) =>
+      THREAD_SOURCE.replace(/:::\n$/, `${replies.join("\n")}:::\n`);
+    vi.mocked(loadCollabSession).mockImplementation(async () => {
+      const content = dfmToYDoc(THREAD_SOURCE);
+      if (content.isErr()) {
+        throw new Error(content.error);
+      }
+      return new Ok({
+        content: content.value,
+        lastSave: { revision: "1", source: THREAD_SOURCE },
+      });
+    });
+    const hocuspocus = createCollabHocuspocus();
+    const { agent, reader, name } = await collabAccesses();
+    const other = { ...agent, auth: (await collabAccess(true)).auth };
+    vi.useFakeTimers();
+    await hocuspocus.openDirectConnection(name, reader);
+
+    const first = withReplies(reply("First.", "2026-10-05T12:01:00.000Z"));
+    expect(
+      await writeSessionSource(hocuspocus, {
+        file: agent,
+        base: await openSource(hocuspocus, name),
+        source: first,
+      })
+    ).toEqual(new Ok("written"));
+    expect(
+      await writeSessionSource(hocuspocus, {
+        file: other,
+        base: await openSource(hocuspocus, name),
+        source: withReplies(
+          reply("First.", "2026-10-05T12:01:00.000Z"),
+          reply("Second.", "2026-10-05T12:02:00.000Z")
+        ),
+      })
+    ).toEqual(new Ok("written"));
+
+    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
+    const [writer] = vi.mocked(saveCollabSession).mock.calls.at(-1) ?? [];
+    expect(writer).toBe(other);
+  });
+
+  it("keep the latest one to change the threads when a write changes nothing", async () => {
+    vi.mocked(loadCollabSession).mockImplementation(async () => {
+      const content = dfmToYDoc(THREAD_SOURCE);
+      if (content.isErr()) {
+        throw new Error(content.error);
+      }
+      return new Ok({
+        content: content.value,
+        lastSave: { revision: "1", source: THREAD_SOURCE },
+      });
+    });
+    const hocuspocus = createCollabHocuspocus();
+    const { agent, reader, name } = await collabAccesses();
+    const other = { ...agent, auth: (await collabAccess(true)).auth };
+    vi.useFakeTimers();
+    await hocuspocus.openDirectConnection(name, reader);
+
+    const replied = THREAD_SOURCE.replace(
+      /:::\n$/,
+      '::message{author=agent:agt_1 name="Agent" at=2026-10-05T12:01:00.000Z}\n\nFirst.\n:::\n'
+    );
+    expect(
+      await writeSessionSource(hocuspocus, {
+        file: agent,
+        base: await openSource(hocuspocus, name),
+        source: replied,
+      })
+    ).toEqual(new Ok("written"));
+    // The same source written back changes nothing, so it must not make `other` the commenter.
+    const unchanged = await openSource(hocuspocus, name);
+    expect(
+      await writeSessionSource(hocuspocus, {
+        file: other,
+        base: unchanged,
+        source: unchanged,
+      })
+    ).toEqual(new Ok("written"));
+
+    await vi.advanceTimersByTimeAsync(hocuspocus.configuration.maxDebounce);
+    const [writer] = vi.mocked(saveCollabSession).mock.calls.at(-1) ?? [];
+    expect(writer).toBe(agent);
   });
 
   it("keep applying writes after one that throws", async () => {
