@@ -106,10 +106,10 @@ function replaceInBody({
   });
 }
 
-function anchorIds(body: string): string[] | null {
+function anchorIds(body: string): Set<string> | null {
   const anchors = extractAnchors(body);
   return anchors.isOk()
-    ? anchors.value.anchors.map(({ id }) => id).sort()
+    ? new Set(anchors.value.anchors.map(({ id }) => id))
     : null;
 }
 
@@ -193,7 +193,7 @@ export async function editAgentDocument(
       if (
         anchorsAfter === null ||
         anchorsBefore === null ||
-        anchorsAfter.some((id) => !anchorsBefore.includes(id))
+        [...anchorsAfter].some((id) => !anchorsBefore.has(id))
       ) {
         return new Err(
           new DfmAgentDocumentError(
@@ -203,7 +203,7 @@ export async function editAgentDocument(
           )
         );
       }
-      if (anchorsAfter.length !== anchorsBefore.length) {
+      if (anchorsAfter.size !== anchorsBefore.size) {
         return new Err(
           new DfmAgentDocumentError(
             "anchors_removed",
