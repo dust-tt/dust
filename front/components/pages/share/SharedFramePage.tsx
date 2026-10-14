@@ -26,6 +26,35 @@ function buildLoginUrl() {
   return `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
+// Tracks the open once the frame successfully loads, not again when it is refetched.
+function useTrackSharedFrameOpen({
+  frameId,
+  workspaceId,
+  requiresEmailVerification,
+}: {
+  frameId: string | null;
+  workspaceId: string | null;
+  requiresEmailVerification: boolean;
+}) {
+  const trackedFrameIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!frameId || !workspaceId || trackedFrameIdRef.current === frameId) {
+      return;
+    }
+    trackedFrameIdRef.current = frameId;
+    // Viewers are often anonymous, so the workspace is not attached to the event on its own.
+    trackFrameOpen({
+      frameId,
+      origin: { source: "user", uiElement: "shared_link" },
+      location: { type: "public_share" },
+      extra: {
+        workspace_id: workspaceId,
+        requires_email_verification: requiresEmailVerification,
+      },
+    });
+  }, [frameId, workspaceId, requiresEmailVerification]);
+}
+
 /**
  * @cc [owner:flvndvd,label:react] shared-frame-theme-context
  * Shared Frame content MUST have theme context even without the authenticated app layout,
@@ -71,28 +100,11 @@ export function SharedFramePage() {
     shareToken: shareMetadata ? token : null,
   });
 
-  // Track the open once the frame successfully loads, not again when it is refetched.
-  const trackedFrameIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      !frameMetadata ||
-      !shareMetadata ||
-      trackedFrameIdRef.current === frameMetadata.sId
-    ) {
-      return;
-    }
-    trackedFrameIdRef.current = frameMetadata.sId;
-    // Viewers are often anonymous, so the workspace is not attached to the event on its own.
-    trackFrameOpen({
-      frameId: frameMetadata.sId,
-      origin: { source: "user", uiElement: "shared_link" },
-      location: { type: "public_share" },
-      extra: {
-        workspace_id: shareMetadata.workspaceId,
-        requires_email_verification: shareMetadata.requiresEmailVerification,
-      },
-    });
-  }, [frameMetadata, shareMetadata]);
+  useTrackSharedFrameOpen({
+    frameId: frameMetadata?.sId ?? null,
+    workspaceId: shareMetadata?.workspaceId ?? null,
+    requiresEmailVerification: !!shareMetadata?.requiresEmailVerification,
+  });
 
   // Show the email form when:
   // 1. Metadata says the scope requires email verification, AND

@@ -410,9 +410,12 @@ export function ConversationSidePanelProvider({
 
   // Called only when a Frame replaces what the panel showed: refreshes and republishes of the shown
   // Frame, and going back to one through the history, are not opens. Reads the conversation from a
-  // ref so a conversation switch does not re-run the effects that depend on it.
+  // ref so a conversation switch does not re-run the effects that depend on it. The ref is synced in
+  // an effect declared before those effects, so they read the current conversation.
   const activeConversationIdRef = React.useRef(activeConversationId);
-  activeConversationIdRef.current = activeConversationId;
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
   const trackFrameOpenInConversation = useCallback(
     (params: OpenPanelParams) => {
       const conversationId = activeConversationIdRef.current;
