@@ -6,6 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
+import type { KnownModelLLMId, ModelProviderId } from "./model_ids";
 import {
   NotificationInteractiveContentFileContentSchema,
   OAuthProviderSchema,
@@ -14,19 +15,15 @@ import {
 import { CallToolResultSchema, ContentBlockSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
-const ModelProviderIdSchema = FlexibleEnumSchema<
-  | "openai"
-  | "anthropic"
-  | "mistral"
-  | "google_ai_studio"
-  | "deepseek"
-  | "fireworks"
-  | "xai"
-  | "noop"
-  | "auto"
-  | "auto_fast"
-  | "auto_complex"
->();
+export type { KnownModelLLMId, ModelProviderId } from "./model_ids";
+export {
+  canonicalizeKnownModelLLMId,
+  getProviderIdForKnownModelId,
+  isKnownModelLLMId,
+  KNOWN_MODEL_LLM_IDS,
+} from "./model_ids";
+
+const ModelProviderIdSchema = FlexibleEnumSchema<ModelProviderId>();
 
 // Model labs a workspace whitelists. "fireworks" is a host, not a lab.
 const WhitelistableModelMakerIdSchema = FlexibleEnumSchema<
@@ -45,111 +42,6 @@ const WhitelistableModelMakerIdSchema = FlexibleEnumSchema<
   | "minimax"
   | "thinking_machines"
 >();
-
-export type KnownModelLLMId =
-  | "gpt-3.5-turbo"
-  | "gpt-4-turbo"
-  | "gpt-4o-2024-08-06"
-  | "gpt-4o"
-  | "gpt-4o-mini"
-  | "gpt-4.1-2025-04-14"
-  | "gpt-4.1-mini-2025-04-14"
-  | "gpt-5.1"
-  | "gpt-5.2"
-  | "gpt-5.4"
-  | "gpt-5.5"
-  | "gpt-6-astra"
-  | "gpt-5.6-sol"
-  | "gpt-5.6-terra"
-  | "gpt-5.6-terra-long-context"
-  | "gpt-5.6-luna"
-  | "gpt-6-luna"
-  | "gpt-6-sol"
-  | "gpt-6.1-sol"
-  | "gpt-5.4-mini"
-  | "gpt-5.4-nano"
-  | "gpt-5-nano"
-  | "gpt-5-mini"
-  | "gpt-5"
-  | "o1"
-  | "o1-mini"
-  | "o3"
-  | "o3-mini"
-  | "o4-mini"
-  | "claude-3-5-haiku-20241022"
-  | "claude-3-5-sonnet-20240620"
-  | "claude-3-5-sonnet-20241022"
-  | "claude-3-7-sonnet-20250219"
-  | "claude-3-haiku-20240307"
-  | "claude-3-opus-20240229"
-  | "claude-4-opus-20250514"
-  | "claude-4-sonnet-20250514"
-  | "claude-haiku-4-5-20251001"
-  | "claude-sonnet-4-5-20250929"
-  | "claude-opus-4-5-20251101"
-  | "claude-opus-4-6"
-  | "claude-opus-4-7"
-  | "claude-opus-4-8"
-  | "claude-opus-5"
-  | "claude-opus-5-5"
-  | "claude-fable-5"
-  | "claude-fable-5-1"
-  | "claude-sonnet-4-6"
-  | "claude-sonnet-5"
-  | "claude-sonnet-5-5"
-  | "claude-haiku-5-5"
-  | "mistral-large-latest"
-  | "mistral-large-4"
-  | "mistral-medium"
-  | "mistral-medium-3-5"
-  | "mistral-small-latest"
-  | "codestral-latest"
-  | "gemini-2.5-pro"
-  | "gemini-2.5-flash"
-  | "gemini-2.5-flash-lite"
-  | "gemini-3.1-flash-lite"
-  | "gemini-3.1-flash-lite-preview"
-  | "gemini-3-pro-preview"
-  | "gemini-3.1-pro-preview"
-  | "gemini-3-flash-preview"
-  | "gemini-3.5-flash"
-  | "gemini-3.5-flash-lite"
-  | "gemini-3.6-flash"
-  | "gemini-3.7-flash"
-  | "gemini-3.8-flash"
-  | "gemini-4-argon"
-  | "deepseek-chat" // deepseek api
-  | "accounts/fireworks/models/deepseek-v3p2" // fireworks
-  | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
-  | "accounts/fireworks/models/deepseek-v4-pro-0813" // fireworks
-  | "accounts/fireworks/models/deepseek-v4-flash-0731" // fireworks
-  | "accounts/fireworks/models/deepseek-v4p1-flash" // fireworks
-  | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
-  | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
-  | "accounts/fireworks/models/kimi-k2p5" // fireworks
-  | "accounts/fireworks/models/kimi-k2p6" // fireworks
-  | "accounts/fireworks/models/kimi-k3" // fireworks
-  | "accounts/fireworks/models/minimax-m2p5" // fireworks
-  | "accounts/fireworks/models/glm-5" // fireworks
-  | "accounts/fireworks/models/glm-5p2" // fireworks
-  | "accounts/fireworks/models/glm-5p3" // fireworks
-  | "accounts/fireworks/models/glm-5p3-flash" // fireworks
-  | "accounts/fireworks/models/inkling" // fireworks
-  | "grok-3-latest" // xAI
-  | "grok-3-mini-latest" // xAI
-  | "grok-4.5" // xAI
-  | "grok-4.6" // xAI
-  | "grok-4.7" // xAI
-  | "grok-4-latest" // xAI
-  | "grok-4-fast-non-reasoning-latest"
-  | "grok-4-fast-reasoning-latest"
-  | "grok-4-1-fast-non-reasoning-latest"
-  | "grok-4-1-fast-reasoning-latest"
-  | "simulated-failure-model" // Internal synthetic failure model
-  | "noop" // Noop
-  | "auto" // Auto
-  | "auto_fast" // Fast stream tier
-  | "auto_complex"; // Complex stream tier
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
