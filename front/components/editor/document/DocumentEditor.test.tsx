@@ -33,7 +33,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -133,10 +133,14 @@ async function renderDocument(
     verifyCommentMessage,
     commentInputExtensions,
     answer,
+    resolveImageSource = NO_IMAGE_SOURCE,
+    readOnly,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
     answer?: SessionAnswer;
+    resolveImageSource?: DocumentProps["resolveImageSource"];
+    readOnly?: boolean;
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -152,7 +156,8 @@ async function renderDocument(
       renderCommentBody={(body) => <p>{body}</p>}
       verifyCommentMessage={verifyCommentMessage}
       commentInputExtensions={commentInputExtensions}
-      resolveImageSource={NO_IMAGE_SOURCE}
+      resolveImageSource={resolveImageSource}
+      readOnly={readOnly}
       collabView={{
         status: "live",
         binding: {
@@ -162,7 +167,7 @@ async function renderDocument(
             awareness: null,
             user: CollabUserFactory.build(),
             comments: session.channel,
-            resolveImageSource: NO_IMAGE_SOURCE,
+            resolveImageSource,
           }),
           connected: true,
           comments: session.channel,
@@ -1194,6 +1199,149 @@ describe("Document images", () => {
     expect(
       within(dom).getByRole("img", { name: "Chart" }).getAttribute("src")
     ).toBe("https://new.test/pod-abc/chart.png");
+  });
+});
+
+describe("Document image menu", () => {
+  // The width slider measures itself.
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const SOURCE_WITH_IMAGES =
+    "![Chart](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n";
+
+  const renderImages = async ({
+    readOnly = false,
+    initialContent = SOURCE_WITH_IMAGES,
+  } = {}) => {
+    const { dom } = await renderDocument(initialContent, {
+      readOnly,
+      resolveImageSource: (src) => `https://files.test/${src}`,
+    });
+    return dom;
+  };
+
+  const hoverImage = (dom: HTMLElement, name: string) => {
+    const image = within(dom).getByRole("img", { name });
+    fireEvent.mouseOver(image);
+    return image;
+  };
+
+  it("shows when an image is hovered and hides when the pointer leaves it", async () => {
+    const dom = await renderImages();
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+
+    const image = hoverImage(dom, "Chart");
+    expect(screen.getByRole("toolbar", { name: "Image" })).toBeInTheDocument();
+
+    fireEvent.mouseOut(image, { relatedTarget: dom });
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+  });
+
+  it("stays while the pointer moves from the image onto it", async () => {
+    const dom = await renderImages();
+    const image = hoverImage(dom, "Chart");
+    const menu = screen.getByRole("toolbar", { name: "Image" });
+
+    fireEvent.mouseOut(image, { relatedTarget: menu });
+    expect(screen.getByRole("toolbar", { name: "Image" })).toBeInTheDocument();
+  });
+
+  it("removes only the hovered image, as one undoable edit", async () => {
+    const dom = await renderImages();
+    const before: JSONContent = dom.editor.getJSON();
+    hoverImage(dom, "Logo");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+
+    expect(dom.editor.getJSON()).toEqual({
+      ...before,
+      content: before.content?.map((block) => ({
+        ...block,
+        content: block.content?.filter(
+          (node) => !(node.type === "image" && node.attrs?.alt === "Logo")
+        ),
+      })),
+    });
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getJSON()).toEqual(before);
+  });
+
+  it("undoes a resize and a removal right after it one at a time", async () => {
+    const dom = await renderImages({
+      initialContent:
+        "![Chart|400](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n",
+    });
+    hoverImage(dom, "Chart");
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Image width" }), {
+      key: "Home",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+    expect(dom.editor.getMarkdown()).not.toContain("Chart");
+
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|64](pod-abc/chart.png)"
+    );
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|400](pod-abc/chart.png)"
+    );
+  });
+
+  it("resizes the hovered image with the slider, and back to its original size", async () => {
+    const dom = await renderImages({
+      initialContent:
+        "![Chart|400](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n",
+    });
+    hoverImage(dom, "Chart");
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Image width" }), {
+      key: "Home",
+    });
+
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|64](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)"
+    );
+    expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
+      "64px"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Original size" }));
+
+    expect(dom.editor.getMarkdown()).toContain("![Chart](pod-abc/chart.png)");
+    expect(screen.queryByRole("button", { name: "Original size" })).toBeNull();
+    expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
+      ""
+    );
+  });
+
+  it("does not show in a read-only document", async () => {
+    const dom = await renderImages({ readOnly: true });
+
+    hoverImage(dom, "Chart");
+
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
   });
 });
 
