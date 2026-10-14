@@ -13,8 +13,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
+import { yUndoPluginKey } from "@tiptap/y-tiptap";
 import type React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { UndoManager } from "yjs";
 
 const MIN_IMAGE_WIDTH_PX = 64;
 const MENU_INSET_PX = 8;
@@ -38,6 +40,21 @@ const imagePosition = (editor: Editor, image: HTMLImageElement) => {
     : null;
 };
 
+// The collaboration history merges edits made within half a second into one undo step.
+const asOwnUndoStep = (editor: Editor, edit: () => void) => {
+  const undoManager: unknown = yUndoPluginKey.getState(
+    editor.state
+  )?.undoManager;
+  const stopCapturing = () => {
+    if (undoManager instanceof UndoManager) {
+      undoManager.stopCapturing();
+    }
+  };
+  stopCapturing();
+  edit();
+  stopCapturing();
+};
+
 interface DocumentImageMenuProps {
   editor: Editor;
 }
@@ -47,8 +64,9 @@ interface DocumentImageMenuProps {
  * In an editable document, hovering an image MUST show, at its top right, a menu with a width
  * slider, an action back to the original size once the image has a width, and an action to
  * remove it. Dragging the slider MUST preview the width and save it once, on release, so each
- * action is one undoable edit that changes only the hovered image. The menu MUST stay while the
- * pointer is on it or the slider is dragged, and hide otherwise.
+ * action is its own undoable edit, never merged with the edits around it, that changes only the
+ * hovered image. A drag ending without a change MUST restore the image's width. The menu MUST stay
+ * while the pointer is on it or the slider is dragged, and hide otherwise.
  */
 export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
   const { t } = useLingui();
@@ -140,13 +158,15 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
     if (pos === null) {
       return;
     }
-    editor
-      .chain()
-      .command(({ tr }) => {
-        tr.setNodeAttribute(pos, "width", nextWidth);
-        return true;
-      })
-      .run();
+    asOwnUndoStep(editor, () =>
+      editor
+        .chain()
+        .command(({ tr }) => {
+          tr.setNodeAttribute(pos, "width", nextWidth);
+          return true;
+        })
+        .run()
+    );
     // The image is drawn again with its new width.
     const resized = editor.view.nodeDOM(pos);
     setImage(isDocumentImage(resized) ? resized : null);
@@ -159,15 +179,25 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
     }
   };
 
+  // A drag ending on the width it started from commits nothing.
+  const endPreview = () => {
+    setDraftWidth(null);
+    if (image) {
+      image.style.width = width !== null ? `${width}px` : "";
+    }
+  };
+
   const remove = () => {
     if (pos === null) {
       return;
     }
-    editor
-      .chain()
-      .focus()
-      .deleteRange({ from: pos, to: pos + 1 })
-      .run();
+    asOwnUndoStep(editor, () =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: pos, to: pos + 1 })
+        .run()
+    );
     setImage(null);
   };
 
@@ -197,6 +227,8 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
                 value={[sliderWidth]}
                 onValueChange={([nextWidth]) => previewWidth(nextWidth)}
                 onValueCommit={([nextWidth]) => setWidth(nextWidth)}
+                onPointerUp={endPreview}
+                onPointerCancel={endPreview}
                 ariaLabel={t`Image width`}
                 showValueTooltip
                 formatValue={(value) => t`${value} px`}

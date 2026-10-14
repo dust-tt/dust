@@ -620,6 +620,7 @@ describe("saveDfm", () => {
       "![Chart\\|2024](pod-abc/chart.png)\n",
       "![Chart|2024|400](pod-abc/chart.png)\n",
       "![Chart|0](pod-abc/chart.png)\n",
+      "![C:\\\\|400](pod-abc/chart.png)\n",
     ]) {
       expect(roundTrip(source)).toBe(source);
     }
@@ -637,6 +638,10 @@ describe("saveDfm", () => {
     expect(image("![Chart|0](pod-abc/chart.png)\n")).toMatchObject({
       alt: "Chart|0",
       width: null,
+    });
+    expect(image("![C:\\\\|400](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "C:\\",
+      width: 400,
     });
   });
 
@@ -665,6 +670,9 @@ describe("saveDfm", () => {
     );
     expect(save({ alt: "Chart|2024", width: null })).toEqual(
       new Ok("![Chart\\|2024](pod-abc/chart.png)\n")
+    );
+    expect(save({ alt: "C:\\", width: 400 })).toEqual(
+      new Ok("![C:\\\\|400](pod-abc/chart.png)\n")
     );
   });
 

@@ -15,8 +15,11 @@ export interface DocumentImageOptions {
 const escapeAlt = (alt: string) => alt.replace(/[\\[\]]/g, "\\$&");
 
 // The width follows the alt text after a pipe, as Obsidian writes it: `![Chart|400](chart.png)`.
-// Alt text that itself ends with a pipe and digits escapes that pipe.
-const ALT_WITH_WIDTH = /^([\s\S]*?)(\\?)\|([1-9]\d*)$/;
+// Alt text that itself ends with a pipe and digits escapes that pipe. The parser keeps the
+// backslashes `escapeAlt` doubles, so an odd run of them before the pipe escapes it.
+const ALT_WITH_WIDTH = /^([\s\S]*?)(\\*)\|([1-9]\d*)$/;
+
+const unescapeBackslashes = (alt: string) => alt.replace(/\\\\/g, "\\");
 
 const altWithWidth = (alt: string, width: number | null) =>
   width !== null
@@ -28,10 +31,14 @@ const parseAltWithWidth = (
 ): { alt: string; width: number | null } => {
   const match = ALT_WITH_WIDTH.exec(text);
   if (!match) {
-    return { alt: text, width: null };
+    return { alt: unescapeBackslashes(text), width: null };
   }
-  const [, alt, escaped, width] = match;
-  return escaped
+  const [, before, backslashes, width] = match;
+  const escapedPipe = backslashes.length % 2 === 1;
+  const alt = unescapeBackslashes(
+    before + backslashes.slice(0, escapedPipe ? -1 : undefined)
+  );
+  return escapedPipe
     ? { alt: `${alt}|${width}`, width: null }
     : { alt, width: Number(width) };
 };

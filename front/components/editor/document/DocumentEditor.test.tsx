@@ -33,7 +33,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1239,7 +1239,7 @@ describe("Document image menu", () => {
     return image;
   };
 
-  it("shows over a hovered image and hides when the pointer leaves it", async () => {
+  it("shows when an image is hovered and hides when the pointer leaves it", async () => {
     const dom = await renderImages();
     expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
 
@@ -1261,17 +1261,52 @@ describe("Document image menu", () => {
 
   it("removes only the hovered image, as one undoable edit", async () => {
     const dom = await renderImages();
+    const before: JSONContent = dom.editor.getJSON();
     hoverImage(dom, "Logo");
 
     fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
 
-    expect(dom.editor.getMarkdown()).not.toContain("Logo");
-    expect(dom.editor.getMarkdown()).toContain("![Chart](pod-abc/chart.png)");
+    expect(dom.editor.getJSON()).toEqual({
+      ...before,
+      content: before.content?.map((block) => ({
+        ...block,
+        content: block.content?.filter(
+          (node) => !(node.type === "image" && node.attrs?.alt === "Logo")
+        ),
+      })),
+    });
     expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
     act(() => {
       dom.editor.commands.undo();
     });
-    expect(dom.editor.getMarkdown()).toContain("![Logo](pod-abc/logo.png)");
+    expect(dom.editor.getJSON()).toEqual(before);
+  });
+
+  it("undoes a resize and a removal right after it one at a time", async () => {
+    const dom = await renderImages({
+      initialContent:
+        "![Chart|400](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n",
+    });
+    hoverImage(dom, "Chart");
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Image width" }), {
+      key: "Home",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+    expect(dom.editor.getMarkdown()).not.toContain("Chart");
+
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|64](pod-abc/chart.png)"
+    );
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|400](pod-abc/chart.png)"
+    );
   });
 
   it("resizes the hovered image with the slider, and back to its original size", async () => {
