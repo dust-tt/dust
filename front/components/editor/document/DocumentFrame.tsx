@@ -51,9 +51,10 @@ export const DocumentFrameDisplay = ({
 /**
  * @cc [owner:tdraier,label:product] document-frame-menu
  * In an editable document, hovering a Frame MUST show, at its top right, a menu with a height
- * slider and an action to remove it. Dragging the slider MUST preview the height and save it once,
- * on release, so each action is its own undoable edit, never merged with the edits around it, that
- * changes only the hovered Frame. A drag ending without a change MUST restore the Frame's height.
+ * slider from 200px to 1600px and an action to remove it that leaves the editor focused. Dragging
+ * the slider MUST preview the height and save it once, on release, so each action is its own
+ * undoable edit, never merged with the edits around it, that changes only the hovered Frame. A
+ * drag ending without a change MUST restore the Frame's height.
  * The menu MUST stay while the pointer is on the Frame or the slider is dragged, and hide otherwise.
  */
 const DocumentFrameView = ({
@@ -87,7 +88,10 @@ const DocumentFrameView = ({
           onPreviewHeight={setDraftHeight}
           onEndPreview={() => setDraftHeight(null)}
           onCommitHeight={commitHeight}
-          onRemove={() => asOwnUndoStep(editor, deleteNode)}
+          onRemove={() => {
+            asOwnUndoStep(editor, deleteNode);
+            editor.commands.focus();
+          }}
         />
       )}
     </NodeViewWrapper>

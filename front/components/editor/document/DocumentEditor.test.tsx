@@ -1755,6 +1755,7 @@ describe("Document Frame menu", () => {
     expect(dom.editor.getMarkdown()).toContain(
       '::embed_frame{path="pod-abc/a.tsx" height="400"}'
     );
+    await waitFor(() => expect(document.activeElement).toBe(dom));
     act(() => {
       dom.editor.commands.undo();
     });
@@ -1765,9 +1766,11 @@ describe("Document Frame menu", () => {
     const dom = await renderFrames();
     hoverFrame(dom, "pod-abc/b.tsx");
 
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Frame height" }), {
-      key: "Home",
-    });
+    const slider = screen.getByRole("slider", { name: "Frame height" });
+    expect(slider).toHaveAttribute("aria-valuemin", "200");
+    expect(slider).toHaveAttribute("aria-valuemax", "1600");
+
+    fireEvent.keyDown(slider, { key: "Home" });
 
     expect(dom.editor.getMarkdown()).toContain(
       '::embed_frame{path="pod-abc/b.tsx" height="200"}'
