@@ -268,7 +268,6 @@ async function reconcileStoredItems(
     actions,
     billedCredits: creditContext.previousCostCredits,
     dustRunIds,
-    hasUnbilledExecution: false,
     items,
     runs,
     usages,

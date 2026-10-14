@@ -119,7 +119,6 @@ describe("buildLlmConsumptionDocuments", () => {
       actions: input.actions,
       billedCredits: 5,
       dustRunIds: input.dustRunIds,
-      hasUnbilledExecution: false,
       items: input.items,
       runs: input.runs,
       usages: input.usages,
