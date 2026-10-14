@@ -66,6 +66,7 @@ describe("SkillResource audit logs", () => {
     const pendingRes = await SkillResource.createPending(auth);
     assert(pendingRes.isOk());
     const skill = pendingRes.value;
+    expect(skill.source).toBe("agent");
     expect(emittedActions()).toEqual([]);
 
     await skill.updateSkill(
