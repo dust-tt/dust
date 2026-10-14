@@ -53,16 +53,26 @@ const columnAlignment = (table: JSONContent, column: number) =>
     .find(isColumnAlignment);
 
 /** `table` with every cell aligned as its column is written: as the first aligned cell in it. */
-export const withColumnAlignments = (table: JSONContent): JSONContent => ({
-  ...table,
-  content: table.content?.map((row) => ({
-    ...row,
-    content: row.content?.map((cell, column) => ({
-      ...cell,
-      attrs: { ...cell.attrs, align: columnAlignment(table, column) ?? null },
+export const withColumnAlignments = (table: JSONContent): JSONContent => {
+  const width = Math.max(
+    0,
+    ...(table.content ?? []).map((row) => row.content?.length ?? 0)
+  );
+  const alignments = Array.from(
+    { length: width },
+    (_, column) => columnAlignment(table, column) ?? null
+  );
+  return {
+    ...table,
+    content: table.content?.map((row) => ({
+      ...row,
+      content: row.content?.map((cell, column) => ({
+        ...cell,
+        attrs: { ...cell.attrs, align: alignments[column] },
+      })),
     })),
-  })),
-});
+  };
+};
 
 const UNESCAPED_PIPE = /(?<!\\)\|/;
 
