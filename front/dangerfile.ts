@@ -133,21 +133,21 @@ function checkSSESharedModelsLabel() {
 
 function failCollabSharedFilesAck() {
   fail(
-    "Code both the co-edition editor in the browser and the `front-collab` server run has " +
-      "been modified: the editor schema and its Markdown, the DFM codec or the collab protocol.\n\n" +
+    "Code the `front-collab` server runs has been modified: the editor schema and its " +
+      "Markdown, the DFM codec, comment signatures and mentions, or the collab protocol.\n\n" +
       `Please add the \`${collabAckLabel}\` label to acknowledge ` +
-      "that a `front-collab` deploy is required alongside the `front` deploy."
+      "that this change requires a `front-collab` deploy."
   );
 }
 
 function warnCollabSharedFilesAck(collabAckLabel: string) {
   warn(
-    "Code shared by the co-edition editor and `front-collab` has been modified and the PR has " +
-      "the `" +
+    "Code the `front-collab` server runs has been modified and the PR has the `" +
       collabAckLabel +
-      "` label. Don't forget to deploy `front-collab` alongside `front`. When the editor " +
-      "schema changes, deploy `front` first: a browser on the previous schema deletes the " +
-      "nodes it does not know from the shared document."
+      "` label. Don't forget to deploy `front-collab`, with the SPA when the editor's code " +
+      "changed. Neither deploy order is safe for a change to the editor schema: it must stay " +
+      "readable by the previous version, so ship reading a new node before letting anyone " +
+      "create it."
   );
 }
 
@@ -691,19 +691,36 @@ async function checkDiffFiles() {
     checkSSESharedModelsLabel();
   }
 
-  // Code the co-edition editor shares with the front-collab server — the editor schema and its
-  // Markdown, the DFM codec and the collab protocol — requires a front-collab deploy too.
-  const collabSharedPaths = [
-    "front/components/editor/document/",
+  // Code the front-collab server runs: the editor schema and its Markdown, the DFM codec,
+  // comment signatures and mentions, and the collab protocol. Schema files are listed one by
+  // one, since most of the editor's code runs only in the browser.
+  const collabSharedFiles = [
+    "front/components/editor/document/content.ts",
+    "front/components/editor/document/dfm_persistence.ts",
+    "front/components/editor/document/DocumentAnchors.ts",
+    "front/components/editor/document/DocumentCommentAnchor.ts",
+    "front/components/editor/document/DocumentComments.ts",
+    "front/components/editor/document/DocumentImage.ts",
+    "front/components/editor/document/DocumentTable.ts",
+    "front/components/editor/document/extensions.ts",
+    "front/components/editor/document/marked_instance.ts",
+    "front/lib/api/documents/comment_mentions.ts",
+    "front/lib/api/documents/comment_signatures.ts",
+    "front/types/collab.ts",
+    "front/types/collab_internal.ts",
+    "front-api/collab_server.ts",
+  ];
+  const collabSharedDirectories = [
     "front/lib/markdown/dfm/",
     "front/lib/api/collab/",
     "front-api/lib/collab/",
   ];
   const modifiedCollabSharedFiles = diffFiles.filter(
     (path) =>
-      collabSharedPaths.some((prefix) => path.startsWith(prefix)) &&
-      path.endsWith(".ts") &&
-      !path.endsWith(".test.ts")
+      collabSharedFiles.includes(path) ||
+      (collabSharedDirectories.some((prefix) => path.startsWith(prefix)) &&
+        path.endsWith(".ts") &&
+        !path.endsWith(".test.ts"))
   );
   if (modifiedCollabSharedFiles.length > 0) {
     checkCollabSharedFilesLabel();
