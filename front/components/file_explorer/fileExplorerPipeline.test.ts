@@ -461,4 +461,57 @@ describe("getFileExplorerPipeline type filters", () => {
       },
     ]);
   });
+
+  it("keeps Frame package internals opaque under flat Code and Frames filters", () => {
+    const files = [
+      withVirtualExplorerPath(
+        frameManifest("pod-p1/apps/status/manifest.json"),
+        "pod"
+      ),
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/status/index.tsx", "index.tsx", {
+          contentType: "text/typescript",
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(
+        mountFile("pod-p1/apps/status/functions/foo.ts", "foo.ts", {
+          contentType: "text/typescript",
+        }),
+        "pod"
+      ),
+      withVirtualExplorerPath(
+        mountFile("pod-p1/notes.ts", "notes.ts", {
+          contentType: "text/typescript",
+        }),
+        "pod"
+      ),
+    ];
+
+    const frames = getFileExplorerPipeline({
+      activeFilter: "frames",
+      contentNodes: [],
+      currentFolderPath: "",
+      displayFramePackages: true,
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+    expect(frames.sortedNodes.map((n) => n.path)).toEqual(["pod/apps/status"]);
+
+    const code = getFileExplorerPipeline({
+      activeFilter: "code",
+      contentNodes: [],
+      currentFolderPath: "",
+      displayFramePackages: true,
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+      virtualScopeRoots,
+    });
+    expect(code.sortedNodes.map((n) => n.path)).toEqual(["pod/notes.ts"]);
+    expect(code.filterCounts.code).toBe(1);
+    expect(code.filterCounts.frames).toBe(1);
+  });
 });
