@@ -1378,6 +1378,27 @@ describe("Document tables", () => {
 
     expect(editor.state.doc.eq(before)).toBe(true);
   });
+
+  it("offers no text style or list menu over a selection in a cell", async () => {
+    const { editor } = await renderDocument(`Intro.\n\n${TABLE}`);
+
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "Intro"));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Text style" })).toBeTruthy()
+    );
+
+    act(() => {
+      editor.commands.setTextSelection(cellText(editor, "apple"));
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Text style" })).toBeNull()
+    );
+    expect(screen.queryByRole("button", { name: "Lists" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Inline code" })).toBeTruthy();
+  });
 });
 
 describe("Document Frame embeds", () => {

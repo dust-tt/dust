@@ -35,10 +35,11 @@ preserved: a CRLF file opens and is written back with LF.
 
 A GFM table opens as a table whose first row is its header, shown as column headers, at the top
 level, in a list item or in a quote. Each cell holds one paragraph of text, so Enter does
-nothing in a cell. Saving writes compact rows, `| a | b |` with `---`, `:--`, `:-:` or `--:` per
-column as the table aligns it, and every `|` in a cell escaped, a `|` inside code included.
-Comments may sit in a cell, span cells in reading order, or surround a table. A table is refused
-when a row has more cells than its header, since marked would drop them.
+nothing in a cell, and the text style and list menus are not offered there. Saving writes
+compact rows, `| a | b |` with `---`, `:--`, `:-:` or `--:` per column as the table aligns it,
+and every `|` in a cell escaped, a `|` inside code included. Comments may sit in a cell, span
+cells in reading order, or surround a table. A table is refused when a row has more cells than
+its header, since marked would drop them.
 
 Front matter is kept in an envelope and written back unchanged on save. The editor rewrites
 the body and the comment threads, and only when the codec confirms the result reads back
