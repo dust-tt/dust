@@ -1,4 +1,4 @@
-# dfs-mount
+# dfs:// mount design
 
 `dfs-mount` is the library behind the dfs FUSE client, which mounts dfs as a filesystem on Linux.
 It serves one dfs session as a filesystem. Sandboxes are its main consumer.
@@ -22,7 +22,7 @@ The mount root is not a dfs object. It lists the folders the caller configures, 
 of its choice: `/mnt/dfs/conversation/` is the conversation folder itself. The root is read-only.
 The server's virtual `root` and `shared` references are not used.
 
-[URI.md](../design-docs/URI.md#sandbox-paths) specifies root entries as symlinks to anchors
+[URI.md](URI.md#sandbox-paths) specifies root entries as symlinks to anchors
 (`conversation -> conv-<sId>--<folder-id>`), so that a sandbox path is directly a URI. Without
 symlinks (see [Future work](#future-work)), the caller maps a root name back to its folder ID.
 
