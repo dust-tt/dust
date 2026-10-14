@@ -44,6 +44,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
 import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
 import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { parseDocumentCommentMessage } from "@app/types/assistant/document_comment";
 import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import {
   SKILL_SIDE_PANEL_TYPE,
@@ -74,6 +75,22 @@ const knowledgeDirective = createTextDirective(
     dsv,
   })
 );
+
+function withDocumentCommentQuote({
+  content,
+  context,
+}: UserMessageTypeWithContentFragments): string {
+  const parsed =
+    context.origin === "document_comment"
+      ? parseDocumentCommentMessage(content)
+      : null;
+  if (!parsed) {
+    return content;
+  }
+  return parsed.comment.quote
+    ? `> ${parsed.comment.quote}\n\n${parsed.body}`
+    : parsed.body;
+}
 
 export const UserMessageMarkdown = ({
   owner,
@@ -149,7 +166,7 @@ export const UserMessageMarkdown = ({
 
   const displayContent = useMemo(
     () =>
-      message.content
+      withDocumentCommentQuote(message)
         .replace(SKILL_TAG_REGEX, (match) => {
           const skill = parseSkillTag(match);
           if (!skill) {
@@ -185,7 +202,7 @@ export const UserMessageMarkdown = ({
 
           return `:knowledge[${knowledge.title}]{id=${knowledge.id}${spaceAttribute}${dsvAttribute}}`;
         }),
-    [message.content]
+    [message]
   );
 
   return (

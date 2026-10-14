@@ -1,4 +1,10 @@
+import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { replaceMentionsWithAt } from "@app/lib/mentions/format";
+import {
+  DOCUMENT_COMMENT_DIRECTIVE_REGEX,
+  unescapeDocumentCommentAttribute,
+  unescapeDocumentCommentLabel,
+} from "@app/types/assistant/document_comment";
 import removeMarkdown from "remove-markdown";
 
 const PROJECT_TASK_DIRECTIVE_REGEX =
@@ -69,6 +75,19 @@ function replacePastedAttachments(text: string): string {
   });
 }
 
+function replaceDocumentComments(text: string): string {
+  return text.replaceAll(
+    DOCUMENT_COMMENT_DIRECTIVE_REGEX,
+    (_full, label: string, _commentId: string, documentPath: string) =>
+      `💬 ${
+        unescapeDocumentCommentLabel(label) ||
+        getFileNameFromScopedPath(
+          unescapeDocumentCommentAttribute(documentPath)
+        )
+      }`
+  );
+}
+
 function replaceBuildEntities(text: string): string {
   return text.replaceAll(
     BUILD_ENTITY_REGEX,
@@ -118,6 +137,7 @@ function replaceDustDirectives(text: string): string {
   out = replaceQuickReplies(out);
   out = replaceContentNodeMentions(out);
   out = replacePastedAttachments(out);
+  out = replaceDocumentComments(out);
   out = replaceBuildEntities(out);
   out = replaceAgentSuggestions(out);
   out = replaceSkillSuggestions(out);

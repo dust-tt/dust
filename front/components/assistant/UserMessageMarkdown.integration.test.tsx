@@ -354,6 +354,27 @@ Quote text
       expect(container).toBeInTheDocument();
     });
 
+    it("renders a document comment's passage as a quote above the comment", () => {
+      const message = {
+        ...mockMessage,
+        context: { ...mockMessage.context, origin: "document_comment" },
+        content:
+          ':document_comment[the \\[draft\\] plan]{id="c1" path="pod-abc/plan.md"}\n\nThoughts?',
+      };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(container.querySelector("blockquote")?.textContent?.trim()).toBe(
+        "the [draft] plan"
+      );
+      expect(container.textContent).toContain("Thoughts?");
+      expect(container.textContent).not.toContain("document_comment");
+    });
+
     it("renders scoped file preview directives as previewable files", () => {
       const directive = getFilePreviewMarkdownDirective({
         contentType: "application/pdf",

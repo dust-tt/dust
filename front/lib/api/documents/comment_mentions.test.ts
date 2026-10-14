@@ -117,15 +117,11 @@ describe("postCommentMention", () => {
     expect(context.origin).toBe("document_comment");
     expect(mentions).toEqual([{ configurationId: GLOBAL_AGENTS_SID.DUST }]);
     expect(content).toBe(
-      [
-        `Comment in thread \`c1\` of the document \`${documentPath}\`, in this conversation's files:`,
-        "> Ship on Thursday.",
-        MENTIONING.message.body,
-      ].join("\n\n")
+      `:document_comment[Ship on Thursday.]{id="c1" path="${documentPath}"}\n\n${MENTIONING.message.body}`
     );
   });
 
-  it("names where a pod document lives, and leaves the quote out without one", async () => {
+  it("leaves the quote out without one", async () => {
     const { pod, memberAuth } = await podMemberAuth();
     const documentPath = `pod-${pod.sId}/notes.md`;
 
@@ -135,10 +131,7 @@ describe("postCommentMention", () => {
     });
 
     expect(postMock.mock.calls[0][1].content).toBe(
-      [
-        `Comment in thread \`c1\` of the document \`${documentPath}\`, in the pod "${pod.name}":`,
-        `Over to ${DUST}.`,
-      ].join("\n\n")
+      `:document_comment[]{id="c1" path="${documentPath}"}\n\nOver to ${DUST}.`
     );
   });
 
