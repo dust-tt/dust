@@ -171,7 +171,11 @@ impl ObjectResource {
      * Unreadable objects MUST fail with NotAuthorized before checking kind. Owner read/write bits
      * MUST match the mode, with owner execute only for directories and no other bits set.
      */
-    pub async fn attr(&self, tx: &Transaction, mode: Mode) -> Result<Attr, storage::Error<Error>> {
+    pub(in crate::storage::resources) async fn attr(
+        &self,
+        tx: &Transaction,
+        mode: Mode,
+    ) -> Result<Attr, storage::Error<Error>> {
         let mode = self.attr_mode(mode)?;
         let version = tx.get_read_version().await.map_err(FdbBindingError::from)?;
         Ok(self.to_attr(mode, version))

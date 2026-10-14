@@ -30,25 +30,11 @@ impl From<file::Error> for Status {
             file::Error::IsDirectory => status(ErrorCode::IsDirectory),
             file::Error::UnsupportedKind => status(ErrorCode::Unsupported),
             file::Error::InvalidLength => status(ErrorCode::InvalidInput),
+            file::Error::Object(error) => error.into(),
             file::Error::InvalidBlock => {
                 tracing::error!(%error, "file read failed");
                 status(ErrorCode::Internal)
             }
-        }
-    }
-}
-
-impl From<file::Error> for storage::Error<Status> {
-    fn from(error: file::Error) -> Self {
-        Self::Resource(error.into())
-    }
-}
-
-impl From<storage::Error<file::Error>> for storage::Error<Status> {
-    fn from(error: storage::Error<file::Error>) -> Self {
-        match error {
-            storage::Error::Transaction(error) => Self::Transaction(error),
-            error => Self::Resource(error.into()),
         }
     }
 }
@@ -92,12 +78,6 @@ impl From<object::Error> for ErrorDetails {
 impl From<object::Error> for Status {
     fn from(error: object::Error) -> Self {
         status(error.into())
-    }
-}
-
-impl From<object::Error> for storage::Error<Status> {
-    fn from(error: object::Error) -> Self {
-        Self::Resource(error.into())
     }
 }
 

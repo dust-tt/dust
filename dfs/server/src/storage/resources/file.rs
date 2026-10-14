@@ -1,12 +1,19 @@
 use std::fmt;
 
-use dfs_protocol::rpc::ObjectKind;
+use dfs_protocol::{
+    ObjectId,
+    rpc::{Attr, ObjectKind},
+};
 use foundationdb::{FdbBindingError, Transaction};
 use futures::future::try_join_all;
 
 use crate::storage::{
     self,
-    resources::{keys::tenant_subspace, object::ObjectResource},
+    resources::{
+        keys::tenant_subspace,
+        object::{self, ObjectResource},
+        session::SessionResource,
+    },
 };
 
 const FAMILY: &str = "block";
@@ -19,6 +26,7 @@ pub enum Error {
     UnsupportedKind,
     InvalidLength,
     InvalidBlock,
+    Object(object::Error),
 }
 
 impl fmt::Display for Error {
@@ -28,15 +36,35 @@ impl fmt::Display for Error {
             Self::UnsupportedKind => f.write_str("unsupported file kind"),
             Self::InvalidLength => f.write_str("invalid read length"),
             Self::InvalidBlock => f.write_str("stored file block exceeds the size limit"),
+            Self::Object(error) => error.fmt(f),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Object(error) => Some(error),
+            _ => None,
+        }
+    }
+}
 
 impl From<Error> for storage::Error<Error> {
     fn from(error: Error) -> Self {
         Self::Resource(error)
+    }
+}
+
+impl From<storage::Error<object::Error>> for storage::Error<Error> {
+    fn from(error: storage::Error<object::Error>) -> Self {
+        match error {
+            storage::Error::Open(error) => Self::Open(error),
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
+            storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Resource(error) => Self::Resource(Error::Object(error)),
+        }
     }
 }
 
@@ -47,6 +75,29 @@ pub struct FileResource {
 impl FileResource {
     pub fn object(&self) -> &ObjectResource {
         &self.object
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] file-fetch-for-session
+     * Callers MUST fetch before staging writes and MUST NOT stage writes concurrently with it.
+     * Fetch MUST evaluate modes in the caller's transaction and return the same fetched object,
+     * with attributes from that transaction and no optional metadata. Missing objects MUST return
+     * Object(NotFound); unreadable objects MUST return Object(NotAuthorized) before checking kind.
+     * Readable directories MUST return IsDirectory. FDB failures MUST propagate unchanged.
+     */
+    pub async fn fetch_file_for_session(
+        tx: &Transaction,
+        session: &SessionResource,
+        object_id: &ObjectId,
+    ) -> Result<(Self, Attr), storage::Error<Error>> {
+        let (object, mode) = ObjectResource::modes_for_session(tx, session, &[*object_id])
+            .await?
+            .into_iter()
+            .next()
+            .flatten()
+            .ok_or(Error::Object(object::Error::NotFound))?;
+        let attributes = object.attr(tx, mode).await?;
+        Ok((Self::try_from(object)?, attributes))
     }
 
     /**

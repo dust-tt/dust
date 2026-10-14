@@ -5,10 +5,14 @@ use dfs_api::storage::{
         file::{self, BLOCK_SIZE_BYTES, FileResource, READ_MAX_BYTES},
         keys::tenant_subspace,
         object::ObjectResource,
+        session::SessionResource,
         tenant::TenantResource,
     },
 };
-use dfs_protocol::{ObjectId, rpc::ObjectKind};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{AllowGrant, Grant, ObjectKind, grant},
+};
 use foundationdb::Transaction;
 
 fn object(tenant: &TenantResource, size: u64) -> Result<ObjectResource> {
@@ -81,10 +85,23 @@ pub(crate) async fn reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks() ->
 pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let (other, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    let (other_session, _) = SessionResource::new(&other, vec!["reader".to_owned()])?;
     let object = object(&tenant, 5)?;
     let mut foreign = self::object(&other, 5)?;
     foreign.object_id = object.object_id;
     let tx = fdb::database()?.create_trx()?;
+    let grant = Grant {
+        kind: Some(grant::Kind::Allow(AllowGrant {
+            subject: "reader".to_owned(),
+            mode: 4,
+        })),
+    };
+    for tenant in [&tenant, &other] {
+        ObjectResource::new_root(tenant)?
+            .create(&tx, std::slice::from_ref(&grant))
+            .await?;
+    }
     object.create(&tx, &[]).await?;
     foreign.create(&tx, &[]).await?;
     let key = block_key(&tenant, object.object_id, 0);
@@ -93,8 +110,14 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
     tx.commit().await?;
 
     let old = fdb::database()?.create_trx()?;
-    let file = fetch(&old, &tenant, object.object_id).await?;
-    let foreign = fetch(&old, &other, object.object_id).await?;
+    let (file, attributes) =
+        FileResource::fetch_file_for_session(&old, &session, &object.object_id).await?;
+    let (foreign, _) =
+        FileResource::fetch_file_for_session(&old, &other_session, &object.object_id).await?;
+    assert_eq!(attributes.id, object.object_id.into());
+    assert_eq!(attributes.store_version, old.get_read_version().await?);
+    assert_eq!(attributes.mode, 0o400);
+    assert!(attributes.metadata.is_none());
     let attrs_key = tenant_subspace(&tenant.tenant_id)
         .pack(&("object", object.object_id.as_bytes().as_slice()));
     let attrs = old
@@ -116,6 +139,8 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
     assert_eq!(foreign.read(&old, 0, 10).await?, b"other");
     assert_eq!(file.object().size, 5);
     assert_eq!(file.object().content_version, 1);
+    assert_eq!(attributes.size, file.object().size);
+    assert_eq!(attributes.content_version, file.object().content_version);
     assert_eq!(
         old.get(&attrs_key, false)
             .await?
@@ -125,7 +150,8 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
     );
 
     let fresh = fdb::database()?.create_trx()?;
-    let file = fetch(&fresh, &tenant, object.object_id).await?;
+    let (file, attributes) =
+        FileResource::fetch_file_for_session(&fresh, &session, &object.object_id).await?;
     let before = fresh
         .get(&attrs_key, false)
         .await?
@@ -133,6 +159,9 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
         .to_vec();
     assert_eq!(file.read(&fresh, 0, 10).await?, b"new");
     assert_eq!(file.object().content_version, 2);
+    assert_eq!(attributes.size, 3);
+    assert_eq!(attributes.content_version, 2);
+    assert_eq!(attributes.store_version, fresh.get_read_version().await?);
     assert_eq!(
         fresh
             .get(&attrs_key, false)

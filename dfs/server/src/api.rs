@@ -262,20 +262,11 @@ impl Dfs for API {
         let response = fdb::with_transaction(|tx| {
             let session = session.as_ref();
             async move {
-                let (object, mode) = ObjectResource::modes_for_session(&tx, session, &[object_id])
-                    .await?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or(object::Error::NotFound)?;
-                let attributes = object.attr(&tx, mode).await?;
-                let data = FileResource::try_from(object)?
-                    .read(&tx, offset, length)
-                    .await?;
-                Ok::<_, storage::Error<Status>>(ReadData {
-                    data,
-                    object: attributes,
-                })
+                let (file, object) =
+                    FileResource::fetch_file_for_session(&tx, session, &object_id).await?;
+                file.read(&tx, offset, length)
+                    .await
+                    .map(|data| ReadData { data, object })
             }
         })
         .await?;

@@ -14,9 +14,6 @@ fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), pro
         storage::Error::<Status>::from(storage::Error::<object::Error>::from(
             FdbBindingError::from(FdbError::from_code(1020)),
         )),
-        storage::Error::<Status>::from(storage::Error::<file::Error>::from(FdbBindingError::from(
-            FdbError::from_code(1020),
-        ))),
     ] {
         let error = FdbBindingError::from(error);
         assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
@@ -41,22 +38,32 @@ fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), pro
             storage::Error::<Status>::from(storage::Error::Resource(object::Error::XattrsTooLarge)),
             ErrorCode::InvalidInput,
         ),
-        (
-            storage::Error::<Status>::from(storage::Error::Resource(file::Error::InvalidLength)),
-            ErrorCode::InvalidInput,
-        ),
-        (
-            storage::Error::<Status>::from(file::Error::IsDirectory),
-            ErrorCode::IsDirectory,
-        ),
-        (
-            storage::Error::<Status>::from(object::Error::NotAuthorized),
-            ErrorCode::NotFound,
-        ),
     ] {
         // Follow the runner's boxing and unboxing before translating the final API response.
         let error = FdbBindingError::from(error);
         let error = storage::Error::<Status>::from(error);
+        let status: Status = error.into();
+        assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
+    }
+    Ok(())
+}
+
+#[test]
+fn object_errors_preserve_retries_and_statuses_through_files() -> Result<(), prost::DecodeError> {
+    let error: storage::Error<object::Error> =
+        FdbBindingError::from(FdbError::from_code(1020)).into();
+    let error = FdbBindingError::from(storage::Error::<file::Error>::from(error));
+    assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+
+    for (error, expected) in [
+        (object::Error::InvalidId, ErrorCode::InvalidInput),
+        (object::Error::NotFound, ErrorCode::NotFound),
+        (object::Error::NotAuthorized, ErrorCode::NotFound),
+        (object::Error::UnsupportedKind, ErrorCode::Unsupported),
+    ] {
+        let error = storage::Error::<file::Error>::from(storage::Error::Resource(error));
+        let error = FdbBindingError::from(error);
+        let error = storage::Error::<file::Error>::from(error);
         let status: Status = error.into();
         assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
     }
