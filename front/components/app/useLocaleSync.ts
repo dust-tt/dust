@@ -29,14 +29,6 @@ interface UseLocaleSyncProps {
 }
 
 /**
- * @cc [owner:sfriquet,label:product;react] locale-switch-never-blocks-rendering
- * Rendering MUST NOT wait for `locale` or its catalog: the previously active locale stays active
- * until the new catalog is loaded. A catalog that finishes loading after `locale` changed again
- * MUST NOT be activated, and a failed load MUST leave the active locale unchanged. Loading a
- * catalog is a background sync exempt from `async-network-loading-state`: it MUST NOT show a
- * loading state of its own.
- */
-/**
  * @cc [owner:ykmsd,label:product] locale-activated-with-sparkle-catalog
  * `locale` MUST NOT be activated before the sparkle locale `getSparkleLocale` maps it to is
  * preloaded, so that front and sparkle switch locale in the same render. A failed sparkle preload

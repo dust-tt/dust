@@ -9,7 +9,21 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   isDevModeActive: true,
+  failSparklePreload: false,
 }));
+
+vi.mock("@dust-tt/sparkle/i18n", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dust-tt/sparkle/i18n")>();
+  return {
+    ...actual,
+    preloadSparkleLocale: (
+      locale: Parameters<typeof actual.preloadSparkleLocale>[0]
+    ) =>
+      state.failSparklePreload
+        ? Promise.reject(new Error("Failed to preload"))
+        : actual.preloadSparkleLocale(locale),
+  };
+});
 
 vi.mock("@app/components/dev/devModeConstants", () => ({
   get DEV_MODE_ACTIVE() {
@@ -37,6 +51,7 @@ describe("LocaleSync", () => {
     document.documentElement.lang = "en";
     setFormatLocale(undefined);
     state.isDevModeActive = true;
+    state.failSparklePreload = false;
     setLocaleOverride(null);
   });
 
@@ -89,5 +104,17 @@ describe("LocaleSync", () => {
     expect(screen.getByText("Loading probe")).toBeDefined();
     expect(await screen.findByText("Enregistrer")).toBeDefined();
     await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
+  });
+
+  it("renders the children in the previous locale when the load fails", async () => {
+    const { rerender } = render(localeSync("en-GB"));
+    expect(await screen.findByText("Save")).toBeDefined();
+
+    state.failSparklePreload = true;
+    act(() => rerender(localeSync("fr-FR")));
+
+    expect(screen.getByText("Loading probe")).toBeDefined();
+    expect(await screen.findByText("Save")).toBeDefined();
+    expect(i18n.locale).toBe("en-GB");
   });
 });

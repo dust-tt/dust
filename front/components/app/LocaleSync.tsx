@@ -22,6 +22,13 @@ interface LocaleSyncProps {
  * They stay separate: this one holds back its children until the locale is active, while
  * `UserLocaleSync` reports ready to the app-wide startup loader.
  */
+/**
+ * @cc [owner:ykmsd,label:product;react] children-after-resolved-locale-ready
+ * `children` MUST NOT be rendered before the catalog load of the resolved locale has settled;
+ * `fallback` MUST be rendered instead, including again from the render in which the resolved
+ * locale changes. Once the load settles, `children` MUST be rendered, even when it failed and the
+ * previous locale stays active.
+ */
 export function LocaleSync({ locale, fallback, children }: LocaleSyncProps) {
   const localeOverride = useLocaleOverride();
   const resolvedLocale = localeOverride ?? locale;
