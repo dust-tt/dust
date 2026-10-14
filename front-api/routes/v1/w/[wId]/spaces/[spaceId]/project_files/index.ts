@@ -25,9 +25,10 @@ const QuerySchema = z.object({
 
 export const PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS = 2;
 
-// The dust_project connector downloads every listed file within a single activity (up to 60
-// minutes). Signed URLs are cached for 80% of their lifetime, so a served URL can have as little
-// as 20% of it left: 6 hours guarantees at least 72 minutes of validity.
+// The dust_project connector downloads all the files of one listing in a single sync activity,
+// which can run for up to 60 minutes, so every URL must stay valid that long. The URL returned
+// here may come from the signed URL cache and be up to 80% through its lifetime: with 6 hours,
+// it still has at least 72 minutes left.
 const PROJECT_FILES_SIGNED_URL_EXPIRATION_DELAY_MS = 6 * 60 * 60 * 1000;
 
 // This system-key-only route is owned by the dust_project connector. Keep the
