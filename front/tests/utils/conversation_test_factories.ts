@@ -34,6 +34,8 @@ export function makeExtra(
       owner: auth.getNonNullableWorkspace(),
     },
     stepContext,
+    // A real agent loop always runs an agent; tools that show it, such as on live documents, read it.
+    agentConfiguration: { sId: "test_agent", name: "Test agent" },
   } as unknown as AgentLoopRunContext;
   return { auth, runContext } as unknown as ToolHandlerExtra & {
     runContext: AgentLoopRunContext;

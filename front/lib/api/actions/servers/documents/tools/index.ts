@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   DOCUMENTS_TOOLS_METADATA,
@@ -16,18 +15,11 @@ import {
   editAgentDocument,
   readAgentDocument,
 } from "@app/lib/api/documents/agent_edits";
-import type { CollabAgent } from "@app/types/collab";
+import { collabAgentOf } from "@app/lib/api/documents/read_write";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
 /** The agent as the editors of a live document show it reading or editing. */
-const collabAgentOf = ({
-  agentConfiguration,
-}: AgentLoopRunContext): CollabAgent => ({
-  agentId: agentConfiguration.sId,
-  name: agentConfiguration.name,
-});
-
 const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
   add_comment: async (
     { path, quote, occurrence, comment },

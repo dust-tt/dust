@@ -1,3 +1,4 @@
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import type { CollabSourceError } from "@app/lib/api/collab/client";
 import { readCollabSource } from "@app/lib/api/collab/client";
 import type { CollabSessionWriteError } from "@app/lib/api/collab/write_through_session";
@@ -197,6 +198,37 @@ async function applyChange<T, E extends Error>(
     );
   }
   return new Ok({ serialized: serialized.value, value: changed.value.value });
+}
+
+/** The agent running a tool, as a live document's editors see it. */
+export const collabAgentOf = ({
+  agentConfiguration,
+}: AgentLoopRunContext): CollabAgent => ({
+  agentId: agentConfiguration.sId,
+  name: agentConfiguration.name,
+});
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] document-open-session-source
+ * For a Markdown document a live session holds, MUST return the session's source, the session
+ * showing `agent` reading it; for a document no session holds, or a path that is not a Markdown
+ * document, MUST return null without reading the file. A collab server that cannot answer MUST be
+ * an error, as in `readCollabSource`.
+ */
+export async function readOpenDocumentSource(
+  auth: Authenticator,
+  scopedPath: string,
+  agent?: CollabAgent
+): Promise<Result<string | null, DfmStoredDocumentError>> {
+  const filePath = resolveDocumentPath(scopedPath);
+  if (filePath.isErr()) {
+    return new Ok(null);
+  }
+  const live = await readCollabSource(auth, filePath.value, agent);
+  if (live.isErr()) {
+    return new Err(collabSourceError(live.error));
+  }
+  return new Ok(live.value.open ? live.value.source : null);
 }
 
 /**

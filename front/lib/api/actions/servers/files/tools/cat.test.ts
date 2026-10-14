@@ -1,11 +1,13 @@
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { catHandler } from "@app/lib/api/actions/servers/files/tools/cat";
+import { readCollabSource } from "@app/lib/api/collab/client";
 import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +16,10 @@ vi.mock("@app/lib/file_storage/config", () => ({
 }));
 vi.mock("@app/lib/api/config", () => ({
   default: { getApiBaseUrl: vi.fn(() => "https://dust.tt") },
+}));
+vi.mock("@app/lib/api/collab/client", async (importActual) => ({
+  ...(await importActual<typeof import("@app/lib/api/collab/client")>()),
+  readCollabSource: vi.fn(),
 }));
 
 function mockStoredFile(content: string, contentType: string) {
@@ -98,6 +104,9 @@ async function readAll(
 describe("catHandler", () => {
   beforeEach(() => {
     fileStorageMock.reset();
+    // No live session unless a test opens one.
+    vi.mocked(readCollabSource).mockReset();
+    vi.mocked(readCollabSource).mockResolvedValue(new Ok({ open: false }));
   });
 
   it("reads a small file with line numbers", async () => {
@@ -373,5 +382,69 @@ describe("catHandler", () => {
       await catHandler({ path, offset: 2, byte_offset: byteOffset }, extra)
     );
     expect(withConflictingOffset).toBe(withByteOffsetOnly);
+  });
+
+  describe("a Markdown document open in a live session", () => {
+    // The agent `makeExtra` runs.
+    const AGENT = { agentId: "test_agent", name: "Test agent" };
+
+    async function setupMarkdown() {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile("# Stored\n", "text/markdown");
+      return {
+        path: `conversation-${conversation.sId}/notes.md`,
+        extra: makeExtra(auth, conversation),
+      };
+    }
+
+    it("reads the session's source rather than the file, shown as the agent reading", async () => {
+      const { path, extra } = await setupMarkdown();
+      vi.mocked(readCollabSource).mockResolvedValue(
+        new Ok({ open: true, source: "# Live\n\nNewer.\n" })
+      );
+
+      expect(textOf(await catHandler({ path }, extra))).toBe(
+        "1: # Live\n2: \n3: Newer."
+      );
+      expect(vi.mocked(readCollabSource).mock.calls[0][2]).toEqual(AGENT);
+    });
+
+    it("pages through the session's source", async () => {
+      const { path, extra } = await setupMarkdown();
+      vi.mocked(readCollabSource).mockResolvedValue(
+        new Ok({ open: true, source: "one\ntwo\nthree\n" })
+      );
+
+      const { body } = splitBody(
+        textOf(await catHandler({ path, offset: 2, limit: 1 }, extra))
+      );
+      expect(body).toBe("2: two");
+    });
+
+    it("reads the file when no session holds the document", async () => {
+      const { path, extra } = await setupMarkdown();
+
+      expect(textOf(await catHandler({ path }, extra))).toBe("1: # Stored");
+    });
+
+    it("reads the file when the collab server cannot answer", async () => {
+      const { path, extra } = await setupMarkdown();
+      vi.mocked(readCollabSource).mockResolvedValue(
+        new Err({ code: "unavailable", message: "Collab server error (502)." })
+      );
+
+      expect(textOf(await catHandler({ path }, extra))).toBe("1: # Stored");
+    });
+
+    it("never asks the collab server about a file that is not Markdown", async () => {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile("alpha\n", "text/plain");
+
+      await catHandler(
+        { path: `conversation-${conversation.sId}/notes.txt` },
+        makeExtra(auth, conversation)
+      );
+      expect(readCollabSource).not.toHaveBeenCalled();
+    });
   });
 });

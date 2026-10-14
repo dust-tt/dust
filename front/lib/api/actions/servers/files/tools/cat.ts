@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { CAT_LINES_DEFAULT } from "@app/lib/api/actions/servers/files/metadata";
 import {
   getDustFileSystemForAgentLoop,
@@ -11,17 +12,22 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
+  collabAgentOf,
+  readOpenDocumentSource,
+} from "@app/lib/api/documents/read_write";
+import {
   byteOffsetBeyondEndMessage,
   fileChangedMessage,
   readTextFilePage,
   renderTextFilePage,
   TEXT_FILE_PAGE_CONTENT_BUDGET_BYTES,
 } from "@app/lib/api/files/text_file_pagination";
+import logger from "@app/logger/logger";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { Readable } from "stream";
+import { Readable } from "stream";
 
 const CAT_IMAGE_MAX_BYTES = 2 * 1024 * 1024; // 2 MB vision limit.
 
@@ -104,6 +110,14 @@ async function catText(
   return new Ok([{ type: "text", text: rendered.text }]);
 }
 
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] files-cat-collab-session
+ * While a live session holds a Markdown document, `cat` MUST page through the session's source
+ * (`readOpenDocumentSource`) rather than the file, which lags the session until its next save, and
+ * the session MUST show the running agent reading it. A collab server that cannot answer MUST NOT
+ * fail the read: it MUST be logged and the file read as without a session. Any other file MUST be
+ * read exactly as before.
+ */
 export async function catHandler(
   {
     path,
@@ -153,6 +167,39 @@ export async function catHandler(
         text: `\`${path}\` is a binary file (${mimeType}) and cannot be read as text.`,
       },
     ]);
+  }
+
+  const live = await readOpenDocumentSource(
+    auth,
+    path,
+    isAgentLoopRunContext(runContext) ? collabAgentOf(runContext) : undefined
+  );
+  if (live.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        path,
+        reason: live.error.message,
+      },
+      "Could not read a live document, reading its file"
+    );
+  } else if (live.value !== null) {
+    const source = Buffer.from(live.value, "utf8");
+    if (byteOffset !== undefined && byteOffset >= source.byteLength) {
+      return new Err(
+        new MCPError(
+          byteOffsetBeyondEndMessage(path, byteOffset, source.byteLength),
+          { tracked: false }
+        )
+      );
+    }
+    return catText(Readable.from([source]), {
+      path,
+      fileSizeBytes: source.byteLength,
+      maxLines: limit ?? CAT_LINES_DEFAULT,
+      startLine: byteOffset !== undefined ? 1 : (offset ?? 1),
+      byteOffset: byteOffset ?? null,
+    });
   }
 
   if (byteOffset !== undefined && byteOffset >= sizeBytes) {
