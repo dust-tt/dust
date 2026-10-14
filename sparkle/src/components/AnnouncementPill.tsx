@@ -11,6 +11,8 @@ export interface AnnouncementPillProps {
   icon?: ComponentType<{ className?: string }>;
   /** Makes the pill a link; it is static text otherwise. */
   href?: string;
+  target?: string;
+  rel?: string;
   className?: string;
 }
 
@@ -40,6 +42,8 @@ export function AnnouncementPill({
   label,
   icon,
   href,
+  target,
+  rel,
   className,
 }: AnnouncementPillProps) {
   const classes = cn(pillClasses, href && linkClasses, className);
@@ -63,7 +67,7 @@ export function AnnouncementPill({
 
   if (href) {
     return (
-      <LinkWrapper href={href} className={classes}>
+      <LinkWrapper href={href} target={target} rel={rel} className={classes}>
         {content}
       </LinkWrapper>
     );

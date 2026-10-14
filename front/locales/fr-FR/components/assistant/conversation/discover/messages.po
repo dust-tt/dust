@@ -232,6 +232,10 @@ msgstr "Revenir à la page d'accueil d'origine."
 msgid "Your homepage is getting a refresh. <0>Get a sneak peek!</0>"
 msgstr "Votre page d'accueil fait peau neuve. <0>Découvrez-la en avant-première !</0>"
 
+#: front/components/assistant/conversation/discover/HomepageAnnouncement.tsx
+msgid "Figma MCP is now available"
+msgstr "Le MCP Figma est désormais disponible"
+
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Masquer cette suggestion"
