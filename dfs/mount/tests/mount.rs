@@ -16,7 +16,7 @@ use dfs_api::storage::{
     fdb,
     resources::{keys::tenant_subspace, object::ObjectResource, tenant::TenantResource},
 };
-use dfs_mount::{Errno, Remote};
+use dfs_mount::{DirEntry, Errno, Folder, Fs, Kind, ROOT_INO, Remote};
 use dfs_protocol::{
     ObjectId, ObjectRef, READ_MAX_BYTES, STAT_MAX_REFERENCES,
     rpc::{
@@ -50,7 +50,8 @@ fn mount() -> Result<()> {
         let tenant = Tenant::create(&channel).await?;
         stat_returns_one_ordered_result_per_reference(&channel, &tenant).await?;
         stat_fails_with_an_unknown_session_key(&channel, &tenant).await?;
-        read_returns_file_ranges(&channel, &tenant).await
+        read_returns_file_ranges(&channel, &tenant).await?;
+        root_lists_readable_folders(&channel, &tenant).await
     })
 }
 
@@ -216,5 +217,42 @@ async fn read_returns_file_ranges(channel: &Channel, tenant: &Tenant) -> Result<
         let result = remote.read(object, 0, length).await;
         assert_eq!(result.err(), Some(expected), "reading {object}");
     }
+    Ok(())
+}
+
+fn folder(name: &str, id: ObjectId) -> Folder {
+    Folder {
+        name: name.to_owned(),
+        id,
+    }
+}
+
+async fn root_lists_readable_folders(channel: &Channel, tenant: &Tenant) -> Result<()> {
+    let folders = vec![
+        folder("workspace", tenant.root_id),
+        // Left out: not a directory, unreadable, and missing.
+        folder("report", tenant.file_id),
+        folder("secret", tenant.unreadable_id),
+        folder("missing", ObjectId::new_v7()),
+    ];
+
+    let fs = Fs::new(tenant.remote(channel).await?, folders.clone())?;
+    let entries = fs.readdir(ROOT_INO).await?;
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| (entry.kind, entry.name.as_str()))
+            .collect::<Vec<_>>(),
+        [(Kind::Directory, "workspace")]
+    );
+    assert_ne!(entries[0].ino, ROOT_INO);
+    // Folder inode numbers are fixed for the life of the mount.
+    assert_eq!(fs.readdir(ROOT_INO).await?, entries);
+    fs.forget(entries[0].ino, 1);
+    assert_eq!(fs.readdir(ROOT_INO).await?, entries);
+
+    let remote = Remote::new(channel.clone(), &"fedcba9876543210".repeat(4))?;
+    let result = Fs::new(remote, folders)?.readdir(ROOT_INO).await;
+    assert_eq!(result, Err::<Vec<DirEntry>, _>(Errno::EACCES));
     Ok(())
 }
