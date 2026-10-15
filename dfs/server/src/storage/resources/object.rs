@@ -20,6 +20,7 @@ use crate::{
     },
 };
 
+mod apply;
 mod hints;
 mod modes;
 mod stat;

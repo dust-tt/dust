@@ -1,0 +1,50 @@
+use std::collections::HashMap;
+
+use dfs_protocol::{ObjectId, rpc::operation::Operation};
+
+use super::ObjectResource;
+
+#[cfg(test)]
+#[path = "../../../../tests/resources/object/apply.rs"]
+mod tests;
+
+impl ObjectResource {
+    /**
+     * @cc [owner:spolu,label:backend;security] apply-operation-targets
+     * Create MUST target its parent only. Update, Write, and Remove MUST target their object.
+     * Rename MUST target its object and destination parent. Each target MUST appear only once.
+     */
+    pub fn targets_for_operation(operation: &Operation) -> Vec<ObjectId> {
+        // These are permission targets available from the request. Current parents and rename
+        // replacements require stored state and must be resolved before authorizing mutations.
+        match operation {
+            Operation::Create(operation) => vec![operation.parent_id],
+            Operation::Update(operation) => vec![operation.object_id],
+            Operation::Write(operation) => vec![operation.object_id],
+            Operation::Rename(operation) => {
+                let mut targets = vec![operation.object_id];
+                if operation.parent_id != operation.object_id {
+                    targets.push(operation.parent_id);
+                }
+                targets
+            }
+            Operation::Remove(operation) => vec![operation.object_id],
+        }
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend] apply-group-by-targets
+     * Each target MUST map to the original indexes of all operations targeting it, in request
+     * order. Repeated operations MUST retain separate indexes; an operation MUST appear at most
+     * once per target. Grouping MUST NOT change the input operations or their order.
+     */
+    pub fn group_by_targets(operations: &[Operation]) -> HashMap<ObjectId, Vec<usize>> {
+        let mut groups = HashMap::<ObjectId, Vec<usize>>::new();
+        for (index, operation) in operations.iter().enumerate() {
+            for target in Self::targets_for_operation(operation) {
+                groups.entry(target).or_default().push(index);
+            }
+        }
+        groups
+    }
+}
