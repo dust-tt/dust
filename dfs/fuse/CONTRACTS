@@ -1,6 +1,0 @@
-@cc [owner:fontanierh,label:architecture;security] answers-from-fs
-The adapter MUST answer the kernel only with what `dfs_mount::Fs` returns for dfs objects. It MUST
-NOT send requests to the dfs server itself, except to refresh the session.
-
-@cc [owner:fontanierh,label:security] session-key-secret
-The session key MUST NOT appear in the command line, logs, error messages or `Debug` output.
