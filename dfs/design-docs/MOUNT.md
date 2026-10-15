@@ -152,24 +152,6 @@ the command line, and takes the root folders as `--folder NAME=OBJECT_ID`. It re
 session every 15 minutes (it expires one hour after its last refresh), and unmounts on SIGINT or
 SIGTERM.
 
-## Plan
-
-Each step is a small pull request with its tests, and leaves the mount working. The server answers
-`UNSUPPORTED` to `Lookup`, `List`, `ReadFiles` and `Apply` today: each step lands after the server
-calls it uses.
-
-1. **Read path, uncached**: `lookup`, `getattr`, `readdir`, `open` and `read` inside folders, with
-   the server's `Lookup`, `List` and `Read`. The adapter mounts it.
-2. **Cache and budget**: attributes, names and listings under the TTL, and whole listings on a
-   lookup miss.
-3. **Content cache**: blocks, whole small files, and `ReadFiles` for small siblings.
-4. **One FUSE thread**: answers from memory on the FUSE thread.
-5. **Writes**: the overlay, the log and its committer, `fsync`, and draining on unmount, with the
-   server's `Apply`.
-6. **Admission**: changes wait so that each is sent within the send window.
-7. **Proof**: a visibility test that checks the delay budget for every kind of change, and benchmarks
-   (untar, `git clone` and `git status`, `rg`, `stat`) against local disk.
-
 ## Future work
 
 - **Symlinks**: root entries as symlinks to anchors, as URI.md specifies, and symlinks stored in
