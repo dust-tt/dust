@@ -82,6 +82,11 @@ const nextConfig = {
         source: "/tailwind-coverage.json",
         headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
       },
+      // Shared Frames download their files from their sandboxed (opaque-origin) iframe.
+      {
+        source: "/api/shared-files",
+        headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
+      },
     ];
   },
 };

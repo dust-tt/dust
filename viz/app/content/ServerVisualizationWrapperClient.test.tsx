@@ -30,6 +30,7 @@ vi.mock("@viz/app/components/NavigationProvider", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.resetAllMocks();
 });
 
@@ -53,23 +54,25 @@ describe("shared-view file access", () => {
   ])(
     "selects file access for $label",
     async ({ isAuthenticatedMember, isPdfMode }) => {
+      const fetchSharedFile = vi.fn(
+        async () =>
+          new Response("Shared content", {
+            headers: { "content-type": "application/json" },
+          })
+      );
+      vi.stubGlobal("fetch", fetchSharedFile);
       render(
         <ServerVisualizationWrapperClient
+          accessToken="token"
           identifier="frame"
           allowedOrigins={["https://app.dust.tt"]}
           isAuthenticatedMember={isAuthenticatedMember}
           isPdfMode={isPdfMode}
           catalog={getVizCatalog("en-US")}
-          prefetchedCode="Published code"
-          prefetchedFiles={[
-            {
-              fileId: "./content.json",
-              data: btoa("Cached content"),
-              mimeType: "application/json",
-            },
-          ]}
+          prefetchedCode={'useFile("./content.json")'}
         />
       );
+      await vi.waitFor(() => expect(mocks.render).toHaveBeenCalled());
       const { dataAPI } = mocks.render.mock.calls[0][0];
       mocks.sendMessage.mockResolvedValueOnce({
         fileBlob: new Blob(["Live content"]),
@@ -84,6 +87,11 @@ describe("shared-view file access", () => {
         });
       } else {
         expect(file).toMatchObject({ revision: null, canWrite: false });
+        expect(file?.file.type).toBe("application/json");
+        expect(fetchSharedFile).toHaveBeenCalledExactlyOnceWith(
+          "/api/shared-files?fileRef=.%2Fcontent.json",
+          { headers: { Authorization: "Bearer token" }, cache: "no-store" }
+        );
         await expect(
           dataAPI.writeFile({
             path: "./content.json",
@@ -99,7 +107,9 @@ describe("shared-view file access", () => {
         });
         expect(mocks.sendMessage).not.toHaveBeenCalled();
       }
-      await expect(dataAPI.fetchCode()).resolves.toBe("Published code");
+      await expect(dataAPI.fetchCode()).resolves.toBe(
+        'useFile("./content.json")'
+      );
     }
   );
 });

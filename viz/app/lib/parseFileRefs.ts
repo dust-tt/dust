@@ -114,6 +114,51 @@ function formatFramePackageRelativePath(relativePath: string): string {
   return `./${relativePath}`;
 }
 
+function parseScopedOrFileIdRef(value: string): FileRef | null {
+  if (/^fil_[a-zA-Z0-9]{10,}$/.test(value)) {
+    return { type: "fileId", fileId: value };
+  }
+  if (isScopedPath(value)) {
+    return { type: "path", scopedPath: value };
+  }
+  return null;
+}
+
+/**
+ * Key under which frame code looks a file ref up (useFile, readFile, static imports).
+ */
+export function fileRefKey(ref: FileRef): string {
+  switch (ref.type) {
+    case "fileId":
+      return ref.fileId;
+    case "path":
+      return ref.scopedPath;
+    case "frameRelative":
+      return formatFramePackageRelativePath(ref.relativePath);
+    default: {
+      const _exhaustive: never = ref;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
+ * @cc [owner:tdraier,label:security] parse-file-ref-key
+ * Returns the file ref for a key that `extractFileRefs` could have produced, or null. A returned
+ * scoped path or frame-relative path MUST NOT contain empty, `.` or `..` segments.
+ */
+export function parseFileRefKey(key: string): FileRef | null {
+  const relativePath = parseExtractableFramePackageRelativePath(key);
+  if (relativePath) {
+    return { type: "frameRelative", relativePath };
+  }
+  const ref = parseScopedOrFileIdRef(key);
+  if (ref?.type === "path" && !isSafeFrameRelativePath(ref.scopedPath)) {
+    return null;
+  }
+  return ref;
+}
+
 function isModuleSpecifierLiteral(
   node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral
 ): boolean {
@@ -157,12 +202,9 @@ export function extractFileRefs(code: string): FileRef[] {
       return;
     }
 
-    if (/^fil_[a-zA-Z0-9]{10,}$/.test(value)) {
-      refs.set(value, { type: "fileId", fileId: value });
-      return;
-    }
-    if (isScopedPath(value)) {
-      refs.set(value, { type: "path", scopedPath: value });
+    const ref = parseScopedOrFileIdRef(value);
+    if (ref) {
+      refs.set(value, ref);
     }
   };
 
