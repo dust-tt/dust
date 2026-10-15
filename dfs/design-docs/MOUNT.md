@@ -118,12 +118,13 @@ Every change becomes an operation in one ordered log, and the log reaches the se
 `Apply` calls.
 
 - **One call at a time**: one `Apply` is in flight, and the next leaves as soon as it returns, with
-  everything queued since, up to 512 operations and the request size limit. There is no timer:
-  when the server is fast, each change leaves almost alone; when it is slow, changes pile up and
-  leave together.
+  everything queued since, up to 512 operations and the request size limit. Batches grow on their
+  own: changes are acknowledged locally, so a tool like `tar` makes hundreds of them while one
+  `Apply` runs, and they all leave in the next. There is no timer and no grouping by directory: a
+  lone change leaves at once.
 - **Buffered writes**: a file's writes collect locally, and leave as one operation when the file
-  is closed or when the next batch is formed. Forming a batch takes every file's buffered writes,
-  so an acknowledged write waits for at most one batch.
+  is closed, when they pass 1 MiB, or when the next batch is formed. Forming a batch takes every
+  file's buffered writes, so an acknowledged write waits for at most one batch.
 - **Folding**: a change merges into the latest queued operation on the same object when it can,
   instead of adding one. An attribute change folds into that object's queued create, write or
   attribute change, and buffered writes join the file's queued write while it stays under the
