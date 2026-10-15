@@ -523,9 +523,9 @@ export async function storeFramePublication(
 }
 
 /**
- * The published bundle of a single Frame function, taken from `functions.tar`.
- * Activation verifies every entry's hash via the same archive; poke only needs
- * one slug and still shares this path.
+ * The published bundle of a single Frame function, taken from `functions.tar`. Used by poke to
+ * inspect a publication's bundle; publishing verifies bundle hashes against the artifacts it
+ * stages.
  */
 export async function readFramePublicationFunctionBundle(
   auth: Authenticator,
@@ -702,49 +702,22 @@ function functionDefinitionsFromBundles({
   return new Ok(definitions);
 }
 
-async function loadFramePublicationFunctionDefinitions(
-  auth: Authenticator,
-  {
-    frame,
-    descriptor,
-    publicationId,
-    functionArtifacts,
-  }: {
-    frame: FileResource;
-    descriptor: FramePublicationDescriptor;
-    publicationId: string;
-    functionArtifacts?: FramePublicationFunctionArtifact[];
-  }
-): Promise<
-  Result<FramePublicationFunctionDefinition[], FramePublicationError>
-> {
+function loadFramePublicationFunctionDefinitions({
+  descriptor,
+  functionArtifacts,
+}: {
+  descriptor: FramePublicationDescriptor;
+  functionArtifacts: FramePublicationFunctionArtifact[];
+}): Result<FramePublicationFunctionDefinition[], FramePublicationError> {
   if (descriptor.manifest.functions.length === 0) {
     return new Ok([]);
   }
 
-  if (functionArtifacts) {
-    return functionDefinitionsFromBundles({
-      descriptor,
-      bundles: new Map(
-        functionArtifacts.map((artifact) => [
-          artifact.name,
-          artifact.bundleCode,
-        ])
-      ),
-    });
-  }
-
-  const bundles = await loadFramePublicationFunctionBundles(auth, {
-    frame,
-    publicationId,
-  });
-  if (bundles.isErr()) {
-    return bundles;
-  }
-
   return functionDefinitionsFromBundles({
     descriptor,
-    bundles: bundles.value,
+    bundles: new Map(
+      functionArtifacts.map((artifact) => [artifact.name, artifact.bundleCode])
+    ),
   });
 }
 
@@ -768,10 +741,10 @@ async function createFramePublicationFunctionRows(
   },
   transaction?: Transaction
 ): Promise<Result<void, FramePublicationError>> {
-  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
-    auth,
-    { frame, descriptor, publicationId, functionArtifacts }
-  );
+  const functionDefinitions = loadFramePublicationFunctionDefinitions({
+    descriptor,
+    functionArtifacts,
+  });
   if (functionDefinitions.isErr()) {
     return functionDefinitions;
   }
@@ -828,6 +801,12 @@ export async function stageFramePublication(
   });
 }
 
+/**
+ * @cc [owner:davidebbo,label:backend] activation-requires-staged-function-rows
+ * Callers MUST have created the publication's function rows first (`stageFramePublication` or
+ * `createFramePublicationFunctionRows`); activation only moves the live pointer, so activating an
+ * unstaged publication with functions makes them uninvocable.
+ */
 export async function activateFramePublication(
   auth: Authenticator,
   {
