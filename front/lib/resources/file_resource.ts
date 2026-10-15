@@ -73,6 +73,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import type { FramePublicationTarget } from "@app/types/api/frame_publication";
 import {
   getFrameBasePath,
   getFramePublicationUiBundlePath,
@@ -425,7 +426,9 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    const content = await r.value.file.getRenderableContent(r.value.workspace);
+    const content = await r.value.file.getRenderableContent(r.value.workspace, {
+      publication: "live",
+    });
     if (!content) {
       return null;
     }
@@ -1248,14 +1251,24 @@ export class FileResource extends BaseResource<FileModel> {
     return "original";
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product;security] frame-share-serves-live-publication
+   * Share-link paths (share token lookup, the share allowlist, `/api/v1/viz/content`) MUST pass
+   * `publication: "live"`. Only in-app callers that checked `canWriteFrameV2Source` MAY pass
+   * `"latest"`, which serves the pending draft.
+   */
   async getRenderableContent(
-    owner: LightWorkspaceType
+    owner: LightWorkspaceType,
+    { publication }: { publication: FramePublicationTarget }
   ): Promise<string | null> {
     if (!this.isFrameV2) {
       return this.getFileContent(owner, this.getRenderableVersion());
     }
 
-    const publicationId = this.useCaseMetadata?.activePublicationId;
+    const publicationId =
+      publication === "latest"
+        ? this.latestFramePublicationId
+        : this.useCaseMetadata?.activePublicationId;
     if (!publicationId || owner.id !== this.workspaceId) {
       return null;
     }

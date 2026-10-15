@@ -241,7 +241,9 @@ describe("POST /api/w/:wId/files/:fileId/export/pdf", () => {
     );
 
     expect(
-      await file.getRenderableContent(renderLightWorkspaceType({ workspace }))
+      await file.getRenderableContent(renderLightWorkspaceType({ workspace }), {
+        publication: "live",
+      })
     ).toBe(uiBundleCode);
 
     const response = await postPdf(workspace, file.sId);

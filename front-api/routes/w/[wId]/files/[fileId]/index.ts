@@ -1,4 +1,5 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
@@ -230,7 +231,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       const owner = renderLightWorkspaceType({
         workspace: auth.getNonNullableWorkspace(),
       });
-      const uiBundle = await file.getRenderableContent(owner);
+      const canWrite = await canWriteFrameV2Source(auth, file);
+      const uiBundle = await file.getRenderableContent(owner, {
+        publication: canWrite ? "latest" : "live",
+      });
       if (!uiBundle) {
         return apiError(ctx, {
           status_code: 404,
