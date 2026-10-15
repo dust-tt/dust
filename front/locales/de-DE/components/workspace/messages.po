@@ -1,0 +1,1819 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Archive unused agents"
+msgstr "Ungenutzte Agenten archivieren"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Choose how long an agent has to go unmentioned to be archived."
+msgstr "Legen Sie fest, wie lange ein Agent nicht erwähnt worden sein muss, bevor er archiviert wird."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Review what would be archived before archiving it."
+msgstr "Prüfen Sie, was archiviert würde, bevor Sie es archivieren."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Unmentioned for"
+msgstr "Zeit ohne Erwähnung"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "days"
+msgstr "Tage"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAYS}"
+msgstr "Zwischen {MIN_INACTIVITY_THRESHOLD_DAYS} und {MAX_INACTIVITY_THRESHOLD_DAYS}"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Nothing is archived until you have seen the count. Agents with a schedule or a pending wake-up are excluded."
+msgstr "Es wird nichts archiviert, bevor Sie die Anzahl gesehen haben. Agenten mit Zeitplan oder ausstehendem Weckruf sind ausgenommen."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "{eligibleCount, plural, one {# agent would be archived} other {# agents would be archived}}"
+msgstr "{eligibleCount, plural, one {# Agent würde archiviert} other {# Agenten würden archiviert}}"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "No agent would be archived"
+msgstr "Kein Agent würde archiviert"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Nobody has mentioned them since {cutoffDate}."
+msgstr "Niemand hat sie seit dem {cutoffDate} erwähnt."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "No agent has gone unmentioned since {cutoffDate}."
+msgstr "Alle Agenten wurden seit dem {cutoffDate} erwähnt."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "{protectedCount, plural, one {# agent with a schedule or a pending wake-up.} other {# agents with a schedule or a pending wake-up.}} Agents with a schedule or a pending wake-up are excluded from archival."
+msgstr "{protectedCount, plural, one {# Agent mit Zeitplan oder ausstehendem Weckruf.} other {# Agenten mit Zeitplan oder ausstehendem Weckruf.}} Agenten mit Zeitplan oder ausstehendem Weckruf sind von der Archivierung ausgenommen."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Archiving will cancel their pending runs and suspend their editors' access. It can be undone one agent at a time."
+msgstr "Durch das Archivieren werden ihre ausstehenden Ausführungen abgebrochen und der Zugriff ihrer Bearbeiter wird ausgesetzt. Es kann für jeden Agenten einzeln rückgängig gemacht werden."
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+#: front/components/workspace/DirectorySync.tsx
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+#: front/components/workspace/UpgradePlanDialog.tsx
+#: front/components/workspace/UpgradeRequests.tsx
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Back"
+msgstr "Zurück"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Preview"
+msgstr "Vorschau"
+
+#: front/components/workspace/ArchiveUnusedAgentsModal.tsx
+msgid "Archive them"
+msgstr "Archivieren"
+
+#: front/components/workspace/AuditLogsSection.tsx
+msgid "Audit logs"
+msgstr "Audit-Logs"
+
+#: front/components/workspace/AuditLogsSection.tsx
+msgid "View workspace activity logs or configure export to your security information and event management (SIEM) system."
+msgstr "Sehen Sie sich die Aktivitätsprotokolle des Workspace an oder konfigurieren Sie den Export in Ihr SIEM-System (Security Information and Event Management)."
+
+#: front/components/workspace/AuditLogsSection.tsx
+msgid "View logs"
+msgstr "Logs anzeigen"
+
+#: front/components/workspace/AuditLogsSection.tsx
+msgid "Configure export"
+msgstr "Export konfigurieren"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+#: front/components/workspace/GroupSeatPickerDropdown.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "No seat"
+msgstr "Kein Platz"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "{baseName} (weekly)"
+msgstr "{baseName} (wöchentlich)"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "{baseName} (monthly)"
+msgstr "{baseName} (monatlich)"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "{baseName} (quarterly)"
+msgstr "{baseName} (vierteljährlich)"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "{baseName} (yearly)"
+msgstr "{baseName} (jährlich)"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Summary"
+msgstr "Zusammenfassung"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Seat type"
+msgstr "Platztyp"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Committed"
+msgstr "Vertraglich"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Before"
+msgstr "Vorher"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "After"
+msgstr "Nachher"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "{monthlyPrice} · billed annually"
+msgstr "{monthlyPrice} · jährliche Abrechnung"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "{blockedByCapCount, plural, one {# member can't} other {# members can't}} be assigned — {targetLabel} is at its cap of {targetMaxSeats, plural, one {# seat} other {# seats}}."
+msgstr "{blockedByCapCount, plural, one {# Mitglied kann} other {# Mitglieder können}} nicht zugewiesen werden – {targetLabel} hat die Obergrenze von {targetMaxSeats, plural, one {# Platz} other {# Plätzen}} erreicht."
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Immediate changes"
+msgstr "Sofortige Änderungen"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Changes on next billing period ({nextBillingPeriodDate})"
+msgstr "Änderungen zum nächsten Abrechnungszeitraum ({nextBillingPeriodDate})"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Changes on next billing period"
+msgstr "Änderungen zum nächsten Abrechnungszeitraum"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "{unchangedCount, plural, one {# member is} other {# members are}} already on {targetLabel} and won't change."
+msgstr "{unchangedCount, plural, one {# Mitglied nutzt bereits {targetLabel} und bleibt unverändert.} other {# Mitglieder nutzen bereits {targetLabel} und bleiben unverändert.}}"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Choose a new seat to continue"
+msgstr "Wählen Sie einen neuen Platz aus, um fortzufahren"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Review the changes before applying"
+msgstr "Prüfen Sie die Änderungen, bevor Sie sie anwenden"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Change seat for {displayedMemberCount, plural, one {# member} other {# members}}"
+msgstr "Platz für {displayedMemberCount, plural, one {# Mitglied} other {# Mitglieder}} ändern"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Your subscription is scheduled to end and seats can't be changed until it's reactivated."
+msgstr "Ihr Abonnement läuft aus. Plätze können erst nach der Reaktivierung geändert werden."
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+msgid "Review"
+msgstr "Prüfen"
+
+#: front/components/workspace/BulkChangeSeatModal.tsx
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/ChangeSeatModal.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Validate"
+msgstr "Bestätigen"
+
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+msgid "Set personal limit for {memberCount, plural, one {# member} other {# members}}"
+msgstr "Persönliches Limit für {memberCount, plural, one {# Mitglied} other {# Mitglieder}} festlegen"
+
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "These limits cap what each member can spend, once their seat credits are used. Personal limits override workspace and group limits."
+msgstr "Diese Limits begrenzen, was jedes Mitglied ausgeben kann, sobald die Credits seines Platzes aufgebraucht sind. Persönliche Limits haben Vorrang vor Workspace- und Gruppenlimits."
+
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "These limits cap what each member can spend. Personal limits override workspace and group limits."
+msgstr "Diese Limits begrenzen, was jedes Mitglied ausgeben kann. Persönliche Limits haben Vorrang vor Workspace- und Gruppenlimits."
+
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Only workspace admins can edit the workspace default limit."
+msgstr "Nur Workspace-Administratoren können das Standardlimit des Workspace bearbeiten."
+
+#: front/components/workspace/BulkEditSpendLimitModal.tsx
+msgid "{memberCount, plural, one {Personal limit will be removed for # member. They will fall back to the workspace default.} other {Personal limits will be removed for # members. They will fall back to the workspace default.}}"
+msgstr "{memberCount, plural, one {Das persönliche Limit wird für # Mitglied entfernt. Es gilt dann wieder der Workspace-Standard.} other {Die persönlichen Limits werden für # Mitglieder entfernt. Es gilt dann wieder der Workspace-Standard.}}"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Applying coupon..."
+msgstr "Gutschein wird eingelöst…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Applying..."
+msgstr "Wird angewendet…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Coupon applied!"
+msgstr "Gutschein eingelöst!"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has been added to your pool.} other {<1>{bonusCreditsFormatted} credits</1> have been added to your pool.}}"
+msgstr "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} Credit</0> wurde Ihrem Pool hinzugefügt.} other {<1>{bonusCreditsFormatted} Credits</1> wurden Ihrem Pool hinzugefügt.}}"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+#: front/components/workspace/UpgradeRequestLimitModal.tsx
+msgid "Close"
+msgstr "Schließen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Couldn't apply coupon"
+msgstr "Gutschein konnte nicht eingelöst werden"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Try again"
+msgstr "Erneut versuchen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Have a coupon code? Enter it below to add free credits to your workspace credits pool."
+msgstr "Haben Sie einen Gutscheincode? Geben Sie ihn unten ein, um dem Credit-Pool Ihres Workspace kostenlose Credits hinzuzufügen."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Coupon code"
+msgstr "Gutscheincode"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Enter code"
+msgstr "Code eingeben"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Check"
+msgstr "Prüfen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Coupon"
+msgstr "Coupon"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Current credits pool"
+msgstr "Aktueller Credit-Pool"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Bonus credits"
+msgstr "Bonus-Credits"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "New credits pool"
+msgstr "Neuer Credit-Pool"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Apply coupon"
+msgstr "Gutschein einlösen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Payment failed."
+msgstr "Die Zahlung ist fehlgeschlagen."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Processing payment..."
+msgstr "Zahlung wird verarbeitet…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "This may take a few seconds."
+msgstr "Dies kann einige Sekunden dauern."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits purchased successfully!"
+msgstr "Credits erfolgreich gekauft!"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Your credits are now available."
+msgstr "Ihre Credits sind jetzt verfügbar."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Invoice has been sent by email."
+msgstr "Die Rechnung wurde per E-Mail gesendet."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Something went wrong"
+msgstr "Etwas ist schiefgelaufen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please contact support if the issue persists."
+msgstr "Wenden Sie sich an den Support, wenn das Problem weiterhin besteht."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Amount"
+msgstr "Betrag"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
+msgstr "Der Betrag überschreitet das Limit von {maxAmountFormatted}. <0>Wenden Sie sich an den Support</0>."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Added credits"
+msgstr "Hinzugefügte Credits"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Cost (excl. tax)"
+msgstr "Kosten (zzgl. Steuern)"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Payment method"
+msgstr "Zahlungsmethode"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Change"
+msgstr "Ändern"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Credits are valid for 12 months: credits purchased today expire on {expirationDateFormatted}."
+msgstr "Credits sind 12 Monate gültig: Heute gekaufte Credits verfallen am {expirationDateFormatted}."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "I agree to the <0>Terms & Conditions</0> and <1>Privacy Policy</1>"
+msgstr "Ich stimme den <0>Allgemeinen Geschäftsbedingungen</0> und der <1>Datenschutzerklärung</1> zu"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "I understand credits are non-refundable after purchase"
+msgstr "Ich verstehe, dass Credits nach dem Kauf nicht erstattet werden"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Processing..."
+msgstr "Wird verarbeitet…"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Manage invoices"
+msgstr "Rechnungen verwalten"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Add {addedCredits, plural, one {{addedCreditsFormatted} credit} other {{addedCreditsFormatted} credits}}"
+msgstr "{addedCredits, plural, one {{addedCreditsFormatted} Credit} other {{addedCreditsFormatted} Credits}} hinzufügen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Top-up"
+msgstr "Aufladung"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "We couldn't load your purchase information."
+msgstr "Ihre Kaufinformationen konnten nicht geladen werden."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Something went wrong while loading your top-up options. Please try again in a moment, or <0>contact support</0> if the issue persists."
+msgstr "Beim Laden Ihrer Aufladeoptionen ist ein Fehler aufgetreten. Versuchen Sie es gleich noch einmal oder <0>wenden Sie sich an den Support</0>, wenn das Problem weiterhin besteht."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Credit purchases are not available for your current plan."
+msgstr "Der Kauf von Credits ist mit Ihrem aktuellen Tarif nicht verfügbar."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Please <0>contact support</0> for assistance."
+msgstr "<0>Wenden Sie sich an den Support</0>, um Hilfe zu erhalten."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "No billing configuration found for this workspace."
+msgstr "Für diesen Workspace wurde keine Abrechnungskonfiguration gefunden."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Please <0>contact support</0> to set up billing for your workspace."
+msgstr "<0>Wenden Sie sich an den Support</0>, um die Abrechnung für Ihren Workspace einzurichten."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "You have pending credit purchases awaiting payment. Please complete your pending payment before making a new purchase or <0>contact support</0> to cancel your pending payments."
+msgstr "Sie haben ausstehende Credit-Käufe, die auf Zahlung warten. Schließen Sie Ihre ausstehende Zahlung ab, bevor Sie einen neuen Kauf tätigen, oder <0>wenden Sie sich an den Support</0>, um Ihre ausstehenden Zahlungen zu stornieren."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "You've reached your credit limit for this billing cycle. It resets at the start of your next billing cycle. If you need additional credits before then, please <0>contact support</0>."
+msgstr "Sie haben Ihr Credit-Limit für diesen Abrechnungszeitraum erreicht. Es wird zu Beginn Ihres nächsten Abrechnungszeitraums zurückgesetzt. Wenn Sie vorher zusätzliche Credits benötigen, <0>wenden Sie sich an den Support</0>."
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Buy credits"
+msgstr "Credits kaufen"
+
+#: front/components/workspace/BuyAwuCreditsDialog.tsx
+msgid "Use coupon"
+msgstr "Gutschein verwenden"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Processing purchase..."
+msgstr "Kauf wird verarbeitet…"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Payment confirmation required"
+msgstr "Zahlungsbestätigung erforderlich"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please complete the payment to finalize your credit purchase or contact support to cancel pending invoices."
+msgstr "Schließen Sie die Zahlung ab, um Ihren Credit-Kauf abzuschließen, oder wenden Sie sich an den Support, um ausstehende Rechnungen zu stornieren."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You still have pay-as-you-go capacity"
+msgstr "Sie haben noch Spielraum bei der nutzungsbasierten Abrechnung"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your pay-as-you-go cap."
+msgstr "Sie liegen noch unter {PAYG_CAP_WARNING_THRESHOLD_PERCENT} % Ihrer Obergrenze für die nutzungsbasierte Abrechnung."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits amount"
+msgstr "Credit-Betrag"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Maximum purchase amount is {maxAmountFormatted}"
+msgstr "Der maximale Kaufbetrag beträgt {maxAmountFormatted}"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Credits"
+msgstr "Credits"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Discount ({effectiveDiscount}%)"
+msgstr "Rabatt ({effectiveDiscount} %)"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Tax"
+msgstr "Steuern"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Calculated on invoice"
+msgstr "Wird auf der Rechnung berechnet"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Total"
+msgstr "Gesamt"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "(excl. tax)"
+msgstr "(zzgl. Steuern)"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase up to {maxAmountFormatted} worth of credits. <0>Contact support</0> if you need more."
+msgstr "Kaufen Sie Credits im Wert von bis zu {maxAmountFormatted}. <0>Wenden Sie sich an den Support</0>, wenn Sie mehr benötigen."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits will be added immediately, will be invoiced at the end of your billing cycle, and expire one year after purchase."
+msgstr "Die Credits werden sofort hinzugefügt, am Ende Ihres Abrechnungszeitraums in Rechnung gestellt und verfallen ein Jahr nach dem Kauf."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credits will be charged immediately, and expire one year after purchase."
+msgstr "Die Credits werden sofort berechnet und verfallen ein Jahr nach dem Kauf."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Go to payment"
+msgstr "Zur Zahlung"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase credits"
+msgstr "Credits kaufen"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase programmatic credits"
+msgstr "API-Credits kaufen"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credit purchases are not available during your trial period."
+msgstr "Der Kauf von Credits ist während Ihres Testzeitraums nicht verfügbar."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credit purchases become available once you upgrade to a paid plan. If you need credits during your trial, please contact our support team."
+msgstr "Der Kauf von Credits ist verfügbar, sobald Sie auf einen kostenpflichtigen Tarif wechseln. Wenn Sie während Ihres Testzeitraums Credits benötigen, wenden Sie sich an unser Support-Team."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Contact {SUPPORT_EMAIL}"
+msgstr "{SUPPORT_EMAIL} kontaktieren"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Credit purchases require an active subscription."
+msgstr "Für den Kauf von Credits ist ein aktives Abonnement erforderlich."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please ensure your subscription is active and your payment method is up to date. If you need assistance, please contact our support team."
+msgstr "Stellen Sie sicher, dass Ihr Abonnement aktiv und Ihre Zahlungsmethode auf dem neuesten Stand ist. Wenn Sie Hilfe benötigen, wenden Sie sich an unser Support-Team."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You have pending credit purchases awaiting payment."
+msgstr "Sie haben ausstehende Credit-Käufe, die auf Zahlung warten."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Please complete your pending payment before making a new purchase or contact support to cancel your pending payments."
+msgstr "Schließen Sie Ihre ausstehende Zahlung ab, bevor Sie einen neuen Kauf tätigen, oder wenden Sie sich an den Support, um Ihre ausstehenden Zahlungen zu stornieren."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Learn more"
+msgstr "Mehr erfahren"
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "You've reached your credit limit for this billing cycle."
+msgstr "Sie haben Ihr Credit-Limit für diesen Abrechnungszeitraum erreicht."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Your credit purchase limit resets at the start of your next billing cycle. If you need additional credits before then, please contact our support team."
+msgstr "Ihr Limit für Credit-Käufe wird zu Beginn Ihres nächsten Abrechnungszeitraums zurückgesetzt. Wenn Sie vorher zusätzliche Credits benötigen, wenden Sie sich an unser Support-Team."
+
+#: front/components/workspace/BuyCreditDialog.tsx
+msgid "Purchase credits for programmatic API usage."
+msgstr "Kaufen Sie Credits für die Nutzung über die API."
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "The role defines the rights of a member of the workspace. {roleDescription}"
+msgstr "Die Rolle legt die Rechte eines Mitglieds des Workspace fest. {roleDescription}"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Unreachable"
+msgstr "Nicht erreichbar"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Role:"
+msgstr "Rolle:"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoke member access"
+msgstr "Zugriff des Mitglieds widerrufen"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "This user is managed by your identity provider."
+msgstr "Dieser Nutzer wird von Ihrem Identitätsanbieter verwaltet."
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoke access for user <0>{memberFullName}</0>?"
+msgstr "Zugriff für <0>{memberFullName}</0> widerrufen?"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Yes, revoke"
+msgstr "Ja, widerrufen"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoking access will remove the member from the workspace. They will be able to rejoin if they have an invitation link."
+msgstr "Durch das Widerrufen des Zugriffs wird das Mitglied aus dem Workspace entfernt. Mit einem Einladungslink kann es erneut beitreten."
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Update role"
+msgstr "Rolle ändern"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Current"
+msgstr "Aktuell"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Seat limit reached ({assignedCount}/{maxSeats})"
+msgstr "Platzlimit erreicht ({assignedCount}/{maxSeats})"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "{price} · User can spend credits from the workspace pool."
+msgstr "{price} · Das Mitglied kann Credits aus dem Workspace-Pool ausgeben."
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "{price} · {openCount, plural, one {# included seat open} other {# included seats open}}"
+msgstr "{price} · {openCount, plural, one {# inklusiver Platz frei} other {# inklusive Plätze frei}}"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "{price} · No included seats left — this will add a new billed seat"
+msgstr "{price} · Keine inklusiven Plätze mehr frei – dadurch wird ein neuer kostenpflichtiger Platz hinzugefügt"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Change seat for {displayedFirstName}"
+msgstr "Platz für {displayedFirstName} ändern"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+#: front/components/workspace/MembersSelectionBanner.tsx
+msgid "Change seat"
+msgstr "Platz ändern"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Choose a new plan to continue"
+msgstr "Wählen Sie einen neuen Platztyp aus, um fortzufahren"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "No seat plans available"
+msgstr "Keine Platztarife verfügbar"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "We couldn't load the seat plans for this workspace."
+msgstr "Die Platztarife für diesen Workspace konnten nicht geladen werden."
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Seat managed by group"
+msgstr "Platz durch Gruppe verwaltet"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "This member's seat is set by their group membership. Change it from the group-seat mapping in Usage settings."
+msgstr "Der Platz dieses Mitglieds wird durch seine Gruppenzugehörigkeit festgelegt. Ändern Sie ihn über die Zuordnung von Gruppen zu Plätzen in den Nutzungseinstellungen."
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "The change will take effect at the next credit refresh."
+msgstr "Die Änderung wird bei der nächsten Erneuerung der Credits wirksam."
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Scheduled change to {scheduledSeatName} will be canceled."
+msgstr "Die geplante Änderung zu {scheduledSeatName} wird storniert."
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Estimating invoice impact…"
+msgstr "Auswirkung auf die Rechnung wird geschätzt…"
+
+#: front/components/workspace/ChangeSeatModal.tsx
+msgid "Continue to checkout"
+msgstr "Weiter zur Zahlung"
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "Past credits"
+msgstr "Frühere Credits"
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "No expired credits in the last 6 months."
+msgstr "Keine abgelaufenen Credits in den letzten 6 Monaten."
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "Expired credits from the last 6 months."
+msgstr "Abgelaufene Credits der letzten 6 Monate."
+
+#: front/components/workspace/CreditHistorySheet.tsx
+msgid "For older credits, <0>contact support</0>."
+msgstr "Für ältere Credits <0>wenden Sie sich an den Support</0>."
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgid "credits/month"
+msgstr "Credits/Monat"
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgctxt "credit limit currently applied"
+msgid "Active"
+msgstr "Aktiv"
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgid "Personal limit"
+msgstr "Persönliches Limit"
+
+#: front/components/workspace/CreditLimitInput.tsx
+msgid "Remove personal limit"
+msgstr "Persönliches Limit entfernen"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Free"
+msgstr "Kostenlos"
+
+#: front/components/workspace/CreditsList.tsx
+msgctxt "credit type"
+msgid "Committed"
+msgstr "Vertraglich"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Pay-as-you-go"
+msgstr "Nutzungsbasierte Abrechnung"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Excess"
+msgstr "Mehrverbrauch"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Never"
+msgstr "Nie"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Type"
+msgstr "Typ"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Initial amount"
+msgstr "Anfangsbetrag"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Consumed"
+msgstr "Verbraucht"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Remaining"
+msgstr "Verbleibend"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Expiration date"
+msgstr "Ablaufdatum"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "Buyer"
+msgstr "Käufer"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "System"
+msgstr "System"
+
+#: front/components/workspace/CreditsList.tsx
+msgid "No credits purchased yet. Purchase credits to get started with programmatic API usage."
+msgstr "Noch keine Credits gekauft. Kaufen Sie Credits, um mit der Nutzung über die API zu beginnen."
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Directory sync"
+msgstr "Verzeichnissynchronisierung"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Enabled"
+msgstr "Aktiviert"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Automatically syncing users and groups from {connectionType}"
+msgstr "Nutzer und Gruppen werden automatisch aus {connectionType} synchronisiert"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Configure Directory sync"
+msgstr "Verzeichnissynchronisierung konfigurieren"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Deactivate Directory sync"
+msgstr "Verzeichnissynchronisierung deaktivieren"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Sync your organization's users and groups from your identity provider"
+msgstr "Synchronisieren Sie die Nutzer und Gruppen Ihrer Organisation aus Ihrem Identitätsanbieter"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Set up Directory sync"
+msgstr "Verzeichnissynchronisierung einrichten"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "User provisioning"
+msgstr "Nutzerbereitstellung"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Configuring {connectionType} directory sync"
+msgstr "{connectionType}-Verzeichnissynchronisierung wird konfiguriert"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Continue setting up Directory Sync"
+msgstr "Einrichtung der Verzeichnissynchronisierung fortsetzen"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Disable {connectionType} Directory Sync"
+msgstr "{connectionType}-Verzeichnissynchronisierung deaktivieren"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Users synced through {connectionType} Directory Sync will no longer be automatically provisioned or deprovisioned. Existing users will retain their access."
+msgstr "Über die {connectionType}-Verzeichnissynchronisierung synchronisierte Nutzer werden nicht mehr automatisch bereitgestellt oder entfernt. Bestehende Nutzer behalten ihren Zugriff."
+
+#: front/components/workspace/DirectorySync.tsx
+#: front/components/workspace/UpgradePlanDialog.tsx
+msgid "Free plan"
+msgstr "Kostenloser Tarif"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
+msgstr "Mit dem kostenlosen Tarif können Sie SSO nicht aktivieren. Wechseln Sie auf einen höheren Tarif, um die SSO-Funktionen zu nutzen."
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "View groups"
+msgstr "Gruppen anzeigen"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "Workspace groups"
+msgstr "Workspace-Gruppen"
+
+#: front/components/workspace/DirectorySync.tsx
+msgid "No groups found in this workspace."
+msgstr "In diesem Workspace wurden keine Gruppen gefunden."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI cannot be empty."
+msgstr "Die Weiterleitungs-URI darf nicht leer sein."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
+msgstr "Die Weiterleitungs-URI muss ein Schema enthalten (z. B. http://, https:// oder cursor://)."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "This redirect URI is already in the list."
+msgstr "Diese Weiterleitungs-URI ist bereits in der Liste."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Will be saved as {normalizedRedirectUri}."
+msgstr "Wird als {normalizedRedirectUri} gespeichert."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Use a full redirect URI such as https://example.com/oauth/callback."
+msgstr "Verwenden Sie eine vollständige Weiterleitungs-URI wie https://example.com/oauth/callback."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URIs"
+msgstr "Weiterleitungs-URIs"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Only workspace admins can manage MCP server settings."
+msgstr "Nur Workspace-Administratoren können die Einstellungen des MCP-Servers verwalten."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Accept all redirect URIs"
+msgstr "Alle Weiterleitungs-URIs akzeptieren"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Any redirect URI requested during OAuth will be allowed."
+msgstr "Jede bei OAuth angeforderte Weiterleitungs-URI wird zugelassen."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Allowlisted redirect URIs only"
+msgstr "Nur freigegebene Weiterleitungs-URIs"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Only the redirect URIs listed below will be accepted."
+msgstr "Nur die unten aufgeführten Weiterleitungs-URIs werden akzeptiert."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI"
+msgstr "Weiterleitungs-URI"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Add URI"
+msgstr "URI hinzufügen"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Add at least one redirect URI before saving."
+msgstr "Fügen Sie vor dem Speichern mindestens eine Weiterleitungs-URI hinzu."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Remove {uri}"
+msgstr "{uri} entfernen"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Saving..."
+msgstr "Wird gespeichert…"
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgctxt "remove a credit limit, button label"
+msgid "Remove"
+msgstr "Entfernen"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Remove group seat"
+msgstr "Gruppenplatz entfernen"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
+msgstr "Mitglieder von {groupName} verlieren ihren {seatName}-Platz am Ende des aktuellen Abrechnungszeitraums. Mitglieder, die diesen Platz (oder einen höheren) auch über eine andere Gruppe erhalten, behalten ihn. Dies betrifft bis zu {memberCount, plural, one {# Mitglied} other {# Mitglieder}}."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Remove seat"
+msgstr "Platz entfernen"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Shared by all members."
+msgstr "Wird von allen Mitgliedern geteilt."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "This group has no budget."
+msgstr "Diese Gruppe hat kein Budget."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "{usedCreditCount, plural, one {Shared by all members. {usedCredits} credit used so far this cycle.} other {Shared by all members. {usedCredits} credits used so far this cycle.}}"
+msgstr "{usedCreditCount, plural, one {Wird von allen Mitgliedern geteilt. {usedCredits} Credit in diesem Zeitraum bisher verbraucht.} other {Wird von allen Mitgliedern geteilt. {usedCredits} Credits in diesem Zeitraum bisher verbraucht.}}"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Group budget"
+msgstr "Gruppenbudget"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Grant {reviewSeatName} to {groupName}"
+msgstr "{reviewSeatName} an {groupName} vergeben"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Granted seat"
+msgstr "Vergebener Platz"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Limit per member"
+msgstr "Limit pro Mitglied"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "No limit"
+msgstr "Kein Limit"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Caps what each member can spend."
+msgstr "Begrenzt, was jedes Mitglied ausgeben kann."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Edit limits for {groupName}"
+msgstr "Limits für {groupName} bearbeiten"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Limits"
+msgstr "Limits"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Order"
+msgstr "Reihenfolge"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Groups join the order once they have a group budget."
+msgstr "Gruppen werden in die Reihenfolge aufgenommen, sobald sie ein Gruppenbudget haben."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Edit spend limit for {memberName}"
+msgstr "Ausgabenlimit für {memberName} bearbeiten"
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Reset to no personal limit at the next billing cycle"
+msgstr "Zum nächsten Abrechnungszeitraum auf kein persönliches Limit zurücksetzen"
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "{resetBaselineCreditCount, plural, one {Reset to {resetBaselineCredits} credit at the next billing cycle} other {Reset to {resetBaselineCredits} credits at the next billing cycle}}"
+msgstr "{resetBaselineCreditCount, plural, one {Zum nächsten Abrechnungszeitraum auf {resetBaselineCredits} Credit zurücksetzen} other {Zum nächsten Abrechnungszeitraum auf {resetBaselineCredits} Credits zurücksetzen}}"
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "A personal limit applies to this member across the workspace."
+msgstr "Für dieses Mitglied gilt im gesamten Workspace ein persönliches Limit."
+
+#: front/components/workspace/EditMemberSpendLimitModal.tsx
+msgid "Group limits"
+msgstr "Gruppenlimits"
+
+#: front/components/workspace/ExtensionMcpToolsSection.tsx
+msgid "Browser extension tools"
+msgstr "Tools der Browser-Erweiterung"
+
+#: front/components/workspace/ExtensionMcpToolsSection.tsx
+msgid "Whether the Dust browser extension is allowed to list and read browser tabs."
+msgstr "Legt fest, ob die Dust-Browsererweiterung Browser-Tabs auflisten und lesen darf."
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MemberGroupLimitTable.tsx
+msgid "Group"
+msgstr "Gruppe"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "This group"
+msgstr "Diese Gruppe"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Shared members"
+msgstr "Gemeinsame Mitglieder"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Move up"
+msgstr "Nach oben"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Move down"
+msgstr "Nach unten"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "The order of group budgets could not be loaded."
+msgstr "Die Reihenfolge der Gruppenbudgets konnte nicht geladen werden."
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Shares members with <0>{groupName}</0>"
+msgstr "Gemeinsame Mitglieder mit <0>{groupName}</0>"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "{visibleCount} of {totalCount, plural, one {# group} other {# groups}}"
+msgstr "{visibleCount} von {totalCount, plural, one {# Gruppe} other {# Gruppen}}"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "{earlierGroupCount, plural, one {# group earlier in the order shares members with {groupName}.} other {# groups earlier in the order share members with {groupName}.}}"
+msgstr "{earlierGroupCount, plural, one {# Gruppe weiter vorne in der Reihenfolge hat gemeinsame Mitglieder mit {groupName}.} other {# Gruppen weiter vorne in der Reihenfolge haben gemeinsame Mitglieder mit {groupName}.}}"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgctxt "open the order of group budgets"
+msgid "Review"
+msgstr "Prüfen"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MemberGroupLimitTable.tsx
+#: front/components/workspace/UsageMembersSection.tsx
+msgid "Members"
+msgstr "Mitglieder"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Consuming the group budget ahead of the billing cycle's pace"
+msgstr "Verbraucht das Gruppenbudget schneller als im Abrechnungszeitraum vorgesehen"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "At this rate, this group will use its whole budget before the cycle ends and its members will lose access to Dust until it resets."
+msgstr "Bei diesem Tempo verbraucht diese Gruppe ihr gesamtes Budget vor Ende des Zeitraums, und ihre Mitglieder verlieren bis zur Zurücksetzung den Zugriff auf Dust."
+
+#: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Models tier"
+msgstr "Modellstufe"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
+msgstr "Das monatliche Ausgabenlimit einer Gruppe gilt für jedes ihrer Mitglieder. Gehört ein Mitglied mehreren Gruppen an, gilt das höchste Limit."
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "A group budget caps what all the group's members spend together."
+msgstr "Ein Gruppenbudget begrenzt, was alle Mitglieder der Gruppe zusammen ausgeben."
+
+#: front/components/workspace/MemberGroupLimitTable.tsx
+msgid "Limit"
+msgstr "Limit"
+
+#: front/components/workspace/MemberGroupLimitTable.tsx
+msgid "credits/m."
+msgstr "Credits/Mon."
+
+#: front/components/workspace/MemberGroupsSection.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Groups"
+msgstr "Gruppen"
+
+#: front/components/workspace/MemberGroupsSection.tsx
+msgid "Add to group"
+msgstr "Zu Gruppe hinzufügen"
+
+#: front/components/workspace/MemberGroupsSection.tsx
+msgid "Search groups"
+msgstr "Gruppen suchen"
+
+#: front/components/workspace/MemberGroupsSection.tsx
+msgid "{memberCount, plural, one {# member} other {# members}}"
+msgstr "{memberCount, plural, one {# Mitglied} other {# Mitglieder}}"
+
+#: front/components/workspace/MemberGroupsSection.tsx
+msgid "No groups found"
+msgstr "Keine Gruppen gefunden"
+
+#: front/components/workspace/MemberGroupsSection.tsx
+msgid "All groups added"
+msgstr "Alle Gruppen hinzugefügt"
+
+#: front/components/workspace/MemberGroupsSection.tsx
+msgid "This member is not part of any group."
+msgstr "Dieses Mitglied gehört keiner Gruppe an."
+
+#: front/components/workspace/MembersSelectionBanner.tsx
+msgid "Select all {totalCount, plural, one {# member} other {# members}}"
+msgstr "{totalCount, plural, one {# Mitglied auswählen} other {Alle # Mitglieder auswählen}}"
+
+#: front/components/workspace/MembersSelectionBanner.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Edit spend limit"
+msgstr "Ausgabenlimit bearbeiten"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Another group"
+msgstr "Eine andere Gruppe"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{percent}% used"
+msgstr "{percent} % verbraucht"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{percent}% used, {days, plural, one {resets in # day} other {resets in # days}}"
+msgstr "{percent} % verbraucht, {days, plural, one {Zurücksetzung in # Tag} other {Zurücksetzung in # Tagen}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will switch to annual billing at the end of the billing period ({changeDate})"
+msgstr "Dieses Mitglied wechselt am Ende des Abrechnungszeitraums ({changeDate}) zur jährlichen Abrechnung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will switch to annual billing at the end of the billing period"
+msgstr "Dieses Mitglied wechselt am Ende des Abrechnungszeitraums zur jährlichen Abrechnung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will be upgraded to {targetLabel} at the end of the billing period ({changeDate})"
+msgstr "Dieses Mitglied wird am Ende des Abrechnungszeitraums ({changeDate}) auf {targetLabel} hochgestuft"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will be upgraded to {targetLabel} at the end of the billing period"
+msgstr "Dieses Mitglied wird am Ende des Abrechnungszeitraums auf {targetLabel} hochgestuft"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will be downgraded to {targetLabel} at the end of the billing period ({changeDate})"
+msgstr "Dieses Mitglied wird am Ende des Abrechnungszeitraums ({changeDate}) auf {targetLabel} herabgestuft"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will be downgraded to {targetLabel} at the end of the billing period"
+msgstr "Dieses Mitglied wird am Ende des Abrechnungszeitraums auf {targetLabel} herabgestuft"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will be changed to {targetLabel} at the end of the billing period ({changeDate})"
+msgstr "Dieses Mitglied wird am Ende des Abrechnungszeitraums ({changeDate}) auf {targetLabel} umgestellt"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "This user will be changed to {targetLabel} at the end of the billing period"
+msgstr "Dieses Mitglied wird am Ende des Abrechnungszeitraums auf {targetLabel} umgestellt"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Limit set specifically for this member"
+msgstr "Speziell für dieses Mitglied festgelegtes Limit"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Limit inherited from the \"{groupName}\" group"
+msgstr "Von der Gruppe „{groupName}“ übernommenes Limit"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Limit from a group"
+msgstr "Limit aus einer Gruppe"
+
+#: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/WorkspaceDefaultLimitInput.tsx
+msgid "Workspace default limit"
+msgstr "Standardlimit des Workspace"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Resets to no personal limit on {resetDate}"
+msgstr "Wird am {resetDate} auf kein persönliches Limit zurückgesetzt"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{previousLimitCreditCount, plural, one {Resets to {previousLimit} credit on {resetDate}} other {Resets to {previousLimit} credits on {resetDate}}}"
+msgstr "{previousLimitCreditCount, plural, one {Wird am {resetDate} auf {previousLimit} Credit zurückgesetzt} other {Wird am {resetDate} auf {previousLimit} Credits zurückgesetzt}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Member pool credit usage"
+msgstr "Pool-Credit-Verbrauch des Mitglieds"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{limitCreditCount, plural, one {{consumedLabel} of {limitLabel} pool credit used} other {{consumedLabel} of {limitLabel} pool credits used}}"
+msgstr "{limitCreditCount, plural, one {{consumedLabel} von {limitLabel} Pool-Credit verbraucht} other {{consumedLabel} von {limitLabel} Pool-Credits verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{allowanceCreditCount, plural, one {{seatConsumedLabel} of {allowanceLabel} lifetime credit used} other {{seatConsumedLabel} of {allowanceLabel} lifetime credits used}}"
+msgstr "{allowanceCreditCount, plural, one {{seatConsumedLabel} von insgesamt {allowanceLabel} Credit verbraucht} other {{seatConsumedLabel} von insgesamt {allowanceLabel} Credits verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{seatConsumedLabel} of {allowanceLabel} seat allowance used"
+msgstr "{seatConsumedLabel} von {allowanceLabel} des Platzkontingents verbraucht"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{allowanceCreditCount, plural, one {{seatRemainingLabel} of {allowanceLabel} lifetime credit remaining} other {{seatRemainingLabel} of {allowanceLabel} lifetime credits remaining}}"
+msgstr "{allowanceCreditCount, plural, one {{seatRemainingLabel} von insgesamt {allowanceLabel} Credit übrig} other {{seatRemainingLabel} von insgesamt {allowanceLabel} Credits übrig}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{seatRemainingLabel} of {allowanceLabel} seat allowance remaining"
+msgstr "{seatRemainingLabel} von {allowanceLabel} des Platzkontingents übrig"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} credit used from the workspace pool} other {{poolConsumedLabel} credits used from the workspace pool}}"
+msgstr "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} Credit aus dem Workspace-Pool verbraucht} other {{poolConsumedLabel} Credits aus dem Workspace-Pool verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{poolRemainingCreditCount, plural, one {{poolRemainingLabel} credit remaining before spend limit} other {{poolRemainingLabel} credits remaining before spend limit}}"
+msgstr "{poolRemainingCreditCount, plural, one {{poolRemainingLabel} Credit bis zum Ausgabenlimit übrig} other {{poolRemainingLabel} Credits bis zum Ausgabenlimit übrig}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Lifetime credits"
+msgstr "Dauerhafte Credits"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Seat usage"
+msgstr "Platznutzung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{seatConsumedCreditCount, plural, one {{seatConsumedLabel} credit used out of {allowanceLabel}} other {{seatConsumedLabel} credits used out of {allowanceLabel}}}"
+msgstr "{seatConsumedCreditCount, plural, one {{seatConsumedLabel} von {allowanceLabel} Credit verbraucht} other {{seatConsumedLabel} von {allowanceLabel} Credits verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Pool usage"
+msgstr "Pool-Nutzung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} credit used out of {poolLimitLabel}} other {{poolConsumedLabel} credits used out of {poolLimitLabel}}}"
+msgstr "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} von {poolLimitLabel} Credit verbraucht} other {{poolConsumedLabel} von {poolLimitLabel} Credits verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Overage"
+msgstr "Überschreitung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{overageCreditCount, plural, one {{overageLabel} credit over the spend limit} other {{overageLabel} credits over the spend limit}}"
+msgstr "{overageCreditCount, plural, one {{overageLabel} Credit über dem Ausgabenlimit} other {{overageLabel} Credits über dem Ausgabenlimit}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Member credit usage"
+msgstr "Credit-Verbrauch des Mitglieds"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "No credits available"
+msgstr "Keine Credits verfügbar"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Seats"
+msgstr "Plätze"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{seatName} seat"
+msgstr "Platz {seatName}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{allowanceCreditCount, plural, one {{consumedLabel} / {allowanceLabel} credit used} other {{consumedLabel} / {allowanceLabel} credits used}}"
+msgstr "{allowanceCreditCount, plural, one {{consumedLabel} / {allowanceLabel} Credit verbraucht} other {{consumedLabel} / {allowanceLabel} Credits verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Credit usage"
+msgstr "Credit-Verbrauch"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Premium messages"
+msgstr "Premium-Nachrichten"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Resets on a rolling {windowDays}-day basis"
+msgstr "Wird fortlaufend alle {windowDays} Tage zurückgesetzt"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Premium message usage"
+msgstr "Nutzung von Premium-Nachrichten"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{usedMessages} of {limitMessages, plural, one {# premium message} other {# premium messages}} used over the last {windowDays, plural, one {# day} other {# days}}"
+msgstr "{usedMessages} von {limitMessages, plural, one {# Premium-Nachricht} other {# Premium-Nachrichten}} in {windowDays, plural, one {den letzten # Tag} other {den letzten # Tagen}} genutzt"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Reset schedule:"
+msgstr "Zurücksetzungsplan:"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Fair usage credits"
+msgstr "Credits für angemessene Nutzung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Fair-use credits usage"
+msgstr "Verbrauch der Credits für angemessene Nutzung"
+
+#: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/SharedUsageLimitCell.tsx
+msgid "{limitCreditCount, plural, one {{usedLabel} of {limitLabel} credit used} other {{usedLabel} of {limitLabel} credits used}}"
+msgstr "{limitCreditCount, plural, one {{usedLabel} von {limitLabel} Credit verbraucht} other {{usedLabel} von {limitLabel} Credits verbraucht}}"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Unblock"
+msgstr "Entsperren"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Upgrade seat"
+msgstr "Platz upgraden"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Consuming credits ahead of the billing cycle's pace"
+msgstr "Verbraucht Credits schneller als im Abrechnungszyklus vorgesehen"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
+msgstr "Bei diesem Tempo erreicht dieses Mitglied sein Limit vor Ende des Zyklus und verliert bis zum Zurücksetzen den Zugriff auf Dust."
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Models"
+msgstr "Modelle"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{summary} (custom)"
+msgstr "{summary} (benutzerdefiniert)"
+
+#: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Assign seat"
+msgstr "Platz zuweisen"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Change seat type"
+msgstr "Platztyp ändern"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "lowest cost"
+msgstr "niedrigste Kosten"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "medium cost"
+msgstr "mittlere Kosten"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "high cost"
+msgstr "hohe Kosten"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "highest cost"
+msgstr "höchste Kosten"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Open {tierName} tier ({costLabel})"
+msgstr "Stufe {tierName} öffnen ({costLabel})"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Model"
+msgstr "Modell"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Reasoning effort"
+msgstr "Aufwandsstufe"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "No model in this tier is available in this workspace."
+msgstr "In diesem Workspace ist kein Modell dieser Stufe verfügbar."
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "How model tiers work"
+msgstr "So funktionieren Modellstufen"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Model tiers group models and reasoning efforts by typical usage cost. Higher tiers include more capable, more expensive combinations."
+msgstr "Modellstufen gruppieren Modelle und Aufwandsstufen nach ihren typischen Nutzungskosten. Höhere Stufen enthalten leistungsfähigere, teurere Kombinationen."
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "What each tier includes"
+msgstr "Inhalt der einzelnen Stufen"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Each tier includes a range of models and reasoning efforts with similar usage costs. Reasoning effort is how much work a model does before it answers: a higher effort can give better results on complex tasks, but usually costs more."
+msgstr "Jede Stufe umfasst eine Reihe von Modellen und Aufwandsstufen mit ähnlichen Nutzungskosten. Die Aufwandsstufe gibt an, wie viel Arbeit ein Modell vor der Antwort leistet: Eine höhere Aufwandsstufe kann bei komplexen Aufgaben bessere Ergebnisse liefern, kostet aber meist mehr."
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Why costs differ"
+msgstr "Warum sich die Kosten unterscheiden"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Usage cost depends on both the model and its reasoning effort. We compare each combination on representative tasks rather than on the model's token price alone. Raising the reasoning effort by one step usually increases the cost by about 30%."
+msgstr "Die Nutzungskosten hängen sowohl vom Modell als auch von seiner Aufwandsstufe ab. Wir vergleichen jede Kombination anhand repräsentativer Aufgaben statt nur anhand des Tokenpreises des Modells. Eine um eine Stufe höhere Aufwandsstufe erhöht die Kosten meist um etwa 30 %."
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "How access limits work"
+msgstr "So funktionieren Zugriffslimits"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "A member can use the tier they are assigned and every lower-cost tier: access to Standard also includes Basic."
+msgstr "Ein Mitglied kann die ihm zugewiesene Stufe und jede günstigere Stufe nutzen: Der Zugriff auf Standard umfasst auch Basic."
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "See what's included"
+msgstr "Inhalt ansehen"
+
+#: front/components/workspace/ModelTiersInfoModal.tsx
+msgid "Select a tier to see the models and reasoning efforts it includes."
+msgstr "Wählen Sie eine Stufe aus, um die enthaltenen Modelle und Aufwandsstufen zu sehen."
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "By agent"
+msgstr "Nach Agent"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "By source"
+msgstr "Nach Quelle"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "By API key"
+msgstr "Nach API-Schlüssel"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Global"
+msgstr "Gesamt"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Agent: {label}"
+msgstr "Agent: {label}"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Source: {label}"
+msgstr "Quelle: {label}"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "API key: {label}"
+msgstr "API-Schlüssel: {label}"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Top 5"
+msgstr "Top 5"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Top 10"
+msgstr "Top 10"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Top 15"
+msgstr "Top 15"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Top 20"
+msgstr "Top 20"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Top 30"
+msgstr "Top 30"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Total cost consumed"
+msgstr "Verbrauchte Gesamtkosten"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Others"
+msgstr "Sonstige"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Non-API programmatic usage"
+msgstr "Automatisierte Nutzung ohne API"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Total credits"
+msgstr "Credits gesamt"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Cumulative"
+msgstr "Kumuliert"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Daily"
+msgstr "Täglich"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Usage cost graph"
+msgstr "Diagramm der Nutzungskosten"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Previous period"
+msgstr "Vorheriger Zeitraum"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Next period"
+msgstr "Nächster Zeitraum"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Export cost data from this period as CSV"
+msgstr "Kostendaten dieses Zeitraums als CSV exportieren"
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Filter by clicking on legend items."
+msgstr "Filtern Sie durch Klicken auf die Legendeneinträge."
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Failed to load programmatic cost data."
+msgstr "Die API-Kostendaten konnten nicht geladen werden."
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "No cost data for this month."
+msgstr "Keine Kostendaten für diesen Monat."
+
+#: front/components/workspace/ProgrammaticCostChart.tsx
+msgid "Clear filters"
+msgstr "Filter zurücksetzen"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{amount}/wk"
+msgstr "{amount}/Woche"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{amount}/mo"
+msgstr "{amount}/Monat"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{amount}/qtr"
+msgstr "{amount}/Quartal"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{amount}/yr"
+msgstr "{amount}/Jahr"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{credits, plural, one {# credit per week} other {# credits per week}}"
+msgstr "{credits, plural, one {# Credit pro Woche} other {# Credits pro Woche}}"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{credits, plural, one {# credit per month} other {# credits per month}}"
+msgstr "{credits, plural, one {# Credit pro Monat} other {# Credits pro Monat}}"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{credits, plural, one {# credit per quarter} other {# credits per quarter}}"
+msgstr "{credits, plural, one {# Credit pro Quartal} other {# Credits pro Quartal}}"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{credits, plural, one {# credit per year} other {# credits per year}}"
+msgstr "{credits, plural, one {# Credit pro Jahr} other {# Credits pro Jahr}}"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "{credits, plural, one {# credit lifetime} other {# credits lifetime}}"
+msgstr "{credits, plural, one {# Credit auf Lebenszeit} other {# Credits auf Lebenszeit}}"
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{amount}/wk</0> to your invoice starting next weekly term."
+msgstr "Dadurch kommen ab dem nächsten wöchentlichen Abrechnungszeitraum voraussichtlich <0>{amount}/Woche</0> zu Ihrer Rechnung hinzu."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{amount}/mo</0> to your invoice starting next monthly billing period."
+msgstr "Dadurch kommen ab dem nächsten monatlichen Abrechnungszeitraum voraussichtlich <0>{amount}/Monat</0> zu Ihrer Rechnung hinzu."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{amount}/qtr</0> to your invoice starting next quarterly term."
+msgstr "Dadurch kommen ab dem nächsten vierteljährlichen Abrechnungszeitraum voraussichtlich <0>{amount}/Quartal</0> zu Ihrer Rechnung hinzu."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{amount}/yr</0> to your invoice starting next annual term."
+msgstr "Dadurch kommen ab dem nächsten jährlichen Abrechnungszeitraum voraussichtlich <0>{amount}/Jahr</0> zu Ihrer Rechnung hinzu."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will remove an estimated <0>{amount}/wk</0> from your invoice starting next weekly term."
+msgstr "Dadurch verringert sich Ihre Rechnung ab dem nächsten wöchentlichen Abrechnungszeitraum voraussichtlich um <0>{amount}/Woche</0>."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will remove an estimated <0>{amount}/mo</0> from your invoice starting next monthly billing period."
+msgstr "Dadurch verringert sich Ihre Rechnung ab dem nächsten monatlichen Abrechnungszeitraum voraussichtlich um <0>{amount}/Monat</0>."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will remove an estimated <0>{amount}/qtr</0> from your invoice starting next quarterly term."
+msgstr "Dadurch verringert sich Ihre Rechnung ab dem nächsten vierteljährlichen Abrechnungszeitraum voraussichtlich um <0>{amount}/Quartal</0>."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will remove an estimated <0>{amount}/yr</0> from your invoice starting next annual term."
+msgstr "Dadurch verringert sich Ihre Rechnung ab dem nächsten jährlichen Abrechnungszeitraum voraussichtlich um <0>{amount}/Jahr</0>."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{proratedPrice}</0>, prorated for the {daysRemaining, plural, one {# day} other {# days}} left in your current weekly term (full price: {price}/wk)."
+msgstr "Dadurch kommen voraussichtlich <0>{proratedPrice}</0> hinzu, anteilig für {daysRemaining, plural, one {den # verbleibenden Tag} other {die # verbleibenden Tage}} Ihres aktuellen wöchentlichen Abrechnungszeitraums (voller Preis: {price}/Woche)."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{proratedPrice}</0>, prorated for the {daysRemaining, plural, one {# day} other {# days}} left in your current monthly billing period (full price: {price}/mo)."
+msgstr "Dadurch kommen voraussichtlich <0>{proratedPrice}</0> hinzu, anteilig für {daysRemaining, plural, one {den # verbleibenden Tag} other {die # verbleibenden Tage}} Ihres aktuellen monatlichen Abrechnungszeitraums (voller Preis: {price}/Monat)."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{proratedPrice}</0>, prorated for the {daysRemaining, plural, one {# day} other {# days}} left in your current quarterly term (full price: {price}/qtr)."
+msgstr "Dadurch kommen voraussichtlich <0>{proratedPrice}</0> hinzu, anteilig für {daysRemaining, plural, one {den # verbleibenden Tag} other {die # verbleibenden Tage}} Ihres aktuellen vierteljährlichen Abrechnungszeitraums (voller Preis: {price}/Quartal)."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{proratedPrice}</0>, prorated for the {daysRemaining, plural, one {# day} other {# days}} left in your current annual term (full price: {price}/yr)."
+msgstr "Dadurch kommen voraussichtlich <0>{proratedPrice}</0> hinzu, anteilig für {daysRemaining, plural, one {den # verbleibenden Tag} other {die # verbleibenden Tage}} Ihres aktuellen jährlichen Abrechnungszeitraums (voller Preis: {price}/Jahr)."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add up to <0>{price}/wk</0>, prorated for the remainder of your current weekly term."
+msgstr "Dadurch kommen bis zu <0>{price}/Woche</0> hinzu, anteilig für den Rest Ihres aktuellen wöchentlichen Abrechnungszeitraums."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add up to <0>{price}/mo</0>, prorated for the remainder of your current monthly billing period."
+msgstr "Dadurch kommen bis zu <0>{price}/Monat</0> hinzu, anteilig für den Rest Ihres aktuellen monatlichen Abrechnungszeitraums."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add up to <0>{price}/qtr</0>, prorated for the remainder of your current quarterly term."
+msgstr "Dadurch kommen bis zu <0>{price}/Quartal</0> hinzu, anteilig für den Rest Ihres aktuellen vierteljährlichen Abrechnungszeitraums."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add up to <0>{price}/yr</0>, prorated for the remainder of your current annual term."
+msgstr "Dadurch kommen bis zu <0>{price}/Jahr</0> hinzu, anteilig für den Rest Ihres aktuellen jährlichen Abrechnungszeitraums."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will add an estimated <0>{extra}</0> to your next invoice — you'll be billed <1>{price}</1> upfront for the year starting next annual term."
+msgstr "Dadurch kommen voraussichtlich <0>{extra}</0> zu Ihrer nächsten Rechnung hinzu – ab dem nächsten jährlichen Abrechnungszeitraum werden Ihnen <1>{price}</1> im Voraus für das Jahr berechnet."
+
+#: front/components/workspace/SeatCard.tsx
+msgid "This will not change your invoice."
+msgstr "Ihre Rechnung ändert sich dadurch nicht."
+
+#: front/components/workspace/SharedUsageLimitCell.tsx
+msgid "Group budget usage"
+msgstr "Nutzung des Gruppenbudgets"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Date"
+msgstr "Datum"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Expiration"
+msgstr "Ablauf"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Expired {expirationDate}"
+msgstr "Abgelaufen am {expirationDate}"
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "Failed to load top-ups history"
+msgstr "Der Aufladungsverlauf konnte nicht geladen werden."
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "An error occurred while loading the top-ups history. Please refresh the page or contact support if the issue persists."
+msgstr "Beim Laden des Aufladungsverlaufs ist ein Fehler aufgetreten. Aktualisieren Sie die Seite oder wenden Sie sich an den Support, wenn das Problem weiterhin besteht."
+
+#: front/components/workspace/TopUpsHistoryTable.tsx
+msgid "No top-ups yet: credits you buy, free credits and coupon credits will appear here."
+msgstr "Noch keine Aufladungen: Gekaufte, kostenlose und per Gutschein erhaltene Credits werden hier angezeigt."
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+msgid "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+msgstr "Mit dem kostenlosen Tarif können Sie den automatischen Beitritt nicht aktivieren. Wechseln Sie auf einen höheren Tarif, um weitere Mitglieder einzuladen."
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+msgid "Check Dust plans"
+msgstr "Dust-Tarife ansehen"
+
+#: front/components/workspace/UpgradePlanDialog.tsx
+msgid "You do not have permission to upgrade the plan."
+msgstr "Sie sind nicht berechtigt, den Tarif zu upgraden."
+
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Edit group budget"
+msgstr "Gruppenbudget bearbeiten"
+
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+msgid "Could not load the shared group budget for {requesterName}. Refresh the page to try again."
+msgstr "Das gemeinsame Gruppenbudget für {requesterName} konnte nicht geladen werden. Aktualisieren Sie die Seite, um es erneut zu versuchen."
+
+#: front/components/workspace/UpgradeRequestLimitModal.tsx
+msgid "Edit spend limit for {requesterName}"
+msgstr "Ausgabenlimit für {requesterName} bearbeiten"
+
+#: front/components/workspace/UpgradeRequestLimitModal.tsx
+msgid "Could not load this member's current limits. Refresh the page to try again."
+msgstr "Die aktuellen Limits dieses Mitglieds konnten nicht geladen werden. Aktualisieren Sie die Seite, um es erneut zu versuchen."
+
+#: front/components/workspace/UpgradeRequests.tsx
+msgid "Deny upgrade request"
+msgstr "Erhöhungsanfrage ablehnen"
+
+#: front/components/workspace/UpgradeRequests.tsx
+msgid "Deny {requesterName}'s request to increase their spend limit?"
+msgstr "Anfrage von {requesterName} zur Erhöhung des Ausgabenlimits ablehnen?"
+
+#: front/components/workspace/UpgradeRequests.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Deny"
+msgstr "Ablehnen"
+
+#: front/components/workspace/UpgradeRequests.tsx
+msgid "Could not load requests. Refresh the page to try again."
+msgstr "Die Anfragen konnten nicht geladen werden. Aktualisieren Sie die Seite, um es erneut zu versuchen."
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Reached credit limit"
+msgstr "Credit-Limit erreicht"
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Upgrade plan"
+msgstr "Tarif upgraden"
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Edit limit"
+msgstr "Limit bearbeiten"
+
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "No pending upgrade requests."
+msgstr "Keine offenen Erhöhungsanfragen."
+
+#: front/components/workspace/UsageMembersSection.tsx
+msgid "All groups"
+msgstr "Alle Gruppen"
+
+#: front/components/workspace/UsageMembersSection.tsx
+msgid "Search members"
+msgstr "Mitglieder suchen"
+
+#: front/components/workspace/UsageMembersSection.tsx
+msgid "Requests"
+msgstr "Anfragen"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Domain verification"
+msgstr "Domainverifizierung"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Verify your company domains to enable Single Sign-On (SSO), automatic workspace enrollment for team members, and secure connections to your internal MCP servers."
+msgstr "Verifizieren Sie die Domains Ihres Unternehmens, um Single Sign-On (SSO), den automatischen Workspace-Beitritt für Teammitglieder und sichere Verbindungen zu Ihren internen MCP-Servern zu aktivieren."
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Add domain"
+msgstr "Domain hinzufügen"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Delete domain"
+msgstr "Domain löschen"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Are you sure you want to delete the domain \"{domain}\"?"
+msgstr "Möchten Sie die Domain „{domain}“ wirklich löschen?"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "This action cannot be undone."
+msgstr "Diese Aktion kann nicht rückgängig gemacht werden."
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Delete"
+msgstr "Löschen"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Domain"
+msgstr "Domain"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Pending"
+msgstr "Ausstehend"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Verified"
+msgstr "Verifiziert"
+
+#: front/components/workspace/WorkspaceAccessPanel.tsx
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Day {elapsedDays}/{totalDays}"
+msgstr "Tag {elapsedDays}/{totalDays}"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Remaining credits in the pool"
+msgstr "Verbleibende Credits im Pool"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Used this cycle"
+msgstr "In diesem Zyklus verbraucht"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Programmatic usage this cycle"
+msgstr "Nutzung über die API in diesem Zyklus"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "{percentage}% of the usage"
+msgstr "{percentage} % der Nutzung"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Cycle"
+msgstr "Zyklus"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Used credits"
+msgstr "Verbrauchte Credits"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Unknown cycle"
+msgstr "Unbekannter Zyklus"
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Failed to load cycle history"
+msgstr "Der Verlauf der Zyklen konnte nicht geladen werden."
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "An error occurred while loading past-cycle consumption."
+msgstr "Beim Laden des Verbrauchs vergangener Zyklen ist ein Fehler aufgetreten."
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "Failed to load workspace credits pool"
+msgstr "Der Credit-Pool des Workspace konnte nicht geladen werden."
+
+#: front/components/workspace/WorkspaceCreditPoolCards.tsx
+msgid "An error occurred while loading the workspace's credit pool data."
+msgstr "Beim Laden der Daten zum Credit-Pool des Workspace ist ein Fehler aufgetreten."
+
+#: front/components/workspace/WorkspaceDefaultLimitInput.tsx
+msgid "The workspace default limit could not be loaded."
+msgstr "Das Standardlimit des Workspace konnte nicht geladen werden."
+
+#: front/components/workspace/member_name_column.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/workspace/member_name_column.tsx
+msgid "Email"
+msgstr "E-Mail"
+
+#: front/components/workspace/member_spend_limit_helpers.ts
+msgid "Enter a whole number of credits between {minFormatted} and {maxFormatted}."
+msgstr "Geben Sie eine ganze Zahl an Credits zwischen {minFormatted} und {maxFormatted} ein."

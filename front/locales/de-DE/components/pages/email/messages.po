@@ -1,0 +1,102 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Processing... - Dust"
+msgstr "Wird verarbeitet… - Dust"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Processing..."
+msgstr "Wird verarbeitet…"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Approved - Dust"
+msgstr "Genehmigt - Dust"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Rejected - Dust"
+msgstr "Abgelehnt - Dust"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Validation - Dust"
+msgstr "Validierung - Dust"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "This page will close in {countdown}s."
+msgstr "Diese Seite wird in {countdown} s geschlossen."
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "View conversation"
+msgstr "Unterhaltung ansehen"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Close"
+msgstr "Schließen"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Validation error - Dust"
+msgstr "Validierungsfehler - Dust"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Back to Dust"
+msgstr "Zurück zu Dust"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Link expired"
+msgstr "Link abgelaufen"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "This approval link has expired. Please request a new validation email or approve the tool directly in Dust."
+msgstr "Dieser Genehmigungslink ist abgelaufen. Fordern Sie eine neue Validierungs-E-Mail an oder genehmigen Sie das Tool direkt in Dust."
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Invalid link"
+msgstr "Ungültiger Link"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "This approval link is invalid. Please check the link or request a new validation email."
+msgstr "Dieser Genehmigungslink ist ungültig. Überprüfen Sie den Link oder fordern Sie eine neue Validierungs-E-Mail an."
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Something went wrong"
+msgstr "Etwas ist schiefgelaufen"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "An error occurred while processing your request. Please try again or contact support."
+msgstr "Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Versuchen Sie es erneut oder wenden Sie sich an den Support."
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Tool approved"
+msgstr "Tool genehmigt"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "The tool has been approved and will now execute."
+msgstr "Das Tool wurde genehmigt und wird jetzt ausgeführt."
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Tool rejected"
+msgstr "Tool abgelehnt"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "The tool has been rejected and will not execute."
+msgstr "Das Tool wurde abgelehnt und wird nicht ausgeführt."
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "Already validated"
+msgstr "Bereits validiert"
+
+#: front/components/pages/email/ValidationPage.tsx
+msgid "This tool has already been approved or rejected."
+msgstr "Dieses Tool wurde bereits genehmigt oder abgelehnt."

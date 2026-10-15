@@ -1,0 +1,2173 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/api_error_messages.ts
+msgid "An unexpected error occurred."
+msgstr "Ein unerwarteter Fehler ist aufgetreten."
+
+#: front/lib/api_error_messages.ts
+msgid "You are not signed in."
+msgstr "Sie sind nicht angemeldet."
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace requires you to sign in with SSO."
+msgstr "Dieser Workspace erfordert eine Anmeldung per SSO."
+
+#: front/lib/api_error_messages.ts
+msgid "The request is missing its authorization header."
+msgstr "Der Anfrage fehlt der Autorisierungs-Header."
+
+#: front/lib/api_error_messages.ts
+msgid "The request authorization header is malformed."
+msgstr "Der Autorisierungs-Header der Anfrage ist fehlerhaft."
+
+#: front/lib/api_error_messages.ts
+msgid "The request basic authorization is invalid."
+msgstr "Die Basic-Authentifizierung der Anfrage ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Your session token is invalid."
+msgstr "Ihr Sitzungstoken ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Your session has expired. Sign in again."
+msgstr "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an."
+
+#: front/lib/api_error_messages.ts
+msgid "The API key is invalid."
+msgstr "Der API-Schlüssel ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "The sandbox token is invalid."
+msgstr "Das Sandbox-Token ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Something went wrong on our side."
+msgstr "Auf unserer Seite ist ein Fehler aufgetreten."
+
+#: front/lib/api_error_messages.ts
+msgid "The request is malformed."
+msgstr "Die Anfrage ist fehlerhaft."
+
+#: front/lib/api_error_messages.ts
+msgid "The table rows are invalid."
+msgstr "Die Tabellenzeilen sind ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "User not found."
+msgstr "Nutzer nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The content is too large."
+msgstr "Der Inhalt ist zu groß."
+
+#: front/lib/api_error_messages.ts
+msgid "The data source returned an error."
+msgstr "Die Datenquelle hat einen Fehler zurückgegeben."
+
+#: front/lib/api_error_messages.ts
+msgid "Data source not found."
+msgstr "Datenquelle nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Data source view not found."
+msgstr "Ansicht der Datenquelle nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this data source."
+msgstr "Sie haben keinen Zugriff auf diese Datenquelle."
+
+#: front/lib/api_error_messages.ts
+msgid "The data source has reached its quota."
+msgstr "Die Datenquelle hat ihr Kontingent erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "The workspace has reached its quota."
+msgstr "Der Workspace hat sein Kontingent erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "Document not found."
+msgstr "Dokument nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This data source isn't managed by a connection."
+msgstr "Diese Datenquelle wird nicht über eine Verbindung verwaltet."
+
+#: front/lib/api_error_messages.ts
+msgid "The run failed."
+msgstr "Die Ausführung ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "App not found."
+msgstr "App nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this app."
+msgstr "Sie haben keinen Zugriff auf diese App."
+
+#: front/lib/api_error_messages.ts
+msgid "The model provider rejected the credentials."
+msgstr "Der Modellanbieter hat die Anmeldedaten abgelehnt."
+
+#: front/lib/api_error_messages.ts
+msgid "Model provider not found."
+msgstr "Modellanbieter nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The model provider endpoint is invalid or can't be reached."
+msgstr "Der Endpunkt des Modellanbieters ist ungültig oder nicht erreichbar."
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset not found."
+msgstr "Datensatz nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Workspace not found."
+msgstr "Workspace nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace is hosted in another region."
+msgstr "Dieser Workspace wird in einer anderen Region gehostet."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this workspace."
+msgstr "Sie haben keinen Zugriff auf diesen Workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace can't use this product with its current plan."
+msgstr "Ihr Workspace kann dieses Produkt mit seinem aktuellen Tarif nicht nutzen."
+
+#: front/lib/api_error_messages.ts
+msgid "User not found in this workspace."
+msgstr "Mitglied in diesem Workspace nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This operation isn't supported."
+msgstr "Dieser Vorgang wird nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "Personal workspace not found."
+msgstr "Persönlicher Workspace nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The action failed with an unknown error."
+msgstr "Die Aktion ist mit einem unbekannten Fehler fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "The action failed."
+msgstr "Die Aktion ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "Membership not found."
+msgstr "Mitgliedschaft nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Your membership to this workspace was revoked."
+msgstr "Ihre Mitgliedschaft in diesem Workspace wurde widerrufen."
+
+#: front/lib/api_error_messages.ts
+msgid "Invitation not found."
+msgstr "Einladung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached a limit of your plan."
+msgstr "Sie haben ein Limit Ihres Tarifs erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "Template not found."
+msgstr "Vorlage nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Message not found."
+msgstr "Nachricht nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Connection not found."
+msgstr "Verbindung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be updated."
+msgstr "Die Verbindung konnte nicht aktualisiert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to update this connection."
+msgstr "Sie dürfen diese Verbindung nicht ändern."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection's authorization wasn't found."
+msgstr "Die Autorisierung der Verbindung wurde nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account doesn't match this connection."
+msgstr "Das autorisierte Konto passt nicht zu dieser Verbindung."
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account is missing required permissions."
+msgstr "Dem autorisierten Konto fehlen erforderliche Berechtigungen."
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account must be an admin."
+msgstr "Das autorisierte Konto muss ein Administrator sein."
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type isn't supported."
+msgstr "Dieser Verbindungstyp wird nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection credentials are invalid."
+msgstr "Die Anmeldedaten der Verbindung sind ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection credentials weren't found."
+msgstr "Die Anmeldedaten der Verbindung wurden nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Another operation is in progress on this connection."
+msgstr "Für diese Verbindung läuft bereits ein anderer Vorgang."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent not found."
+msgstr "Agent nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this agent."
+msgstr "Sie haben keinen Zugriff auf diesen Agenten."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to edit this agent."
+msgstr "Sie haben keine Berechtigung, diesen Agenten zu bearbeiten."
+
+#: front/lib/api_error_messages.ts
+msgid "The agent message failed."
+msgstr "Die Agent-Nachricht ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "The request couldn't be processed."
+msgstr "Die Anfrage konnte nicht verarbeitet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached the message limit of your plan."
+msgstr "Sie haben das Nachrichtenlimit Ihres Tarifs erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace has run out of credits."
+msgstr "Ihr Workspace hat keine Credits mehr."
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached your usage limit."
+msgstr "Sie haben Ihr Nutzungslimit erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "Your group has reached its shared usage limit."
+msgstr "Ihre Gruppe hat ihr gemeinsames Nutzungslimit erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have a seat in this workspace."
+msgstr "Sie haben keinen Platz in diesem Workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "This model is disabled."
+msgstr "Dieses Modell ist deaktiviert."
+
+#: front/lib/api_error_messages.ts
+msgid "This Dust agent couldn't be updated."
+msgstr "Dieser Dust-Agent konnte nicht aktualisiert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The billing product is invalid."
+msgstr "Das Abrechnungsprodukt ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Too many requests. Try again in a moment."
+msgstr "Zu viele Anfragen. Versuchen Sie es gleich noch einmal."
+
+#: front/lib/api_error_messages.ts
+msgid "The subscription payment failed."
+msgstr "Die Zahlung für das Abonnement ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "Subscription not found."
+msgstr "Abonnement nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The subscription is in an invalid state."
+msgstr "Das Abonnement befindet sich in einem ungültigen Zustand."
+
+#: front/lib/api_error_messages.ts
+msgid "This isn't available during the trial."
+msgstr "Dies ist während des Testzeitraums nicht verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "The service is temporarily unavailable."
+msgstr "Der Dienst ist vorübergehend nicht verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "This feature isn't enabled for your workspace."
+msgstr "Diese Funktion ist für Ihren Workspace nicht aktiviert."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in Pods."
+msgstr "Dies ist nur in Pods verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "The agent couldn't be saved."
+msgstr "Der Agent konnte nicht gespeichert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The server returned an unexpected error."
+msgstr "Der Server hat einen unerwarteten Fehler zurückgegeben."
+
+#: front/lib/api_error_messages.ts
+msgid "The server returned an unexpected response."
+msgstr "Der Server hat eine unerwartete Antwort zurückgegeben."
+
+#: front/lib/api_error_messages.ts
+msgid "A network error occurred."
+msgstr "Ein Netzwerkfehler ist aufgetreten."
+
+#: front/lib/api_error_messages.ts
+msgid "The action returned an unexpected response."
+msgstr "Die Aktion hat eine unerwartete Antwort zurückgegeben."
+
+#: front/lib/api_error_messages.ts
+msgid "Feature flag not found."
+msgstr "Feature-Flag nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This feature flag already exists."
+msgstr "Dieses Feature-Flag existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "The pagination parameters are invalid."
+msgstr "Die Paginierungsparameter sind ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Table not found."
+msgstr "Tabelle nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "An invitation was already sent recently."
+msgstr "Es wurde bereits vor Kurzem eine Einladung gesendet."
+
+#: front/lib/api_error_messages.ts
+msgid "Secret not found."
+msgstr "Secret nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "API key not found."
+msgstr "API-Schlüssel nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The API key doesn't have the required scope."
+msgstr "Der API-Schlüssel hat nicht den erforderlichen Berechtigungsumfang."
+
+#: front/lib/api_error_messages.ts
+msgid "Admin API keys already read the analytics of every group."
+msgstr "Administrator-API-Schlüssel lesen bereits die Statistiken aller Gruppen."
+
+#: front/lib/api_error_messages.ts
+msgid "Analytics access can only be granted on manual or provisioned groups."
+msgstr "Der Zugriff auf Statistiken kann nur für manuelle oder provisionierte Gruppen gewährt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Transcripts configuration not found."
+msgstr "Transkriptkonfiguration nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This transcripts configuration can't be the default."
+msgstr "Diese Transkriptkonfiguration kann nicht als Standard festgelegt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "A transcripts configuration already exists."
+msgstr "Es existiert bereits eine Transkriptkonfiguration."
+
+#: front/lib/api_error_messages.ts
+msgid "File not found."
+msgstr "Datei nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The file is too large."
+msgstr "Die Datei ist zu groß."
+
+#: front/lib/api_error_messages.ts
+msgid "This file type isn't supported."
+msgstr "Dieser Dateityp wird nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "The file is empty."
+msgstr "Die Datei ist leer."
+
+#: front/lib/api_error_messages.ts
+msgid "You can only read this file."
+msgstr "Sie können diese Datei nur lesen."
+
+#: front/lib/api_error_messages.ts
+msgid "This file is being edited live and changed before your edit could be saved. Reload it and try again."
+msgstr "Diese Datei wird gerade live bearbeitet und hat sich geändert, bevor Ihre Änderung gespeichert werden konnte. Laden Sie sie neu und versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "This file is being edited live and can't take this change."
+msgstr "Diese Datei wird gerade live bearbeitet und kann diese Änderung nicht übernehmen."
+
+#: front/lib/api_error_messages.ts
+msgid "Run not found."
+msgstr "Ausführung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "A space with this name already exists."
+msgstr "Ein Bereich mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Space not found."
+msgstr "Bereich nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Task not found."
+msgstr "Aufgabe nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Group not found."
+msgstr "Gruppe nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The order sent does not list every group with a budget exactly once."
+msgstr "Die gesendete Reihenfolge führt nicht jede Gruppe mit einem Budget genau einmal auf."
+
+#: front/lib/api_error_messages.ts
+msgid "The order of group budgets changed since you opened it. Reopen the group to see the current order."
+msgstr "Die Reihenfolge der Gruppenbudgets hat sich geändert, seit Sie sie geöffnet haben. Öffnen Sie die Gruppe erneut, um die aktuelle Reihenfolge zu sehen."
+
+#: front/lib/api_error_messages.ts
+msgid "Coupon not found."
+msgstr "Gutschein nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This coupon can't be redeemed."
+msgstr "Dieser Gutschein kann nicht eingelöst werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This coupon was already redeemed."
+msgstr "Dieser Gutschein wurde bereits eingelöst."
+
+#: front/lib/api_error_messages.ts
+msgid "Plugin not found."
+msgstr "Plugin nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The plugin failed."
+msgstr "Das Plugin ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "Recommendation not found."
+msgstr "Empfehlung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Work area not found."
+msgstr "Tätigkeitsbereich nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Trigger not found."
+msgstr "Trigger nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Webhook source not found."
+msgstr "Webhook-Quelle nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this webhook source."
+msgstr "Sie haben keinen Zugriff auf diese Webhook-Quelle."
+
+#: front/lib/api_error_messages.ts
+msgid "This webhook source is used by an agent trigger."
+msgstr "Diese Webhook-Quelle wird von einem Agent-Trigger verwendet."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook source is misconfigured."
+msgstr "Die Webhook-Quelle ist falsch konfiguriert."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook couldn't be processed."
+msgstr "Der Webhook konnte nicht verarbeitet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook couldn't be stored."
+msgstr "Der Webhook konnte nicht gespeichert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Tool connection not found."
+msgstr "Tool-Verbindung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Tool not found."
+msgstr "Tool nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Action not found."
+msgstr "Aktion nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This action isn't waiting for approval."
+msgstr "Diese Aktion wartet nicht auf eine Genehmigung."
+
+#: front/lib/api_error_messages.ts
+msgid "Conversation not found."
+msgstr "Unterhaltung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this conversation."
+msgstr "Sie haben keinen Zugriff auf diese Unterhaltung."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent is still running in this conversation."
+msgstr "In dieser Unterhaltung läuft noch ein Agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation uses an agent that is no longer available."
+msgstr "Diese Unterhaltung verwendet einen Agenten, der nicht mehr verfügbar ist."
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a participant in this conversation."
+msgstr "Sie nehmen bereits an dieser Unterhaltung teil."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to delete this message."
+msgstr "Sie dürfen diese Nachricht nicht löschen."
+
+#: front/lib/api_error_messages.ts
+msgid "This message has changed. Refresh the page and try again."
+msgstr "Diese Nachricht hat sich geändert. Aktualisieren Sie die Seite und versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "Conversation context usage not found."
+msgstr "Kontextnutzung der Unterhaltung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool rejected the credentials."
+msgstr "Das Tool hat die Anmeldedaten abgelehnt."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool identifier is invalid."
+msgstr "Die Tool-Kennung ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Organization not found."
+msgstr "Organisation nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The authentication provider returned an error."
+msgstr "Der Authentifizierungsanbieter hat einen Fehler zurückgegeben."
+
+#: front/lib/api_error_messages.ts
+msgid "Multiple SSO connections aren't supported."
+msgstr "Mehrere SSO-Verbindungen werden nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "Multiple directories aren't supported."
+msgstr "Mehrere Verzeichnisse werden nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "You need to sign in to continue."
+msgstr "Melden Sie sich an, um fortzufahren."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent memory not found."
+msgstr "Gedächtnis des Agenten nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Search failed."
+msgstr "Die Suche ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "Skill not found."
+msgstr "Fähigkeit nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub repository not found."
+msgstr "GitHub-Repository nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Sandbox function not found."
+msgstr "Sandbox-Funktion nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Sandbox function call not found."
+msgstr "Sandbox-Funktionsaufruf nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "The frame runtime is unavailable."
+msgstr "Die Frame-Laufzeitumgebung ist nicht verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
+msgstr "Das Manifest eines Frames kann nicht separat verschoben oder umbenannt werden. Verschieben oder benennen Sie stattdessen den Ordner des Frames um."
+
+#: front/lib/api_error_messages.ts
+msgid "A fast function can't call tools."
+msgstr "Eine schnelle Funktion kann keine Tools aufrufen."
+
+#: front/lib/api_error_messages.ts
+msgid "Project details not found."
+msgstr "Projektdetails nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestion not found."
+msgstr "Vorschlag nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestions not found."
+msgstr "Vorschläge nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Wake-up not found."
+msgstr "Weckruf nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Another user has an active wake-up in this conversation. Only they can post until it fires or is canceled."
+msgstr "Ein anderes Mitglied hat in dieser Unterhaltung einen aktiven Weckruf. Nur dieses Mitglied kann Nachrichten senden, bis der Weckruf ausgelöst oder abgebrochen wird."
+
+#: front/lib/api_error_messages.ts
+msgid "Open Pods are disabled in this workspace. Make the Pod private instead."
+msgstr "Offene Pods sind in diesem Workspace deaktiviert. Machen Sie den Pod stattdessen privat."
+
+#: front/lib/api_error_messages.ts
+msgid "Only provisioned and manual groups can be given access to a space."
+msgstr "Nur provisionierte und manuelle Gruppen können Zugriff auf einen Bereich erhalten."
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be restricted."
+msgstr "Der Unternehmensbereich kann nicht eingeschränkt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be renamed."
+msgstr "Der Unternehmensbereich kann nicht umbenannt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This space has data sources or apps used by agents or skills."
+msgstr "Dieser Bereich enthält Datenquellen oder Apps, die von Agenten oder Fähigkeiten verwendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a member of this Pod."
+msgstr "Sie sind bereits Mitglied dieses Pods."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the space."
+msgstr "Diese Person ist bereits Mitglied des Bereichs."
+
+#: front/lib/api_error_messages.ts
+msgid "Users can't be added to or removed from system or global groups."
+msgstr "Mitglieder können System- oder globalen Gruppen nicht hinzugefügt oder daraus entfernt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of space can't have members."
+msgstr "Diese Art von Bereich kann keine Mitglieder haben."
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type can't be added to this space."
+msgstr "Dieser Verbindungstyp kann diesem Bereich nicht hinzugefügt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "An OpenAI API key is required. Configure it in your workspace settings or contact an admin."
+msgstr "Ein OpenAI-API-Schlüssel ist erforderlich. Konfigurieren Sie ihn in den Einstellungen Ihres Workspace oder wenden Sie sich an einen Administrator."
+
+#: front/lib/api_error_messages.ts
+msgid "A data source with this name already exists."
+msgstr "Eine Datenquelle mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Data source names can't be empty or start with \"managed-\"."
+msgstr "Namen von Datenquellen dürfen nicht leer sein oder mit „managed-“ beginnen."
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be created."
+msgstr "Die Verbindung konnte nicht erstellt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Data sources managed by a connection can't be edited."
+msgstr "Datenquellen, die über eine Verbindung verwaltet werden, können nicht bearbeitet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This data source can't be deleted."
+msgstr "Diese Datenquelle kann nicht gelöscht werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This data source is already in this space."
+msgstr "Diese Datenquelle befindet sich bereits in diesem Bereich."
+
+#: front/lib/api_error_messages.ts
+msgid "The search query is too short."
+msgstr "Die Suchanfrage ist zu kurz."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to any space to search."
+msgstr "Sie haben keinen Zugriff auf einen Bereich, in dem gesucht werden kann."
+
+#: front/lib/api_error_messages.ts
+msgid "App names must be 1 to 64 characters long and use only letters, numbers, underscores and dashes."
+msgstr "App-Namen müssen 1 bis 64 Zeichen lang sein und dürfen nur Buchstaben, Ziffern, Unterstriche und Bindestriche enthalten."
+
+#: front/lib/api_error_messages.ts
+msgid "A dataset with this name already exists in this app."
+msgstr "In dieser App existiert bereits ein Datensatz mit diesem Namen."
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset names can only use letters, numbers and underscores."
+msgstr "Namen von Datensätzen dürfen nur Buchstaben, Ziffern und Unterstriche enthalten."
+
+#: front/lib/api_error_messages.ts
+msgid "The dataset data is invalid. Check that every entry matches the schema."
+msgstr "Die Daten des Datensatzes sind ungültig. Prüfen Sie, ob jeder Eintrag dem Schema entspricht."
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod has reached the maximum number of file tabs."
+msgstr "Dieser Pod hat die maximale Anzahl an Datei-Tabs erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be opened in a tab."
+msgstr "Diese Datei kann nicht in einem Tab geöffnet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The assignee must be a member of this Pod."
+msgstr "Die zugewiesene Person muss Mitglied dieses Pods sein."
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod already has its starter tasks."
+msgstr "Dieser Pod hat bereits seine Startaufgaben."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for Notion connections."
+msgstr "Dies ist nur für Notion-Verbindungen verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "No Google Drive connection found. Connect your Google Drive account first."
+msgstr "Keine Google-Drive-Verbindung gefunden. Verbinden Sie zuerst Ihr Google-Drive-Konto."
+
+#: front/lib/api_error_messages.ts
+msgid "Only tasks in \"Need to do\" can be started."
+msgstr "Nur Aufgaben in „Zu erledigen“ können gestartet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be added to a data source."
+msgstr "Diese Datei kann keiner Datenquelle hinzugefügt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready yet. Try again in a moment."
+msgstr "Die Datei ist noch nicht bereit. Versuchen Sie es gleich noch einmal."
+
+#: front/lib/api_error_messages.ts
+msgid "The file content can't be read as a table."
+msgstr "Der Dateiinhalt kann nicht als Tabelle gelesen werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The title is too long."
+msgstr "Der Titel ist zu lang."
+
+#: front/lib/api_error_messages.ts
+msgid "This app is used by agents."
+msgstr "Diese App wird von Agenten verwendet."
+
+#: front/lib/api_error_messages.ts
+msgid "This isn't available for this type of message."
+msgstr "Dies ist für diesen Nachrichtentyp nicht verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "Only the person who sent this message can do this."
+msgstr "Nur die Person, die diese Nachricht gesendet hat, kann dies tun."
+
+#: front/lib/api_error_messages.ts
+msgid "Mention not found."
+msgstr "Erwähnung nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This person couldn't be added to the Pod."
+msgstr "Diese Person konnte dem Pod nicht hinzugefügt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent or a compaction is running in this conversation."
+msgstr "In dieser Unterhaltung läuft ein Agent oder eine Komprimierung."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is being compacted. Try again once it's done."
+msgstr "Diese Unterhaltung wird gerade komprimiert. Versuchen Sie es erneut, sobald dies abgeschlossen ist."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation was just compacted. Send a new message before compacting again."
+msgstr "Diese Unterhaltung wurde gerade komprimiert. Senden Sie eine neue Nachricht, bevor Sie erneut komprimieren."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is still being set up. Try again in a moment."
+msgstr "Diese Unterhaltung wird noch eingerichtet. Versuchen Sie es gleich noch einmal."
+
+#: front/lib/api_error_messages.ts
+msgid "You can only mention one agent per message."
+msgstr "Sie können pro Nachricht nur einen Agenten erwähnen."
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't supported."
+msgstr "Dieses Modell wird nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "There's no completed agent answer to branch from."
+msgstr "Es gibt keine abgeschlossene Agent-Antwort, von der abgezweigt werden kann."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation can't be moved into or out of this Pod yet."
+msgstr "Diese Unterhaltung kann noch nicht in diesen Pod oder aus ihm heraus verschoben werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Spaces can't be selected in a Pod conversation."
+msgstr "In einer Pod-Unterhaltung können keine Bereiche ausgewählt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Only regular spaces can be selected."
+msgstr "Nur reguläre Bereiche können ausgewählt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can only be used through skills."
+msgstr "Dieses Tool kann nur über Fähigkeiten verwendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to one of the selected tools."
+msgstr "Sie haben keinen Zugriff auf eines der ausgewählten Tools."
+
+#: front/lib/api_error_messages.ts
+msgid "These action inputs can't be edited."
+msgstr "Die Eingaben dieser Aktion können nicht bearbeitet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent message can't be resumed."
+msgstr "Diese Agent-Nachricht kann nicht fortgesetzt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook signature is invalid."
+msgstr "Die Webhook-Signatur ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a conversation."
+msgstr "Diese Datei kann nicht an eine Unterhaltung angehängt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready. Upload it again."
+msgstr "Die Datei ist nicht bereit. Laden Sie sie erneut hoch."
+
+#: front/lib/api_error_messages.ts
+msgid "The attached content wasn't found."
+msgstr "Der angehängte Inhalt wurde nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "In a Pod, you can only attach content from the Pod or from Company Data."
+msgstr "In einem Pod können Sie nur Inhalte aus dem Pod oder aus Company Data anhängen."
+
+#: front/lib/api_error_messages.ts
+msgid "Attachment not found."
+msgstr "Anhang nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent is archived. Restore it first."
+msgstr "Dieser Agent ist archiviert. Stellen Sie ihn zuerst wieder her."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for active custom agents."
+msgstr "Dies ist nur für aktive benutzerdefinierte Agenten verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "An active agent with this name already exists."
+msgstr "Ein aktiver Agent mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent has already been created."
+msgstr "Dieser Agent wurde bereits erstellt."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent was changed at the same time. Try again."
+msgstr "Dieser Agent wurde gleichzeitig geändert. Versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent needs at least one editor."
+msgstr "Ein Agent benötigt mindestens einen Bearbeiter."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already an editor of the agent."
+msgstr "Dieses Mitglied ist bereits Bearbeiter des Agenten."
+
+#: front/lib/api_error_messages.ts
+msgid "This user isn't an editor of the agent."
+msgstr "Dieses Mitglied ist kein Bearbeiter des Agenten."
+
+#: front/lib/api_error_messages.ts
+msgid "Editors must be active members of the workspace."
+msgstr "Bearbeiter müssen aktive Mitglieder des Workspace sein."
+
+#: front/lib/api_error_messages.ts
+msgid "These suggestions can't be applied together."
+msgstr "Diese Vorschläge können nicht zusammen angewendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion no longer applies to the agent."
+msgstr "Dieser Vorschlag gilt nicht mehr für den Agenten."
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of suggestion can't be applied."
+msgstr "Diese Art von Vorschlag kann nicht angewendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "These suggestions have already been reviewed."
+msgstr "Diese Vorschläge wurden bereits geprüft."
+
+#: front/lib/api_error_messages.ts
+msgid "Only Sidekick suggestions can be reviewed here."
+msgstr "Hier können nur Vorschläge von Sidekick geprüft werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't available in your workspace."
+msgstr "Dieses Modell ist in Ihrem Workspace nicht verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "No model is available in your workspace."
+msgstr "In Ihrem Workspace ist kein Modell verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "This model doesn't support the selected reasoning effort."
+msgstr "Dieses Modell unterstützt die ausgewählte Aufwandsstufe nicht."
+
+#: front/lib/api_error_messages.ts
+msgid "This model doesn't support structured output."
+msgstr "Dieses Modell unterstützt keine strukturierte Ausgabe."
+
+#: front/lib/api_error_messages.ts
+msgid "The structured output format is invalid."
+msgstr "Das Format der strukturierten Ausgabe ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Tag not found."
+msgstr "Tag nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This tag isn't on the agent."
+msgstr "Dieses Tag ist dem Agenten nicht zugeordnet."
+
+#: front/lib/api_error_messages.ts
+msgid "This tag is already on the agent."
+msgstr "Dieses Tag ist dem Agenten bereits zugeordnet."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to add or remove these tags."
+msgstr "Sie dürfen diese Tags nicht hinzufügen oder entfernen."
+
+#: front/lib/api_error_messages.ts
+msgid "Use case not found."
+msgstr "Anwendungsfall nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This use case can't be dismissed."
+msgstr "Dieser Anwendungsfall kann nicht ausgeblendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent or skill not found."
+msgstr "Agent oder Fähigkeit nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This group doesn't have access to this agent or skill."
+msgstr "Diese Gruppe hat keinen Zugriff auf diesen Agenten oder diese Fähigkeit."
+
+#: front/lib/api_error_messages.ts
+msgid "Items can't be pinned for this group."
+msgstr "Für diese Gruppe können keine Elemente angeheftet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill is archived. Restore it to change it."
+msgstr "Diese Fähigkeit ist archiviert. Stellen Sie sie wieder her, um sie zu ändern."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill isn't active."
+msgstr "Diese Fähigkeit ist nicht aktiv."
+
+#: front/lib/api_error_messages.ts
+msgid "Only custom skills can be changed."
+msgstr "Nur benutzerdefinierte Fähigkeiten können geändert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "A skill with this name already exists."
+msgstr "Eine Fähigkeit mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter a name for the skill."
+msgstr "Geben Sie einen Namen für die Fähigkeit ein."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill name is too long. Use a shorter name."
+msgstr "Dieser Fähigkeitsname ist zu lang. Verwenden Sie einen kürzeren Namen."
+
+#: front/lib/api_error_messages.ts
+msgid "Some editors don't have access to the spaces this skill uses. Add them to those spaces or remove them from the editors."
+msgstr "Einige Bearbeiter haben keinen Zugriff auf die Bereiche, die diese Fähigkeit verwendet. Fügen Sie sie diesen Bereichen hinzu oder entfernen Sie sie aus den Bearbeitern."
+
+#: front/lib/api_error_messages.ts
+msgid "A skill needs at least one editor."
+msgstr "Eine Fähigkeit benötigt mindestens einen Bearbeiter."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a skill."
+msgstr "Diese Datei kann nicht an eine Fähigkeit angehängt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This file isn't attached to the skill."
+msgstr "Diese Datei ist nicht an die Fähigkeit angehängt."
+
+#: front/lib/api_error_messages.ts
+msgid "The skill already has a file with this name."
+msgstr "Die Fähigkeit enthält bereits eine Datei mit diesem Namen."
+
+#: front/lib/api_error_messages.ts
+msgid "The instructions use tools or knowledge you don't have access to."
+msgstr "Die Anweisungen verwenden Tools oder Wissen, auf die Sie keinen Zugriff haben."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill has already been created."
+msgstr "Diese Fähigkeit wurde bereits erstellt."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion can't be applied to the skill."
+msgstr "Dieser Vorschlag kann nicht auf die Fähigkeit angewendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion no longer matches the skill's instructions."
+msgstr "Dieser Vorschlag passt nicht mehr zu den Anweisungen der Fähigkeit."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to make this change to the skill."
+msgstr "Sie haben keine Berechtigung, diese Änderung an der Fähigkeit vorzunehmen."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion can't be reviewed here."
+msgstr "Dieser Vorschlag kann hier nicht geprüft werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestions from the same batch must be reviewed together."
+msgstr "Vorschläge aus demselben Stapel müssen zusammen geprüft werden."
+
+#: front/lib/api_error_messages.ts
+msgid "No skills found. A skill needs a SKILL.md file with valid frontmatter."
+msgstr "Keine Fähigkeiten gefunden. Eine Fähigkeit benötigt eine SKILL.md-Datei mit gültigem Frontmatter."
+
+#: front/lib/api_error_messages.ts
+msgid "This ZIP archive can't be read or is too large."
+msgstr "Dieses ZIP-Archiv kann nicht gelesen werden oder ist zu groß."
+
+#: front/lib/api_error_messages.ts
+msgid "Some skills can't be imported. Check their names and whether they already exist."
+msgstr "Einige Fähigkeiten können nicht importiert werden. Prüfen Sie ihre Namen und ob sie bereits existieren."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to import these skills."
+msgstr "Sie haben keine Berechtigung, diese Fähigkeiten zu importieren."
+
+#: front/lib/api_error_messages.ts
+msgid "This GitHub repository URL isn't valid."
+msgstr "Diese GitHub-Repository-URL ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub denied access to this repository."
+msgstr "GitHub hat den Zugriff auf dieses Repository verweigert."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub returned an error. Try again later."
+msgstr "GitHub hat einen Fehler zurückgegeben. Versuchen Sie es später erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "The GitHub connection is invalid. Connect GitHub again."
+msgstr "Die GitHub-Verbindung ist ungültig. Verbinden Sie GitHub erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "This sandbox token can't access this endpoint."
+msgstr "Dieses Sandbox-Token kann nicht auf diesen Endpunkt zugreifen."
+
+#: front/lib/api_error_messages.ts
+msgid "This file isn't a Frame."
+msgstr "Diese Datei ist kein Frame."
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame isn't shareable, so it can't be exported."
+msgstr "Dieses Frame ist nicht teilbar und kann daher nicht exportiert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be moved to a Pod."
+msgstr "Diese Datei kann nicht in einen Pod verschoben werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This file doesn't match the branding asset."
+msgstr "Diese Datei entspricht nicht dem Markenelement."
+
+#: front/lib/api_error_messages.ts
+msgid "The Frame text couldn't be updated."
+msgstr "Der Text des Frames konnte nicht aktualisiert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This file is used by a skill and can't be deleted."
+msgstr "Diese Datei wird von einer Fähigkeit verwendet und kann nicht gelöscht werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The file couldn't be deleted."
+msgstr "Die Datei konnte nicht gelöscht werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Only files from a conversation can be saved to a Pod."
+msgstr "Nur Dateien aus einer Unterhaltung können in einem Pod gespeichert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame can't be shared this way."
+msgstr "Dieses Frame kann nicht auf diese Weise geteilt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame uses files that can't be verified."
+msgstr "Dieses Frame verwendet Dateien, die nicht überprüft werden können."
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame must be created or updated by a user signed in to Dust."
+msgstr "Dieses Frame muss von einer bei Dust angemeldeten Person erstellt oder aktualisiert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "A file or folder with this name already exists."
+msgstr "Eine Datei oder ein Ordner mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Only folders can be downloaded as a ZIP."
+msgstr "Nur Ordner können als ZIP heruntergeladen werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This folder is too large to download."
+msgstr "Dieser Ordner ist zu groß zum Herunterladen."
+
+#: front/lib/api_error_messages.ts
+msgid "The archive is too large."
+msgstr "Das Archiv ist zu groß."
+
+#: front/lib/api_error_messages.ts
+msgid "This archive is invalid or contains unsafe paths."
+msgstr "Dieses Archiv ist ungültig oder enthält unsichere Pfade."
+
+#: front/lib/api_error_messages.ts
+msgid "This file changed since you opened it. Reload it and try again."
+msgstr "Diese Datei hat sich geändert, seit Sie sie geöffnet haben. Laden Sie sie neu und versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "This file doesn't support conditional updates."
+msgstr "Diese Datei unterstützt keine bedingten Aktualisierungen."
+
+#: front/lib/api_error_messages.ts
+msgid "This comment can't be saved as written."
+msgstr "Dieser Kommentar kann so nicht gespeichert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Comments in this file changed. Reload the file before saving."
+msgstr "Die Kommentare in dieser Datei haben sich geändert. Laden Sie die Datei vor dem Speichern neu."
+
+#: front/lib/api_error_messages.ts
+msgid "The Frame's manifest is invalid."
+msgstr "Das Manifest des Frames ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Only the user who started this function call can do this."
+msgstr "Nur die Person, die diesen Funktionsaufruf gestartet hat, kann dies tun."
+
+#: front/lib/api_error_messages.ts
+msgid "This domain isn't valid. Use a domain like api.github.com or *.github.com."
+msgstr "Diese Domain ist ungültig. Verwenden Sie eine Domain wie api.github.com oder *.github.com."
+
+#: front/lib/api_error_messages.ts
+msgid "The environment variable name or value isn't valid."
+msgstr "Der Name oder Wert der Umgebungsvariable ist ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "Environment variable not found."
+msgstr "Umgebungsvariable nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "An HTTPS secret can't be turned back into a config variable."
+msgstr "Ein HTTPS-Secret kann nicht wieder in eine Konfigurationsvariable umgewandelt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "File names can't be empty or contain slashes."
+msgstr "Dateinamen dürfen nicht leer sein oder Schrägstriche enthalten."
+
+#: front/lib/api_error_messages.ts
+msgid "This file was already uploaded or its upload failed."
+msgstr "Diese Datei wurde bereits hochgeladen oder ihr Upload ist fehlgeschlagen."
+
+#: front/lib/api_error_messages.ts
+msgid "The upload has expired. Upload the file again."
+msgstr "Der Upload ist abgelaufen. Laden Sie die Datei erneut hoch."
+
+#: front/lib/api_error_messages.ts
+msgid "The file couldn't be downloaded from its URL."
+msgstr "Die Datei konnte nicht von ihrer URL heruntergeladen werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This URL can't be used to download a file."
+msgstr "Diese URL kann nicht zum Herunterladen einer Datei verwendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace isn't set up for credit-based billing."
+msgstr "Dieser Workspace ist nicht für die Credit-basierte Abrechnung eingerichtet."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available on credit-based plans."
+msgstr "Dies ist nur in Credit-basierten Tarifen verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "The limit is outside the allowed range."
+msgstr "Das Limit liegt außerhalb des zulässigen Bereichs."
+
+#: front/lib/api_error_messages.ts
+msgid "The current billing period couldn't be found."
+msgstr "Der aktuelle Abrechnungszeitraum wurde nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter a name for the API key."
+msgstr "Geben Sie einen Namen für den API-Schlüssel ein."
+
+#: front/lib/api_error_messages.ts
+msgid "An API key with this name already exists."
+msgstr "Ein API-Schlüssel mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "System keys can't have a spend limit."
+msgstr "Systemschlüssel können kein Ausgabenlimit haben."
+
+#: front/lib/api_error_messages.ts
+msgid "One or more email addresses are invalid."
+msgstr "Eine oder mehrere E-Mail-Adressen sind ungültig."
+
+#: front/lib/api_error_messages.ts
+msgid "There are too many pending invitations. Ask members to accept theirs before sending more."
+msgstr "Es gibt zu viele ausstehende Einladungen. Bitten Sie die Mitglieder, ihre Einladung anzunehmen, bevor Sie weitere senden."
+
+#: front/lib/api_error_messages.ts
+msgid "This invitation link is invalid. Ask your admin to send a new invitation."
+msgstr "Dieser Einladungslink ist ungültig. Bitten Sie Ihren Administrator, eine neue Einladung zu senden."
+
+#: front/lib/api_error_messages.ts
+msgid "Add a reason to request an upgrade."
+msgstr "Geben Sie einen Grund für die Erhöhungsanfrage an."
+
+#: front/lib/api_error_messages.ts
+msgid "Upgrade request not found."
+msgstr "Erhöhungsanfrage nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "This upgrade request was already approved or denied."
+msgstr "Diese Erhöhungsanfrage wurde bereits genehmigt oder abgelehnt."
+
+#: front/lib/api_error_messages.ts
+msgid "You already have a workspace."
+msgstr "Sie haben bereits einen Workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter your first and last name."
+msgstr "Geben Sie Ihren Vor- und Nachnamen ein."
+
+#: front/lib/api_error_messages.ts
+msgid "Your name is managed by your identity provider and can't be changed here."
+msgstr "Ihr Name wird von Ihrem Identitätsanbieter verwaltet und kann hier nicht geändert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "A group with this name already exists."
+msgstr "Eine Gruppe mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for manual or provisioned groups."
+msgstr "Dies ist nur für manuelle oder provisionierte Gruppen verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "This group is managed automatically and can't be edited."
+msgstr "Diese Gruppe wird automatisch verwaltet und kann nicht bearbeitet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This change would leave the group without a required member."
+msgstr "Durch diese Änderung hätte die Gruppe kein erforderliches Mitglied mehr."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the group."
+msgstr "Dieses Mitglied gehört der Gruppe bereits an."
+
+#: front/lib/api_error_messages.ts
+msgid "This user isn't a member of the group."
+msgstr "Dieses Mitglied gehört der Gruppe nicht an."
+
+#: front/lib/api_error_messages.ts
+msgid "A group must keep at least one member. To remove everyone, delete the group."
+msgstr "Eine Gruppe muss mindestens ein Mitglied behalten. Um alle zu entfernen, löschen Sie die Gruppe."
+
+#: front/lib/api_error_messages.ts
+msgid "No active members match the selection."
+msgstr "Keine aktiven Mitglieder entsprechen der Auswahl."
+
+#: front/lib/api_error_messages.ts
+msgid "A workspace must keep at least one admin."
+msgstr "Ein Workspace muss mindestens einen Administrator behalten."
+
+#: front/lib/api_error_messages.ts
+msgid "The free seat is only for first-time members and can't be assigned again."
+msgstr "Der kostenlose Platz ist nur für neue Mitglieder bestimmt und kann nicht erneut zugewiesen werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Upgrade your workspace before assigning a paid seat."
+msgstr "Wechseln Sie auf einen höheren Tarif, bevor Sie einen kostenpflichtigen Platz zuweisen."
+
+#: front/lib/api_error_messages.ts
+msgid "This seat type has reached its limit for your workspace."
+msgstr "Dieser Platztyp hat das Limit für Ihren Workspace erreicht."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace contract doesn't include this seat type."
+msgstr "Der Vertrag Ihres Workspace umfasst diesen Platztyp nicht."
+
+#: front/lib/api_error_messages.ts
+msgid "The seat change preview couldn't be computed."
+msgstr "Die Vorschau der Platzänderung konnte nicht berechnet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Seats can't be changed while a subscription cancellation is scheduled."
+msgstr "Plätze können nicht geändert werden, solange eine Kündigung des Abonnements geplant ist."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace is already on a Pro or Business plan."
+msgstr "Ihr Workspace hat bereits einen Pro- oder Business-Tarif."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace must be on the free plan to activate this subscription."
+msgstr "Ihr Workspace muss den kostenlosen Tarif haben, um dieses Abonnement zu aktivieren."
+
+#: front/lib/api_error_messages.ts
+msgid "Payment setup hasn't completed."
+msgstr "Die Einrichtung der Zahlung wurde nicht abgeschlossen."
+
+#: front/lib/api_error_messages.ts
+msgid "Enterprise workspaces can't buy credits here. Contact your Dust sales representative."
+msgstr "Enterprise-Workspaces können hier keine Credits kaufen. Wenden Sie sich an Ihren Dust-Vertriebsansprechpartner."
+
+#: front/lib/api_error_messages.ts
+msgid "No billing account was found for this workspace. Contact support."
+msgstr "Für diesen Workspace wurde kein Abrechnungskonto gefunden. Wenden Sie sich an den Support."
+
+#: front/lib/api_error_messages.ts
+msgid "A credit purchase is already in progress. Wait for it to complete."
+msgstr "Ein Credit-Kauf ist bereits in Bearbeitung. Warten Sie, bis er abgeschlossen ist."
+
+#: front/lib/api_error_messages.ts
+msgid "The credit amount is outside the allowed range."
+msgstr "Die Anzahl der Credits liegt außerhalb des zulässigen Bereichs."
+
+#: front/lib/api_error_messages.ts
+msgid "Verify your workspace's phone number before starting a trial."
+msgstr "Bestätigen Sie die Telefonnummer Ihres Workspace, bevor Sie eine Testphase starten."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number can't be used for verification."
+msgstr "Diese Telefonnummer kann nicht zur Verifizierung verwendet werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is already used by another workspace."
+msgstr "Diese Telefonnummer wird bereits von einem anderen Workspace verwendet."
+
+#: front/lib/api_error_messages.ts
+msgid "The phone number couldn't be verified. Try again or request a new code."
+msgstr "Die Telefonnummer konnte nicht verifiziert werden. Versuchen Sie es erneut oder fordern Sie einen neuen Code an."
+
+#: front/lib/api_error_messages.ts
+msgid "The captcha check failed. Try again."
+msgstr "Die Captcha-Prüfung ist fehlgeschlagen. Versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "This memory is too long. Shorten it and try again."
+msgstr "Dieser Gedächtniseintrag ist zu lang. Kürzen Sie ihn und versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "A tag with this name already exists."
+msgstr "Ein Tag mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Verified domain not found."
+msgstr "Verifizierte Domain nicht gefunden."
+
+#: front/lib/api_error_messages.ts
+msgid "Data classification labels aren't supported for this source."
+msgstr "Datenklassifizierungs-Labels werden für diese Quelle nicht unterstützt."
+
+#: front/lib/api_error_messages.ts
+msgid "Some active agents use models outside your region. Update them first."
+msgstr "Einige aktive Agenten verwenden Modelle außerhalb Ihrer Region. Aktualisieren Sie diese zuerst."
+
+#: front/lib/api_error_messages.ts
+msgid "Each redirect URI must be unique and include a scheme, such as https://."
+msgstr "Jede Weiterleitungs-URI muss eindeutig sein und ein Schema enthalten, z. B. https://."
+
+#: front/lib/api_error_messages.ts
+msgid "This trigger's status is managed by Dust and can't be changed."
+msgstr "Der Status dieses Triggers wird von Dust verwaltet und kann nicht geändert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "Too many automations are selected. Select fewer and try again."
+msgstr "Es sind zu viele Automatisierungen ausgewählt. Wählen Sie weniger aus und versuchen Sie es erneut."
+
+#: front/lib/api_error_messages.ts
+msgid "The filter expression is invalid. Check its syntax."
+msgstr "Der Filterausdruck ist ungültig. Prüfen Sie seine Syntax."
+
+#: front/lib/api_error_messages.ts
+msgid "A webhook source with this name already exists."
+msgstr "Eine Webhook-Quelle mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Select at least one event."
+msgstr "Wählen Sie mindestens ein Ereignis aus."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in the company space and regular spaces."
+msgstr "Nur im Unternehmensbereich und in Standardbereichen verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "This can only be updated from the workspace settings."
+msgstr "Kann nur in den Workspace-Einstellungen geändert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "A tool with this name already exists."
+msgstr "Ein Tool mit diesem Namen existiert bereits."
+
+#: front/lib/api_error_messages.ts
+msgid "Auto tools can't be removed from the company space."
+msgstr "Automatische Tools können nicht aus dem Unternehmensbereich entfernt werden."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool name is empty or too long."
+msgstr "Der Tool-Name ist leer oder zu lang."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's URL is too long."
+msgstr "Die URL des Tools ist zu lang."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's URL is invalid or not allowed. Use a public HTTPS URL."
+msgstr "Die URL des Tools ist ungültig oder nicht zulässig. Verwenden Sie eine öffentliche HTTPS-URL."
+
+#: front/lib/api_error_messages.ts
+msgid "Couldn't connect to the tool's server. Check its URL and credentials."
+msgstr "Verbindung zum Server des Tools nicht möglich. Prüfen Sie die URL und die Anmeldedaten."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's authorization couldn't be used. Reconnect it and try again."
+msgstr "Die Autorisierung des Tools konnte nicht verwendet werden. Verbinden Sie es erneut und versuchen Sie es noch einmal."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool isn't available for your workspace."
+msgstr "Dieses Tool ist für Ihren Workspace nicht verfügbar."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool is already added, and only one instance is allowed."
+msgstr "Dieses Tool wurde bereits hinzugefügt und nur eine Instanz ist zulässig."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool's icon can't be changed."
+msgstr "Das Symbol dieses Tools kann nicht geändert werden."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool doesn't support bearer token credentials."
+msgstr "Dieses Tool unterstützt keine Bearer-Token als Anmeldedaten."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can't be connected with stored credentials."
+msgstr "Dieses Tool kann nicht mit gespeicherten Anmeldedaten verbunden werden."
+
+#: front/lib/api_error_messages.ts
+msgid "These credentials are for a different service."
+msgstr "Diese Anmeldedaten gehören zu einem anderen Dienst."
+
+#: front/lib/api_error_messages.ts
+msgid "This BigQuery project is too large to check automatically. Contact support to connect it."
+msgstr "Dieses BigQuery-Projekt ist zu groß für eine automatische Prüfung. Wenden Sie sich an den Support, um es zu verbinden."
+
+#: front/lib/api_error_messages.ts
+msgid "Couldn't list the BigQuery project's locations. Check the credentials and their permissions."
+msgstr "Die Standorte des BigQuery-Projekts konnten nicht aufgelistet werden. Prüfen Sie die Anmeldedaten und deren Berechtigungen."
+
+#: front/lib/api_error_messages.ts
+msgid "Code: {code}"
+msgstr "Code: {code}"
+
+#: front/lib/api_error_messages.ts
+msgid "Message: {rawMessage}"
+msgstr "Nachricht: {rawMessage}"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed."
+msgstr "Dust indexiert Seiten in ausgewählten globalen Bereichen ohne Leseeinschränkungen. Hat eine Seite oder eine ihrer übergeordneten Seiten Leseeinschränkungen, wird sie nicht indexiert."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Confluence domain.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong domain."
+msgstr "Sie können keine andere Confluence-Domain auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich die falsche Domain ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select pages"
+msgstr "Seiten auswählen"
+
+#: front/lib/connector_providers_ui.ts
+msgid "External files and content behind links are not indexed."
+msgstr "Externe Dateien und Inhalte hinter Links werden nicht indexiert."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Notion workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong workspace."
+msgstr "Sie können keinen anderen Notion-Workspace auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich den falschen Workspace ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Synchronized content"
+msgstr "Synchronisierte Inhalte"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing."
+msgstr "Dateien ohne Textinhalt oder mit mehr als 750 KB extrahiertem Text werden ignoriert. PDF-Dateien werden standardmäßig nicht indexiert. Schreiben Sie uns an support@dust.tt, um die PDF-Indexierung zu aktivieren."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Google Drive domain.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong shared Drive."
+msgstr "Sie können keine andere Google-Drive-Domain auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich die falsche geteilte Ablage ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select folders and files"
+msgstr "Ordner und Dateien auswählen"
+
+#: front/lib/connector_providers_ui.ts
+msgid "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+msgstr "Wenn aktiviert, werden PDF-Dokumente aus Ihrem Google Drive von Dust synchronisiert und verarbeitet."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Slack team.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong team."
+msgstr "Sie können kein anderes Slack-Team auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich das falsche Team ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select channels"
+msgstr "Kanäle auswählen"
+
+#: front/lib/connector_providers_ui.ts
+msgid "N/A"
+msgstr "k. A."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories."
+msgstr "Dust erfasst Daten aus Issues, Diskussionen und Pull Requests (Hauptdiskussion, aber keine Kommentare im Code). Ihr Code wird nur synchronisiert, wenn die Option aktiviert ist. Derzeit kann Dust keine Repositorys über 10 GB oder einzelne Dateien über 4 MB synchronisieren. Wenden Sie sich an support@dust.tt, wenn Sie größere Repositorys synchronisieren müssen."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another GitHub organization.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong organization or if you completely uninstalled the GitHub app."
+msgstr "Sie können keine andere GitHub-Organisation auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich die falsche Organisation ausgewählt oder die GitHub-App vollständig deinstalliert haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Authorized content"
+msgstr "Autorisierte Inhalte"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection."
+msgstr "Dust indexiert nur die Unterhaltungen der ausgewählten Teams, die in den letzten 90 Tagen begonnen und abgeschlossen (als geschlossen markiert) wurden. Für die Daten des Hilfe-Centers indexiert Dust jeden Artikel, der in einer ausgewählten Sammlung veröffentlicht wurde."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Intercom workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong workspace."
+msgstr "Sie können keinen anderen Intercom-Workspace auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich den falschen Workspace ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced."
+msgstr "Dust indexiert nur Dokumente, auf die das bei der Verbindung verwendete Konto zugreifen kann. Nur Organisationskonten werden unterstützt (SharePoint). OneDrive kann derzeit nicht synchronisiert werden."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Microsoft account.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong account."
+msgstr "Sie können kein anderes Microsoft-Konto auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich das falsche Konto ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select the folder to enable file synchronization."
+msgstr "Wählen Sie den Ordner aus, um die Dateisynchronisierung zu aktivieren."
+
+#: front/lib/connector_providers_ui.ts
+msgid "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+msgstr "Wenn aktiviert, werden PDF-Dokumente aus Microsoft OneDrive und SharePoint von Dust synchronisiert und verarbeitet."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Bot must be enabled in organization settings."
+msgstr "Der Bot muss in den Organisationseinstellungen aktiviert sein."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Microsoft tenant.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong tenant."
+msgstr "Sie können keinen anderen Microsoft-Tenant auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich den falschen Tenant ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Bot configuration"
+msgstr "Bot-Konfiguration"
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the URL. Please add a new public URL instead."
+msgstr "Sie können die URL nicht ändern. Fügen Sie stattdessen eine neue öffentliche URL hinzu."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Snowflake account. Please add a new Snowflake connection instead."
+msgstr "Sie können das Snowflake-Konto nicht ändern. Fügen Sie stattdessen eine neue Snowflake-Verbindung hinzu."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select tables"
+msgstr "Tabellen auswählen"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will index the content accessible to the authorized account only. Attachments are not indexed."
+msgstr "Dust indexiert nur die Inhalte, auf die das autorisierte Konto zugreifen kann. Anhänge werden nicht indexiert."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Zendesk workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong workspace."
+msgstr "Sie können keinen anderen Zendesk-Workspace auswählen.\n"
+"Wenden Sie sich an support@dust.tt, wenn Sie ursprünglich den falschen Workspace ausgewählt haben."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the BigQuery project. Please add a new BigQuery connection instead."
+msgstr "Sie können das BigQuery-Projekt nicht ändern. Fügen Sie stattdessen eine neue BigQuery-Verbindung hinzu."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead."
+msgstr "Sie können die URL der Salesforce-Instanz nicht ändern. Fügen Sie stattdessen eine neue Salesforce-Verbindung hinzu."
+
+#: front/lib/connector_providers_ui.ts
+msgid "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to participants from that profile."
+msgstr "OAuth erfordert Gong-Administratorzugriff. Alle Transkripte des Workspace werden mit Dust synchronisiert, außer den in Gong als privat markierten. Sie können ein Berechtigungsprofil auswählen, um die synchronisierten Anrufe auf Teilnehmer dieses Profils zu beschränken."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Gong account. Please add a new Gong connection instead."
+msgstr "Sie können das Gong-Konto nicht ändern. Fügen Sie stattdessen eine neue Gong-Verbindung hinzu."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Dust Pod. Please add a new Dust Pod connection instead."
+msgstr "Sie können den Dust-Pod nicht ändern. Fügen Sie stattdessen eine neue Dust-Pod-Verbindung hinzu."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "An agent with context on your company data."
+msgstr "Ein Agent mit Kontext zu den Daten Ihres Unternehmens."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Dust with no tools, skills, or company knowledge by default. Add capabilities to the conversation as needed."
+msgstr "Dust standardmäßig ohne Tools, Fähigkeiten oder Unternehmenswissen. Fügen Sie der Unterhaltung bei Bedarf Funktionen hinzu."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Conducts comprehensive, in-depth analysis across all company data, databases, and web sources—thorough investigation that may take several minutes."
+msgstr "Führt eine umfassende, tiefgehende Analyse aller Unternehmensdaten, Datenbanken und Webquellen durch. Eine gründliche Recherche, die mehrere Minuten dauern kann."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Help on how to use Dust"
+msgstr "Hilfe zur Nutzung von Dust"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Agent for admins and managers that answers questions about how your workspace is being used."
+msgstr "Agent für Administratoren und Manager, der Fragen zur Nutzung Ihres Workspace beantwortet."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Get a recommendation for the next best action to get more value from Dust"
+msgstr "Erhalten Sie eine Empfehlung für die nächste Aktion, um mehr aus Dust herauszuholen"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Let this agent propose improvements to your Skills from a conversation, as suggestions for their editors to review."
+msgstr "Lassen Sie diesen Agenten aus einer Unterhaltung heraus Verbesserungen an Ihren Fähigkeiten vorschlagen, die deren Bearbeiter prüfen können."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, edit, and create text documents (.docx) in the sandbox."
+msgstr "Textdokumente (.docx) in der Sandbox lesen, bearbeiten und erstellen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Turn insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders."
+msgstr "Verwandeln Sie Analysen in interaktive Dashboards und Präsentationen, die Ihr Team erkunden, anpassen und teilen kann. Lebendige Dokumente, die sich an verschiedene Zielgruppen anpassen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Enable comprehensive analysis across company data, databases, and web sources — thorough analysis that may take several minutes."
+msgstr "Umfassende Analyse von Unternehmensdaten, Datenbanken und Webquellen aktivieren. Eine gründliche Analyse, die mehrere Minuten dauern kann."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Keep a Pod's job moving with the next evidence-backed action"
+msgstr "Die Aufgabe eines Pods mit der nächsten belegten Aktion voranbringen"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Write and edit Markdown documents that open in the editor, with images, Frames and files from the conversation or pod, and answer their comments."
+msgstr "Markdown-Dokumente schreiben und bearbeiten, die sich im Editor öffnen, mit Bildern, Frames und Dateien aus der Unterhaltung oder dem Pod, und auf ihre Kommentare antworten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Allow agents to mention and notify workspace users in conversations."
+msgstr "Agenten erlauben, Workspace-Mitglieder in Unterhaltungen zu erwähnen und zu benachrichtigen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, OCR scans, extract text and tables, create, and edit PDFs in the Computer."
+msgstr "PDFs im Computer lesen, Scans per OCR erfassen, Text und Tabellen extrahieren, PDFs erstellen und bearbeiten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, edit, and create slide presentations"
+msgstr "Präsentationen lesen, bearbeiten und erstellen"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Allow agents to create conversations & messages in Pods, leverage Pods knowledge."
+msgstr "Agenten erlauben, Unterhaltungen und Nachrichten in Pods zu erstellen und das Wissen der Pods zu nutzen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment)."
+msgstr "Code, Skripte und Shell-Befehle im Computer der Unterhaltung ausführen (eine isolierte Linux-Umgebung)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create schedules and event triggers to automate recurring and event-driven tasks."
+msgstr "Zeitpläne und Ereignis-Trigger erstellen, um wiederkehrende und ereignisgesteuerte Aufgaben zu automatisieren."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Turn a data-entry spreadsheet into a real app: a form that fills in the obvious, formulas that become fields nobody types, and your existing rows carried over."
+msgstr "Eine Tabelle zur Dateneingabe in eine echte App verwandeln: ein Formular, das das Offensichtliche ausfüllt, Formeln, die zu Feldern werden, die niemand eingeben muss, und Ihre vorhandenen Zeilen werden übernommen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Deprecated: use the \"Build Agents and Skills\" skill instead. Let this agent create and refine reusable Skills for your workspace."
+msgstr "Veraltet: Verwenden Sie stattdessen die Fähigkeit „Build Agents and Skills“. Lässt diesen Agenten wiederverwendbare Fähigkeiten für Ihren Workspace erstellen und verbessern."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Get help with Dust using public docs, open-source issues, and community knowledge."
+msgstr "Erhalten Sie Hilfe zu Dust über die öffentliche Dokumentation, Open-Source-Issues und das Wissen der Community."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Analyze how your workspace is used: who and what consumes credits and drives activity, headline figures, and trends over time."
+msgstr "Die Nutzung Ihres Workspace analysieren: wer und was Credits verbraucht und Aktivität erzeugt, Kennzahlen und Trends im Zeitverlauf."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, edit, and create spreadsheets (.xlsx, .csv)"
+msgstr "Tabellen (.xlsx, .csv) lesen, bearbeiten und erstellen"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search across all your company documents and data warehouses to surface the information you need without manual configuration."
+msgstr "Alle Dokumente und Data Warehouses Ihres Unternehmens durchsuchen, um die benötigten Informationen ohne manuelle Konfiguration zu finden."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Automatically discover and activate workspace skills as needed."
+msgstr "Workspace-Fähigkeiten bei Bedarf automatisch finden und aktivieren."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration."
+msgstr "Spezialisierte Tools bei Bedarf automatisch finden und aktivieren. Erweitern Sie die Funktionen Ihres Agenten nach Bedarf ohne manuelle Konfiguration."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Let agents maintain a live plan.md the user can follow as work progresses."
+msgstr "Agenten eine laufend aktualisierte plan.md führen lassen, der das Mitglied während der Arbeit folgen kann."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Give agents a persistent memory of the user's preferences and context across conversations."
+msgstr "Agenten ein dauerhaftes Gedächtnis für die Präferenzen und den Kontext des Mitglieds über Unterhaltungen hinweg geben."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage issues, pull requests, and discussions."
+msgstr "Issues, Pull Requests und Diskussionen verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Generate, create, draw, or edit images from text prompts and optional reference images."
+msgstr "Bilder aus Text-Prompts und optionalen Referenzbildern generieren, erstellen, zeichnen oder bearbeiten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Agent can search (Google) and retrieve information from specific websites."
+msgstr "Der Agent kann (mit Google) suchen und Informationen von bestimmten Websites abrufen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access CRM contacts, deals and customer activities."
+msgstr "Auf CRM-Kontakte, Deals und Kundenaktivitäten zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Tools with access to the agents of the workspace."
+msgstr "Tools mit Zugriff auf die Agenten des Workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data."
+msgstr "Vollständige Inhalte für den gesamten Kontext bis zur Speichergrenze laden. Hinweis: Enthält keine Tabellen- oder Tabellenblattdaten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run Dust Apps with specified parameters."
+msgstr "Dust-Apps mit den angegebenen Parametern ausführen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access workspace pages, databases and datasources."
+msgstr "Auf Seiten, Datenbanken und Datenquellen des Workspace zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Parse documents to create structured datasets."
+msgstr "Dokumente auswerten, um strukturierte Datensätze zu erstellen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "To be used to catch errors and avoid erroring."
+msgstr "Dient dazu, Fehler abzufangen und Abbrüche zu vermeiden."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Salesforce tools."
+msgstr "Salesforce-Tools."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and send Gmail emails: manage inbox messages, threads, drafts, labels, and attachments."
+msgstr "Gmail-E-Mails lesen und senden: Nachrichten im Posteingang, Threads, Entwürfe, Labels und Anhänge verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Google Calendar: list calendars, create and update meeting events, check free/busy availability, and look up attendee timezones."
+msgstr "Google Kalender verwalten: Kalender auflisten, Termine erstellen und aktualisieren, Verfügbarkeiten prüfen und Zeitzonen der Teilnehmer abrufen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "List, read, and semantically search files and content nodes attached to the conversation."
+msgstr "Dateien und Inhalte, die der Unterhaltung angehängt sind, auflisten, lesen und semantisch durchsuchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations."
+msgstr "Slack-Tools zum Suchen und Posten von Nachrichten. Funktioniert mit Ihrem persönlichen Slack-Konto und unterstützt alle gängigen Slack-Aktionen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Work with spreadsheet data and tables."
+msgstr "Mit Tabellendaten und Tabellen arbeiten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Interact with Monday.com boards, items, and workflows. Manage tasks, track projects, and automate CRM workflows."
+msgstr "Mit Boards, Elementen und Workflows in Monday.com interagieren. Aufgaben verwalten, Projekte verfolgen und CRM-Workflows automatisieren."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "User-scoped long-term memory tools for agents."
+msgstr "Tools für ein mitgliedsbezogenes Langzeitgedächtnis von Agenten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create, update and track project issues."
+msgstr "Projekt-Tickets erstellen, aktualisieren und verfolgen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create dashboards, presentations, or any interactive content."
+msgstr "Dashboards, Präsentationen oder beliebige interaktive Inhalte erstellen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and send Outlook emails (Microsoft 365): manage inbox messages, drafts, mail folders, contacts, and shared mailboxes."
+msgstr "Outlook-E-Mails lesen und senden (Microsoft 365): Nachrichten im Posteingang, Entwürfe, Mail-Ordner, Kontakte und freigegebene Postfächer verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Outlook Calendar (Microsoft 365): list calendars, create and update meeting events, check free/busy availability."
+msgstr "Outlook-Kalender verwalten (Microsoft 365): Kalender auflisten, Termine erstellen und aktualisieren, Verfügbarkeiten prüfen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Freshservice IT service desk tickets, service requests, knowledge base articles, and service catalog items. An ITSM (IT Service Management) helpdesk platform."
+msgstr "Tickets, Serviceanfragen, Wissensdatenbank-Artikel und Servicekatalog-Einträge im IT-Servicedesk Freshservice verwalten. Eine Helpdesk-Plattform für ITSM (IT-Service-Management)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search, read, create, clone, edit, comment on, and manage permissions for files in Google Drive (Docs, Sheets, Presentations)."
+msgstr "Dateien in Google Drive (Docs, Sheets, Slides) suchen, lesen, erstellen, duplizieren, bearbeiten, kommentieren und ihre Berechtigungen verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added."
+msgstr "Spezielle Slack-Bot-Integration zum Posten von Nachrichten als Workspace-Bot. Beschränkt auf Kanäle, denen der Bot hinzugefügt wurde."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Retrieve page information."
+msgstr "Seiteninformationen abrufen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Turn written text into spoken audio or dialogue"
+msgstr "Geschriebenen Text in gesprochenes Audio oder Dialoge umwandeln"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search, read, and upload files in Microsoft OneDrive and SharePoint."
+msgstr "Dateien in Microsoft OneDrive und SharePoint suchen, lesen und hochladen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Microsoft Teams for searching and posting messages."
+msgstr "Microsoft Teams zum Suchen und Posten von Nachrichten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create music tracks and sound effects"
+msgstr "Musikstücke und Soundeffekte erstellen"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and write Excel spreadsheets in Microsoft OneDrive and SharePoint."
+msgstr "Excel-Tabellen in Microsoft OneDrive und SharePoint lesen und bearbeiten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Make HTTP requests to external APIs with optional Bearer token authentication."
+msgstr "HTTP-Anfragen an externe APIs senden, optional mit Bearer-Token-Authentifizierung."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access and manage Ashby ATS (applicant tracking system) data for recruiting: candidates, job postings, interview feedback, referrals, and hiring."
+msgstr "Recruiting-Daten im Ashby-ATS (Bewerbermanagementsystem) abrufen und verwalten: Kandidaten, Stellenanzeigen, Interview-Feedback, Empfehlungen und Einstellungen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Salesloft sales cadences (outreach sequences), tasks, and due actions for sales engagement and pipeline outreach."
+msgstr "Auf Salesloft-Cadences (Outreach-Sequenzen), Aufgaben und fällige Aktionen für Sales Engagement und Pipeline-Akquise zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access and manage support tickets, help center, and customer interactions."
+msgstr "Support-Tickets, Hilfe-Center und Kundeninteraktionen abrufen und verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search and read from your Slab knowledge base"
+msgstr "Ihre Slab-Wissensdatenbank durchsuchen und lesen"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Review compliance posture powered by Vanta's security platform."
+msgstr "Den Compliance-Status mit der Sicherheitsplattform von Vanta prüfen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Productboard product management data: features, initiatives, roadmaps, OKRs, customer feedback notes, companies, and product hierarchy entities."
+msgstr "Produktmanagement-Daten in Productboard verwalten: Funktionen, Initiativen, Roadmaps, OKRs, Kundenfeedback-Notizen, Unternehmen und Entitäten der Produkthierarchie."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Execute read-only SQL queries and browse schema in Snowflake."
+msgstr "Schreibgeschützte SQL-Abfragen ausführen und das Schema in Snowflake durchsuchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage employee time-off requests, schedules, and accrual balances in UKG Ready."
+msgstr "Abwesenheitsanträge, Dienstpläne und Urlaubskonten der Mitarbeitenden in UKG Ready verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Monitor and manage Atlassian Statuspage incidents."
+msgstr "Vorfälle in Atlassian Statuspage überwachen und verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Luma events, guests, and attendance insights."
+msgstr "Luma-Events, Gäste und Teilnahmestatistiken verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Fathom meeting recordings, transcripts, summaries, and action items."
+msgstr "Auf Fathom-Meetingaufzeichnungen, Transkripte, Zusammenfassungen und Aufgaben zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Gong sales calls, transcripts, conversation analytics, and revenue intelligence for deal coaching and pipeline review."
+msgstr "Auf Gong-Verkaufsgespräche, Transkripte, Gesprächsanalysen und Revenue Intelligence für Deal-Coaching und Pipeline-Reviews zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search content whose meaning best matches your message (not suited for analytics)."
+msgstr "Inhalte suchen, deren Bedeutung am besten zu Ihrer Nachricht passt (nicht für zahlenbasierte Auswertungen geeignet)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run a child agent (agent as tool)."
+msgstr "Einen Unteragenten ausführen (Agent als Tool)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Query structured data like a spreadsheet or database. Use list_tables to discover available tables, get_database_schema for the tables you need, then execute_database_query to run SQL analyses."
+msgstr "Strukturierte Daten wie eine Tabelle oder Datenbank abfragen. Verwenden Sie list_tables, um verfügbare Tabellen zu finden, get_database_schema für die benötigten Tabellen und dann execute_database_query, um SQL-Analysen auszuführen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Browse and search content with filesystem-like navigation."
+msgstr "Inhalte mit einer dateisystemähnlichen Navigation durchsuchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Browse tables organized by warehouse and schema."
+msgstr "Nach Warehouse und Schema geordnete Tabellen durchsuchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Browse available toolsets and functions."
+msgstr "Verfügbare Toolsets und Funktionen durchsuchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create and manage Val Town vals: serverless TypeScript/JavaScript functions, HTTP endpoints, email handlers, and scheduled scripts."
+msgstr "Val-Town-Vals erstellen und verwalten: serverlose TypeScript-/JavaScript-Funktionen, HTTP-Endpunkte, E-Mail-Handler und geplante Skripte."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Conversation helpers (titles, mark read), random numbers, timers, and other common utilities."
+msgstr "Hilfsfunktionen für Unterhaltungen (Titel, als gelesen markieren), Zufallszahlen, Timer und weitere gängige Hilfsmittel."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage support conversations, messages, and customer interactions."
+msgstr "Support-Unterhaltungen, Nachrichten und Kundeninteraktionen verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create and update reusable workspace Skills."
+msgstr "Wiederverwendbare Workspace-Fähigkeiten erstellen und aktualisieren."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create durable agent automations that run on a recurring schedule or in response to external events."
+msgstr "Dauerhafte Agent-Automatisierungen erstellen, die nach einem wiederkehrenden Zeitplan oder als Reaktion auf externe Ereignisse ausgeführt werden."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Pod metadata, members, conversations, and Company Data references. Raw Pod file operations (create, read, search, write, delete) live in the `files` MCP server under `pod-<id>/<rel>` scoped paths."
+msgstr "Metadaten, Mitglieder, Unterhaltungen und Company-Data-Referenzen eines Pods verwalten. Direkte Dateioperationen im Pod (erstellen, lesen, suchen, schreiben, löschen) befinden sich im MCP-Server `files` unter Pfaden der Form `pod-<id>/<rel>`."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Pod tasks: list, create, update, and complete action items."
+msgstr "Pod-Aufgaben verwalten: Aufgaben auflisten, erstellen, aktualisieren und abschließen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Retrieve context about available models, skills, tools, and agent-specific feedback and insights. Create and manage suggestions for agent configuration changes."
+msgstr "Kontext zu verfügbaren Modellen, Fähigkeiten und Tools sowie agentenspezifisches Feedback und Analysen abrufen. Vorschläge für Änderungen an der Agent-Konfiguration erstellen und verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools."
+msgstr "Informationen zur Konfiguration des aktuellen Agenten abrufen, einschließlich Name, Beschreibung, Anweisungen, Modell und Tools."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Execute code and commands in the conversation's Computer (an isolated Linux environment)."
+msgstr "Code und Befehle im Computer der Unterhaltung ausführen (eine isolierte Linux-Umgebung)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Tools for mentioning users in conversations."
+msgstr "Tools zum Erwähnen von Mitgliedern in Unterhaltungen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Ask the user a question with multiple-choice options."
+msgstr "Dem Mitglied eine Frage mit Antwortoptionen stellen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Resume the current conversation later for reminders, follow-ups, and polling."
+msgstr "Die aktuelle Unterhaltung später fortsetzen, für Erinnerungen, Nachfassaktionen und regelmäßige Abfragen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Clari Copilot call transcripts, AI summaries, and action items."
+msgstr "Auf Anruftranskripte, KI-Zusammenfassungen und Aufgaben aus Clari Copilot zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create and maintain a living `plan.md` that gives the user visibility on genuinely multi-step work. When you need explicit sign-off before proceeding, ask the user with the standard question flow."
+msgstr "Eine laufend aktualisierte `plan.md` erstellen und pflegen, die dem Mitglied Einblick in echte mehrstufige Arbeit gibt. Wenn vor dem Fortfahren eine ausdrückliche Freigabe nötig ist, das Mitglied über den üblichen Fragenablauf fragen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "File system interface for the agent loop conversation and any accessible conversation or Pod. Defaults to the current conversation (and its Pod when applicable). Files include user uploads, sandbox outputs, and tool results. Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files and can be used to reference or display them in responses. Processed siblings (resized images, audio transcripts) are listed alongside their source with an annotation."
+msgstr "Dateisystem-Schnittstelle für die Unterhaltung der Agent-Schleife und jede zugängliche Unterhaltung oder jeden zugänglichen Pod. Standardmäßig die aktuelle Unterhaltung (und gegebenenfalls ihr Pod). Zu den Dateien gehören Uploads der Mitglieder, Sandbox-Ausgaben und Tool-Ergebnisse. Pfade wie `conversation-<id>/chart.png` oder `pod-<id>/spec.md` kennzeichnen Dateien und können verwendet werden, um sie in Antworten zu referenzieren oder anzuzeigen. Verarbeitete Varianten (verkleinerte Bilder, Audiotranskripte) werden neben ihrer Quelle mit einem Hinweis aufgeführt."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Collaborate on Markdown documents in the file system alongside their human editors."
+msgstr "Gemeinsam mit menschlichen Bearbeitern an Markdown-Dokumenten im Dateisystem arbeiten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Workspace usage analytics for admins and managers: credit consumption, message and execution volume by entity, headline figures, and trends over time."
+msgstr "Nutzungsstatistiken des Workspace für Administratoren und Manager: Credit-Verbrauch, Nachrichten- und Ausführungsvolumen nach Entität, Kennzahlen und Trends im Zeitverlauf."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search the workspace's agents and skills, and inventory tools, tags and groups."
+msgstr "Agenten und Fähigkeiten des Workspace durchsuchen sowie Tools, Tags und Gruppen erfassen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search for people and companies using Exa's AI-powered search."
+msgstr "Mit der KI-gestützten Suche von Exa nach Personen und Unternehmen suchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Fetch personal usage stats and anonymized workspace activity data."
+msgstr "Persönliche Nutzungsstatistiken und anonymisierte Aktivitätsdaten des Workspace abrufen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Track activation recommendations and record user decisions on them."
+msgstr "Aktivierungsempfehlungen verfolgen und die Entscheidungen des Mitglieds dazu festhalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search and retrieve agent templates."
+msgstr "Agent-Vorlagen suchen und abrufen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and manage records in ServiceNow."
+msgstr "Datensätze in ServiceNow lesen und verwalten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access catalog, customers and orders data from a Shopify store."
+msgstr "Auf Katalog-, Kunden- und Bestelldaten eines Shopify-Shops zugreifen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Store and retrieve the current user's personal memory, shared across the user's agents."
+msgstr "Das persönliche Gedächtnis des aktuellen Mitglieds speichern und abrufen, gemeinsam genutzt von seinen Agenten."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run an accessible workspace agent by ID."
+msgstr "Einen zugänglichen Workspace-Agenten anhand seiner ID ausführen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Build and improve agents and skills from a conversation by proposing suggestions their editors can review."
+msgstr "Agenten und Fähigkeiten aus einer Unterhaltung heraus erstellen und verbessern, indem Vorschläge gemacht werden, die ihre Bearbeiter prüfen können."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Launch, manage, and inspect Cursor Cloud Agents, coding runs, repositories, models, usage, and artifacts."
+msgstr "Cursor Cloud Agents, Coding-Läufe, Repositorys, Modelle, Nutzung und Artefakte starten, verwalten und untersuchen."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Let the agent adjust its own configuration mid-conversation."
+msgstr "Den Agenten seine eigene Konfiguration während der Unterhaltung anpassen lassen."
+
+#: front/lib/invitations.ts
+msgid "Revoke invitation"
+msgstr "Einladung widerrufen"
+
+#: front/lib/invitations.ts
+msgid "Are you sure you want to revoke the invitation for {inviteEmail}?"
+msgstr "Möchten Sie die Einladung für {inviteEmail} wirklich widerrufen?"
+
+#: front/lib/invitations.ts
+msgid "Yes, revoke"
+msgstr "Ja, widerrufen"
+
+#: front/lib/invitations.ts
+msgid "Role update failed"
+msgstr "Rolle konnte nicht aktualisiert werden"
+
+#: front/lib/invitations.ts
+msgid "Revoke failed"
+msgstr "Widerrufen fehlgeschlagen"
+
+#: front/lib/invitations.ts
+msgid "Role updated"
+msgstr "Rolle aktualisiert"
+
+#: front/lib/invitations.ts
+msgid "Invitation revoked"
+msgstr "Einladung widerrufen"
+
+#: front/lib/invitations.ts
+msgid "{newRole, select, admin {Invitation updated to admin for {inviteEmail}.} manager {Invitation updated to manager for {inviteEmail}.} user {Invitation updated to member for {inviteEmail}.} other {Invitation updated for {inviteEmail}.}}"
+msgstr "{newRole, select, admin {Einladung für {inviteEmail} auf Administrator geändert.} manager {Einladung für {inviteEmail} auf Manager geändert.} user {Einladung für {inviteEmail} auf Mitglied geändert.} other {Einladung für {inviteEmail} aktualisiert.}}"
+
+#: front/lib/invitations.ts
+msgid "Invitation revoked for {inviteEmail}."
+msgstr "Einladung für {inviteEmail} widerrufen."
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {Invite failed} other {Invites failed}}"
+msgstr "{emailCount, plural, one {Einladung fehlgeschlagen} other {Einladungen fehlgeschlagen}}"
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {This user has already been invited in the last 24 hours. Please wait before sending another invite.} other {These users have already been invited in the last 24 hours. Please wait before sending another invite.}}"
+msgstr "{emailCount, plural, one {Diese Person wurde in den letzten 24 Stunden bereits eingeladen. Warten Sie, bevor Sie eine weitere Einladung senden.} other {Diese Personen wurden in den letzten 24 Stunden bereits eingeladen. Warten Sie, bevor Sie eine weitere Einladung senden.}}"
+
+#: front/lib/invitations.ts
+msgid "Invite failed"
+msgstr "Einladung fehlgeschlagen"
+
+#: front/lib/invitations.ts
+msgid "{email}: {error_message}"
+msgstr "{email}: {error_message}"
+
+#: front/lib/invitations.ts
+msgid "Some invites failed"
+msgstr "Einige Einladungen sind fehlgeschlagen"
+
+#. placeholder {0}: failures.length
+#: front/lib/invitations.ts
+msgid "{0, plural, one {# invite could not be sent.} other {# invites could not be sent.}}"
+msgstr "{0, plural, one {# Einladung konnte nicht gesendet werden.} other {# Einladungen konnten nicht gesendet werden.}}"
+
+#: front/lib/invitations.ts
+msgid "Invites sent"
+msgstr "Einladungen gesendet"
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {# new invite sent.} other {# new invites sent.}}"
+msgstr "{emailCount, plural, one {# neue Einladung gesendet.} other {# neue Einladungen gesendet.}}"
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {Sent # invite again.} other {Sent # invites again.}}"
+msgstr "{emailCount, plural, one {# Einladung erneut gesendet.} other {# Einladungen erneut gesendet.}}"

@@ -1,0 +1,110 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Generating schedule..."
+msgstr "Zeitplan wird generiert…"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Unable to generate a schedule. Please try rephrasing."
+msgstr "Es konnte kein Zeitplan generiert werden. Versuchen Sie es mit einer anderen Formulierung."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "{description}, in {timezoneLabel} timezone."
+msgstr "{description}, Zeitzone {timezoneLabel}."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Scheduler"
+msgstr "Planer"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Describe when you want the agent to run in natural language."
+msgstr "Beschreiben Sie in natürlicher Sprache, wann der Agent ausgeführt werden soll."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "e.g. \"run every day at 9 AM\", or \"Late afternoon on business days\"..."
+msgstr "z. B. „jeden Tag um 9 Uhr ausführen“ oder „Am späten Nachmittag an Werktagen“…"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Next 5 occurrences"
+msgstr "Nächste 5 Ausführungen"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "Enter trigger name"
+msgstr "Namen des Triggers eingeben"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "Message (optional)"
+msgstr "Nachricht (optional)"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "Message for the agent when the trigger runs."
+msgstr "Nachricht an den Agenten, wenn der Trigger ausgeführt wird."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "Where to create this conversation? (optional)"
+msgstr "Wo soll diese Unterhaltung erstellt werden? (optional)"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "Run this trigger's conversation inside a Pod instead."
+msgstr "Die Unterhaltung dieses Triggers stattdessen in einem Pod ausführen."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "another user"
+msgstr "einem anderen Mitglied"
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionSheet.tsx
+msgid "You cannot edit this schedule. It is managed by <0>{editorName}</0>."
+msgstr "Sie können diesen Zeitplan nicht bearbeiten. Er wird von <0>{editorName}</0> verwaltet."
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "Every {weekday} at {time}"
+msgstr "Jeden {weekday} um {time}"
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "{weeks, plural, one {Every # week on {weekday} at {time}} other {Every # weeks on {weekday} at {time}}}"
+msgstr "{weeks, plural, one {Jede Woche am {weekday} um {time}} other {Alle # Wochen am {weekday} um {time}}}"
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "Every day at {time}"
+msgstr "Jeden Tag um {time}"
+
+#: front/components/agent_builder/triggers/schedule/describeScheduleConfig.ts
+msgid "{intervalDays, plural, one {Every # day at {time}} other {Every # days at {time}}}"
+msgstr "{intervalDays, plural, one {Jeden Tag um {time}} other {Alle # Tage um {time}}}"
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Name is required"
+msgstr "Der Name ist erforderlich."
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Name should be less than 255 characters"
+msgstr "Der Name muss weniger als 255 Zeichen haben."
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Timezone is required"
+msgstr "Die Zeitzone ist erforderlich."
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Cron expression is required"
+msgstr "Der Cron-Ausdruck ist erforderlich."
+
+#: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
+msgid "Schedule"
+msgstr "Zeitplan"

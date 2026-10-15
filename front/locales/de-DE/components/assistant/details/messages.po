@@ -1,0 +1,258 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Default agent"
+msgstr "Standard-Agent"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Default agents provided by Dust."
+msgstr "Von Dust bereitgestellte Standard-Agenten."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Not published"
+msgstr "Nicht veröffentlicht"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Hidden agents."
+msgstr "Ausgeblendete Agenten."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Published"
+msgstr "Veröffentlicht"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Visible agents."
+msgstr "Sichtbare Agenten."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Agent avatar"
+msgstr "Agenten-Avatar"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Last edited: {editedDate} by {lastAuthor}"
+msgstr "Zuletzt bearbeitet: {editedDate} von {lastAuthor}"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Last edited: {editedDate}"
+msgstr "Zuletzt bearbeitet: {editedDate}"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "This agent has been archived."
+msgstr "Dieser Agent wurde archiviert."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgctxt "archived agent"
+msgid "It is no longer active and cannot be used."
+msgstr "Er ist nicht mehr aktiv und kann nicht mehr verwendet werden."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Restore"
+msgstr "Wiederherstellen"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Info"
+msgstr "Info"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Insights"
+msgstr "Analysen"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Triggers"
+msgstr "Trigger"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Editors"
+msgstr "Bearbeiter"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Memory"
+msgstr "Gedächtnis"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Not available"
+msgstr "Nicht verfügbar"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "This agent is not available."
+msgstr "Dieser Agent ist nicht verfügbar."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Email this agent at `{agentEmail}`. Forward an email with your instructions and [get its reply]({EMAIL_AGENTS_DOCS_URL}) in your inbox."
+msgstr "Senden Sie diesem Agenten eine E-Mail an `{agentEmail}`. Leiten Sie eine E-Mail mit Ihren Anweisungen weiter und [erhalten Sie seine Antwort]({EMAIL_AGENTS_DOCS_URL}) in Ihrem Posteingang."
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Dismiss email tip for all agents"
+msgstr "E-Mail-Tipp für alle Agenten ausblenden"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Back"
+msgstr "Zurück"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Remove from favorites"
+msgstr "Aus Favoriten entfernen"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Add to favorites"
+msgstr "Zu Favoriten hinzufügen"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "New conversation"
+msgstr "Neue Unterhaltung"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Edit agent"
+msgstr "Agent bearbeiten"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Copied!"
+msgstr "Kopiert!"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Copy link"
+msgstr "Link kopieren"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Export failed"
+msgstr "Export fehlgeschlagen"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Export successful"
+msgstr "Export erfolgreich"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Agent \"{agentName}\" exported to YAML"
+msgstr "Agent „{agentName}“ wurde als YAML exportiert."
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "An error occurred while exporting"
+msgstr "Beim Exportieren ist ein Fehler aufgetreten."
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Copy agent ID"
+msgstr "Agenten-ID kopieren"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Exporting…"
+msgstr "Wird exportiert…"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Export to YAML"
+msgstr "Als YAML exportieren"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Duplicate (new)"
+msgstr "Duplizieren (neu)"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgctxt "verb, menu item"
+msgid "Archive"
+msgstr "Archivieren"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "More options"
+msgstr "Weitere Optionen"
+
+#: front/components/assistant/details/DetailsSectionHeading.tsx
+msgid "Edited"
+msgstr "Bearbeitet"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "User avatar"
+msgstr "Avatar des Mitglieds"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "This user is not available."
+msgstr "Dieses Mitglied ist nicht verfügbar."
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Email"
+msgstr "E-Mail"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Groups"
+msgstr "Gruppen"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "No groups"
+msgstr "Keine Gruppen"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Dust role"
+msgstr "Dust-Rolle"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Former member"
+msgstr "Ehemaliges Mitglied"
+
+#: front/components/assistant/details/MemberDetails.tsx
+#: front/components/assistant/details/SuggestionPreviewHeader.tsx
+msgid "Close"
+msgstr "Schließen"
+
+#: front/components/assistant/details/SuggestionPreviewHeader.tsx
+msgid "Suggestion preview"
+msgstr "Vorschau des Vorschlags"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Add trigger"
+msgstr "Trigger hinzufügen"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Create schedule"
+msgstr "Zeitplan erstellen"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Edit schedule"
+msgstr "Zeitplan bearbeiten"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "View schedule"
+msgstr "Zeitplan anzeigen"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Create trigger"
+msgstr "Trigger erstellen"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Create {sourceName} trigger"
+msgstr "{sourceName}-Trigger erstellen"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Edit trigger"
+msgstr "Trigger bearbeiten"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "View trigger"
+msgstr "Trigger anzeigen"
+
+#: front/components/assistant/details/useTriggerSheetState.ts
+msgid "Please select an event"
+msgstr "Wählen Sie ein Ereignis aus."

@@ -1,0 +1,147 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Folders"
+msgstr "Ordner"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Knowledge"
+msgstr "Wissen"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Documents"
+msgstr "Dokumente"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Tables"
+msgstr "Tabellen"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Deleted data source"
+msgstr "Gelöschte Datenquelle"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Filters"
+msgstr "Filter"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgctxt "tags filter mode counter"
+msgid "auto"
+msgstr "auto"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Must-have"
+msgstr "Erforderlich"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Must-not-have"
+msgstr "Ausgeschlossen"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "In-conversation filtering"
+msgstr "Filterung in der Unterhaltung"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Activated"
+msgstr "Aktiviert"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Open in a new tab"
+msgstr "In neuem Tab öffnen"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "View document"
+msgstr "Dokument anzeigen"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
+msgid "Skills"
+msgstr "Fähigkeiten"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
+msgid "{toolsCount, plural, one {Show all # tool} other {Show all # tools}}"
+msgstr "{toolsCount, plural, one {# Tool anzeigen} other {Alle # Tools anzeigen}}"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Security notice"
+msgstr "Sicherheitshinweis"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "By becoming an editor you will have access to this agent's private data (instructions, skills, knowledge). This action will be logged for security purposes. Do you want to proceed?"
+msgstr "Wenn Sie Bearbeiter werden, erhalten Sie Zugriff auf die privaten Daten dieses Agenten (Anweisungen, Fähigkeiten, Wissen). Diese Aktion wird aus Sicherheitsgründen protokolliert. Möchten Sie fortfahren?"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Proceed"
+msgstr "Fortfahren"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "{missingSpacesCount, plural, one {You are about to join this space. This action will be logged for security purposes. Do you want to proceed?} other {You are about to join these spaces. This action will be logged for security purposes. Do you want to proceed?}}"
+msgstr "{missingSpacesCount, plural, one {Sie sind dabei, diesem Bereich beizutreten. Diese Aktion wird aus Sicherheitsgründen protokolliert. Möchten Sie fortfahren?} other {Sie sind dabei, diesen Bereichen beizutreten. Diese Aktion wird aus Sicherheitsgründen protokolliert. Möchten Sie fortfahren?}}"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Joined {spaceName}"
+msgstr "{spaceName} beigetreten"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "You are now a member of {spaceName}."
+msgstr "Sie sind jetzt Mitglied von {spaceName}."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Restricted access"
+msgstr "Eingeschränkter Zugriff"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "You cannot see the details of this agent."
+msgstr "Sie können die Details dieses Agenten nicht sehen."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "The agent is not published and you are not one of its editors."
+msgstr "Der Agent ist nicht veröffentlicht und Sie gehören nicht zu seinen Bearbeitern."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "The agent uses restricted spaces you are not a member of: {missingSpaceNamesList}."
+msgstr "Der Agent verwendet eingeschränkte Bereiche, in denen Sie kein Mitglied sind: {missingSpaceNamesList}."
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Join space {missingSpaceName}"
+msgstr "Bereich {missingSpaceName} beitreten"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage.tsx
+msgid "Join all required spaces"
+msgstr "Allen erforderlichen Bereichen beitreten"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "No tags"
+msgstr "Keine Tags"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "Instructions"
+msgstr "Anweisungen"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "Model"
+msgstr "Modell"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "Structured output"
+msgstr "Strukturierte Ausgabe"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/index.tsx
+msgid "No structured output"
+msgstr "Keine strukturierte Ausgabe"

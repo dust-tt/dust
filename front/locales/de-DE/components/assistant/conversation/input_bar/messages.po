@@ -1,0 +1,256 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
+msgid "Show context usage"
+msgstr "Kontextnutzung anzeigen"
+
+#: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
+msgid "{contextUsagePercent} of context used. <0>Learn more</0>"
+msgstr "{contextUsagePercent} des Kontexts genutzt. <0>Mehr erfahren</0>"
+
+#: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
+msgid "Compacting"
+msgstr "Wird komprimiert"
+
+#: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
+msgid "Compact now"
+msgstr "Jetzt komprimieren"
+
+#: front/components/assistant/conversation/input_bar/InputBar.tsx
+msgid "Add a follow-up..."
+msgstr "Folgenachricht hinzufügen…"
+
+#: front/components/assistant/conversation/input_bar/InputBar.tsx
+msgid "Wait for current active agent to finish before calling another agent."
+msgstr "Warten Sie, bis der aktive Agent fertig ist, bevor Sie einen anderen Agenten aufrufen."
+
+#: front/components/assistant/conversation/input_bar/InputBar.tsx
+msgid "Resolve the pending action from @{name} before switching agents"
+msgstr "Erledigen Sie die ausstehende Aktion von @{name}, bevor Sie den Agenten wechseln"
+
+#: front/components/assistant/conversation/input_bar/InputBar.tsx
+msgid "Resolve the pending action from another agent before switching agents"
+msgstr "Erledigen Sie die ausstehende Aktion eines anderen Agenten, bevor Sie den Agenten wechseln"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+msgid "{fileKind} in \"{projectName}\" knowledge"
+msgstr "{fileKind} im Wissen von „{projectName}“"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+msgid "{fileKind} in Pod knowledge"
+msgstr "{fileKind} im Pod-Wissen"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Attach"
+msgstr "Anhängen"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+msgid "Search"
+msgstr "Suchen"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+msgid "Upload file"
+msgstr "Datei hochladen"
+
+#: front/components/assistant/conversation/input_bar/InputBarAttachmentsPicker.tsx
+msgid "No results found"
+msgstr "Keine Ergebnisse gefunden"
+
+#: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
+msgid "This Pod's default agent isn't available to you, so @Dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgstr "Der Standard-Agent dieses Pods ist für Sie nicht verfügbar, daher wird stattdessen @Dust verwendet. Wenden Sie sich an die Bearbeiter Ihres Pods, wenn Sie glauben, dass es sich um einen Fehler handelt."
+
+#: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
+msgid "This conversation's default agent isn't available to you, so @Dust is used instead. Discuss with your workspace admin if you think this is an error."
+msgstr "Der Standard-Agent dieser Unterhaltung ist für Sie nicht verfügbar, daher wird stattdessen @Dust verwendet. Wenden Sie sich an den Administrator Ihres Workspace, wenn Sie glauben, dass es sich um einen Fehler handelt."
+
+#: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
+msgid "Selected agent: {selectedAgentName}"
+msgstr "Ausgewählter Agent: {selectedAgentName}"
+
+#: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
+msgctxt "button label"
+msgid "Agent"
+msgstr "Agent"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Get work done"
+msgstr "Was möchten Sie erledigen?"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Ask anything"
+msgstr "Stellen Sie eine beliebige Frage"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to call an agent"
+msgstr "Tippen Sie @, um einen Agenten aufzurufen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to list your favorite agents"
+msgstr "Tippen Sie @, um Ihre favorisierten Agenten anzuzeigen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to loop in a teammate"
+msgstr "Tippen Sie @, um Teammitglieder einzubeziehen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to use a skill"
+msgstr "Tippen Sie /, um eine Fähigkeit zu verwenden"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to add tools and more"
+msgstr "Tippen Sie /, um Tools und mehr hinzuzufügen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Failed to inline text"
+msgstr "Text konnte nicht eingefügt werden"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Cannot compact conversation"
+msgstr "Unterhaltung kann nicht komprimiert werden"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Compaction requires a completed agent message in the conversation."
+msgstr "Für die Komprimierung muss die Unterhaltung eine abgeschlossene Nachricht eines Agenten enthalten."
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Failed to attach pasted text"
+msgstr "Eingefügter Text konnte nicht angehängt werden"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Upload was rejected or failed."
+msgstr "Der Upload wurde abgelehnt oder ist fehlgeschlagen."
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Failed to update Spaces"
+msgstr "Bereiche konnten nicht aktualisiert werden"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Failed to transcribe voice"
+msgstr "Sprachaufnahme konnte nicht transkribiert werden"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Add content"
+msgstr "Inhalt hinzufügen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Attach page content"
+msgstr "Seiteninhalt anhängen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Take screenshot"
+msgstr "Screenshot aufnehmen"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Save page to Pod"
+msgstr "Seite im Pod speichern"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Send message"
+msgstr "Nachricht senden"
+
+#: front/components/assistant/conversation/input_bar/InputBarMessageNavigation.tsx
+msgid "Previous user message"
+msgstr "Vorherige Nutzernachricht"
+
+#: front/components/assistant/conversation/input_bar/InputBarMessageNavigation.tsx
+msgid "Next user message"
+msgstr "Nächste Nutzernachricht"
+
+#: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
+msgid "More"
+msgstr "Mehr"
+
+#: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
+msgid "Search knowledge"
+msgstr "Wissen durchsuchen"
+
+#: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
+msgid "Search models"
+msgstr "Modelle suchen"
+
+#: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
+msgid "Search commands, skills, or tools"
+msgstr "Befehle, Fähigkeiten oder Tools suchen"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "Spaces"
+msgstr "Bereiche"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "{count, plural, one {# additional Space} other {# additional Spaces}}"
+msgstr "{count, plural, one {# weiterer Bereich} other {# weitere Bereiche}}"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "Search Spaces"
+msgstr "Bereiche suchen"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "Agent's Spaces"
+msgstr "Bereiche des Agenten"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "Additional Spaces"
+msgstr "Weitere Bereiche"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "Loading"
+msgstr "Wird geladen"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "No Spaces available"
+msgstr "Keine Bereiche verfügbar"
+
+#: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
+msgid "No matching Spaces"
+msgstr "Keine passenden Bereiche"
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "You don't have a seat in this workspace."
+msgstr "Sie haben keinen Platz in diesem Workspace."
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "You've reached your usage limit"
+msgstr "Sie haben Ihr Nutzungslimit erreicht"
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "Your workspace has run out of credits."
+msgstr "Ihr Workspace hat keine Credits mehr."
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "Your group has reached its shared usage limit."
+msgstr "Ihre Gruppe hat ihr gemeinsames Nutzungslimit erreicht."
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit"
+msgstr "Sie haben 80 % Ihres Nutzungslimits verbraucht. Sie erhalten automatisch ein Upgrade, wenn Sie das Limit erreichen"
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "You've used 80% of your usage limit"
+msgstr "Sie haben 80 % Ihres Nutzungslimits verbraucht"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted ({count})"
+msgstr "Eingefügter Text ({count})"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted"
+msgstr "Eingefügter Text"

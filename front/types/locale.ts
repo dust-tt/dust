@@ -22,6 +22,7 @@ export const CATALOG_LOCALES = [
   "en-US",
   "en-GB",
   "fr-FR",
+  "de-DE",
 ] as const satisfies readonly SupportedLocale[];
 
 export type CatalogLocale = (typeof CATALOG_LOCALES)[number];
@@ -59,7 +60,7 @@ export const CATALOG_LOCALE_BY_LOCALE: Record<SupportedLocale, CatalogLocale> =
     "en-US": "en-US",
     "en-GB": "en-GB",
     "fr-FR": "fr-FR",
-    "de-DE": "en-US",
+    "de-DE": "de-DE",
   };
 
 // Native names: a user who cannot read the current UI language must still recognize their own.

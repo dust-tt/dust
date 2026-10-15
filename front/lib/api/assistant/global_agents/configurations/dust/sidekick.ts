@@ -234,6 +234,12 @@ const FR_SIDEKICK_TRIGGERS_UI_LABELS: SidekickTriggersUILabels = {
   scheduleOption: "Planification",
 };
 
+const DE_SIDEKICK_TRIGGERS_UI_LABELS: SidekickTriggersUILabels = {
+  triggersSection: "Trigger",
+  addTriggersButton: "Trigger hinzufügen",
+  scheduleOption: "Zeitplan",
+};
+
 /**
  * @cc [owner:sfriquet,label:product] matches-agent-builder-labels
  * Each locale's labels MUST equal the Agent Builder triggers UI strings rendered in that locale
@@ -246,7 +252,7 @@ const SIDEKICK_TRIGGERS_UI_LABELS_BY_LOCALE: Record<
   "en-US": EN_SIDEKICK_TRIGGERS_UI_LABELS,
   "en-GB": EN_SIDEKICK_TRIGGERS_UI_LABELS,
   "fr-FR": FR_SIDEKICK_TRIGGERS_UI_LABELS,
-  "de-DE": EN_SIDEKICK_TRIGGERS_UI_LABELS,
+  "de-DE": DE_SIDEKICK_TRIGGERS_UI_LABELS,
 };
 
 function triggersAndSchedulesSection(locale: SupportedLocale | null): string {

@@ -1,0 +1,51 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Company"
+msgstr "Gesamtes Unternehmen"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Shared"
+msgstr "Geteilt"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Private"
+msgstr "Privat"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgctxt "agent scopes"
+msgid "All"
+msgstr "Alle"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
+msgid "Scopes"
+msgstr "Sichtbarkeit"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
+msgid "Groups"
+msgstr "Gruppen"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
+msgid "Add group"
+msgstr "Gruppe hinzufügen"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
+msgid "No more groups"
+msgstr "Keine weiteren Gruppen"
+
+#: front/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon.tsx
+msgid "This agent is private"
+msgstr "Dieser Agent ist privat"

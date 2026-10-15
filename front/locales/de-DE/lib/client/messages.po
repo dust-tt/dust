@@ -1,0 +1,167 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/client/calendar_date.ts
+msgid "Invalid date"
+msgstr "Ungültiges Datum"
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday}"
+msgstr "Letzten {weekday}"
+
+#: front/lib/client/calendar_date.ts
+msgid "{day} at {time}"
+msgstr "{day} um {time}"
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday} at {time}"
+msgstr "Letzten {weekday} um {time}"
+
+#: front/lib/client/calendar_date.ts
+msgid "{weekday} at {time}"
+msgstr "{weekday} um {time}"
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} Credit} other {{formattedCredits} Credits}}"
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} Credit / Nachricht} other {{formattedCredits} Credits / Nachricht}}"
+
+#: front/lib/client/credits.ts
+msgid "{callCount, plural, one {# use} other {# uses}}"
+msgstr "{callCount, plural, one {# Nutzung} other {# Nutzungen}}"
+
+#: front/lib/client/greetings.ts
+msgid "What’s next, {name}?"
+msgstr "Wie geht es weiter, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What are we working on, {name}?"
+msgstr "Woran arbeiten wir, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What’s on your mind, {name}?"
+msgstr "Was beschäftigt Sie, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What are we building, {name}?"
+msgstr "Was bauen wir, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "Where do we start, {name}?"
+msgstr "Wo fangen wir an, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What’s the plan, {name}?"
+msgstr "Was ist der Plan, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What can I help with, {name}?"
+msgstr "Wobei kann ich helfen, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What should we start with, {name}?"
+msgstr "Womit fangen wir an, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "What’s cooking, {name}?"
+msgstr "Was gibt’s Neues, {name}?"
+
+#: front/lib/client/greetings.ts
+msgid "Ready when you are, {name}."
+msgstr "Bereit, wenn Sie es sind, {name}."
+
+#: front/lib/client/members.ts
+msgid "Update failed"
+msgstr "Aktualisierung fehlgeschlagen"
+
+#: front/lib/client/members.ts
+msgid "{failedCount, plural, one {Failed to update the role of # member ({succeededCount} succeeded).} other {Failed to update the role of # members ({succeededCount} succeeded).}}"
+msgstr "{failedCount, plural, one {Die Rolle von # Mitglied konnte nicht aktualisiert werden ({succeededCount} erfolgreich).} other {Die Rolle von # Mitgliedern konnte nicht aktualisiert werden ({succeededCount} erfolgreich).}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to admin for # member.} other {Role updated to admin for # members.}}"
+msgstr "{memberCount, plural, one {Rolle von # Mitglied auf Administrator geändert.} other {Rolle von # Mitgliedern auf Administrator geändert.}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to manager for # member.} other {Role updated to manager for # members.}}"
+msgstr "{memberCount, plural, one {Rolle von # Mitglied auf Manager geändert.} other {Rolle von # Mitgliedern auf Manager geändert.}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to member for # member.} other {Role updated to member for # members.}}"
+msgstr "{memberCount, plural, one {Rolle von # Mitglied auf Mitglied geändert.} other {Rolle von # Mitgliedern auf Mitglied geändert.}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Membership revoked for # member.} other {Membership revoked for # members.}}"
+msgstr "{memberCount, plural, one {Mitgliedschaft von # Mitglied widerrufen.} other {Mitgliedschaft von # Mitgliedern widerrufen.}}"
+
+#: front/lib/client/members.ts
+msgid "Membership revoked"
+msgstr "Mitgliedschaft widerrufen"
+
+#: front/lib/client/members.ts
+msgid "Role updated"
+msgstr "Rolle aktualisiert"
+
+#: front/lib/client/model_tier_options.ts
+msgid "Includes {tierNames}"
+msgstr "Enthält {tierNames}"
+
+#: front/lib/client/model_tier_options.ts
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from workspace"
+msgstr "Vom Workspace übernommen"
+
+#: front/lib/client/model_tiers.ts
+msgid "Up to {tierName}"
+msgstr "Bis {tierName}"
+
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from groups"
+msgstr "Von Gruppen übernommen"
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Lower-cost models for routine tasks."
+msgstr "Günstigere Modelle für Routineaufgaben."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Balanced models for most tasks."
+msgstr "Ausgewogene Modelle für die meisten Aufgaben."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "More capable models for complex or demanding work."
+msgstr "Leistungsfähigere Modelle für komplexe oder anspruchsvolle Arbeit."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Frontier models priced far above Premium, for the most demanding work."
+msgstr "Spitzenmodelle, deutlich teurer als Premium, für die anspruchsvollste Arbeit."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "all efforts"
+msgstr "alle Aufwandsstufen"
+
+#: front/lib/client/visualization.ts
+msgid "The visualization code failed with this error:"
+msgstr "Der Visualisierungscode ist mit diesem Fehler fehlgeschlagen:"
+
+#: front/lib/client/visualization.ts
+msgid "Please fix the code."
+msgstr "Korrigiere den Code."
+
+#: front/lib/client/wakeup_schedule.ts
+msgid "at {time}"
+msgstr "um {time}"

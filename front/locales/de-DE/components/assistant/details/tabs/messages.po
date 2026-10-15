@@ -1,0 +1,137 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/details/tabs/AgentEditorsTab.tsx
+msgid "Editors"
+msgstr "Bearbeiter"
+
+#: front/components/assistant/details/tabs/AgentEditorsTab.tsx
+msgid "Add editors"
+msgstr "Bearbeiter hinzufügen"
+
+#: front/components/assistant/details/tabs/AgentEditorsTab.tsx
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/assistant/details/tabs/AgentEditorsTab.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Insights"
+msgstr "Analysen"
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Restricted access"
+msgstr "Eingeschränkter Zugriff"
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "You need access to all spaces used by this agent to view its insights."
+msgstr "Sie benötigen Zugriff auf alle von diesem Agenten verwendeten Bereiche, um seine Analysen zu sehen."
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Open the Info tab to review the access requirements."
+msgstr "Öffnen Sie den Tab „Info“, um die Zugriffsvoraussetzungen zu prüfen."
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Analytics"
+msgstr "Statistiken"
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Feedback"
+msgstr "Feedback"
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Overview"
+msgstr "Übersicht"
+
+#: front/components/assistant/details/tabs/AgentInsightsTab.tsx
+msgid "Explore"
+msgstr "Erkunden"
+
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+msgid "Confirm deletion"
+msgstr "Löschen bestätigen"
+
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+msgid "Are you sure you want to delete this memory?"
+msgstr "Möchten Sie diesen Gedächtniseintrag wirklich löschen?"
+
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Delete"
+msgstr "Löschen"
+
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+msgid "Saved memories"
+msgstr "Gespeicherte Gedächtniseinträge"
+
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+msgid "Personal details this agent remembers from your conversations."
+msgstr "Persönliche Informationen, die sich dieser Agent aus Ihren Unterhaltungen merkt."
+
+#: front/components/assistant/details/tabs/AgentMemoryTab.tsx
+msgid "No memories yet."
+msgstr "Noch keine Gedächtniseinträge."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Triggered by {event} events."
+msgstr "Ausgelöst durch {event}-Ereignisse."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Triggered by webhook events."
+msgstr "Ausgelöst durch Webhook-Ereignisse."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Trigger deleted"
+msgstr "Trigger gelöscht"
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "The trigger \"{triggerName}\" has been deleted."
+msgstr "Der Trigger „{triggerName}“ wurde gelöscht."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Failed to delete trigger"
+msgstr "Der Trigger konnte nicht gelöscht werden."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "An error occurred while deleting the trigger."
+msgstr "Beim Löschen des Triggers ist ein Fehler aufgetreten."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "My triggers"
+msgstr "Meine Trigger"
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Add trigger"
+msgstr "Trigger hinzufügen"
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "You have no triggers set up for this agent yet."
+msgstr "Sie haben für diesen Agenten noch keine Trigger eingerichtet."
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Delete trigger"
+msgstr "Trigger löschen"
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "Are you sure you want to delete the trigger \"{triggerToDeleteName}\"?"
+msgstr "Möchten Sie den Trigger „{triggerToDeleteName}“ wirklich löschen?"
+
+#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
+msgid "This action cannot be undone."
+msgstr "Diese Aktion kann nicht rückgängig gemacht werden."

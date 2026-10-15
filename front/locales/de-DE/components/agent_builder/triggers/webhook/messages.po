@@ -1,0 +1,190 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Error generating filter: {errorMessage}"
+msgstr "Fehler beim Generieren des Filters: {errorMessage}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Generating filter..."
+msgstr "Filter wird generiert…"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Unable to generate filter. Please try rephrasing."
+msgstr "Der Filter konnte nicht generiert werden. Versuchen Sie es mit einer anderen Formulierung."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Run only when (optional)"
+msgstr "Nur ausführen, wenn (optional)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Set conditions that must be met to run the agent."
+msgstr "Legen Sie Bedingungen fest, die erfüllt sein müssen, damit der Agent ausgeführt wird."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Describe the conditions (e.g \"Pull requests by John on dust repository\")"
+msgstr "Beschreiben Sie die Bedingungen (z. B. „Pull Requests von John im Repository dust“)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Please select an event first"
+msgstr "Wählen Sie zuerst ein Ereignis aus."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Filter expression (optional)"
+msgstr "Filterausdruck (optional)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Enter a filter that will be used to filter the webhook payload JSON. Will always trigger if left empty."
+msgstr "Geben Sie einen Filter ein, der auf das JSON der Webhook-Payload angewendet wird. Wenn das Feld leer bleibt, wird immer ausgelöst."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Payload filtering syntax"
+msgstr "Syntax zum Filtern der Payload"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "This trigger uses a custom webhook without an integrated provider. As a result, Dust is unable to automatically generate a payload filter. You can manually write a filter expression using our syntax to specify conditions on your webhook's payload."
+msgstr "Dieser Trigger verwendet einen benutzerdefinierten Webhook ohne integrierten Anbieter. Daher kann Dust keinen Payload-Filter automatisch generieren. Sie können mit unserer Syntax manuell einen Filterausdruck schreiben, um Bedingungen für die Payload Ihres Webhooks festzulegen."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "See documentation on <0>filter expressions</0> to learn how to write them."
+msgstr "In der Dokumentation zu <0>Filterausdrücken</0> erfahren Sie, wie Sie sie schreiben."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Example:\n"
+"\n"
+"{FILTER_EXPRESSION_EXAMPLE}"
+msgstr "Beispiel:\n"
+"\n"
+"{FILTER_EXPRESSION_EXAMPLE}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Compute stats"
+msgstr "Statistiken berechnen"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "Not enough data to compute statistics."
+msgstr "Nicht genügend Daten, um Statistiken zu berechnen."
+
+#. placeholder {0}: estimation.totalCount
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "{0, plural, one {# event found in the last 24 hours.} other {# events found in the last 24 hours.}}"
+msgstr "{0, plural, one {# Ereignis in den letzten 24 Stunden gefunden.} other {# Ereignisse in den letzten 24 Stunden gefunden.}}"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "At least 10 events are needed for estimation."
+msgstr "Für eine Schätzung sind mindestens 10 Ereignisse erforderlich."
+
+#. placeholder {0}: estimation.matchingCount
+#. placeholder {1}: estimation.totalCount
+#: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
+msgid "According to the most recent data, this trigger would have created <0>{0, plural, one {# conversation} other {# conversations}}</0> out of <1>{1, plural, one {# event} other {# events}}</1> in the last 24 hours."
+msgstr "Laut den neuesten Daten hätte dieser Trigger in den letzten 24 Stunden <0>{0, plural, one {# Unterhaltung} other {# Unterhaltungen}}</0> aus <1>{1, plural, one {# Ereignis} other {# Ereignissen}}</1> erstellt."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Enter trigger name"
+msgstr "Namen des Triggers eingeben"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count toward your personal credit pool."
+msgstr "Dies wird auf Ihren persönlichen Credit-Pool angerechnet."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count toward your workspace's credit pool."
+msgstr "Dies wird auf den Credit-Pool Ihres Workspace angerechnet."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count toward your personal fair use limits."
+msgstr "Dies wird auf Ihre persönlichen Limits für angemessene Nutzung angerechnet."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "This will count toward your workspace's programmatic usage."
+msgstr "Dies wird auf die Nutzung Ihres Workspace über die API angerechnet."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Rate limits"
+msgstr "Ratenlimits"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Maximum number of runs over a 24-hour window."
+msgstr "Maximale Anzahl an Ausführungen innerhalb von 24 Stunden."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "(<0>Learn more</0>)"
+msgstr "(<0>Mehr erfahren</0>)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Listen for"
+msgstr "Reagieren auf"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "External event that will trigger a run of this agent."
+msgstr "Externes Ereignis, das eine Ausführung dieses Agenten auslöst."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Select event"
+msgstr "Ereignis auswählen"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgctxt "dropdown menu heading"
+msgid "Select"
+msgstr "Auswählen"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Include webhook payload"
+msgstr "Webhook-Payload einbeziehen"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Message (optional)"
+msgstr "Nachricht (optional)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Message for the agent when the trigger runs."
+msgstr "Nachricht an den Agenten, wenn der Trigger ausgeführt wird."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Where to create this conversation? (optional)"
+msgstr "Wo soll diese Unterhaltung erstellt werden? (optional)"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "Run this trigger's conversation inside a Pod instead."
+msgstr "Die Unterhaltung dieses Triggers stattdessen in einem Pod ausführen."
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "another user"
+msgstr "einem anderen Mitglied"
+
+#: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
+msgid "You cannot edit this trigger. It is managed by <0>{editorName}</0>."
+msgstr "Sie können diesen Trigger nicht bearbeiten. Er wird von <0>{editorName}</0> verwaltet."
+
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Name is required"
+msgstr "Der Name ist erforderlich."
+
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Name should be less than 255 characters"
+msgstr "Der Name muss weniger als 255 Zeichen haben."
+
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Select a webhook source"
+msgstr "Wählen Sie eine Webhook-Quelle aus."
+
+#: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
+msgid "Webhook trigger"
+msgstr "Webhook-Trigger"

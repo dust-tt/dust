@@ -1,0 +1,342 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "Enter value for {keyLabel}"
+msgstr "Wert für {keyLabel} eingeben"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "Select {keyLabel}"
+msgstr "{keyLabel} auswählen"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "Search {keyLabel}..."
+msgstr "{keyLabel} suchen…"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "No options available"
+msgstr "Keine Optionen verfügbar"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "No options match \"{searchQuery}\""
+msgstr "Keine Option entspricht „{searchQuery}“"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "Additional configuration"
+msgstr "Zusätzliche Konfiguration"
+
+#: front/components/agent_builder/capabilities/shared/AdditionalConfigurationSection.tsx
+msgid "Configure additional parameters required by this action."
+msgstr "Konfigurieren Sie die für diese Aktion erforderlichen zusätzlichen Parameter."
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "Search"
+msgstr "Suchen"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "No description available"
+msgstr "Keine Beschreibung verfügbar"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "Error loading agents"
+msgstr "Fehler beim Laden der Agenten"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "Failed to load available agents. Please try again later."
+msgstr "Die verfügbaren Agenten konnten nicht geladen werden. Versuchen Sie es später erneut."
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "No agents available"
+msgstr "Keine Agenten verfügbar"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "There are no agents available to select. Please create an agent first."
+msgstr "Es sind keine Agenten zur Auswahl verfügbar. Erstellen Sie zuerst einen Agenten."
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "The agent selected is not available to you"
+msgstr "Der ausgewählte Agent ist für Sie nicht verfügbar."
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "The agent ({agentId}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent."
+msgstr "Der ausgewählte Agent ({agentId}) ist für Sie nicht verfügbar, entweder weil er archiviert wurde oder weil Sie keinen Zugriff mehr darauf haben (er gehört zu einem eingeschränkten Bereich, dem Sie nicht angehören). Als Bearbeiter können Sie das Tool Run Agent trotzdem entfernen und ein neues hinzufügen, das auf einen anderen Agenten verweist."
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "Select an agent"
+msgstr "Agent auswählen"
+
+#: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
+msgid "Edit agent"
+msgstr "Agent bearbeiten"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Filters"
+msgstr "Filter"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Filtering"
+msgstr "Filterung"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
+msgstr "Filtern Sie, um nur Inhalte mit erforderlichen Labels einzubeziehen und Inhalte mit ausgeschlossenen Labels auszuschließen."
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Must-have labels"
+msgstr "Erforderliche Labels"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Must-not-have labels"
+msgstr "Ausgeschlossene Labels"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "In-conversation filtering"
+msgstr "Filterung in der Unterhaltung"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Allow agents to determine filters to apply based on conversation context."
+msgstr "Agenten anhand des Unterhaltungskontexts festlegen lassen, welche Filter angewendet werden."
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Enable in-conversation filtering"
+msgstr "Filterung in der Unterhaltung aktivieren"
+
+#: front/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown.tsx
+msgid "Disable in-conversation filtering"
+msgstr "Filterung in der Unterhaltung deaktivieren"
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "Select a Dust app"
+msgstr "Dust-App auswählen"
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "The agent will execute a <0>Dust Application</0> of your design before replying. The output of the app (last block) is injected in context for the model to generate an answer."
+msgstr "Der Agent führt vor dem Antworten eine von Ihnen erstellte <0>Dust-App</0> aus. Die Ausgabe der App (letzter Block) wird in den Kontext eingefügt, damit das Modell eine Antwort erzeugen kann."
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "Space:"
+msgstr "Bereich:"
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "Select a space..."
+msgstr "Bereich auswählen…"
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "Edit selection"
+msgstr "Auswahl bearbeiten"
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "No Dust apps available for this space"
+msgstr "Keine Dust-Apps für diesen Bereich verfügbar"
+
+#: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
+msgid "Create one or ask your admin to install apps from other spaces."
+msgstr "Erstellen Sie eine oder bitten Sie Ihren Administrator, Apps aus anderen Bereichen zu installieren."
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Instructions required"
+msgstr "Anweisungen erforderlich"
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Please add agent instructions first."
+msgstr "Fügen Sie zuerst Anweisungen für den Agenten hinzu."
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Failed to generate schema."
+msgstr "Das Schema konnte nicht erzeugt werden."
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "An error occurred while generating the schema. Please contact us if the error persists."
+msgstr "Beim Erzeugen des Schemas ist ein Fehler aufgetreten. Kontaktieren Sie uns, wenn der Fehler weiterhin auftritt."
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Schema"
+msgstr "Schema"
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+msgstr "Optional können Sie ein Schema für die zu extrahierenden Daten angeben. Ohne Schema bestimmt das Tool das Schema anhand des Unterhaltungskontexts."
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Automatically re-generate the extraction schema based on instructions"
+msgstr "Extraktionsschema automatisch anhand der Anweisungen neu erzeugen"
+
+#: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
+msgid "Re-generate from instructions"
+msgstr "Aus Anweisungen neu erzeugen"
+
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+msgid "<0>{methodLabel}</0> will ignore text documents and files in your selection. Create separate knowledge tools if you need both."
+msgstr "<0>{methodLabel}</0> ignoriert Textdokumente und Dateien in Ihrer Auswahl. Erstellen Sie separate Wissens-Tools, wenn Sie beides benötigen."
+
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+msgid "<0>Note:</0> When you select a folder, only tables directly inside it will be included. Tables in nested subfolders won't be automatically added."
+msgstr "<0>Hinweis:</0> Wenn Sie einen Ordner auswählen, werden nur Tabellen einbezogen, die sich direkt darin befinden. Tabellen in Unterordnern werden nicht automatisch hinzugefügt."
+
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+msgid "<0>{methodLabel}</0> will ignore tables in your selection. Switch processing method if you want to use your structured data."
+msgstr "<0>{methodLabel}</0> ignoriert Tabellen in Ihrer Auswahl. Wechseln Sie die Verarbeitungsmethode, wenn Sie Ihre strukturierten Daten nutzen möchten."
+
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+msgid "Knowledge lookup method"
+msgstr "Methode der Wissenssuche"
+
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+msgid "Sets the approach for finding and retrieving information from your data sources. Need help? Check our <0>guide.</0>"
+msgstr "Legt fest, wie Informationen in Ihren Datenquellen gefunden und abgerufen werden. Sie benötigen Hilfe? Lesen Sie unseren <0>Leitfaden.</0>"
+
+#: front/components/agent_builder/capabilities/shared/ProcessingMethodSection.tsx
+msgid "Loading..."
+msgstr "Wird geladen…"
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "Select a Pod"
+msgstr "Pod auswählen"
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "No Pods available"
+msgstr "Keine Pods verfügbar"
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "No Pods are available in your workspace. Create a Pod first to use this feature."
+msgstr "In Ihrem Workspace sind keine Pods verfügbar. Erstellen Sie zuerst einen Pod, um diese Funktion zu nutzen."
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "Choose the Pod that the agent can access. The agent will have access to Pod metadata and context from the selected Pod."
+msgstr "Wählen Sie den Pod aus, auf den der Agent zugreifen kann. Der Agent hat Zugriff auf die Metadaten und den Kontext des ausgewählten Pods."
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "Select a Pod..."
+msgstr "Pod auswählen…"
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "Search..."
+msgstr "Suchen…"
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "No description available."
+msgstr "Keine Beschreibung verfügbar."
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "No matches"
+msgstr "Keine Treffer"
+
+#: front/components/agent_builder/capabilities/shared/ProjectSection.tsx
+msgid "No Pods"
+msgstr "Keine Pods"
+
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "Select a secret"
+msgstr "Secret auswählen"
+
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "Failed to load secrets"
+msgstr "Secrets konnten nicht geladen werden"
+
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "The agent will use the selected secret to authenticate with the service. The secret value will be securely injected at runtime."
+msgstr "Der Agent verwendet das ausgewählte Secret, um sich beim Dienst zu authentifizieren. Der Wert des Secrets wird zur Laufzeit sicher eingefügt."
+
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "Change"
+msgstr "Ändern"
+
+#: front/components/agent_builder/capabilities/shared/SecretSection.tsx
+msgid "No secrets found. Create a secret in your workspace settings first."
+msgstr "Keine Secrets gefunden. Erstellen Sie zuerst ein Secret in den Einstellungen Ihres Workspace."
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "No table detected"
+msgstr "Keine Tabelle erkannt"
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "No document detected"
+msgstr "Kein Dokument erkannt"
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "We couldn't find any tables in your selection. Add tables to enable \"{serverName}\"."
+msgstr "In Ihrer Auswahl wurden keine Tabellen gefunden. Fügen Sie Tabellen hinzu, um „{serverName}“ zu aktivieren."
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "We couldn't find any documents in your selection. Add documents to enable \"{serverName}\"."
+msgstr "In Ihrer Auswahl wurden keine Dokumente gefunden. Fügen Sie Dokumente hinzu, um „{serverName}“ zu aktivieren."
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "Select data sources"
+msgstr "Datenquellen auswählen"
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "{dataSourceCount, plural, one {Selected data source} other {Selected data sources}}"
+msgstr "{dataSourceCount, plural, one {Ausgewählte Datenquelle} other {Ausgewählte Datenquellen}}"
+
+#: front/components/agent_builder/capabilities/shared/SelectedDataSources.tsx
+msgid "Manage selection"
+msgstr "Auswahl verwalten"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "Include data from the last"
+msgstr "Daten einbeziehen, nicht älter als"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "By default, the time frame is determined automatically based on the conversation context. Enable manual time frame selection when you need to specify an exact range for data inclusion."
+msgstr "Standardmäßig wird der Zeitraum automatisch anhand des Unterhaltungskontexts bestimmt. Aktivieren Sie die manuelle Auswahl des Zeitraums, wenn Sie einen genauen Zeitraum für die Einbeziehung der Daten festlegen müssen."
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "Search data from the last"
+msgstr "Daten durchsuchen, nicht älter als"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "By default, the time frame is determined automatically based on the conversation context. Enable manual time frame selection when you need to specify an exact range for searching."
+msgstr "Standardmäßig wird der Zeitraum automatisch anhand des Unterhaltungskontexts bestimmt. Aktivieren Sie die manuelle Auswahl des Zeitraums, wenn Sie einen genauen Zeitraum für die Suche festlegen müssen."
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "Extract data from the last"
+msgstr "Daten extrahieren, nicht älter als"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "By default, the time frame is determined automatically based on the conversation context. Enable manual time frame selection when you need to specify an exact range for data extraction."
+msgstr "Standardmäßig wird der Zeitraum automatisch anhand des Unterhaltungskontexts bestimmt. Aktivieren Sie die manuelle Auswahl des Zeitraums, wenn Sie einen genauen Zeitraum für die Datenextraktion festlegen müssen."
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "{duration, plural, one {hour} other {hours}}"
+msgstr "{duration, plural, one {Stunde} other {Stunden}}"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "{duration, plural, one {day} other {days}}"
+msgstr "{duration, plural, one {Tag} other {Tage}}"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "{duration, plural, one {week} other {weeks}}"
+msgstr "{duration, plural, one {Woche} other {Wochen}}"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "{duration, plural, one {month} other {months}}"
+msgstr "{duration, plural, one {Monat} other {Monate}}"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "{duration, plural, one {year} other {years}}"
+msgstr "{duration, plural, one {Jahr} other {Jahre}}"
+
+#: front/components/agent_builder/capabilities/shared/TimeFrameSection.tsx
+msgid "Time range configuration"
+msgstr "Konfiguration des Zeitraums"

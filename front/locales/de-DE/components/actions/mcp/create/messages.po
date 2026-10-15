@@ -1,0 +1,291 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "MCP server"
+msgstr "MCP-Server"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+msgid "Failed to discover OAuth metadata for MCP server"
+msgstr "OAuth-Metadaten des MCP-Servers konnten nicht ermittelt werden"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+msgid "Failed to connect {providerName}"
+msgstr "{providerName} konnte nicht verbunden werden"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Cannot submit credentials"
+msgstr "Anmeldedaten können nicht gesendet werden"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "The credentials form is not ready. Please retry."
+msgstr "Das Formular für die Anmeldedaten ist nicht bereit. Versuchen Sie es erneut."
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+msgid "Failed to connect the tool"
+msgstr "Das Tool konnte nicht verbunden werden"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+msgid "Connect {toolName}"
+msgstr "{toolName} verbinden"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+#: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Connect"
+msgstr "Verbinden"
+
+#: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Setup connection"
+msgstr "Verbindung einrichten"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Loading..."
+msgstr "Wird geladen…"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Next"
+msgstr "Weiter"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Failed to connect to the server"
+msgstr "Verbindung zum Server konnte nicht hergestellt werden"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Server error"
+msgstr "Serverfehler"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Server error from {domain}"
+msgstr "Serverfehler von {domain}"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Success"
+msgstr "Erfolgreich"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "{serverName} added successfully."
+msgstr "{serverName} wurde hinzugefügt."
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Failed to create server"
+msgstr "Server konnte nicht erstellt werden"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Failed to add the tool"
+msgstr "Das Tool konnte nicht hinzugefügt werden"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Configure {toolName}"
+msgstr "{toolName} konfigurieren"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Configure an MCP server"
+msgstr "MCP-Server konfigurieren"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Tool name"
+msgstr "Tool-Name"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Enter a name for this instance"
+msgstr "Namen für diese Instanz eingeben"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Enter a different name"
+msgstr "Anderen Namen eingeben"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "{toolName} is already installed. This name tells them apart."
+msgstr "{toolName} ist bereits installiert. Dieser Name dient zur Unterscheidung."
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Choose a name that distinguishes this tool."
+msgstr "Wählen Sie einen Namen, der dieses Tool unterscheidbar macht."
+
+#: front/components/actions/mcp/create/CustomHeadersConfigurationSection.tsx
+msgid "Use custom headers"
+msgstr "Benutzerdefinierte Header verwenden"
+
+#: front/components/actions/mcp/create/CustomHeadersConfigurationSection.tsx
+msgid "Custom headers can be added for advanced networking such as firewalls."
+msgstr "Benutzerdefinierte Header können für erweiterte Netzwerkkonfigurationen wie Firewalls hinzugefügt werden."
+
+#: front/components/actions/mcp/create/MCPServerViewForm.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/actions/mcp/create/MCPServerViewForm.tsx
+msgid "Description"
+msgstr "Beschreibung"
+
+#: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
+msgid "Customize OAuth scopes"
+msgstr "OAuth-Berechtigungsumfänge anpassen"
+
+#: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
+msgid "Select which permissions to request. Required scopes cannot be removed."
+msgstr "Wählen Sie die anzufordernden Berechtigungen aus. Erforderliche Berechtigungsumfänge können nicht entfernt werden."
+
+#: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
+msgctxt "OAuth scope badge"
+msgid "implied"
+msgstr "impliziert"
+
+#: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
+msgctxt "OAuth scope badge"
+msgid "required"
+msgstr "erforderlich"
+
+#: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
+msgid "Apply"
+msgstr "Anwenden"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "{serverName} API key"
+msgstr "API-Schlüssel für {serverName}"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Bearer token"
+msgstr "Bearer-Token"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Automatic"
+msgstr "Automatisch"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Static OAuth"
+msgstr "Statisches OAuth"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Paste your {serverName} API key here"
+msgstr "Fügen Sie hier Ihren API-Schlüssel für {serverName} ein"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Paste the bearer token here"
+msgstr "Fügen Sie hier das Bearer-Token ein"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "See {presetName} documentation."
+msgstr "Siehe Dokumentation von {presetName}."
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "URL"
+msgstr "URL"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Authentication"
+msgstr "Authentifizierung"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."
+msgstr "Wählen Sie, wie Sie sich beim MCP-Server authentifizieren: automatische Erkennung, Bearer-Token oder statische OAuth-Anmeldedaten."
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Dust will automatically discover if OAuth authentication is required. If OAuth is not needed, the server will be accessed without authentication. Otherwise, Dust will try to use dynamic client registration to get the OAuth credentials."
+msgstr "Dust erkennt automatisch, ob eine OAuth-Authentifizierung erforderlich ist. Ist OAuth nicht nötig, wird ohne Authentifizierung auf den Server zugegriffen. Andernfalls versucht Dust, die OAuth-Anmeldedaten über die dynamische Client-Registrierung abzurufen."
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Could not load the redirect URI."
+msgstr "Die Weiterleitungs-URI konnte nicht geladen werden."
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Retry"
+msgstr "Erneut versuchen"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "Loading redirect URI…"
+msgstr "Weiterleitungs-URI wird geladen…"
+
+#: front/components/actions/mcp/create/RemoteMCPServerConfigurationSection.tsx
+msgid "In your OAuth app, allow this redirect URI: <0>{redirectUri}</0>"
+msgstr "Erlauben Sie in Ihrer OAuth-App diese Weiterleitungs-URI: <0>{redirectUri}</0>"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Account is required."
+msgstr "Das Konto ist erforderlich."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Username is required."
+msgstr "Der Benutzername ist erforderlich."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Role is required."
+msgstr "Die Rolle ist erforderlich."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Warehouse is required."
+msgstr "Das Warehouse ist erforderlich."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Private key is required."
+msgstr "Der private Schlüssel ist erforderlich."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Failed to save Snowflake credentials"
+msgstr "Snowflake-Anmeldedaten konnten nicht gespeichert werden"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Unexpected response from server (status {status})."
+msgstr "Unerwartete Antwort vom Server (Status {status})."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "One or more fields are invalid."
+msgstr "Ein oder mehrere Felder sind ungültig."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Please check the Snowflake credentials"
+msgstr "Überprüfen Sie die Snowflake-Anmeldedaten"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Enter credentials for a Snowflake service user configured for key-pair authentication."
+msgstr "Geben Sie die Anmeldedaten eines Snowflake-Dienstbenutzers ein, der für die Schlüsselpaar-Authentifizierung konfiguriert ist."
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Account"
+msgstr "Konto"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Username"
+msgstr "Benutzername"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Role"
+msgstr "Rolle"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Warehouse"
+msgstr "Warehouse"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Private key (PEM format)"
+msgstr "Privater Schlüssel (PEM-Format)"
+
+#: front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx
+msgid "Private key passphrase (optional)"
+msgstr "Passphrase des privaten Schlüssels (optional)"

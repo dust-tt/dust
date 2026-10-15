@@ -1,0 +1,160 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/onboarding/ProfileOnboardingDialog.tsx
+msgid "Welcome to Dust"
+msgstr "Willkommen bei Dust"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Customer Success"
+msgstr "Customer Success"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Customer Support"
+msgstr "Kundensupport"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
+msgid "Data"
+msgstr "Daten"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Design"
+msgstr "Design"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Engineering"
+msgstr "Entwicklung"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Finance"
+msgstr "Finanzen"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgctxt "job function"
+msgid "IT"
+msgstr "IT"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "People (HR)"
+msgstr "Personal (HR)"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Legal"
+msgstr "Recht"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Marketing"
+msgstr "Marketing"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Operations"
+msgstr "Betrieb"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Procurement"
+msgstr "Einkauf"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Product"
+msgstr "Produkt"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Revenue Operations"
+msgstr "Revenue Operations"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Sales"
+msgstr "Vertrieb"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Other"
+msgstr "Sonstige"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "First name is required"
+msgstr "Der Vorname ist erforderlich."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Last name is required"
+msgstr "Der Nachname ist erforderlich."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters"
+msgstr "Die Pronomen dürfen höchstens {MAX_USER_PRONOUNS_LENGTH} Zeichen lang sein."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Please select your job type"
+msgstr "Wählen Sie Ihre Funktion aus."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Hello {firstName}!"
+msgstr "Hallo {firstName}!"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Hello there!"
+msgstr "Hallo!"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Let's check a few things."
+msgstr "Lassen Sie uns ein paar Dinge prüfen."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "You'll be joining the workspace: <0>{workspaceName}</0>."
+msgstr "Sie treten folgendem Workspace bei: <0>{workspaceName}</0>."
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your name is:"
+msgstr "Ihr Name:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "First name"
+msgstr "Vorname"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Last name"
+msgstr "Nachname"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your preferred language:"
+msgstr "Ihre bevorzugte Sprache:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your pronouns (optional):"
+msgstr "Ihre Pronomen (optional):"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Type your own"
+msgstr "Eigene eingeben"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Suggestions:"
+msgstr "Vorschläge:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Pick your role to customize your experience:"
+msgstr "Wählen Sie Ihre Rolle, um Ihre Erfahrung anzupassen:"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Next"
+msgstr "Weiter"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "What are your favorite platforms?"
+msgstr "Welche Plattformen nutzen Sie am liebsten?"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognize some of these?"
+msgstr "Dust entfaltet sein volles Potenzial, wenn es auf Ihr Wissen zugreifen und Sie bei Ihren Tools unterstützen kann. Welche davon nutzen Sie?"

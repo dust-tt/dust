@@ -24,6 +24,7 @@ const CATALOG_LOADERS: Record<CatalogLocale, () => Promise<Messages>> = {
   // Non-default catalogs are loaded on demand to keep them out of the main bundle.
   "en-GB": async () => (await import("@app/locales/en-GB.catalog")).messages,
   "fr-FR": async () => (await import("@app/locales/fr-FR.catalog")).messages,
+  "de-DE": async () => (await import("@app/locales/de-DE.catalog")).messages,
 };
 
 export function loadCatalog(locale: SupportedLocale): Promise<Messages> {

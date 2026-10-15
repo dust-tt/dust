@@ -1,0 +1,541 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/skill_builder/SimilarSkillsDisplay.tsx
+msgid "Checking for similar skills..."
+msgstr "Ähnliche Fähigkeiten werden gesucht…"
+
+#: front/components/skill_builder/SimilarSkillsDisplay.tsx
+msgid "Similar skills found"
+msgstr "Ähnliche Fähigkeiten gefunden"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Error creating skill"
+msgstr "Fehler beim Erstellen der Fähigkeit"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Error updating skill"
+msgstr "Fehler beim Aktualisieren der Fähigkeit"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill created, but its editors were not saved"
+msgstr "Fähigkeit erstellt, aber ihre Bearbeiter wurden nicht gespeichert"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill updated, but its editors were not saved"
+msgstr "Fähigkeit aktualisiert, aber ihre Bearbeiter wurden nicht gespeichert"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill created"
+msgstr "Fähigkeit erstellt"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Skill updated"
+msgstr "Fähigkeit aktualisiert"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Your skill has been successfully created."
+msgstr "Ihre Fähigkeit wurde erstellt."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Your skill has been successfully updated."
+msgstr "Ihre Fähigkeit wurde aktualisiert."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Unable to verify editor access"
+msgstr "Bearbeiterzugriff konnte nicht überprüft werden"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Retry loading editors before saving changes."
+msgstr "Laden Sie die Bearbeiter erneut, bevor Sie die Änderungen speichern."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Verifying editor access"
+msgstr "Bearbeiterzugriff wird überprüft"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Wait until skill editors finish loading before saving."
+msgstr "Warten Sie, bis die Bearbeiter der Fähigkeit geladen sind, bevor Sie speichern."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Cannot save skill"
+msgstr "Fähigkeit kann nicht gespeichert werden"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Only skill editors can save changes."
+msgstr "Nur Bearbeiter der Fähigkeit können Änderungen speichern."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Edit skill {skillName}"
+msgstr "Fähigkeit {skillName} bearbeiten"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Create new skill"
+msgstr "Neue Fähigkeit erstellen"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "This is a generated skill suggestion"
+msgstr "Dies ist ein generierter Fähigkeitsvorschlag"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "This skill was automatically generated based on your workspace's configuration. We recommend reviewing and editing it to match your specific needs before saving."
+msgstr "Diese Fähigkeit wurde automatisch auf Grundlage der Konfiguration Ihres Workspace generiert. Wir empfehlen, sie vor dem Speichern zu überprüfen und an Ihre Anforderungen anzupassen."
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Some skill editors cannot access some of the restricted spaces"
+msgstr "Einige Bearbeiter der Fähigkeit haben keinen Zugriff auf bestimmte eingeschränkte Bereiche"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Saving..."
+msgstr "Wird gespeichert…"
+
+#: front/components/skill_builder/SkillBuilder.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/skill_builder/SkillBuilderAgentFacingDescriptionSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "When to use this skill"
+msgstr "Wann diese Fähigkeit verwendet wird"
+
+#: front/components/skill_builder/SkillBuilderAgentFacingDescriptionSection.tsx
+msgid "Tell the agent when it should use this skill."
+msgstr "Teilen Sie dem Agenten mit, wann er diese Fähigkeit verwenden soll."
+
+#: front/components/skill_builder/SkillBuilderAgentFacingDescriptionSection.tsx
+msgid "Restore description"
+msgstr "Beschreibung wiederherstellen"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Only editors can find it via the composer and agent builder"
+msgstr "Nur Bearbeiter können sie über das Eingabefeld und den Agent-Editor finden"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "The skill remains available through agents and skills that use it"
+msgstr "Die Fähigkeit bleibt über die Agenten und Fähigkeiten verfügbar, die sie verwenden"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "They can all find it via the composer and agent builder."
+msgstr "Sie alle können sie über das Eingabefeld und den Agent-Editor finden."
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "All members can find it via the composer and agent builder"
+msgstr "Alle Mitglieder können sie über das Eingabefeld und den Agent-Editor finden"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Agents with Discover Skills can use it automatically"
+msgstr "Agenten mit Discover Skills können sie automatisch verwenden"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Only members of all the following can view and use this skill: {spaceLinks}."
+msgstr "Nur Mitglieder aller folgenden Bereiche können diese Fähigkeit sehen und verwenden: {spaceLinks}."
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Only members of {spaceLinks} can view and use this skill."
+msgstr "Nur Mitglieder von {spaceLinks} können diese Fähigkeit sehen und verwenden."
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Who is this skill available for?"
+msgstr "Für wen ist diese Fähigkeit verfügbar?"
+
+#: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
+msgid "Among them:"
+msgstr "Darunter:"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "Editors only"
+msgstr "Nur Bearbeiter"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "Members"
+msgstr "Mitglieder"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "Members and agents"
+msgstr "Mitglieder und Agenten"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "Available to all members and agents with Discover Skills"
+msgstr "Für alle Mitglieder und Agenten mit Discover Skills verfügbar"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "You don’t have permission to change this skill’s availability"
+msgstr "Sie sind nicht berechtigt, die Verfügbarkeit dieser Fähigkeit zu ändern"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "You don’t have permission to change the availability of an auto-discoverable skill"
+msgstr "Sie sind nicht berechtigt, die Verfügbarkeit einer automatisch auffindbaren Fähigkeit zu ändern"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+#: front/components/skill_builder/SuggestedSkillAvailability.tsx
+msgid "Availability"
+msgstr "Verfügbarkeit"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "You don’t have permission to make skills auto-discoverable"
+msgstr "Sie sind nicht berechtigt, Fähigkeiten automatisch auffindbar zu machen"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "This skill has workspace-wide effects"
+msgstr "Diese Fähigkeit wirkt sich auf den gesamten Workspace aus"
+
+#: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
+msgid "Any agent with Discover Skills, including Dust, can use it automatically. See other skills available to agents in <0>Manage skills<1/></0>"
+msgstr "Jeder Agent mit Discover Skills, einschließlich Dust, kann sie automatisch verwenden. Weitere für Agenten verfügbare Fähigkeiten finden Sie unter <0>Fähigkeiten verwalten<1/></0>"
+
+#: front/components/skill_builder/SkillBuilderEditorsSection.tsx
+msgid "Editors"
+msgstr "Bearbeiter"
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Self-improving skills are disabled in your workspace. Ask your admin to enable this feature."
+msgstr "Selbstverbessernde Fähigkeiten sind in Ihrem Workspace deaktiviert. Bitten Sie Ihren Administrator, diese Funktion zu aktivieren."
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Admin has disabled self-improvement for this skill."
+msgstr "Ein Administrator hat die Selbstverbesserung für diese Fähigkeit deaktiviert."
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Self-improve"
+msgstr "Selbstverbesserung"
+
+#: front/components/skill_builder/SkillBuilderEnableSuggestionsSection.tsx
+msgid "Dust will analyze how this skill is used and suggest improvements to its instructions over time."
+msgstr "Dust analysiert, wie diese Fähigkeit verwendet wird, und schlägt mit der Zeit Verbesserungen ihrer Anweisungen vor."
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Duplicate files skipped."
+msgstr "Doppelte Dateien übersprungen."
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Already attached: {duplicateFileNames}"
+msgstr "Bereits angehängt: {duplicateFileNames}"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Upload files"
+msgstr "Dateien hochladen"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+#: front/components/skill_builder/SuggestedSkillFiles.tsx
+msgid "Files"
+msgstr "Dateien"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Add files that will be available to the skill at runtime. Templates, schemas, scripts, or reference materials."
+msgstr "Fügen Sie Dateien hinzu, auf die die Fähigkeit bei der Ausführung zugreifen kann. Vorlagen, Schemas, Skripte oder Referenzmaterial."
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Restore files"
+msgstr "Dateien wiederherstellen"
+
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Remove file"
+msgstr "Datei entfernen"
+
+#: front/components/skill_builder/SkillBuilderIconSection.tsx
+msgid "Change icon"
+msgstr "Symbol ändern"
+
+#: front/components/skill_builder/SkillBuilderInstructionsReferenceSummary.tsx
+msgid "See less"
+msgstr "Weniger anzeigen"
+
+#: front/components/skill_builder/SkillBuilderInstructionsReferenceSummary.tsx
+msgid "See more"
+msgstr "Mehr anzeigen"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Instructions"
+msgstr "Anweisungen"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "Provide the guidelines the skill should follow when it runs. Type \"/\" to attach knowledge, tools, or another skill."
+msgstr "Geben Sie die Richtlinien an, denen die Fähigkeit bei der Ausführung folgen soll. Tippen Sie „/“, um Wissen, Tools oder eine andere Fähigkeit anzuhängen."
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "Restore instructions"
+msgstr "Anweisungen wiederherstellen"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgctxt "button, insert content in the instructions"
+msgid "Insert"
+msgstr "Einfügen"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "This skill is noticeably large"
+msgstr "Diese Fähigkeit ist sehr umfangreich"
+
+#: front/components/skill_builder/SkillBuilderInstructionsSection.tsx
+msgid "Large skills consume a significant part of the context window on each use. Consider keeping your guidelines concise."
+msgstr "Umfangreiche Fähigkeiten belegen bei jeder Verwendung einen erheblichen Teil des Kontextfensters. Halten Sie Ihre Richtlinien möglichst knapp."
+
+#: front/components/skill_builder/SkillBuilderNameSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+#: front/components/skill_builder/SuggestedSkillName.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/skill_builder/SkillBuilderNameSection.tsx
+msgid "Enter skill name"
+msgstr "Namen der Fähigkeit eingeben"
+
+#: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
+msgid "Data and access"
+msgstr "Daten und Zugriff"
+
+#: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
+msgid "Adding spaces or pods will make the data from each of them available to the skill. Only members of all the spaces and pods listed will have access to the skill."
+msgstr "Durch das Hinzufügen von Bereichen oder Pods werden deren Daten für die Fähigkeit verfügbar. Nur Mitglieder aller aufgeführten Bereiche und Pods haben Zugriff auf die Fähigkeit."
+
+#: front/components/skill_builder/SkillBuilderRequestedSpacesSection.tsx
+msgctxt "button, manage the spaces of a skill"
+msgid "Manage"
+msgstr "Verwalten"
+
+#: front/components/skill_builder/SkillBuilderSettingsSection.tsx
+msgid "Skill settings"
+msgstr "Einstellungen der Fähigkeit"
+
+#: front/components/skill_builder/SkillBuilderSettingsSection.tsx
+msgid "This skill was originally imported from <0>GitHub<1/></0>."
+msgstr "Diese Fähigkeit wurde ursprünglich aus <0>GitHub<1/></0> importiert."
+
+#: front/components/skill_builder/SkillBuilderSettingsSection.tsx
+msgid "Self-improvement"
+msgstr "Selbstverbesserung"
+
+#: front/components/skill_builder/SkillBuilderSimilarDiscoverableSkills.tsx
+msgid "Checking for similar skills available to members and agents..."
+msgstr "Suche nach ähnlichen Fähigkeiten, die für Mitglieder und Agenten verfügbar sind…"
+
+#: front/components/skill_builder/SkillBuilderSimilarDiscoverableSkills.tsx
+msgid "Similar skills already available to members and agents"
+msgstr "Ähnliche Fähigkeiten, die bereits für Mitglieder und Agenten verfügbar sind"
+
+#: front/components/skill_builder/SkillBuilderSuggestionsPanel.tsx
+msgid "Suggestions"
+msgstr "Vorschläge"
+
+#: front/components/skill_builder/SkillBuilderSuggestionsPanel.tsx
+msgid "Dust continuously analyses conversations using this skill to suggest improvements."
+msgstr "Dust analysiert fortlaufend Unterhaltungen, in denen diese Fähigkeit verwendet wird, um Verbesserungen vorzuschlagen."
+
+#: front/components/skill_builder/SkillBuilderSuggestionsPanel.tsx
+msgid "No pending suggestions."
+msgstr "Keine ausstehenden Vorschläge."
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Failed to generate description"
+msgstr "Die Beschreibung konnte nicht generiert werden."
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Generating description..."
+msgstr "Beschreibung wird generiert…"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Add at least {MIN_INSTRUCTIONS_LENGTH} characters to instructions"
+msgstr "Fügen Sie den Anweisungen mindestens {MIN_INSTRUCTIONS_LENGTH} Zeichen hinzu"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Add a description of when to use the skill"
+msgstr "Beschreiben Sie, wann die Fähigkeit verwendet werden soll"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Generate description"
+msgstr "Beschreibung generieren"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+#: front/components/skill_builder/SuggestedSkillUserFacingDescription.tsx
+msgid "Description"
+msgstr "Beschreibung"
+
+#: front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx
+msgid "Enter skill description"
+msgstr "Beschreibung der Fähigkeit eingeben"
+
+#: front/components/skill_builder/SkillBuilderVersionComparisonBanner.tsx
+msgid "Leave comparison mode"
+msgstr "Vergleichsmodus verlassen"
+
+#: front/components/skill_builder/SkillBuilderVersionComparisonFooter.tsx
+msgid "Restore all fields from this version"
+msgstr "Alle Felder aus dieser Version wiederherstellen"
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "Skill {skillName} created!"
+msgstr "Fähigkeit {skillName} erstellt!"
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "You can now use {skillName}. Try it in a new conversation or keep editing this skill."
+msgstr "Sie können {skillName} jetzt verwenden. Probieren Sie sie in einer neuen Unterhaltung aus oder bearbeiten Sie diese Fähigkeit weiter."
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "Keep editing"
+msgstr "Weiter bearbeiten"
+
+#: front/components/skill_builder/SkillCreatedDialog.tsx
+msgid "Start conversation"
+msgstr "Unterhaltung starten"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "Invalid editors"
+msgstr "Ungültige Bearbeiter"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "{missingSpacesCount, plural, one {<0>{editorName}</0> is an editor of this skill but is not a member of {spaceLinks}, so they cannot view or use it. Add them to that space, remove that space restriction or remove them from editors:} other {<1>{editorName}</1> is an editor of this skill but is not a member of {spaceLinks}, so they cannot view or use it. Add them to those spaces, remove those spaces restriction or remove them from editors:}}"
+msgstr "{missingSpacesCount, plural, one {<0>{editorName}</0> ist Bearbeiter dieser Fähigkeit, aber kein Mitglied von {spaceLinks}, und kann sie daher weder sehen noch verwenden. Fügen Sie die Person diesem Bereich hinzu, heben Sie diese Bereichseinschränkung auf oder entfernen Sie die Person aus den Bearbeitern:} other {<1>{editorName}</1> ist Bearbeiter dieser Fähigkeit, aber kein Mitglied von {spaceLinks}, und kann sie daher weder sehen noch verwenden. Fügen Sie die Person diesen Bereichen hinzu, heben Sie diese Bereichseinschränkungen auf oder entfernen Sie die Person aus den Bearbeitern:}}"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "Remove {spaceName}"
+msgstr "{spaceName} entfernen"
+
+#: front/components/skill_builder/SkillEditorsAccessWarning.tsx
+msgid "Remove editor"
+msgstr "Bearbeiter entfernen"
+
+#: front/components/skill_builder/SkillEditorsSheetWithButton.tsx
+msgid "Add editors"
+msgstr "Bearbeiter hinzufügen"
+
+#: front/components/skill_builder/SkillEditorsSheetWithButton.tsx
+msgid "{editorsCount, plural, one {# editor} other {# editors}}"
+msgstr "{editorsCount, plural, one {# Bearbeiter} other {# Bearbeiter}}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Accepted"
+msgstr "Angenommen"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accepted by you {relativeTime}"
+msgstr "Von Ihnen {relativeTime} angenommen"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accepted by {reviewerName} {relativeTime}"
+msgstr "Von {reviewerName} {relativeTime} angenommen"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accepted {relativeTime}"
+msgstr "{relativeTime} angenommen"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Declined"
+msgstr "Abgelehnt"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Declined by you {relativeTime}"
+msgstr "Von Ihnen {relativeTime} abgelehnt"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Declined by {reviewerName} {relativeTime}"
+msgstr "Von {reviewerName} {relativeTime} abgelehnt"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Declined {relativeTime}"
+msgstr "{relativeTime} abgelehnt"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgctxt "suggestion state"
+msgid "Outdated"
+msgstr "Veraltet"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Superseded by a later suggestion"
+msgstr "Durch einen neueren Vorschlag ersetzt"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "{sourceConversationsCount, plural, one {Based on # conversation} other {Based on # conversations}}"
+msgstr "{sourceConversationsCount, plural, one {Basierend auf # Unterhaltung} other {Basierend auf # Unterhaltungen}}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "{remainingCount, plural, one {Based on conversations {links} and # other} other {Based on conversations {links} and # others}}"
+msgstr "{remainingCount, plural, one {Basierend auf den Unterhaltungen {links} und # weiteren} other {Basierend auf den Unterhaltungen {links} und # weiteren}}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Based on conversation {lastLink}"
+msgstr "Basierend auf der Unterhaltung {lastLink}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Based on conversations {links} and {lastLink}"
+msgstr "Basierend auf den Unterhaltungen {links} und {lastLink}"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Delete the <0>{skillName}</0> skill."
+msgstr "Die Fähigkeit <0>{skillName}</0> löschen."
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Suggestion"
+msgstr "Vorschlag"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Decline"
+msgstr "Ablehnen"
+
+#: front/components/skill_builder/SkillSuggestionCard.tsx
+msgid "Accept"
+msgstr "Annehmen"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "Version {version}"
+msgstr "Version {version}"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgctxt "author of a version"
+msgid "System"
+msgstr "System"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "History"
+msgstr "Verlauf"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "Choose version to compare"
+msgstr "Zu vergleichende Version auswählen"
+
+#: front/components/skill_builder/SkillVersionHistory.tsx
+msgid "by {authorName}"
+msgstr "von {authorName}"
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Description must be {maxLength} characters or less"
+msgstr "Die Beschreibung darf höchstens {maxLength} Zeichen lang sein."
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Skill name is required"
+msgstr "Der Name der Fähigkeit ist erforderlich."
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Description of when to use the skill is required"
+msgstr "Geben Sie an, wann die Fähigkeit verwendet werden soll."
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Skill description is required"
+msgstr "Die Beschreibung der Fähigkeit ist erforderlich."
+
+#: front/components/skill_builder/skillBuilderFormSchema.ts
+msgid "Skill instructions are required"
+msgstr "Die Anweisungen der Fähigkeit sind erforderlich."

@@ -1,0 +1,460 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/settings/AuditLogsToggle.tsx
+msgid "Audit logs"
+msgstr "Audit-Logs"
+
+#: front/components/workspace/settings/AuditLogsToggle.tsx
+msgid "Whether audit events are emitted to WorkOS and the audit logs section is shown in Security"
+msgstr "Legt fest, ob Audit-Ereignisse an WorkOS gesendet werden und der Abschnitt für Audit-Logs unter „Sicherheit“ angezeigt wird"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to enable {name}."
+msgstr "{name} konnte nicht aktiviert werden."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to reconnect {name}."
+msgstr "{name} konnte nicht erneut verbunden werden."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Could not reconnect the Dust {name}."
+msgstr "{name} von Dust konnte nicht erneut verbunden werden."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to update the {name} connection"
+msgstr "Die {name}-Verbindung konnte nicht aktualisiert werden"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Successfully updated {name} connection"
+msgstr "{name}-Verbindung aktualisiert"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "The connection was successfully updated."
+msgstr "Die Verbindung wurde aktualisiert."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Reconnect"
+msgstr "Erneut verbinden"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Remove"
+msgstr "Entfernen"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "SVG, PNG, WebP or ICO — Square format"
+msgstr "SVG, PNG, WebP oder ICO — quadratisches Format"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "SVG, PNG or WebP — Transparent background"
+msgstr "SVG, PNG oder WebP — transparenter Hintergrund"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Upload"
+msgstr "Hochladen"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best."
+msgstr "Wird im Header jedes geteilten Frames anstelle des Dust-Logos angezeigt. Ein horizontales Format eignet sich am besten."
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Logo"
+msgstr "Logo"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
+msgstr "Eine kompakte Version Ihres Logos. Wird als Favicon verwendet, wenn jemand ein Whitelabel-Frame öffnet. Muss quadratisch sein (Seitenverhältnis 1:1)."
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Icon"
+msgstr "Symbol"
+
+#: front/components/workspace/settings/ConversationExternalNotificationsToggle.tsx
+msgid "Email and Slack notifications"
+msgstr "E-Mail- und Slack-Benachrichtigungen"
+
+#: front/components/workspace/settings/ConversationExternalNotificationsToggle.tsx
+msgid "Whether members can receive conversation notifications by email or Slack. In-app Dust notifications are not affected."
+msgstr "Legt fest, ob Mitglieder Benachrichtigungen zu Unterhaltungen per E-Mail oder Slack erhalten können. Benachrichtigungen in Dust sind davon nicht betroffen."
+
+#: front/components/workspace/settings/DustMcpServerSettingsItem.tsx
+msgid "MCP server"
+msgstr "MCP-Server"
+
+#: front/components/workspace/settings/DustMcpServerSettingsItem.tsx
+msgid "Whether external MCP clients can connect to this workspace"
+msgstr "Legt fest, ob sich externe MCP-Clients mit diesem Workspace verbinden können"
+
+#: front/components/workspace/settings/DustMcpServerSettingsItem.tsx
+msgid "Manage"
+msgstr "Verwalten"
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+msgid "Disable email agents"
+msgstr "E-Mail-Agenten deaktivieren"
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+msgid "Enable email agents"
+msgstr "E-Mail-Agenten aktivieren"
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+msgid "All users in your company will no longer be able to forward emails to their agents at AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}."
+msgstr "Die Mitglieder Ihres Unternehmens können keine E-Mails mehr an ihre Agenten unter AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN} weiterleiten."
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+msgid "All users in your company will be able to forward emails to their agents. As a general rule, caution is advised when forwarding emails or attachments from untrusted sources, since those are exposed to security risks such as prompt injection."
+msgstr "Alle Mitglieder Ihres Unternehmens können E-Mails an ihre Agenten weiterleiten. Grundsätzlich ist Vorsicht geboten, wenn Sie E-Mails oder Anhänge aus nicht vertrauenswürdigen Quellen weiterleiten, da diese Sicherheitsrisiken wie Prompt-Injection bergen."
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+msgid "Email agents"
+msgstr "Agenten per E-Mail"
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+msgid "Whether members can reach agents by email at AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}"
+msgstr "Legt fest, ob Mitglieder Agenten per E-Mail unter AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN} erreichen können"
+
+#: front/components/workspace/settings/EmailAgentsToggle.tsx
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/workspace/settings/InactiveAgentArchival.tsx
+msgid "Archive unused agents"
+msgstr "Ungenutzte Agenten archivieren"
+
+#: front/components/workspace/settings/InactiveAgentArchival.tsx
+msgid "Automatically archive unused agents. Or <0>archive them once</0>."
+msgstr "Nicht genutzte Agenten automatisch archivieren. Oder <0>einmalig archivieren</0>."
+
+#: front/components/workspace/settings/InactiveAgentArchival.tsx
+msgid "Inactivity threshold"
+msgstr "Inaktivitätsschwelle"
+
+#: front/components/workspace/settings/InactiveAgentArchival.tsx
+msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
+msgstr "Wie lange ein Agent nicht erwähnt werden darf, bevor er archiviert wird. Agenten mit Zeitplan oder ausstehendem Weckruf sind ausgenommen."
+
+#: front/components/workspace/settings/InactiveAgentArchival.tsx
+msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAYS}"
+msgstr "Zwischen {MIN_INACTIVITY_THRESHOLD_DAYS} und {MAX_INACTIVITY_THRESHOLD_DAYS}"
+
+#: front/components/workspace/settings/InactiveAgentArchival.tsx
+msgid "days"
+msgstr "Tage"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Workspace members only"
+msgstr "Nur Workspace-Mitglieder"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Frames can only be viewed by workspace members"
+msgstr "Frames können nur von Workspace-Mitgliedern angesehen werden"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Members + email invites"
+msgstr "Mitglieder + E-Mail-Einladungen"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Frames can be shared with workspace members or via email invite"
+msgstr "Frames können mit Workspace-Mitgliedern oder per E-Mail-Einladung geteilt werden"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "No restrictions"
+msgstr "Keine Einschränkungen"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Members can share frames publicly, with the workspace, or via email invite"
+msgstr "Mitglieder können Frames öffentlich, mit dem Workspace oder per E-Mail-Einladung teilen"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Frame sharing"
+msgstr "Frame-Freigabe"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Whether frames are shareable outside the workspace"
+msgstr "Legt fest, ob Frames außerhalb des Workspace geteilt werden können"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Block external access"
+msgstr "Externen Zugriff blockieren"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Restrict Frame sharing"
+msgstr "Teilen von Frames einschränken"
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Non-workspace members with email invites will lose access to all frames in this workspace. Their invites are preserved and will resume if you change this setting later."
+msgstr "Personen außerhalb des Workspace mit E-Mail-Einladung verlieren den Zugriff auf alle Frames in diesem Workspace. Ihre Einladungen bleiben erhalten und werden wieder wirksam, wenn Sie diese Einstellung später ändern."
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Public links will also stop working."
+msgstr "Öffentliche Links funktionieren ebenfalls nicht mehr."
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "This will revoke public access to all currently shared frames in this workspace. Existing public links will stop working."
+msgstr "Dadurch wird der öffentliche Zugriff auf alle derzeit geteilten Frames in diesem Workspace widerrufen. Bestehende öffentliche Links funktionieren nicht mehr."
+
+#: front/components/workspace/settings/InteractiveContentSharingToggle.tsx
+msgid "Restrict sharing"
+msgstr "Teilen einschränken"
+
+#: front/components/workspace/settings/MessagingAppToggles.tsx
+msgid "Slack bot"
+msgstr "Slack-Bot"
+
+#: front/components/workspace/settings/MessagingAppToggles.tsx
+msgid "Whether the Dust bot can be used in Slack"
+msgstr "Legt fest, ob der Dust-Bot in Slack verwendet werden kann"
+
+#: front/components/workspace/settings/MessagingAppToggles.tsx
+msgid "Microsoft Teams bot"
+msgstr "Microsoft-Teams-Bot"
+
+#: front/components/workspace/settings/MessagingAppToggles.tsx
+msgid "Whether the Dust bot can be used in Microsoft Teams"
+msgstr "Legt fest, ob der Dust-Bot in Microsoft Teams verwendet werden kann"
+
+#: front/components/workspace/settings/OpenPodsPolicy.tsx
+msgid "Restricted and open Pods"
+msgstr "Eingeschränkte und offene Pods"
+
+#: front/components/workspace/settings/OpenPodsPolicy.tsx
+msgid "Members can create either restricted or open Pods"
+msgstr "Mitglieder können eingeschränkte oder offene Pods erstellen"
+
+#: front/components/workspace/settings/OpenPodsPolicy.tsx
+msgid "Restricted Pods only"
+msgstr "Nur eingeschränkte Pods"
+
+#: front/components/workspace/settings/OpenPodsPolicy.tsx
+msgid "Members can only create restricted Pods"
+msgstr "Mitglieder können nur eingeschränkte Pods erstellen"
+
+#: front/components/workspace/settings/OpenPodsPolicy.tsx
+msgid "Whether members are allowed to create open Pods"
+msgstr "Legt fest, ob Mitglieder offene Pods erstellen dürfen"
+
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Manual updates allowed"
+msgstr "Manuelle Aktualisierungen erlaubt"
+
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Members can manually add files to Pods"
+msgstr "Mitglieder können Pods manuell Dateien hinzufügen"
+
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Manual updates disabled"
+msgstr "Manuelle Aktualisierungen deaktiviert"
+
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Members cannot manually add files to Pods"
+msgstr "Mitglieder können Pods keine Dateien manuell hinzufügen"
+
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Pod files"
+msgstr "Pod-Dateien"
+
+#: front/components/workspace/settings/PodKnowledgePolicy.tsx
+msgid "Whether members can manually add files to Pods"
+msgstr "Legt fest, ob Mitglieder Pods manuell Dateien hinzufügen können"
+
+#: front/components/workspace/settings/PrivateConversationUrlsToggle.tsx
+msgid "Private conversation URLs by default"
+msgstr "Standardmäßig private Unterhaltungs-URLs"
+
+#: front/components/workspace/settings/PrivateConversationUrlsToggle.tsx
+msgid "Whether conversation URLs are private by default, limiting access to participants"
+msgstr "Legt fest, ob Unterhaltungs-URLs standardmäßig privat sind, sodass nur Teilnehmer Zugriff haben"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Default cost cap per skill"
+msgstr "Standard-Kostenobergrenze pro Fähigkeit"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Maximale Kosten pro Fähigkeit und Selbstverbesserungslauf (in Credits). Sobald sie erreicht sind, werden für diese Fähigkeit keine weiteren Selbstverbesserungsläufe gestartet."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Maximale Kosten pro Fähigkeit und Selbstverbesserungslauf (in USD). Sobald sie erreicht sind, werden für diese Fähigkeit keine weiteren Selbstverbesserungsläufe gestartet."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Global spending cap"
+msgstr "Globale Ausgabenobergrenze"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Selbstverbessernde Fähigkeiten werden wie die Nutzung über die API abgerechnet. Dies sind die maximalen monatlichen Kosten (in Credits) für die Funktion über alle Fähigkeiten hinweg. Sobald sie erreicht sind, werden bis zum nächsten Abrechnungsmonat keine neuen Selbstverbesserungsläufe gestartet."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Selbstverbessernde Fähigkeiten werden wie die Nutzung über die API abgerechnet. Dies sind die maximalen monatlichen Kosten (in USD) für die Funktion über alle Fähigkeiten hinweg. Sobald sie erreicht sind, werden bis zum nächsten Abrechnungsmonat keine neuen Selbstverbesserungsläufe gestartet."
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Editors"
+msgstr "Bearbeiter"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Enabled"
+msgstr "Aktiviert"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Current spend (credits)"
+msgstr "Aktuelle Ausgaben (Credits)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Current spend ($)"
+msgstr "Aktuelle Ausgaben ($)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Cap"
+msgstr "Obergrenze"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Lock state"
+msgstr "Sperrstatus"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "{defaultCapValue} (default)"
+msgstr "{defaultCapValue} (Standard)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Skills"
+msgstr "Fähigkeiten"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Search skills..."
+msgstr "Fähigkeiten suchen…"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "No active skills."
+msgstr "Keine aktiven Fähigkeiten."
+
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Self-improving skills"
+msgstr "Selbstverbessernde Fähigkeiten"
+
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Allow self-improving skills"
+msgstr "Selbstverbessernde Fähigkeiten erlauben"
+
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models."
+msgstr "Dust erlauben, Unterhaltungen zu analysieren, um die Fähigkeiten Ihres Workspace zu verbessern. Dust verwendet Unterhaltungen nicht zum Trainieren von Modellen."
+
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Enable batch processing"
+msgstr "Stapelverarbeitung aktivieren"
+
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing."
+msgstr "Unterhaltungen werden zur Kostensenkung gebündelt gesendet. Daten können vor der Verarbeitung bis zu mehrere Stunden auf den Servern des LLM-Anbieters verbleiben. Deaktivieren Sie diese Option, um die sofortige Löschung der Daten sicherzustellen (ZDR-kompatibel). Dadurch steigt der Preis Ihres Tarifs."
+
+#: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx
+msgid "\"Sent via Agent\" Slack footer"
+msgstr "Slack-Fußzeile „Sent via Agent“"
+
+#: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx
+msgid "Whether agents can remove the \"Sent via Agent\" footer on Slack messages posted with user credentials"
+msgstr "Legt fest, ob Agenten die Fußzeile „Sent via Agent“ aus Slack-Nachrichten entfernen können, die mit den Anmeldedaten eines Mitglieds gepostet werden"
+
+#: front/components/workspace/settings/VoiceTranscriptionToggle.tsx
+msgid "Voice transcription"
+msgstr "Sprachtranskription"
+
+#: front/components/workspace/settings/VoiceTranscriptionToggle.tsx
+msgid "Whether members can use voice transcription in conversations"
+msgstr "Legt fest, ob Mitglieder die Sprachtranskription in Unterhaltungen verwenden können"
+
+#: front/components/workspace/settings/WorkspaceAnalyticsToggle.tsx
+msgid "Workspace Analyst"
+msgstr "Analyst-Agent des Workspace"
+
+#: front/components/workspace/settings/WorkspaceAnalyticsToggle.tsx
+msgid "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used"
+msgstr "Legt fest, ob Workspace-Administratoren den Analyst-Agenten und Statistik-Tools erhalten, um die Nutzung des Workspace zu untersuchen"
+
+#: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
+msgid "Warning"
+msgstr "Warnung"
+
+#: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
+msgid "@Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?"
+msgstr "@Dust ist darauf ausgelegt, Ihren Mitgliedern standardmäßig die beste Erfahrung zu bieten. Ein benutzerdefinierter Standard-Agent bearbeitet möglicherweise nicht jede Anfrage so zuverlässig. Möchten Sie ihn trotzdem als Standard-Agenten des Workspace festlegen?"
+
+#: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
+msgid "Yes"
+msgstr "Ja"
+
+#: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
+msgid "No"
+msgstr "Nein"
+
+#: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
+msgid "Default agent"
+msgstr "Standard-Agent"
+
+#: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
+msgid "The agent pre-selected when anyone starts a new conversation in this workspace"
+msgstr "Der Agent, der vorausgewählt ist, wenn jemand in diesem Workspace eine neue Unterhaltung beginnt"
+
+#: front/components/workspace/settings/WorkspaceLocalePicker.tsx
+msgid "Language"
+msgstr "Sprache"
+
+#: front/components/workspace/settings/WorkspaceLocalePicker.tsx
+msgid "The default language of Dust for members who have not chosen their own"
+msgstr "Die Standardsprache von Dust für Mitglieder, die keine eigene gewählt haben"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace name must only contain letters, numbers, and the characters `._-`"
+msgstr "Der Workspace-Name darf nur Buchstaben, Ziffern und die Zeichen `._-` enthalten"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Failed to update workspace."
+msgstr "Der Workspace konnte nicht aktualisiert werden."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace name"
+msgstr "Name des Workspace"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Edit workspace name"
+msgstr "Workspace-Namen bearbeiten"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Think GitHub repository names, short and memorable."
+msgstr "Denken Sie an GitHub-Repository-Namen: kurz und einprägsam."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Saving..."
+msgstr "Wird gespeichert…"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/workspace/settings/selfImprovingSkillsCapUtils.ts
+msgid "credits"
+msgstr "Credits"

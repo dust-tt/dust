@@ -34,6 +34,8 @@ async function importCatalog(locale: SparkleCatalogLocale): Promise<Messages> {
       return (await import("@sparkle/locales/en-GB/messages")).messages;
     case "fr-FR":
       return (await import("@sparkle/locales/fr-FR/messages")).messages;
+    case "de-DE":
+      return (await import("@sparkle/locales/de-DE/messages")).messages;
     default:
       assertNever(locale);
   }
