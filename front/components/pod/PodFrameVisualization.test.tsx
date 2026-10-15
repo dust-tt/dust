@@ -5,6 +5,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   iframe: vi.fn((_props: unknown) => null),
+  isFrameAuthor: false,
+  permissionsCalls: [] as { disabled?: boolean; frameId: string }[],
+}));
+
+vi.mock("@app/lib/swr/frames", () => ({
+  useFramePermissions: (args: { disabled?: boolean; frameId: string }) => {
+    mocks.permissionsCalls.push(args);
+    return { isFrameAuthor: mocks.isFrameAuthor };
+  },
 }));
 
 vi.mock(
@@ -23,6 +32,8 @@ vi.mock(
 
 afterEach(() => {
   vi.clearAllMocks();
+  mocks.isFrameAuthor = false;
+  mocks.permissionsCalls.length = 0;
 });
 
 describe("PodFrameVisualization", () => {
@@ -53,4 +64,48 @@ describe("PodFrameVisualization", () => {
       );
     }
   );
+
+  it.each([
+    [true, "latest"],
+    [false, "live"],
+  ])(
+    "targets functions at the draft only for Frame authors (isFrameAuthor=%s -> %s)",
+    (isFrameAuthor, functionTarget) => {
+      mocks.isFrameAuthor = isFrameAuthor;
+
+      render(
+        <PodFrameVisualization
+          owner={{ sId: "w_current" } as LightWorkspaceType}
+          fileContent="export default function Frame() {}"
+          vizUrl="https://viz.dust.tt"
+          identifier="viz-frame"
+          frameId="fil_frame"
+        />
+      );
+
+      expect(mocks.permissionsCalls.at(-1)).toMatchObject({
+        disabled: false,
+        frameId: "fil_frame",
+      });
+      expect(mocks.iframe).toHaveBeenCalledWith(
+        expect.objectContaining({ functionTarget })
+      );
+    }
+  );
+
+  it("does not look up Frame permissions for a legacy Frame", () => {
+    render(
+      <PodFrameVisualization
+        owner={{ sId: "w_current" } as LightWorkspaceType}
+        fileContent="export default function Frame() {}"
+        vizUrl="https://viz.dust.tt"
+        identifier="viz-frame"
+      />
+    );
+
+    expect(mocks.permissionsCalls.at(-1)).toMatchObject({ disabled: true });
+    expect(mocks.iframe).toHaveBeenCalledWith(
+      expect.objectContaining({ functionTarget: "live" })
+    );
+  });
 });

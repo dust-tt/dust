@@ -232,6 +232,7 @@ describe("FrameRenderer", () => {
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({
         frameId: "frame_1",
+        functionTarget: "latest",
         isEditable: true,
         stagedEditMode: "preview",
         onEditText: expect.any(Function),
@@ -308,6 +309,7 @@ describe("FrameRenderer", () => {
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({
         frameId: "frame_1",
+        functionTarget: "live",
         isEditable: false,
         onEditText: undefined,
       })
