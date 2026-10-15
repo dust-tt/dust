@@ -1,7 +1,6 @@
 import { serializeDfm } from "@app/lib/markdown/dfm";
 import {
   checkInputBounds,
-  codeRanges,
   endsInsideFence,
   INPUT_LIMITS,
   isEscaped,
@@ -21,11 +20,6 @@ vi.mock("mdast-util-from-markdown", async (importOriginal) => {
 });
 
 const parser = vi.mocked(fromMarkdown);
-
-/** A body long enough for its code ranges to be memoized, unique to `name`. */
-function longBody(name: string): string {
-  return `# ${name}\n\n\`\`\`\ncode\n\`\`\`\n\n${"Text with `a span`.\n\n".repeat(300)}End.`;
-}
 
 describe("isEscaped", () => {
   it.each([
@@ -186,25 +180,14 @@ describe("structure", () => {
   });
 });
 
-describe("codeRanges", () => {
-  it("parses a long text once while other texts are asked for in between", () => {
-    const body = longBody("memoized");
-    parser.mockClear();
-    const ranges = codeRanges(body);
-    codeRanges(`${body}\n\nzz`);
-    codeRanges("A comment message with `code`.");
-    codeRanges(`${body}\n\n:::annotations\n:::`);
-
-    expect(codeRanges(body)).toBe(ranges);
-    expect(parser.mock.calls.filter(([text]) => text === body)).toHaveLength(1);
-  });
-
-  it("parses the body of a document serializeDfm writes once", () => {
-    const body = `${longBody("serialized")}\n\n${SIMPLE_DOCUMENT.body}`;
+describe("serializeDfm", () => {
+  it("parses the body once to check it and once to read the written file back", () => {
     parser.mockClear();
 
-    unwrap(serializeDfm({ ...SIMPLE_DOCUMENT, body }));
+    unwrap(serializeDfm(SIMPLE_DOCUMENT));
 
-    expect(parser.mock.calls.filter(([text]) => text === body)).toHaveLength(1);
+    expect(
+      parser.mock.calls.filter(([text]) => text === SIMPLE_DOCUMENT.body)
+    ).toHaveLength(2);
   });
 });

@@ -12,6 +12,7 @@ import {
 import {
   checkInputBounds,
   codeLines,
+  codeRanges,
   endsInsideFence,
 } from "@app/lib/markdown/dfm/parser";
 import type { DfmDocument, DfmError } from "@app/lib/markdown/dfm/types";
@@ -224,8 +225,12 @@ function validateForSerialization(document: DfmDocument): DfmError | null {
   if (bounds) {
     return { message: bounds.message };
   }
+  const bodyCodeRanges = codeRanges(body);
   const bodyLines = body.split("\n");
-  if (annotationOpeners(bodyLines, codeLines(bodyLines)).length > 0) {
+  if (
+    annotationOpeners(bodyLines, codeLines(bodyLines, bodyCodeRanges)).length >
+    0
+  ) {
     return { message: "Body cannot contain an annotations block opener." };
   }
   if (body.endsWith("\n")) {
@@ -235,7 +240,7 @@ function validateForSerialization(document: DfmDocument): DfmError | null {
     return { message: "Body cannot end inside a code fence." };
   }
 
-  const anchors = scanAnchors(body, 0);
+  const anchors = scanAnchors(body, 0, bodyCodeRanges);
   if (anchors.isErr()) {
     return anchors.error;
   }
