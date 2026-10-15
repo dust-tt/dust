@@ -8,6 +8,7 @@ import {
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { isCreditPricedPlan } from "@app/types/plan";
 
 export class DefaultRemoteMCPServerInMemoryResource {
   readonly id: string;
@@ -35,14 +36,23 @@ export class DefaultRemoteMCPServerInMemoryResource {
     return new this(sId, config);
   }
 
+  /**
+   * @cc [owner:smb2268,label:product] credit-priced-presets-hidden-from-other-plans
+   * A preset with `creditPricedPlansOnly` MUST be omitted unless the workspace's plan is
+   * credit-priced (`isCreditPricedPlan`), in addition to its `featureFlag` gate.
+   */
   static async listAvailableDefaultRemoteMCPServers(
     auth: Authenticator
   ): Promise<DefaultRemoteMCPServerInMemoryResource[]> {
     const resources: DefaultRemoteMCPServerInMemoryResource[] = [];
     const featureFlags = await getFeatureFlags(auth);
+    const isCreditPriced = isCreditPricedPlan(auth.getNonNullablePlan());
 
     for (const config of DEFAULT_REMOTE_MCP_SERVERS) {
       if (config.featureFlag && !featureFlags.includes(config.featureFlag)) {
+        continue;
+      }
+      if (config.creditPricedPlansOnly && !isCreditPriced) {
         continue;
       }
 
