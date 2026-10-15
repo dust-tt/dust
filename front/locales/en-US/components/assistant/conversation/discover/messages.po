@@ -232,6 +232,10 @@ msgstr "Switch back to the original homepage."
 msgid "Your homepage is getting a refresh. <0>Get a sneak peek!</0>"
 msgstr "Your homepage is getting a refresh. <0>Get a sneak peek!</0>"
 
+#: front/components/assistant/conversation/discover/HomepageAnnouncement.tsx
+msgid "Figma MCP is now available"
+msgstr "Figma MCP is now available"
+
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Hide this suggestion"

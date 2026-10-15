@@ -385,17 +385,18 @@ export function ConversationContainerVirtuoso({
       <div
         id="agent-input-header"
         className={classNames(
-          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
+          // Carries the Page.Header top padding so the announcement sits one gap above the title.
+          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-8 sm:pt-10 md:pt-12",
           isDiscoveryHomepage ? "md:basis-[36vh]" : "md:min-h-[36vh]"
         )}
         ref={startConversationRef}
       >
         <HomepageAnnouncement
-          owner={owner}
           // Leads the greeting so the hero reads top-down.
           style={shouldReduceMotion ? undefined : greetingWordStyle(0)}
         />
         <Page.Header
+          noTopPadding
           title={
             <h3
               key={greeting}

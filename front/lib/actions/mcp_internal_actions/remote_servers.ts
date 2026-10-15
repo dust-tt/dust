@@ -4967,7 +4967,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     documentationUrl: "https://developers.figma.com/docs/figma-mcp-server/",
     connectionInstructions:
       "Figma uses OAuth. You will be prompted to sign in with your Figma account. The MCP can only access the files and libraries you can already see in Figma.",
-    featureFlag: "figma_mcp",
     authMethod: "oauth-dynamic",
     supportedOAuthUseCases: ["platform_actions", "personal_actions"],
     scope: "mcp:connect",
