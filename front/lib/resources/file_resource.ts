@@ -2212,7 +2212,22 @@ export class FileResource extends BaseResource<FileModel> {
    * have no workspace auth to pass.
    */
   async hasActiveFrameFunctions(): Promise<boolean> {
-    const publicationId = this.useCaseMetadata?.activePublicationId;
+    return this.hasFrameFunctions({ publication: "live" });
+  }
+
+  /**
+   * Whether the targeted publication declares any function. Picks the publication the same way
+   * `getRenderableContent` does, so the answer matches what that target would serve.
+   */
+  async hasFrameFunctions({
+    publication,
+  }: {
+    publication: FramePublicationTarget;
+  }): Promise<boolean> {
+    const publicationId =
+      publication === "latest"
+        ? this.latestFramePublicationId
+        : this.useCaseMetadata?.activePublicationId;
     if (!this.isFrameV2 || !publicationId) {
       return false;
     }

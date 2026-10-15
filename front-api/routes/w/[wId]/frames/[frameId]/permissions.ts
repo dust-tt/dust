@@ -1,5 +1,6 @@
 import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -26,9 +27,19 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const [canWriteFrameSource, hasFunctions] = await Promise.all([
-    canWriteFrameV2Source(auth, frame),
-    frame.hasActiveFrameFunctions(),
+  const canWriteFrameSource = await canWriteFrameV2Source(auth, frame);
+  const livePublicationId = frame.useCaseMetadata?.activePublicationId ?? null;
+  const [hasFunctions, livePublication] = await Promise.all([
+    frame.hasFrameFunctions({
+      publication: canWriteFrameSource ? "latest" : "live",
+    }),
+    livePublicationId
+      ? FramePublicationResource.fetchForFramePublication(
+          auth,
+          frame,
+          livePublicationId
+        )
+      : null,
   ]);
 
   return ctx.json<GetFramePermissionsResponseBody>({
@@ -37,6 +48,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     isFrameAuthor: canWriteFrameSource,
     packageRoot: frame.getFrameV2SourceDirectoryPath(auth),
     hasFunctions,
+    livePublicationId,
+    livePublishedAt: livePublication?.createdAt.getTime() ?? null,
+    draftPublicationId: canWriteFrameSource
+      ? (frame.useCaseMetadata?.draftPublicationId ?? null)
+      : null,
   });
 });
 
