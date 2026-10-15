@@ -10,6 +10,8 @@ import { MAX_FILE_SIZES, TABLE_PREFIX } from "../../files";
 // workbook can expand into gigabytes of CSV. Cap the output at the size accepted for a CSV upload.
 const MAX_CSV_OUTPUT_BYTES = MAX_FILE_SIZES.delimited;
 
+const OUTPUT_CHUNK_BYTES = 64 * 1024;
+
 interface ParserState {
   tags: string[];
   currentRow: string[];
@@ -53,6 +55,11 @@ const HTML_TAGS = {
  * "could not be processed" (mapped to `file_too_large` by `processAndStoreFile`), and `input` MUST
  * be destroyed.
  */
+/**
+ * @cc [owner:tdraier,label:performance] batched-csv-output
+ * Every chunk emitted by the returned stream, except the last one, MUST hold at least 64 KB of
+ * output: rows MUST NOT be emitted one chunk per row.
+ */
 export function transformStreamToCSV(
   input: Readable,
   selector: string
@@ -66,8 +73,20 @@ export function transformStreamToCSV(
   };
 
   let outputBytes = 0;
+  let pendingOutput = "";
+  let pendingOutputBytes = 0;
+  // Downstream writers pay a per-chunk cost: a resumable GCS upload fed one chunk per CSV row is
+  // superlinear and starves the event loop for minutes on large sheets.
+  const flushPendingOutput = () => {
+    if (pendingOutput) {
+      htmlParsingTransform.push(pendingOutput);
+      pendingOutput = "";
+      pendingOutputBytes = 0;
+    }
+  };
   const pushOutput = (text: string) => {
-    outputBytes += Buffer.byteLength(text);
+    const textBytes = Buffer.byteLength(text);
+    outputBytes += textBytes;
     if (outputBytes > MAX_CSV_OUTPUT_BYTES) {
       throw new Error(
         "The spreadsheet could not be processed: once converted, it is larger than " +
@@ -75,7 +94,11 @@ export function transformStreamToCSV(
           "Remove empty rows and columns, or split it into smaller files."
       );
     }
-    htmlParsingTransform.push(text);
+    pendingOutput += text;
+    pendingOutputBytes += textBytes;
+    if (pendingOutputBytes >= OUTPUT_CHUNK_BYTES) {
+      flushPendingOutput();
+    }
   };
 
   // Create a single parser instance for the entire stream.
@@ -140,6 +163,7 @@ export function transformStreamToCSV(
       try {
         // Signal to the parser that we're done (end of the HTML input).
         parser.end();
+        flushPendingOutput();
 
         callback();
       } catch (error) {
