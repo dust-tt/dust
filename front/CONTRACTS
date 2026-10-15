@@ -735,6 +735,14 @@ MUST use *tu* (deuxième personne du singulier): "Utilise…", "Aide-moi…", "R
 mix the two in the same audience: "Utilisez {skillTag} pour m'aider…" as a user→agent prompt is
 a violation.
 
+@cc [owner:sfriquet,label:product] de-address-form-by-audience
+In `de-DE` catalogs, copy that addresses the user (UI labels, toasts, errors, settings copy,
+instructions shown to the user) MUST use *Sie*: "Verwenden Sie…", "Möchten Sie…", "Versuchen Sie
+es erneut.". Text the UI writes on the user's behalf as a message to an agent — prompt starters,
+prefilled composer text, Discover suggestions the user sends — MUST use *du*: "Verwende…",
+"Hilf mir…", "Fasse … zusammen". Never mix the two in the same audience: "Verwenden Sie
+{skillTag}, um mir zu helfen…" as a user→agent prompt is a violation.
+
 
 @cc [owner:sfriquet,label:product;react] ui-intl-through-format-module
 Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
