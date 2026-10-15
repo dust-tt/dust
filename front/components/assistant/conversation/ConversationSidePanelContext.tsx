@@ -281,19 +281,22 @@ export function useConversationSidePanelContext() {
 
 // Separate from the main context so the setter stays out of consumers' reach.
 const SidePanelConversationRegistrationContext = React.createContext<
-  ((hasConversation: boolean) => void) | undefined
+  ((conversationId: string | null) => void) | undefined
 >(undefined);
 
-// Called by whichever surface renders the panel content.
-export function useRegisterSidePanelConversation(hasConversation: boolean) {
-  const setHasConversation = React.useContext(
+// Called by whichever surface renders the panel content, with the sId of the conversation it hosts:
+// the conversation page, Analytics and the agent builder preview. Not every host has it in the URL.
+export function useRegisterSidePanelConversation(
+  conversationId: string | null
+) {
+  const registerConversation = React.useContext(
     SidePanelConversationRegistrationContext
   );
 
   useEffect(() => {
-    setHasConversation?.(hasConversation);
-    return () => setHasConversation?.(false);
-  }, [hasConversation, setHasConversation]);
+    registerConversation?.(conversationId);
+    return () => registerConversation?.(null);
+  }, [conversationId, registerConversation]);
 }
 
 export function parseDataAsMessageIdAndActionId(data?: string): {
@@ -308,6 +311,44 @@ export function parseDataAsMessageIdAndActionId(data?: string): {
     : [data, undefined];
 
   return { messageId, actionId };
+}
+
+// Keeps the conversation registered by the panel's host, and returns the tracker to call only when a
+// Frame replaces what the panel showed: refreshes and republishes of the shown Frame, and going back
+// to one through the history, are not opens. The conversation is kept in a ref so a conversation
+// switch does not re-run the effects that call the tracker.
+function useFrameOpenTracking() {
+  const conversationIdRef = React.useRef<string | null>(null);
+  const [hasConversation, setHasConversation] = React.useState(false);
+
+  const registerConversation = useCallback((conversationId: string | null) => {
+    conversationIdRef.current = conversationId;
+    setHasConversation(conversationId !== null);
+  }, []);
+
+  const trackFrameOpenInConversation = useCallback(
+    (params: OpenPanelParams) => {
+      const conversationId = conversationIdRef.current;
+      if (
+        params.type !== INTERACTIVE_CONTENT_SIDE_PANEL_TYPE ||
+        !conversationId
+      ) {
+        return;
+      }
+      trackFrameOpen({
+        frameId: params.fileId,
+        origin: params.openedFrom,
+        location: { type: "conversation", id: conversationId },
+      });
+    },
+    []
+  );
+
+  return {
+    hasConversation,
+    registerConversation,
+    trackFrameOpenInConversation,
+  };
 }
 
 interface ConversationSidePanelProviderProps {
@@ -327,7 +368,6 @@ export function ConversationSidePanelProvider({
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const layoutBeforeFullScreenRef = React.useRef<SidePanelLayout | null>(null);
-  const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
@@ -408,31 +448,11 @@ export function ConversationSidePanelProvider({
     [setCurrentPanel, setData, setFullScreenHash]
   );
 
-  // Called only when a Frame replaces what the panel showed: refreshes and republishes of the shown
-  // Frame, and going back to one through the history, are not opens. Reads the conversation from a
-  // ref so a conversation switch does not re-run the effects that depend on it. The ref is synced in
-  // an effect declared before those effects, so they read the current conversation.
-  const activeConversationIdRef = React.useRef(activeConversationId);
-  useEffect(() => {
-    activeConversationIdRef.current = activeConversationId;
-  }, [activeConversationId]);
-  const trackFrameOpenInConversation = useCallback(
-    (params: OpenPanelParams) => {
-      const conversationId = activeConversationIdRef.current;
-      if (
-        params.type !== INTERACTIVE_CONTENT_SIDE_PANEL_TYPE ||
-        !conversationId
-      ) {
-        return;
-      }
-      trackFrameOpen({
-        frameId: params.fileId,
-        origin: params.openedFrom,
-        location: { type: "conversation", id: conversationId },
-      });
-    },
-    []
-  );
+  const {
+    hasConversation,
+    registerConversation,
+    trackFrameOpenInConversation,
+  } = useFrameOpenTracking();
 
   const closePanel = useCallback(() => {
     rememberDismissedAutoOpenFile();
@@ -618,7 +638,7 @@ export function ConversationSidePanelProvider({
 
   return (
     <SidePanelConversationRegistrationContext.Provider
-      value={setHasConversation}
+      value={registerConversation}
     >
       <ConversationSidePanelContext.Provider value={value}>
         {children}

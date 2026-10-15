@@ -1,4 +1,5 @@
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
+import { trackFrameExpand } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { EditTextFn } from "@app/types/assistant/visualization";
@@ -27,6 +28,8 @@ const mocks = vi.hoisted(() => ({
     }) => null
   ),
   hasFrameFunctions: false,
+  // Side panel handle; null like in Analytics and the agent builder preview.
+  panel: null as { getSize: () => number; resize: () => void } | null,
   isFrameAuthor: true,
   isMobile: false,
   /** Incremented on every iframe mount (React key change). */
@@ -56,9 +59,15 @@ vi.mock(
   () => ({
     useConversationSidePanelContext: () => ({
       closePanel: vi.fn(),
-      panelRef: null,
+      panelRef: { current: mocks.panel },
+      layoutBeforeFullScreenRef: { current: null },
     }),
   })
+);
+
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frameTracking",
+  () => ({ trackFrameExpand: vi.fn() })
 );
 
 vi.mock(
@@ -191,6 +200,7 @@ afterEach(() => {
   mocks.isFrameAuthor = true;
   mocks.isMobile = false;
   mocks.iframeMounts = 0;
+  mocks.panel = null;
 });
 
 describe("FrameRenderer", () => {
@@ -350,6 +360,49 @@ describe("FrameRenderer", () => {
       "_blank",
       "noopener,noreferrer"
     );
+  });
+
+  it("tracks full screen in a conversation side panel", () => {
+    mocks.panel = { getSize: () => 40, resize: vi.fn() };
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@42"
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Go to full screen mode" })
+    );
+
+    expect(trackFrameExpand).toHaveBeenCalledWith({
+      frameId: "frame_1",
+      uiElement: "conversation_side_panel",
+      location: { type: "conversation", id: "conversation_1" },
+    });
+  });
+
+  it("does not track full screen where the panel cannot go full screen", () => {
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@42"
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Go to full screen mode" })
+    );
+
+    expect(trackFrameExpand).not.toHaveBeenCalled();
   });
 
   it("remounts the viz iframe when contentHash changes", () => {

@@ -31,7 +31,7 @@ export default function ConversationSidePanelContainer({
 }: ConversationSidePanelContainerProps) {
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
-  useRegisterSidePanelConversation(!!conversation);
+  useRegisterSidePanelConversation(conversation?.sId ?? null);
   const panelRef = useRef<ImperativePanelHandle | null>(null);
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const isFullScreen = fullScreenHash === "true";

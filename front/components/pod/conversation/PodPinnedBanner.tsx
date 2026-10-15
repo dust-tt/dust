@@ -126,6 +126,68 @@ function PodPinnedBannerCollapsedAffordance({
   );
 }
 
+// Counts the banner's expanded render once per mount, then user opens and full screens.
+function usePodPinnedBannerTracking({
+  fileId,
+  podId,
+  fileContent,
+  vizUrl,
+  isNotFound,
+  isCollapsed,
+}: {
+  fileId: string | null;
+  podId: string;
+  fileContent: string | null;
+  vizUrl: string;
+  isNotFound: boolean;
+  isCollapsed: boolean;
+}) {
+  // Same conditions as the banner's expanded render below.
+  const isShownExpanded =
+    !isCollapsed && !!fileId && !!fileContent && !!vizUrl && !isNotFound;
+
+  // Last Frame counted as opened in this banner.
+  const trackedFileIdRef = useRef<string | null>(null);
+
+  const trackBannerOpen = useCallback(
+    (source: FrameOpenSource) => {
+      if (!fileId) {
+        return;
+      }
+      trackedFileIdRef.current = fileId;
+      trackFrameOpen({
+        frameId: fileId,
+        origin: { source, uiElement: "pod_pinned_banner" },
+        location: { type: "pod", id: podId },
+      });
+    },
+    [fileId, podId]
+  );
+
+  // Only entering full screen is tracked.
+  const trackBannerExpand = useCallback(
+    (isFullscreen: boolean) => {
+      if (isFullscreen || !fileId) {
+        return;
+      }
+      trackFrameExpand({
+        frameId: fileId,
+        uiElement: "pod_pinned_banner",
+        location: { type: "pod", id: podId },
+      });
+    },
+    [fileId, podId]
+  );
+
+  useEffect(() => {
+    if (isShownExpanded && trackedFileIdRef.current !== fileId) {
+      trackBannerOpen("auto");
+    }
+  }, [isShownExpanded, fileId, trackBannerOpen]);
+
+  return { trackBannerOpen, trackBannerExpand };
+}
+
 export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   const { t } = useLingui();
   const { vizUrl } = useAuth();
@@ -139,9 +201,6 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     });
   const isCollapsed = bannerPreferences.collapsed;
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // Last Frame counted as opened in this banner, so the expanded render is counted once per mount.
-  const trackedFileIdRef = useRef<string | null>(null);
 
   const hideBanner = useCallback(() => {
     setBannerPreferences({ collapsed: true });
@@ -161,28 +220,14 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
       disabled: !pinnedFramePath,
     });
 
-  const isRenderable = !!fileId && !!fileContent && !!vizUrl && !isNotFound;
-
-  const trackBannerOpen = useCallback(
-    (source: FrameOpenSource) => {
-      if (!fileId) {
-        return;
-      }
-      trackedFileIdRef.current = fileId;
-      trackFrameOpen({
-        frameId: fileId,
-        origin: { source, uiElement: "pod_pinned_banner" },
-        location: { type: "pod", id: podInfo.sId },
-      });
-    },
-    [fileId, podInfo.sId]
-  );
-
-  useEffect(() => {
-    if (isRenderable && !isCollapsed && trackedFileIdRef.current !== fileId) {
-      trackBannerOpen("auto");
-    }
-  }, [isRenderable, isCollapsed, fileId, trackBannerOpen]);
+  const { trackBannerOpen, trackBannerExpand } = usePodPinnedBannerTracking({
+    fileId,
+    podId: podInfo.sId,
+    fileContent,
+    vizUrl,
+    isNotFound,
+    isCollapsed,
+  });
 
   // Counted before expanding, so the expanded render is not also counted as an auto open.
   const showBanner = useCallback(() => {
@@ -191,15 +236,9 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   }, [setBannerPreferences, trackBannerOpen]);
 
   const toggleFullscreen = useCallback(() => {
-    if (!isFullscreen && fileId) {
-      trackFrameExpand({
-        frameId: fileId,
-        uiElement: "pod_pinned_banner",
-        location: { type: "pod", id: podInfo.sId },
-      });
-    }
+    trackBannerExpand(isFullscreen);
     setIsFullscreen((prev) => !prev);
-  }, [isFullscreen, fileId, podInfo.sId]);
+  }, [isFullscreen, trackBannerExpand]);
 
   // The Frame was hidden, so this is both an open and an expand.
   const openFullscreenFromCollapsed = useCallback(() => {

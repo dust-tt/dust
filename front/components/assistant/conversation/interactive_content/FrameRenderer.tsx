@@ -123,6 +123,7 @@ export function FrameRenderer({
   const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
 
   const {
+    canEnterFullScreen,
     isFullScreen,
     enterFullScreen,
     exitFullScreen,
@@ -130,7 +131,7 @@ export function FrameRenderer({
   } = useSidePanelFullScreen(DEFAULT_FRAME_PANEL_SIZE);
 
   const enterFullScreenAndTrack = () => {
-    if (conversation) {
+    if (conversation && canEnterFullScreen) {
       trackFrameExpand({
         frameId: fileId,
         uiElement: "conversation_side_panel",

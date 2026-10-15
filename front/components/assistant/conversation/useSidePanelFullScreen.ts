@@ -94,6 +94,8 @@ export const useSidePanelFullScreen = (defaultPanelSize: number) => {
   }, [isFullScreen, exitFullScreen]);
 
   return {
+    // False where the panel cannot be resized (mobile, Analytics, agent builder preview).
+    canEnterFullScreen: !!panel,
     isFullScreen,
     enterFullScreen,
     exitFullScreen,

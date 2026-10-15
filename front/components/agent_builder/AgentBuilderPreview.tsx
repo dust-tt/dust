@@ -94,7 +94,7 @@ function PreviewContent({
   isTrialPlan,
   isAdmin,
 }: PreviewContentProps) {
-  useRegisterSidePanelConversation(!!conversation);
+  useRegisterSidePanelConversation(conversation?.sId ?? null);
 
   const stickyMentions = useMemo<RichMention[]>(
     () => (draftAgent ? [toRichAgentMentionType(draftAgent)] : []),

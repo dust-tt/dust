@@ -70,7 +70,7 @@ function AnalyticsConversationPanelBody({
 }: AnalyticsConversationPanelBodyProps) {
   const { t } = useLingui();
   const { currentPanel } = useConversationSidePanelContext();
-  useRegisterSidePanelConversation(!!conversation);
+  useRegisterSidePanelConversation(conversation?.sId ?? null);
 
   // Stub reuse of ConversationViewer's agentBuilderContext slot, whose only
   // fields we need are disableAgentMentions/actionsToShow.
