@@ -9,6 +9,7 @@ import { DiscoverButton } from "@app/components/assistant/conversation/discover/
 import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
 import { DiscoveryHomepageOptInLine } from "@app/components/assistant/conversation/discover/DiscoveryHomepageOptInLine";
+import { HomepageAnnouncement } from "@app/components/assistant/conversation/discover/HomepageAnnouncement";
 import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
 import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
@@ -389,6 +390,11 @@ export function ConversationContainerVirtuoso({
         )}
         ref={startConversationRef}
       >
+        <HomepageAnnouncement
+          owner={owner}
+          // Leads the greeting so the hero reads top-down.
+          style={shouldReduceMotion ? undefined : greetingWordStyle(0)}
+        />
         <Page.Header
           title={
             <h3

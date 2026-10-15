@@ -1,6 +1,8 @@
 export type { ActionCardDiffStatus } from "./ActionCard";
 export { ACTION_CARD_DIFF_STATUSES, ActionCard } from "./ActionCard";
 export { AnimatedText } from "./AnimatedText";
+export type { AnnouncementPillProps } from "./AnnouncementPill";
+export { AnnouncementPill } from "./AnnouncementPill";
 export { AspectRatio } from "./AspectRatio";
 export {
   AssistantCard,
