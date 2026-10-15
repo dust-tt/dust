@@ -16,10 +16,10 @@ by answering most requests from memory and by acknowledging writes before they r
 
 ## Guarantees
 
-1. **Bounded client delay.** `MAX_DELAY` (1 second by default) is the cache TTL plus the send
-   window: how long a mount may serve a cached reply, plus how long it aims to hold a change
-   before sending it. Server and network time are not counted, including the wait behind a slow
-   `Apply` (see [The delay budget](#the-delay-budget)). A cached reply also outlives a lost read
+1. **Bounded client delay.** `MAX_DELAY` (1 second by default) is the cache TTL plus the write
+   delay: how long a mount may serve a cached reply, plus how long it lets a change wait before
+   the change leaves in an `Apply`. Server and network time are not counted, including the wait
+   behind a slow `Apply` (see [The delay budget](#the-delay-budget)). A cached reply also outlives a lost read
    access by at most the cache TTL.
 2. **Read your writes.** A mount sees its own changes at once.
 3. **Whole states.** Each read the mount serves returns bytes of one state of the file, never a
@@ -43,17 +43,18 @@ the choice of FUSE crate stays with the adapter. Operations that may wait for th
 
 `MAX_DELAY` is split in two:
 
-- **Send window**: `min(MAX_DELAY / 4, 1 s)`. The time from acknowledging a change to sending it.
+- **Write delay**: `min(MAX_DELAY / 4, 1 s)`. The longest a change should wait in the mount,
+  from its acknowledgment until it leaves in an `Apply`.
 - **Cache TTL**: the rest. A cached server reply is served only while less than the TTL has passed
   since its request was sent.
 
 At 1 second, that is 250 ms and 750 ms, both measured on the mount's clock.
 
-The TTL is a hard limit. The send window is a target: a change can only leave once the `Apply` in
-flight returns, and the mount cannot make the server faster. It keeps the window by making new
-writers wait while the server is slow (see [Batching](#batching)). If an `Apply` is much slower
-than recent ones, the changes queued behind it leave late. That extra wait is server time, like the
-commit itself, and is not part of `MAX_DELAY`.
+The TTL is a hard limit. The write delay is a target: a change can only leave once the `Apply` in
+flight returns, and the mount cannot make the server faster. Admission keeps changes within it by
+making new writers wait while the server is slow (see [Batching](#batching)). If an `Apply` is
+much slower than recent ones, the changes queued behind it leave late. That extra wait is server
+time, like the commit itself, and is not part of `MAX_DELAY`.
 
 ### No kernel caching
 
@@ -128,20 +129,20 @@ Every change becomes an operation in one ordered log, and the log reaches the se
   attribute change, and buffered writes join the file's queued write while it stays under the
   size limit.
 - **Admission**: a new change waits while the log holds a full batch (512 operations or the
-  request size limit), or while the oldest pending change would miss the send window. A pending
-  change leaves only when the `Apply` in flight returns, and nobody knows yet when that will be,
-  so the mount guesses from recent calls: as slow as the slowest of the last 8, or the one in
-  flight if it already took longer. Waiting before acknowledging, rather than reacting once a
-  change is already late, keeps the window even when the server slows down: writers slow down
-  instead.
+  request size limit), or while the oldest pending change would wait longer than the write delay.
+  A pending change leaves only when the `Apply` in flight returns, and nobody knows yet when that
+  will be, so the mount guesses from recent calls: as slow as the slowest of the last 8, or the
+  one in flight if it already took longer. Waiting before acknowledging, rather than reacting once
+  a change is already late, keeps changes within the write delay even when the server slows down:
+  writers slow down instead.
 - **Very slow server**: once the `Apply` in flight runs long, every new change waits for it, and
   so does `fsync`. Reads go on. If the call times out, its outcome is unknown: its changes are
   dropped, the objects they touched are fetched again, and the next `fsync` reports the failure.
 - **Results**: each operation succeeds or fails on its own, and the successful ones commit
-  together (a storage failure fails them all). A committed batch updates the cache with the attributes and names it changed, at the
-  commit version, so the mount does not read back its own changes; a directory it created is known
-  to be empty. A failed operation is dropped: the objects it touched are fetched again, the drop is
-  logged, and the next `fsync` reports it.
+  together (a storage failure fails them all). A committed batch updates the cache with the
+  attributes and names it changed, at the commit version, so the mount does not read back its own
+  changes; a directory it created is known to be empty. A failed operation is dropped: the objects
+  it touched are fetched again, the drop is logged, and the next `fsync` reports it.
 - **No replays**: `Apply` has no idempotency key, so a lost reply fails its operations instead of
   sending them again.
 
