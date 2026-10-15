@@ -4,6 +4,7 @@ import type {
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
+import type { FramePublicationTarget } from "@app/types/api/frame_publication";
 import type { APIErrorType } from "@app/types/error";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
@@ -210,6 +211,7 @@ export type SandboxFunctionInvocationContext = {
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
   context?: SandboxFunctionInvocationContext;
+  target?: FramePublicationTarget;
 };
 
 // The terminal state of an invocation, as returned by the invocation endpoint when the invocation

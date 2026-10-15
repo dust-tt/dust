@@ -60,6 +60,56 @@ export async function createTestFrameFile(
 }
 
 /**
+ * Stores the single function definition `createTestFrameFunction` publishes, for one publication
+ * of an existing Frame. Does not touch the Frame's publication pointers.
+ */
+export async function createTestFramePublicationFunctions(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    slug,
+    description = "Greet someone.",
+    userIdentity = "optional",
+    executionMode = "durable",
+    inputSchema: functionInputSchema = inputSchema,
+    outputSchema: functionOutputSchema = outputSchema,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    slug: string;
+    description?: string;
+    userIdentity?: SandboxFunctionUserIdentityPolicy;
+    executionMode?: SandboxFunctionExecutionMode;
+    inputSchema?: JSONSchema;
+    outputSchema?: JSONSchema;
+  }
+): Promise<void> {
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: slug,
+            description,
+            userIdentity,
+            executionMode,
+            defaultStake: "low",
+            bundleCode: TEST_FRAME_BUNDLE_CODE,
+            inputSchema: functionInputSchema,
+            outputSchema: functionOutputSchema,
+          },
+        ],
+      },
+      transaction
+    )
+  );
+}
+
+/**
  * A Frame in `space` with one published function, for suites that already own their auth and
  * just need an invocable function. `makeTestFrameFunction` below is the request-scoped variant
  * that also mocks the HTTP auth.
@@ -90,28 +140,16 @@ export async function createTestFrameFunction(
     space,
     activePublicationId: publicationId,
   });
-  await withTransaction((transaction) =>
-    SandboxFunctionResource.createForFramePublication(
-      auth,
-      {
-        frame,
-        publicationId,
-        functions: [
-          {
-            name: slug,
-            description,
-            userIdentity,
-            executionMode,
-            defaultStake: "low",
-            bundleCode: TEST_FRAME_BUNDLE_CODE,
-            inputSchema: functionInputSchema,
-            outputSchema: functionOutputSchema,
-          },
-        ],
-      },
-      transaction
-    )
-  );
+  await createTestFramePublicationFunctions(auth, {
+    frame,
+    publicationId,
+    slug,
+    description,
+    userIdentity,
+    executionMode,
+    inputSchema: functionInputSchema,
+    outputSchema: functionOutputSchema,
+  });
   const sandboxFunction =
     await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
       frame,

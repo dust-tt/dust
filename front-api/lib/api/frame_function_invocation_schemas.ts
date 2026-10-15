@@ -1,3 +1,4 @@
+import { FramePublicationTargetSchema } from "@app/types/api/frame_publication";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
@@ -14,5 +15,6 @@ export const PostFrameFunctionInvocationBodySchema = z
         timezone: z.string().optional(),
       })
       .optional(),
+    target: FramePublicationTargetSchema.optional(),
   })
   .strict();

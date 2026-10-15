@@ -1,8 +1,10 @@
+import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import type { FramePublicationTarget } from "@app/types/api/frame_publication";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 
@@ -16,12 +18,22 @@ import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
  * Frame function resolution MUST return null unless Frame functions are enabled for the workspace
  * (see isFramesV2FunctionsEnabled), whatever publication or sharing state the Frame is in.
  */
+/**
+ * @cc [owner:davidebbo,label:product;security] frame-draft-functions-require-write-access
+ * A draft publication's functions MUST resolve only when the caller asks for `target: "latest"`
+ * and can write the Frame's source (`canWriteFrameV2Source`). Every other caller MUST resolve
+ * against the live publication only.
+ */
 export async function resolveSandboxFunctionWithCapability(
   auth: Authenticator,
   functionIdOrSlug: string,
   {
     allowInactiveFramePublication = false,
-  }: { allowInactiveFramePublication?: boolean } = {}
+    target = "live",
+  }: {
+    allowInactiveFramePublication?: boolean;
+    target?: FramePublicationTarget;
+  } = {}
 ): Promise<SandboxFunctionResource | null> {
   const featureFlags = await getFeatureFlags(auth);
   if (!isFramesV2FunctionsEnabled(featureFlags)) {
@@ -35,16 +47,17 @@ export async function resolveSandboxFunctionWithCapability(
         functionIdOrSlug
       );
     return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
-      allowInactivePublication: allowInactiveFramePublication,
+      publication: allowInactiveFramePublication ? "any" : "live",
     });
   }
 
-  return resolveFrameV2FunctionReference(auth, functionIdOrSlug);
+  return resolveFrameV2FunctionReference(auth, functionIdOrSlug, target);
 }
 
 async function resolveFrameV2FunctionReference(
   auth: Authenticator,
-  functionIdOrReference: string
+  functionIdOrReference: string,
+  target: FramePublicationTarget
 ): Promise<SandboxFunctionResource | null> {
   const [frameId, slug, ...rest] = functionIdOrReference.split("/");
   if (
@@ -59,6 +72,7 @@ async function resolveFrameV2FunctionReference(
   return resolveActiveFrameFunctionForUse(auth, {
     frameId,
     functionName: slug,
+    target,
   });
 }
 
@@ -67,15 +81,23 @@ async function resolveFrameV2FunctionReference(
  * Frame function resolution MUST return null unless Frame functions are enabled for the workspace
  * (see isFramesV2FunctionsEnabled), whatever publication or sharing state the Frame is in.
  */
-/** Resolve one function from the active publication of a Frame the caller may use. */
+/**
+ * @cc [owner:davidebbo,label:product;security] frame-draft-functions-require-write-access
+ * A draft publication's functions MUST resolve only when the caller asks for `target: "latest"`
+ * and can write the Frame's source (`canWriteFrameV2Source`). Every other caller MUST resolve
+ * against the live publication only.
+ */
+/** Resolve one function from the live or latest publication of a Frame the caller may use. */
 export async function resolveActiveFrameFunctionForUse(
   auth: Authenticator,
   {
     frameId,
     functionName,
+    target,
   }: {
     frameId: string;
     functionName: string;
+    target: FramePublicationTarget;
   }
 ): Promise<SandboxFunctionResource | null> {
   const featureFlags = await getFeatureFlags(auth);
@@ -88,12 +110,15 @@ export async function resolveActiveFrameFunctionForUse(
   }
 
   const frame = await FileResource.fetchById(auth, frameId);
-  const publicationId = frame?.useCaseMetadata?.activePublicationId;
-  if (
-    !frame?.isFrameV2 ||
-    !publicationId ||
-    !(await frame.canCurrentUserUseFrame(auth))
-  ) {
+  if (!frame?.isFrameV2 || !(await frame.canCurrentUserUseFrame(auth))) {
+    return null;
+  }
+  const publicationId = await resolveFramePublicationForTarget(
+    auth,
+    frame,
+    target
+  );
+  if (!publicationId) {
     return null;
   }
 
@@ -104,14 +129,28 @@ export async function resolveActiveFrameFunctionForUse(
       slug: functionName,
     });
   return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
-    allowInactivePublication: false,
+    publication: target,
   });
+}
+
+async function resolveFramePublicationForTarget(
+  auth: Authenticator,
+  frame: FileResource,
+  target: FramePublicationTarget
+): Promise<string | null> {
+  if (target === "live") {
+    return frame.useCaseMetadata?.activePublicationId ?? null;
+  }
+  if (!(await canWriteFrameV2Source(auth, frame))) {
+    return null;
+  }
+  return frame.latestFramePublicationId ?? null;
 }
 
 async function resolveFrameV2FunctionAccess(
   auth: Authenticator,
   sandboxFunction: SandboxFunctionResource | null,
-  { allowInactivePublication }: { allowInactivePublication: boolean }
+  { publication }: { publication: "any" | FramePublicationTarget }
 ): Promise<SandboxFunctionResource | null> {
   if (!sandboxFunction) {
     return null;
@@ -120,11 +159,15 @@ async function resolveFrameV2FunctionAccess(
   if (!(await frame.canCurrentUserUseFrame(auth))) {
     return null;
   }
-  if (
-    !allowInactivePublication &&
-    sandboxFunction.publicationId !== frame.useCaseMetadata?.activePublicationId
-  ) {
-    return null;
+  if (publication === "any") {
+    return sandboxFunction;
   }
-  return sandboxFunction;
+  // Re-checked on the function's freshly loaded Frame: fail closed if the pointer moved.
+  const servedPublicationId =
+    publication === "latest"
+      ? frame.latestFramePublicationId
+      : frame.useCaseMetadata?.activePublicationId;
+  return sandboxFunction.publicationId === servedPublicationId
+    ? sandboxFunction
+    : null;
 }

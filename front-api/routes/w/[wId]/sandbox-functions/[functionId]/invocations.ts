@@ -4,6 +4,7 @@ import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions
 import { resolveSandboxFunctionWithCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
+import { FramePublicationTargetSchema } from "@app/types/api/frame_publication";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -47,6 +48,7 @@ const PostSandboxFunctionInvocationBodySchema = z
         timezone: z.string().optional(),
       })
       .optional(),
+    target: FramePublicationTargetSchema.optional(),
   })
   .strict();
 
@@ -117,7 +119,8 @@ app.post(
 
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
-      functionIdOrSlug
+      functionIdOrSlug,
+      { target: body.target }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

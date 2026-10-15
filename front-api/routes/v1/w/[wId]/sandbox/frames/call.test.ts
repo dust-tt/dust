@@ -3,6 +3,7 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFramePublicationFunctions } from "@app/tests/utils/FrameFunctionFactory";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
 import { frameV2ContentType } from "@app/types/files";
@@ -170,6 +171,32 @@ describe("sandbox Frame calls", () => {
     await expect(response.json()).resolves.toEqual({
       frameId: context.frame.sId,
       functionName: "get-status",
+      result: { status: "ready" },
+    });
+  });
+
+  it("calls a function that only the draft publication has", async () => {
+    const context = await setup();
+    await createTestFramePublicationFunctions(context.auth, {
+      frame: context.frame,
+      publicationId: "publication-draft",
+      slug: "draft-only",
+    });
+    await context.frame.setDraftFramePublication({
+      publicationId: "publication-draft",
+    });
+
+    const response = await requestFrameCallById({
+      workspaceId: context.workspace.sId,
+      token: context.token,
+      frameId: context.frame.sId,
+      functionName: "draft-only",
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      frameId: context.frame.sId,
+      functionName: "draft-only",
       result: { status: "ready" },
     });
   });

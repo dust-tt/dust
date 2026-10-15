@@ -30,6 +30,7 @@ app.post(
     const sandboxFunction = await resolveActiveFrameFunctionForUse(auth, {
       frameId,
       functionName: name,
+      target: body.target ?? "live",
     });
     if (!sandboxFunction) {
       return apiError(ctx, {
