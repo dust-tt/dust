@@ -12,7 +12,7 @@ describe("getExitOrPauseEvents", () => {
       reason: "user_cancellation",
     });
 
-    const events = await getExitOrPauseEvents({} as Authenticator, {
+    const eventsRes = await getExitOrPauseEvents({} as Authenticator, {
       outputItems: output.content.map((content) => ({ content })),
       toolContext: {
         // The early exit path only reads identifiers off the run context; a partial mock is
@@ -30,6 +30,8 @@ describe("getExitOrPauseEvents", () => {
       },
     });
 
+    expect(eventsRes.isOk()).toBe(true);
+    const events = eventsRes.isOk() ? eventsRes.value : [];
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       type: "tool_early_exit",

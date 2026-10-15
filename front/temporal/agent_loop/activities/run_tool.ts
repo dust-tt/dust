@@ -10,10 +10,7 @@ import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/triggers/manual-action-required";
-import {
-  AgentMCPActionResource,
-  SandboxParentActionFinalError,
-} from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
@@ -40,7 +37,6 @@ import {
   updateActiveObservation,
 } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
-import { ApplicationFailure } from "@temporalio/common";
 import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
@@ -99,11 +95,6 @@ function extractDataSourceIds(
  * `runToolActivity` MUST obtain `claimToolActivityStart` for its Temporal activity execution before
  * any work other than heartbeating, and MUST NOT execute the tool when the claim is refused or
  * throws.
- */
-/**
- * @cc [owner:tdraier,label:error-handling] final-parent-non-retryable
- * When the tool run throws `SandboxParentActionFinalError`, `runToolActivity` MUST fail with a
- * non-retryable `ApplicationFailure`, so retryable tool activities never re-run the tool for it.
  */
 export async function runToolActivity(
   authType: AuthenticatorType,
@@ -237,7 +228,7 @@ export async function runToolActivity(
 
   return startActiveObservation(
     `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
-    async () => {
+    () => {
       updateActiveObservation(
         {
           input: {
@@ -249,25 +240,17 @@ export async function runToolActivity(
         { asType: "tool" }
       );
 
-      try {
-        return await executeToolStreaming(auth, {
-          action,
-          agentConfiguration,
-          model,
-          agentMessage,
-          conversation,
-          deferredEvents,
-          runIds,
-          step,
-          userMessage,
-        });
-      } catch (err) {
-        // Deterministic: a retry would re-run the tool and fail identically.
-        if (err instanceof SandboxParentActionFinalError) {
-          throw ApplicationFailure.nonRetryable(err.message, err.name);
-        }
-        throw err;
-      }
+      return executeToolStreaming(auth, {
+        action,
+        agentConfiguration,
+        model,
+        agentMessage,
+        conversation,
+        deferredEvents,
+        runIds,
+        step,
+        userMessage,
+      });
     },
     { asType: "tool" }
   );

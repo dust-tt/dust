@@ -261,9 +261,12 @@ describe("sandbox child blocking", () => {
       .spyOn(ConversationSandboxAdapter, "pauseSandboxForApproval")
       .mockResolvedValue(new Ok(undefined));
 
-    await expect(
-      pauseSandboxBashForBlockedChild(auth, child!, conversation)
-    ).rejects.toThrow(
+    const pauseRes = await pauseSandboxBashForBlockedChild(
+      auth,
+      child!,
+      conversation
+    );
+    expect(pauseRes.isErr() && pauseRes.error.message).toContain(
       "cannot transition from succeeded to blocked_child_action_input_required"
     );
 

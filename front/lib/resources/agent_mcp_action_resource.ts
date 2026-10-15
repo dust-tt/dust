@@ -105,15 +105,6 @@ const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
-export class SandboxParentActionFinalError extends Error {
-  constructor(parentActionId: string, status: ToolExecutionStatus) {
-    super(
-      `Sandbox parent action ${parentActionId} cannot transition from ${status} to blocked_child_action_input_required.`
-    );
-    this.name = "SandboxParentActionFinalError";
-  }
-}
-
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static model: ModelStaticWorkspaceAware<AgentMCPActionModel> =
     AgentMCPActionModel;
@@ -1650,14 +1641,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * an invariant violation: a late sandbox child must never rewind it into a resumable state.
    */
   /**
-   * @cc [owner:tdraier,label:error-handling] final-parent-typed-error
+   * @cc [owner:tdraier,label:error-handling] final-parent-err
    * When the parent status is not `running`, `ready_allowed_explicitly`, `ready_allowed_implicitly`
-   * or `blocked_child_action_input_required`, this MUST throw `SandboxParentActionFinalError` and
-   * leave the parent status unchanged. This throw is an explicit exception to
-   * `no-catching-own-errors`: it propagates through the tool runner and `runToolActivity` MAY catch it.
+   * or `blocked_child_action_input_required`, this MUST return an `Err`, leave the parent status
+   * unchanged, and set this resource's `status` to that current status.
    */
-  async blockForSandboxChild(auth: Authenticator): Promise<void> {
-    await withTransaction(async (transaction) => {
+  async blockForSandboxChild(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    const res = await withTransaction(async (transaction) => {
       const action = await AgentMCPActionModel.findOne({
         attributes: ["id", "status"],
         where: {
@@ -1670,23 +1662,33 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(action, `Sandbox parent action ${this.sId} no longer exists.`);
 
       if (action.status === "blocked_child_action_input_required") {
-        return;
+        return new Ok(undefined);
       }
       if (
         action.status !== "running" &&
         action.status !== "ready_allowed_explicitly" &&
         action.status !== "ready_allowed_implicitly"
       ) {
-        throw new SandboxParentActionFinalError(this.sId, action.status);
+        Object.assign(this, { status: action.status });
+        return new Err(
+          new Error(
+            `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
+          )
+        );
       }
 
       await action.update(
         { status: "blocked_child_action_input_required" },
         { transaction }
       );
+      return new Ok(undefined);
     });
+    if (res.isErr()) {
+      return res;
+    }
 
     Object.assign(this, { status: "blocked_child_action_input_required" });
+    return new Ok(undefined);
   }
 
   /**

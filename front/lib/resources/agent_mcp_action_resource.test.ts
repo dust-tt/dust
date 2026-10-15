@@ -15,10 +15,7 @@ import {
   gcsContentCacheKey,
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
-import {
-  AgentMCPActionResource,
-  SandboxParentActionFinalError,
-} from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -576,11 +573,11 @@ describe("listBlockedActionsForConversation", () => {
     expect(currentParent.status).toBe("running");
     await currentParent.updateStatus("succeeded");
 
-    const blockPromise = staleParent.blockForSandboxChild(auth);
-    await expect(blockPromise).rejects.toThrow(SandboxParentActionFinalError);
-    await expect(blockPromise).rejects.toThrow(
+    const blockRes = await staleParent.blockForSandboxChild(auth);
+    expect(blockRes.isErr() && blockRes.error.message).toContain(
       "cannot transition from succeeded to blocked_child_action_input_required"
     );
+    expect(staleParent.status).toBe("succeeded");
     const reloadedParent = await AgentMCPActionResource.fetchById(
       auth,
       action.sId
