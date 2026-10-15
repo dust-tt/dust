@@ -105,6 +105,15 @@ const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
+export class SandboxParentActionFinalError extends Error {
+  constructor(parentActionId: string, status: ToolExecutionStatus) {
+    super(
+      `Sandbox parent action ${parentActionId} cannot transition from ${status} to blocked_child_action_input_required.`
+    );
+    this.name = "SandboxParentActionFinalError";
+  }
+}
+
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static model: ModelStaticWorkspaceAware<AgentMCPActionModel> =
     AgentMCPActionModel;
@@ -1640,6 +1649,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * child can block before the parent's own activity flips it to `running`. Only a final parent is
    * an invariant violation: a late sandbox child must never rewind it into a resumable state.
    */
+  /**
+   * @cc [owner:tdraier,label:error-handling] final-parent-typed-error
+   * When the parent status is not `running`, `ready_allowed_explicitly`, `ready_allowed_implicitly`
+   * or `blocked_child_action_input_required`, this MUST throw `SandboxParentActionFinalError` and
+   * leave the parent status unchanged. This throw is an explicit exception to
+   * `no-catching-own-errors`: it propagates through the tool runner and `runToolActivity` MAY catch it.
+   */
   async blockForSandboxChild(auth: Authenticator): Promise<void> {
     await withTransaction(async (transaction) => {
       const action = await AgentMCPActionModel.findOne({
@@ -1656,12 +1672,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       if (action.status === "blocked_child_action_input_required") {
         return;
       }
-      assert(
-        action.status === "running" ||
-          action.status === "ready_allowed_explicitly" ||
-          action.status === "ready_allowed_implicitly",
-        `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
-      );
+      if (
+        action.status !== "running" &&
+        action.status !== "ready_allowed_explicitly" &&
+        action.status !== "ready_allowed_implicitly"
+      ) {
+        throw new SandboxParentActionFinalError(this.sId, action.status);
+      }
 
       await action.update(
         { status: "blocked_child_action_input_required" },
