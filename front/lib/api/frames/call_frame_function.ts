@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { DustFileSystem } from "@app/lib/api/file_system";
+import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import { resolveActiveFrameFunctionForUse } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import type { Authenticator } from "@app/lib/auth";
@@ -71,11 +72,15 @@ export async function callFrameFunction(
     input?: unknown;
   }
 ): Promise<Result<CallFrameFunctionResult, CallFrameFunctionError>> {
-  // The agent calls what it just published, draft included.
+  // The agent calls what it just published when it can edit the Frame, draft included;
+  // otherwise it calls the live publication.
+  const frame = await FileResource.fetchById(auth, frameId);
+  const target =
+    frame && (await canWriteFrameV2Source(auth, frame)) ? "latest" : "live";
   const sandboxFunction = await resolveActiveFrameFunctionForUse(auth, {
     frameId,
     functionName,
-    target: "latest",
+    target,
   });
   if (!sandboxFunction) {
     return new Err(

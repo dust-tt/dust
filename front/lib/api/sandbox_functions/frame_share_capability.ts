@@ -22,7 +22,9 @@ import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
  * @cc [owner:davidebbo,label:product;security] frame-draft-functions-require-write-access
  * A draft publication's functions MUST resolve only when the caller asks for `target: "latest"`
  * and can write the Frame's source (`canWriteFrameV2Source`). Every other caller MUST resolve
- * against the live publication only.
+ * against the live publication only. The one exception is `allowInactiveFramePublication`
+ * resolution, used only to act on an existing invocation: it may resolve any publication because
+ * invocation reads are scoped to the caller's own invocations.
  */
 export async function resolveSandboxFunctionWithCapability(
   auth: Authenticator,
@@ -85,7 +87,9 @@ async function resolveFrameV2FunctionReference(
  * @cc [owner:davidebbo,label:product;security] frame-draft-functions-require-write-access
  * A draft publication's functions MUST resolve only when the caller asks for `target: "latest"`
  * and can write the Frame's source (`canWriteFrameV2Source`). Every other caller MUST resolve
- * against the live publication only.
+ * against the live publication only. The one exception is `allowInactiveFramePublication`
+ * resolution, used only to act on an existing invocation: it may resolve any publication because
+ * invocation reads are scoped to the caller's own invocations.
  */
 /** Resolve one function from the live or latest publication of a Frame the caller may use. */
 export async function resolveActiveFrameFunctionForUse(

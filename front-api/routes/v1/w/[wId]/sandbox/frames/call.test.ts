@@ -1,13 +1,18 @@
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFramePublicationFunctions } from "@app/tests/utils/FrameFunctionFactory";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
 import { frameV2ContentType } from "@app/types/files";
-import { getConversationFilesBasePath } from "@app/types/mount_path";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -199,6 +204,55 @@ describe("sandbox Frame calls", () => {
       functionName: "draft-only",
       result: { status: "ready" },
     });
+  });
+
+  it("calls the live function of a Frame the caller can use but not write", async () => {
+    const context = await setup();
+    // A Pod the caller is not a member of: the Frame is shared with the workspace, so the caller
+    // can use it, but Pod membership is what grants source write access.
+    const pod = await SpaceFactory.project(context.workspace);
+    const frame = await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: {
+        spaceId: pod.sId,
+        activePublicationId: "publication-live",
+      },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: context.workspace.sId,
+        podId: pod.sId,
+      })}Shared/manifest.json`,
+    });
+    await frame.setShareScope(context.auth, "workspace_and_emails");
+    for (const publicationId of ["publication-live", "publication-draft"]) {
+      await createTestFramePublicationFunctions(context.auth, {
+        frame,
+        publicationId,
+        slug: "get-status",
+      });
+    }
+    await frame.setDraftFramePublication({
+      publicationId: "publication-draft",
+    });
+
+    const response = await requestFrameCallById({
+      workspaceId: context.workspace.sId,
+      token: context.token,
+      frameId: frame.sId,
+    });
+
+    expect(response.status).toBe(200);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sandboxFunction: expect.objectContaining({
+          publicationId: "publication-live",
+        }),
+      })
+    );
   });
 
   it("calls an active Frame function resolved from its source folder", async () => {
