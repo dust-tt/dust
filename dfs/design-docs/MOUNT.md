@@ -66,19 +66,46 @@ after it was made. A shared writable `mmap` fails.
 - **Attributes, names and listings** are kept with the send time of their request and served
   until the TTL lapses. Names include misses, so a missing file is not asked for again.
 - **A lookup miss fetches the whole directory**: one `List` page (up to 4,096 entries, each with
-  its attributes) answers every later lookup in that directory. Larger directories use `Lookup`.
+  its attributes) answers every later lookup and `stat` in that directory, including the names it
+  does not hold. Directories known to be larger use `Lookup`, which also returns the attributes.
 - **File content** is kept by object and `content_version`, within a fixed memory budget: whole for
   files up to 1 MiB, in 64 KiB blocks for larger ones. It is served only while a live cached
-  attribute has the same `content_version`, so bytes outlive the TTL but are never stale. A miss
-  reads 1 MiB from the first block it needs, and reading a small file also fetches its small
-  siblings with one `ReadFiles`.
+  attribute has the same `content_version`, so bytes outlive the TTL but are never stale: once the
+  attribute expires, one `Stat` makes all the cached bytes of the file usable again. A miss on a
+  large file reads 1 MiB from the first block it needs.
+- **Directory handles**: `opendir` takes the listing once and `readdir` pages through it. A handle
+  older than the TTL is refreshed, resuming after the last name it listed.
+- **One fetch per file**: a read that needs bytes another request is already fetching waits for
+  that fetch instead of sending its own.
 - **No older replies**: a reply older than the mount's last committed change to an object is not
   cached for that object.
+
+### Prefetching
+
+Tools such as `rg`, `cat` or a build read many small files from the same directories. A read miss
+on a small file from its start fetches that file whole with one `ReadFiles`, and the same call
+brings its small siblings:
+
+- Siblings are the files of up to 256 KiB that follow it in the cached listing, wrapping around
+  to the start, since parallel walkers do not read in listing order. Files already cached, being
+  fetched or changed locally are skipped.
+- The first miss in a directory brings up to 16 siblings; later misses there fill the call (256
+  files).
+- The file and its siblings fit in one `ReadFiles` reply, so a miss still costs one round trip.
+
+A directory walk then costs about one `List` and a few `ReadFiles` per directory, instead of a
+`Lookup`, a `Stat` and a `Read` per file.
 
 ### Writes
 
 - **Local first**: a change is applied to a local overlay and acknowledged at once. Reads on the
   mount see the overlay over the server's state.
+- **Writes read nothing**: opening a file for writing fetches none of it. Reading a file with
+  uncommitted changes fetches only the bytes those changes do not cover, so appending to a large
+  file, or reading back a new one, downloads nothing. Once a change commits, its overlay is
+  dropped and its bytes come from the server again.
+- **Buffered writes**: a file's writes collect locally until the file is closed or the next
+  `Apply` is formed, and then leave as one operation.
 - **One ordered log**: changes become `Apply` operations in a log. One `Apply` is in flight at a
   time, in order, carrying as many operations as fit. Attribute changes fold into the previous
   operation on the same object, and consecutive writes to a file merge.
