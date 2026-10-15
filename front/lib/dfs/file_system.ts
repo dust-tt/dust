@@ -1,5 +1,4 @@
 import type { DfsClient } from "@app/lib/dfs/client";
-import { newDfsObjectId } from "@app/lib/dfs/object_id";
 import { formatDfsUri, parseDfsUri } from "@app/lib/dfs/uri";
 import type {
   DfsAttr,
@@ -161,9 +160,11 @@ async function* contentChunks(
  * @cc [owner:fabiencelier,label:product] chunked-writes
  * `write` MUST keep the ObjectId of an existing file. For an existing file, caller-supplied metadata
  * (MIME type) MUST be applied in its own `Apply` before the content changes, so that an invalid
- * value leaves the file unchanged; a new file MUST be created with it. Content MUST be written with one `Apply` per chunk, in order, the first one also creating or
- * truncating the file: content fitting in one chunk is replaced atomically, larger content is not,
- * and a failure leaves the content written so far in place.
+ * value leaves the file unchanged; a new file MUST be created with it in a separate `Apply` to
+ * obtain its server-assigned ID before writing. Content MUST be written with one `Apply` per chunk,
+ * in order, the first one also truncating an existing file. Replacing existing content fitting in
+ * one chunk is atomic; creation and multi-chunk writes are not. A failure leaves the content
+ * written so far in place.
  */
 /**
  * @cc [owner:fabiencelier,label:product] consistent-reads
@@ -331,12 +332,11 @@ export class DfsFileSystem {
       return existing;
     }
     if (!existing.value) {
-      const objectId = newDfsObjectId();
-      const created = await this.applyAll([
-        { type: "create", parentId, name, objectId, kind: "directory" },
+      const created = await this.applyForObject([
+        { type: "create", parentId, name, kind: "directory" },
       ]);
       if (created.isOk()) {
-        return new Ok(objectId);
+        return realIdOf(created.value.attr);
       }
       if (created.error.code !== "already_exists") {
         return created;
@@ -505,7 +505,6 @@ export class DfsFileSystem {
         type: "create",
         parentId: parentId.value,
         name,
-        objectId: newDfsObjectId(),
         kind: "directory",
       },
     ]);
@@ -715,7 +714,7 @@ export class DfsFileSystem {
     chunks: AsyncGenerator<Buffer>;
     mimeType: string | undefined;
   }): Promise<Result<DfsResolvedObject, DfsError>> {
-    let objectId: DfsObjectId;
+    let objectId: DfsObjectId | undefined;
     let operations: DfsOperation[];
     if (existing) {
       const existingId = realIdOf(existing);
@@ -733,14 +732,11 @@ export class DfsFileSystem {
       }
       operations = [{ type: "update", objectId, size: 0 }];
     } else if (target) {
-      // A failed create fails the following write with `not_found`.
-      objectId = newDfsObjectId();
       operations = [
         {
           type: "create",
           parentId: target.parentId,
           name: target.name,
-          objectId,
           kind: "file",
           mimeType,
         },
@@ -752,6 +748,19 @@ export class DfsFileSystem {
     let written: DfsResolvedObject | null = null;
     let offset = 0;
     for await (const data of chunks) {
+      // Creation must return its server-assigned ID before the first write.
+      if (objectId === undefined) {
+        const created = await this.applyForObject(operations);
+        if (created.isErr()) {
+          return created;
+        }
+        const createdId = realIdOf(created.value.attr);
+        if (createdId.isErr()) {
+          return createdId;
+        }
+        objectId = createdId.value;
+        operations = [];
+      }
       operations.push({ type: "write", objectId, offset, data, append: false });
       offset += data.length;
       const applied = await this.applyForObject(operations);

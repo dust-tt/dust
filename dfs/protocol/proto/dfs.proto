@@ -396,11 +396,17 @@ message Mutation {
 // @cc [owner:spolu,label:api] dfs-create-metadata-limits
 // Name MUST satisfy Attr's stored-basename limits. A supplied MIME type and xattrs MUST satisfy
 // ExtendedMetadata's limits, including the 32 KiB total xattr key/value budget.
+
+// @cc [owner:spolu,label:api;backend] dfs-create-identity
+// The server MUST generate each new object's UUIDv7 before the retrying transaction and keep it
+// unchanged across retries. A successful creation MUST return the ID in its mutation attributes
+// unless the object is replaced later in the batch.
 message CreateOperation {
+  reserved 3;
+  reserved "object_id";
+
   required ObjectId parent_id = 1;
   required string name = 2;
-  // The caller supplies a fresh UUIDv7.
-  required ObjectId object_id = 3;
   required ObjectKind kind = 4;
   optional string mime_type = 5;
   map<string, bytes> xattrs = 6;

@@ -101,6 +101,7 @@ attr_version, content_version, grants_version)`, with null for absent parents or
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
 Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, and an empty name.
 
+New object IDs are server-generated before the retrying transaction and reused across retries.
 Object creation validates all xattrs before staging writes and stores them with attributes and base
 metadata in the same transaction. A retry that finds exactly the attributes it would write succeeds
 without writing; any other occupant of the ID fails with `AlreadyExists`. Each xattr name is a

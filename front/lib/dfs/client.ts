@@ -97,6 +97,7 @@ function attrMatchesTarget(
  * Batch responses whose results do not line up with the request MUST yield `invalid_response`: a
  * result count different from the input count, or a successful result reporting an object other
  * than the one its input names (by id, or by name for lookups outside virtual `shared`).
+ * Create results have server-assigned IDs; any returned primary object MUST have a real ID.
  */
 export class DfsClient {
   constructor(
@@ -380,15 +381,18 @@ export class DfsClient {
       "Apply",
       () => ({ operations: operations.map(encodeOperation) }),
       WireOperationBatchSchema,
-      // The primary object, when it survives the request, is the operation's object.
+      // Create returns a new real ID; other operations retain the ID supplied in the request.
       ({ results }) =>
         results.length === operations.length &&
-        results.every(
-          (r, i) =>
-            r.status !== "ok" ||
-            !r.mutation.object ||
-            r.mutation.object.id === operations[i].objectId
-        )
+        results.every((r, i) => {
+          if (r.status !== "ok" || !r.mutation.object) {
+            return true;
+          }
+          const operation = operations[i];
+          return operation.type === "create"
+            ? isDfsObjectId(r.mutation.object.id)
+            : r.mutation.object.id === operation.objectId;
+        })
     );
   }
 

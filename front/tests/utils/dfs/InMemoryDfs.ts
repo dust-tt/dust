@@ -1,5 +1,5 @@
 import type { DfsFileSystemClient } from "@app/lib/dfs/file_system";
-import { newDfsObjectId } from "@app/lib/dfs/object_id";
+import { DfsWireFactory } from "@app/tests/utils/dfs/DfsWireFactory";
 import type {
   DfsAttr,
   DfsAttrBatch,
@@ -82,7 +82,7 @@ export class InMemoryDfs implements DfsFileSystemClient {
       maxReadBytes?: number;
     } = {}
   ) {
-    this.rootId = newDfsObjectId();
+    this.rootId = DfsWireFactory.newObjectId();
     this.nodes.set(
       this.rootId,
       this.newNode(this.rootId, null, "", "directory")
@@ -189,7 +189,7 @@ export class InMemoryDfs implements DfsFileSystemClient {
   /** Creates an empty directory outside any `apply`, e.g. to race a pending write. */
   createDirectory(parentId: DfsObjectId, name: string): DfsObjectId {
     const parent = this.directory(parentId);
-    const id = newDfsObjectId();
+    const id = DfsWireFactory.newObjectId();
     this.nodes.set(id, this.newNode(id, parent.id, name, "directory"));
     parent.children.set(name, id);
     this.touch(parent, { content: true });
@@ -204,7 +204,7 @@ export class InMemoryDfs implements DfsFileSystemClient {
     mimeType?: string
   ): DfsObjectId {
     const parent = this.directory(parentId);
-    const id = newDfsObjectId();
+    const id = DfsWireFactory.newObjectId();
     const node = this.newNode(id, parent.id, name, "file", mimeType);
     node.data = Buffer.from(data);
     this.nodes.set(id, node);
@@ -359,16 +359,17 @@ export class InMemoryDfs implements DfsFileSystemClient {
         checkName(op.name);
         checkMimeType(op.mimeType);
         const parent = this.directory(op.parentId);
-        if (parent.children.has(op.name) || this.nodes.has(op.objectId)) {
+        if (parent.children.has(op.name)) {
           throw new OperationError("already_exists");
         }
+        const objectId = DfsWireFactory.newObjectId();
         this.nodes.set(
-          op.objectId,
-          this.newNode(op.objectId, parent.id, op.name, op.kind, op.mimeType)
+          objectId,
+          this.newNode(objectId, parent.id, op.name, op.kind, op.mimeType)
         );
-        parent.children.set(op.name, op.objectId);
+        parent.children.set(op.name, objectId);
         this.touch(parent, { content: true });
-        return op.objectId;
+        return objectId;
       }
       case "update": {
         // Validate the whole patch before applying any of it.

@@ -185,7 +185,8 @@ describe("DfsFileSystem", () => {
       ["create"],
       // `a` already exists: only `x` and the file are created.
       ["create"],
-      ["create", "write"],
+      ["create"],
+      ["write"],
     ]);
     const existing = await fs.mkdir(at("a/b/c"));
     expect(existing.isErr() && existing.error.code).toBe("already_exists");
@@ -226,11 +227,39 @@ describe("DfsFileSystem", () => {
       expect(overwritten.value.attr.size).toBe(2);
     }
     expect(await readText(fs, at("notes.txt"))).toBe("xy");
-    expect(dfs.applyCalls).toHaveLength(2);
+    expect(dfs.applyCalls).toHaveLength(3);
     const stat = await fs.stat(at("notes.txt"), { includeMetadata: true });
     expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
       "text/plain"
     );
+  });
+
+  it("creates an empty file without sending a write", async () => {
+    const { dfs, fs, at } = setup();
+
+    const created = await fs.write(at("empty.txt"), "");
+
+    expect(created.isOk() && created.value.attr.size).toBe(0);
+    expect(dfs.applyCalls.map((ops) => ops.map((op) => op.type))).toEqual([
+      ["create"],
+    ]);
+    expect(await readText(fs, at("empty.txt"))).toBe("");
+  });
+
+  it("keeps a newly created file when its first content write fails", async () => {
+    const { dfs, fs, at } = setup({
+      failApply: (callIndex) =>
+        callIndex === 1 ? new DfsError("unavailable") : null,
+    });
+
+    const result = await fs.write(at("notes.txt"), "abc");
+
+    expect(result.isErr() && result.error.code).toBe("unavailable");
+    expect(dfs.applyCalls.map((ops) => ops.map((op) => op.type))).toEqual([
+      ["create"],
+      ["write"],
+    ]);
+    expect(await readText(fs, at("notes.txt"))).toBe("");
   });
 
   it("writes large streamed content chunk by chunk, keeping the file's id", async () => {
@@ -254,7 +283,7 @@ describe("DfsFileSystem", () => {
     }
     expect(await readText(fs, at("data.bin"))).toBe("0123456789");
     // The MIME type on its own, then the truncation with the first chunk, then one apply per chunk.
-    const writeCalls = dfs.applyCalls.slice(1);
+    const writeCalls = dfs.applyCalls.slice(2);
     expect(writeCalls.map((ops) => ops.map((op) => op.type))).toEqual([
       ["update"],
       ["update", "write"],
@@ -283,9 +312,9 @@ describe("DfsFileSystem", () => {
 
   it("leaves the content written so far when a chunk fails", async () => {
     const { fs, at } = setup({
-      // Apply #0 is the initial small write, #1 the first chunk, #2 the second one.
+      // Apply #0 creates the file, #1 writes it, #2 replaces the first chunk, #3 the second one.
       failApply: (callIndex) =>
-        callIndex === 2 ? new DfsError("unavailable") : null,
+        callIndex === 3 ? new DfsError("unavailable") : null,
     });
     await fs.write(at("data.bin"), "old");
 

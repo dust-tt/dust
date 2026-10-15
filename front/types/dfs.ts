@@ -176,8 +176,6 @@ export interface DfsCreateOperation {
   type: "create";
   parentId: DfsObjectId;
   name: string;
-  // Fresh UUIDv7 supplied by the caller, see `newDfsObjectId`.
-  objectId: DfsObjectId;
   kind: DfsObjectKind;
   mimeType?: string;
   xattrs?: Record<string, Uint8Array>;

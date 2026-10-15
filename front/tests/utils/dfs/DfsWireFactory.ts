@@ -1,8 +1,17 @@
 import type { DfsWireMessage } from "@app/lib/dfs/proto";
+import type { DfsObjectId } from "@app/types/dfs";
 
 // Sync, in-memory factory for dfs wire messages (the protobufjs object form of `dfs.proto`), for
 // tests that fake dfs server answers. Ids are 32-char hex UUIDv7 strings.
 export class DfsWireFactory {
+  private static objectIdSequence = 0;
+
+  // Deterministic UUIDv7-shaped IDs for fixtures.
+  static newObjectId(): DfsObjectId {
+    const sequence = ++DfsWireFactory.objectIdSequence;
+    return `0190c3a0b1c270008000${sequence.toString(16).padStart(12, "0")}`;
+  }
+
   static objectId(id: string): DfsWireMessage {
     return { value: Buffer.from(id, "hex") };
   }

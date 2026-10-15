@@ -642,10 +642,10 @@ Mutation {
 ```
 
 Operations run in order within one FDB transaction, including operations on different objects.
-Later operations see earlier successful changes, so a request may create a directory, create a file
-within it, and write that file. Transaction write budgets may reject the request with `CAPACITY`
-even when its input fits. All required results and final attributes must fit within the 4 MiB
-encoded response budget. If the transaction or response budget cannot be met, `Apply` fails with
+Later operations see earlier successful changes. Newly created IDs are returned by the server, so
+operations targeting those objects require a subsequent request. Transaction write budgets may reject
+the request with `CAPACITY` even when its input fits. All required results and final attributes must
+fit within the 4 MiB encoded response budget. If either budget cannot be met, `Apply` fails with
 `CAPACITY` before committing any changes.
 
 Each operation must finish filesystem validation before staging any writes. A validation failure
@@ -679,15 +679,16 @@ Creates an empty file or directory under an authorized real directory.
 CreateOperation {
   parent_id: ObjectId
   name: string
-  object_id: ObjectId            // Fresh UUIDv7 supplied by the caller.
   kind: ObjectKind               // FILE or DIRECTORY; SYMLINK fails with UNSUPPORTED.
   mime_type?: string             // Defaults to inode/directory or application/octet-stream.
   xattrs: map<string, bytes>
 }
 ```
 
-**Successful result:** `mutation.object` contains the created object's final attributes, unless a
-later operation in the same request removes it. Name or ID collisions fail with `ALREADY_EXISTS`.
+The server generates a UUIDv7 before the retrying transaction and reuses it across retries.
+
+**Successful result:** `mutation.object` contains its ID and final attributes, unless a later
+operation replaces it. Name collisions fail with `ALREADY_EXISTS`.
 The name `shared` is reserved directly under the tenant root, where virtual `shared` lives: creating
 it there fails with `ALREADY_EXISTS`. Deeper directories accept it.
 

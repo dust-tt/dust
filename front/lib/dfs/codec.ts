@@ -391,7 +391,6 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
         create: {
           parentId: encodeObjectId(operation.parentId),
           name: operation.name,
-          objectId: encodeObjectId(operation.objectId),
           kind: encodeObjectKind(operation.kind),
           mimeType: operation.mimeType,
           xattrs: operation.xattrs ?? {},

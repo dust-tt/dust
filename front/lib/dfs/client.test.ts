@@ -1,12 +1,11 @@
 // @vitest-environment node
 import { DfsClient } from "@app/lib/dfs/client";
 import { MAX_UINT64 } from "@app/lib/dfs/codec";
-import { newDfsObjectId } from "@app/lib/dfs/object_id";
 import type { DfsMethod } from "@app/lib/dfs/proto";
 import { DfsWireFactory } from "@app/tests/utils/dfs/DfsWireFactory";
 import type { FakeDfsAnswer } from "@app/tests/utils/dfs/FakeDfsTransport";
 import { FakeDfsTransport } from "@app/tests/utils/dfs/FakeDfsTransport";
-import { DfsError, isDfsObjectId } from "@app/types/dfs";
+import { DfsError } from "@app/types/dfs";
 import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it } from "vitest";
 
@@ -225,7 +224,7 @@ describe("DfsClient", () => {
   });
 
   it("reads several files, including empty and failed ones", async () => {
-    const otherId = newDfsObjectId();
+    const otherId = DfsWireFactory.newObjectId();
     const { client } = setup({
       ReadFiles: new Ok({
         results: [
@@ -256,7 +255,7 @@ describe("DfsClient", () => {
   });
 
   it("applies operations in order and returns per-operation outcomes", async () => {
-    const newId = newDfsObjectId();
+    const newId = DfsWireFactory.newObjectId();
     const { client, transport } = setup({
       Apply: new Ok({
         results: [
@@ -268,7 +267,7 @@ describe("DfsClient", () => {
           },
           {
             mutation: {
-              object: wireAttr(newId, { size: "5" }),
+              object: wireAttr(FILE_ID, { size: "5" }),
               related: [],
             },
           },
@@ -284,13 +283,12 @@ describe("DfsClient", () => {
           type: "create",
           parentId: ROOT_ID,
           name: "new.txt",
-          objectId: newId,
           kind: "file",
           xattrs: { "user.k": Buffer.from("v") },
         },
         {
           type: "write",
-          objectId: newId,
+          objectId: FILE_ID,
           offset: 0,
           data: Buffer.from("hello"),
           append: false,
@@ -312,14 +310,13 @@ describe("DfsClient", () => {
           create: {
             parentId: wireId(ROOT_ID),
             name: "new.txt",
-            objectId: wireId(newId),
             kind: "FILE",
             xattrs: { "user.k": Buffer.from("v") },
           },
         },
         {
           write: {
-            objectId: wireId(newId),
+            objectId: wireId(FILE_ID),
             offset: "0",
             data: Buffer.from("hello"),
             append: false,
@@ -731,12 +728,24 @@ describe("DfsClient", () => {
     expect(transport.calls).toHaveLength(0);
   });
 
-  it("generates UUIDv7 object ids", () => {
-    const id = newDfsObjectId();
-    expect(isDfsObjectId(id)).toBe(true);
-    // The first 48 bits are the creation time in milliseconds.
-    expect(Math.abs(parseInt(id.slice(0, 12), 16) - Date.now())).toBeLessThan(
-      60_000
-    );
+  it("rejects a virtual object returned by create", async () => {
+    const { client } = setup({
+      Apply: new Ok({
+        results: [
+          {
+            mutation: {
+              object: wireAttr(FILE_ID, { id: { shared: true } }),
+              related: [],
+            },
+          },
+        ],
+      }),
+    });
+    const res = await client.apply({
+      operations: [
+        { type: "create", parentId: ROOT_ID, name: "file", kind: "file" },
+      ],
+    });
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
   });
 });

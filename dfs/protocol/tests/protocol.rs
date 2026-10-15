@@ -193,7 +193,6 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
             rpc::Operation {
                 operation: Some(rpc::operation::Operation::Create(rpc::CreateOperation {
                     parent_id,
-                    object_id,
                     name: "file".into(),
                     ..Default::default()
                 })),
