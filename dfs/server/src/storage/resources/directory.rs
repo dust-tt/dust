@@ -18,8 +18,11 @@ use crate::{
     },
 };
 
+mod lookup;
+
 const FAMILY: &str = "child";
 const PAGE_MAX_ENTRIES: usize = 4_096;
+pub const VIRTUAL_SHARED_NAME: &str = "shared";
 
 #[derive(Debug)]
 pub enum Error {
@@ -31,6 +34,7 @@ pub enum Error {
     TimestampGeneration,
     InvalidPageLimit,
     InvalidCursor,
+    SharedUnsupported,
     Object(object::Error),
 }
 
@@ -45,6 +49,7 @@ impl fmt::Display for Error {
             Self::TimestampGeneration => f.write_str("child timestamp generation failed"),
             Self::InvalidPageLimit => f.write_str("invalid child page limit"),
             Self::InvalidCursor => f.write_str("invalid child cursor"),
+            Self::SharedUnsupported => f.write_str("virtual shared children are not supported"),
             Self::Object(error) => error.fmt(f),
         }
     }
@@ -99,6 +104,10 @@ impl DirectoryResource {
     /**
      * @cc [owner:spolu,label:backend;error-handling] directory-create-input-id
      * An invalid child object ID MUST return Object(InvalidId) without staging writes.
+     *
+     * @cc [owner:pmilliotte,label:product] root-reserves-shared-name
+     * Under the tenant root, a child named `shared` MUST fail with AlreadyExists without writing,
+     * so it never collides with virtual `shared` at virtual root. Other directories MUST accept it.
      */
     pub async fn create_child(
         &mut self,
@@ -113,6 +122,9 @@ impl DirectoryResource {
             .validate()
             .map_err(|_| Error::Object(object::Error::InvalidId))?;
         Self::validate_name(&name)?;
+        if self.is_tenant_root() && name == VIRTUAL_SHARED_NAME {
+            return Err(Error::AlreadyExists.into());
+        }
         if kind == ObjectKind::Symlink {
             return Err(Error::UnsupportedKind.into());
         }
@@ -208,6 +220,10 @@ impl DirectoryResource {
             entries,
             next_after: page.next_after,
         })
+    }
+
+    fn is_tenant_root(&self) -> bool {
+        self.object.object_id == self.object.tenant.root_id
     }
 
     fn children_subspace(&self) -> Subspace {

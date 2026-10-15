@@ -6,7 +6,7 @@ use tonic::Status;
 
 use crate::storage::{
     self,
-    resources::{file, object, session, tenant},
+    resources::{directory, file, object, session, tenant},
 };
 
 #[cfg(test)]
@@ -109,6 +109,50 @@ impl From<object::Error> for Status {
 
 impl From<storage::Error<object::Error>> for storage::Error<Status> {
     fn from(error: storage::Error<object::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
+    }
+}
+
+impl From<directory::Error> for ErrorCode {
+    fn from(error: directory::Error) -> Self {
+        match error {
+            directory::Error::InvalidName
+            | directory::Error::InvalidPageLimit
+            | directory::Error::InvalidCursor => ErrorCode::InvalidInput,
+            directory::Error::NameTooLong => ErrorCode::NameTooLong,
+            directory::Error::NotDirectory => ErrorCode::NotDirectory,
+            directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            directory::Error::UnsupportedKind | directory::Error::SharedUnsupported => {
+                ErrorCode::Unsupported
+            }
+            directory::Error::Object(error) => error.into(),
+            directory::Error::TimestampGeneration => {
+                tracing::error!(%error, "directory operation failed");
+                ErrorCode::Internal
+            }
+        }
+    }
+}
+
+impl From<directory::Error> for ErrorDetails {
+    fn from(error: directory::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<directory::Error> for Status {
+    fn from(error: directory::Error) -> Self {
+        status(error.into())
+    }
+}
+
+impl From<storage::Error<directory::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<directory::Error>) -> Self {
         match error {
             storage::Error::Transaction(error) => Self::Transaction(error),
             error => Self::Resource(error.into()),

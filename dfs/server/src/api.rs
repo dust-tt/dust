@@ -4,8 +4,8 @@ use dfs_protocol::{
     READ_FILES_MAX_OBJECTS, STAT_MAX_REFERENCES,
     error::status,
     rpc::{
-        ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
-        EntryPage, ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
+        ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
+        ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
         LookupRequest, OperationBatch, ReadData, ReadFilesRequest, ReadRequest,
         RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
         UpdateGrantsRequest, dfs_server::Dfs,
@@ -20,6 +20,7 @@ use crate::{
     storage::{
         self, fdb,
         resources::{
+            directory::DirectoryResource,
             file::FileResource,
             object::{self, ObjectResource},
             session::SessionResource,
@@ -33,6 +34,8 @@ mod errors;
 
 // Reserve space for each result's attributes, error, and protobuf framing, without metadata.
 const READ_FILES_RESULT_OVERHEAD_BYTES: usize = 512;
+
+const LOOKUP_MAX_TARGETS: usize = 256;
 
 #[cfg(test)]
 #[path = "../tests/api/read_files_budget.rs"]
@@ -221,29 +224,38 @@ impl Dfs for API {
             async move { ObjectResource::stat(&tx, session, object_ids, include_metadata).await }
         })
         .await?;
-        let results = attributes
-            .into_iter()
-            .map(|result| match result {
-                Ok(object) => AttrResult {
-                    object: Some(object),
-                    error: None,
-                },
-                Err(error) => AttrResult {
-                    object: None,
-                    error: Some(error.into()),
-                },
-            })
-            .collect();
-        let response = AttrBatch { results };
-        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
-            return Err(status(ErrorCode::Capacity));
-        }
-        Ok(Response::new(response))
+        let batch: AttrBatch = attributes.into_iter().collect();
+        Ok(Response::new(within_message_budget(batch)?))
     }
 
+    /**
+     * @cc [owner:pmilliotte,label:api;security] lookup-batch-results
+     * Lookup MUST accept 1-256 targets and preserve their order and duplicates. Missing or
+     * unreadable parents and children MUST return per-result NOT_FOUND without dropping other
+     * results; NOT_DIRECTORY MUST only reveal readable parents. Each result MUST contain exactly
+     * one of object or error. Responses larger than the encoded message budget MUST fail with
+     * CAPACITY.
+     */
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let LookupRequest {
+            targets,
+            include_metadata,
+        } = request.into_inner();
+        if targets.is_empty() || targets.len() > LOOKUP_MAX_TARGETS {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        let include_metadata = include_metadata.unwrap_or(false);
+        let attributes = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let targets = &targets;
+            async move {
+                DirectoryResource::lookup_for_session(&tx, session, targets, include_metadata).await
+            }
+        })
+        .await?;
+        let batch: AttrBatch = attributes.into_iter().collect();
+        Ok(Response::new(within_message_budget(batch)?))
     }
 
     async fn list(&self, request: Request<ListRequest>) -> Result<Response<EntryPage>, Status> {
@@ -276,10 +288,7 @@ impl Dfs for API {
             }
         })
         .await?;
-        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
-            return Err(status(ErrorCode::Capacity));
-        }
-        Ok(Response::new(response))
+        Ok(Response::new(within_message_budget(response)?))
     }
 
     /**
@@ -354,6 +363,13 @@ impl Dfs for API {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
+}
+
+fn within_message_budget<M: Message>(message: M) -> Result<M, Status> {
+    if message.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+        return Err(status(ErrorCode::Capacity));
+    }
+    Ok(message)
 }
 
 /**

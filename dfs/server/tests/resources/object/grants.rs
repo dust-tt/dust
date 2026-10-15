@@ -18,7 +18,7 @@ use foundationdb::{
 
 use super::StoredObject;
 
-pub(super) fn allow(subject: &str, mode: u32) -> Grant {
+pub(crate) fn allow(subject: &str, mode: u32) -> Grant {
     Grant {
         kind: Some(grant::Kind::Allow(AllowGrant {
             subject: subject.to_owned(),
@@ -27,7 +27,7 @@ pub(super) fn allow(subject: &str, mode: u32) -> Grant {
     }
 }
 
-pub(super) fn deny(mode: u32) -> Grant {
+pub(crate) fn deny(mode: u32) -> Grant {
     Grant {
         kind: Some(grant::Kind::Deny(DenyGrant { mode })),
     }

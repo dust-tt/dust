@@ -7,6 +7,7 @@ pub mod rpc {
     tonic::include_proto!("dfs.v1");
 }
 
+mod attr_batch;
 pub mod error;
 mod id;
 mod reference;

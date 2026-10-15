@@ -11,3 +11,6 @@ pub mod tenant;
  * Session subjects and ALLOW grant subjects MUST use this shared maximum of 1,024 UTF-8 bytes.
  */
 const SUBJECT_MAX_BYTES: usize = 1_024;
+
+/// Caps in-flight FDB reads; each buffered task must keep at most one read in flight.
+const CONCURRENT_READS: usize = 32;

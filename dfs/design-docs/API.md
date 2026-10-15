@@ -486,6 +486,14 @@ result without preventing other results. For each real parent, the caller must h
 directory. Results use the same attribute/error shape, per-object store versions, metadata option,
 and 4 MiB response budget as `Stat`.
 
+A missing or unreadable parent also produces `NOT_FOUND`, even when the child itself is readable
+through an ALLOW attached to it; such entry points are reached through `shared`. `NOT_DIRECTORY` is
+only returned for a readable parent that is a file. Invalid names fail their own result with
+`INVALID_INPUT` or `NAME_TOO_LONG`; an invalid parent reference fails the whole request with
+`INVALID_INPUT`. Under virtual `root`, the stored root's read access is not required, each child is
+still checked, and the name `shared` resolves to virtual `shared`. Lookups under virtual `shared`
+currently fail with `UNSUPPORTED`.
+
 ### List
 
 Lists a directory's immediate children with their attributes.
@@ -680,6 +688,8 @@ CreateOperation {
 
 **Successful result:** `mutation.object` contains the created object's final attributes, unless a
 later operation in the same request removes it. Name or ID collisions fail with `ALREADY_EXISTS`.
+The name `shared` is reserved directly under the tenant root, where virtual `shared` lives: creating
+it there fails with `ALREADY_EXISTS`. Deeper directories accept it.
 
 ### update operation
 
