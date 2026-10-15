@@ -1,0 +1,14 @@
+<svg width="298" height="138" viewBox="0 0 298 138" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="298" height="138" fill="#E9F7FF"/>
+<path d="M98 18H164C168.418 18 172 21.5817 172 26V72C172 76.4183 168.418 80 164 80H118L106 96V80H98C93.5817 80 90 76.4183 90 72V26C90 21.5817 93.5817 18 98 18Z" fill="#9FDBFF"/>
+<text x="113" y="60" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#1C91FF">A</text>
+<path d="M144 46H202C206.418 46 210 49.5817 210 54V98C210 102.418 206.418 106 202 106H194V124L180 106H144C139.582 106 136 102.418 136 98V54C136 49.5817 139.582 46 144 46Z" fill="#1C91FF"/>
+<text x="173" y="90" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF">FR</text>
+<g transform="rotate(-10 212 42)">
+<rect x="198" y="33" width="10" height="19" rx="2" fill="#0055A4"/>
+<rect x="207" y="33" width="10" height="19" fill="#FFFFFF"/>
+<rect x="216" y="33" width="10" height="19" rx="2" fill="#EF4135"/>
+<rect x="198.5" y="33.5" width="27" height="18" rx="2" stroke="#000000" stroke-opacity="0.08"/>
+</g>
+<path d="M160 114C160.6 117.4 161.6 118.4 165 119C161.6 119.6 160.6 120.6 160 124C159.4 120.6 158.4 119.6 155 119C158.4 118.4 159.4 117.4 160 114Z" fill="#1C91FF"/>
+</svg>

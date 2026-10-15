@@ -114,6 +114,7 @@ interface UserSettingsPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   owner: WorkspaceType;
+  initialSection?: SettingsSection;
 }
 
 // ─── Shared section wrapper ───────────────────────────────────────────────────
@@ -1003,14 +1004,20 @@ const NAV_ITEMS: Array<{
   { section: "invitations", icon: Mail01, label: msg`Invitations` },
 ];
 
+/**
+ * @cc [owner:sfriquet,label:product;react] opens-on-initial-section
+ * Each time the popover opens, the active section MUST be `initialSection`, or `"personal"` when
+ * it is not provided.
+ */
 export function UserSettingsPopover({
   open,
   onOpenChange,
   owner,
+  initialSection = "personal",
 }: UserSettingsPopoverProps) {
   const { t } = useLingui();
   const [activeSection, setActiveSection] =
-    useState<SettingsSection>("personal");
+    useState<SettingsSection>(initialSection);
 
   const { hasFeature } = useFeatureFlags();
   const hasUserMemory = hasFeature("user_memory");
@@ -1042,10 +1049,10 @@ export function UserSettingsPopover({
 
   useEffect(() => {
     if (open) {
-      setActiveSection("personal");
+      setActiveSection(initialSection);
       void mutateAuthContext();
     }
-  }, [open, mutateAuthContext]);
+  }, [open, initialSection, mutateAuthContext]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
