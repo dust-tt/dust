@@ -35,7 +35,9 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   const localeOverride = useLocaleOverride();
   const locale = localeOverride ?? userLocale;
   const formatLocale =
-    localeOverride === PSEUDO_LOCALE ? DEFAULT_LOCALE : locale;
+    localeOverride === PSEUDO_LOCALE
+      ? DEFAULT_LOCALE
+      : (localeOverride ?? userLocale);
 
   useLocaleSync({ locale, formatLocale, onReady });
 
