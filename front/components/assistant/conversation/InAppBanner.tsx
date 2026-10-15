@@ -5,7 +5,6 @@ import {
 } from "@app/components/assistant/conversation/FrenchLanguageBanner";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { useUserLocale } from "@app/hooks/useUserLocale";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { CONVERSATIONAL_BUILDING_SKILL_ID } from "@app/lib/skills/conversational_building";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -131,12 +130,11 @@ interface StackedInAppBannersProps {
 /**
  * @cc [owner:sfriquet,label:product] french-banner-audience
  * `FrenchLanguageBanner` MUST be shown only when the browser's preferred language
- * (`navigator.language`) is French, the `localisation` flag is enabled, the user locale is not
- * `fr-FR`, and `FRENCH_LANGUAGE_BANNER_LOCAL_STORAGE_KEY` is not `"true"`. While it is shown, no
- * other banner MUST be shown.
+ * (`navigator.language`) is French, the user locale is not `fr-FR`, and
+ * `FRENCH_LANGUAGE_BANNER_LOCAL_STORAGE_KEY` is not `"true"`. While it is shown, no other banner
+ * MUST be shown.
  */
 export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
-  const { hasFeature } = useFeatureFlags();
   const { userLocale } = useUserLocale({ owner });
   const [showFrenchLanguageBanner, setShowFrenchLanguageBanner] = useState(
     () =>
@@ -144,9 +142,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
         "true" && isFrenchBrowser()
   );
   const isFrenchLanguageBannerVisible =
-    hasFeature("localisation") &&
-    userLocale !== "fr-FR" &&
-    showFrenchLanguageBanner;
+    userLocale !== "fr-FR" && showFrenchLanguageBanner;
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { hasPermission } = useWorkspacePermissions();
   const canBuild =
