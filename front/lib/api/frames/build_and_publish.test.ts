@@ -292,6 +292,7 @@ describe("buildAndPublishFramePublication", () => {
     const { auth, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: [
@@ -320,6 +321,7 @@ describe("buildAndPublishFramePublication", () => {
     const { auth, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: sourceFiles.slice(0, 1),
@@ -344,6 +346,7 @@ describe("buildAndPublishFramePublication", () => {
     const { auth, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: [
@@ -387,6 +390,7 @@ describe("buildAndPublishFramePublication", () => {
       );
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest,
       sourceFiles,
@@ -549,6 +553,7 @@ describe("buildAndPublishFramePublication", () => {
     );
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest: functionsAndDatabaseManifest,
       sourceFiles: sourceFilesWithDatabase,
@@ -623,6 +628,7 @@ describe("buildAndPublishFramePublication", () => {
     );
 
     const published = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest: databaseManifest,
       sourceFiles: dbOnlySources,
@@ -664,6 +670,7 @@ describe("buildAndPublishFramePublication", () => {
     });
 
     const failed = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest,
       sourceFiles,
@@ -690,6 +697,7 @@ describe("buildAndPublishFramePublication", () => {
     });
 
     const published = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest,
       sourceFiles,
@@ -715,6 +723,7 @@ describe("buildAndPublishFramePublication", () => {
     );
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest,
       sourceFiles,
@@ -746,6 +755,7 @@ describe("buildAndPublishFramePublication", () => {
       });
 
       const result = await build(auth, {
+        mode: "live",
         frame,
         manifest,
         sourceFiles: [
@@ -774,6 +784,7 @@ describe("buildAndPublishFramePublication", () => {
     const { auth, frame, sandbox } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
+      mode: "live",
       frame,
       manifest,
       sourceFiles: [
