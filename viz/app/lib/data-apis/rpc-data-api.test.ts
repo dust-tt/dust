@@ -2,7 +2,11 @@ import { CacheDataAPI } from "@viz/app/lib/data-apis/cache-data-api";
 import { HybridDataAPI } from "@viz/app/lib/data-apis/hybrid-data-api";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("sandbox function data APIs", () => {
   it("loads workspace-scoped identity over RPC", async () => {
@@ -268,16 +272,7 @@ describe("revision-aware file access", () => {
   });
 
   it("reads fresh files and revisions before and after a shared-view write", async () => {
-    const cache = new CacheDataAPI(
-      [
-        {
-          fileId: "./notes.json",
-          data: btoa("Cached content"),
-          mimeType: "application/json",
-        },
-      ],
-      "Published code"
-    );
+    const cache = new CacheDataAPI({ code: "Published code" });
     const sendMessage = vi
       .fn()
       .mockResolvedValueOnce({
@@ -311,13 +306,11 @@ describe("revision-aware file access", () => {
   });
 
   it("keeps the shared snapshot readable when source access is denied", async () => {
-    const cache = new CacheDataAPI([
-      {
-        fileId: "./notes.json",
-        data: btoa("{}"),
-        mimeType: "application/json",
-      },
-    ]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}"))
+    );
+    const cache = new CacheDataAPI({ accessToken: "token" });
     const denied = {
       success: false,
       error: { code: "read_only", message: "You cannot edit this file." },
