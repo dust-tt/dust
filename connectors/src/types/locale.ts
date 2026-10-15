@@ -4,7 +4,7 @@
  * connectors cannot import: the locales are defined there and edited in both files.
  */
 
-export const SUPPORTED_LOCALES = ["en-US", "en-GB", "fr-FR"] as const;
+export const SUPPORTED_LOCALES = ["en-US", "en-GB", "fr-FR", "de-DE"] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -23,6 +23,7 @@ export const CATALOG_LOCALE_BY_LOCALE: Record<SupportedLocale, CatalogLocale> =
     "en-US": "en-US",
     "en-GB": "en-GB",
     "fr-FR": "fr-FR",
+    "de-DE": "en-US",
   };
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {

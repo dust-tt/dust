@@ -1541,6 +1541,7 @@ const CATALOG_LOCALE_BY_FORMAT_LOCALE: Record<
   "en-US": "en-US",
   "en-GB": "en-GB",
   "fr-FR": "fr-FR",
+  "de-DE": "en-US",
 };
 
 const localizedUsageColumns: ColumnDef<UsageRow>[] = [

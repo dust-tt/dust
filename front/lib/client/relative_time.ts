@@ -28,6 +28,7 @@ const SHORT_FORM_STYLE_BY_LOCALE: Record<
   "en-US": "narrow",
   "en-GB": "narrow",
   "fr-FR": "short",
+  "de-DE": "short",
 };
 
 /**

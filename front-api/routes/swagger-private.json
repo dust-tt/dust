@@ -11487,7 +11487,8 @@
             "enum": [
               "en-US",
               "en-GB",
-              "fr-FR"
+              "fr-FR",
+              "de-DE"
             ],
             "description": "Default language of the product UI for the workspace members"
           },
@@ -15248,7 +15249,8 @@
             "enum": [
               "en-US",
               "en-GB",
-              "fr-FR"
+              "fr-FR",
+              "de-DE"
             ],
             "description": "Default language of the product UI for the workspace members",
             "example": "en-US"

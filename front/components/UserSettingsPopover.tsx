@@ -24,6 +24,7 @@ import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibilit
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useSelectableLocales } from "@app/hooks/useSelectableLocales";
 import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
@@ -46,7 +47,7 @@ import {
 } from "@app/types/api/me/memory";
 import { JOB_TYPES } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
-import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
+import { LOCALE_LABELS } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -547,6 +548,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
     isSaving: isSavingLocale,
     doUpdateUserLocale,
   } = useUserLocale({ owner });
+  const selectableLocales = useSelectableLocales();
   const [localLocale, setLocalLocale] = useState<SupportedLocale | null>(null);
 
   const modEnterLabel = isMac ? t`Cmd + Enter (⌘ + ↵)` : t`Ctrl + Enter`;
@@ -658,7 +660,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent mountPortalContainer={portalContainer}>
                 <DropdownMenuRadioGroup value={localLocale ?? userLocale}>
-                  {SUPPORTED_LOCALES.map((locale) => (
+                  {selectableLocales.map((locale) => (
                     <DropdownMenuRadioItem
                       key={locale}
                       value={locale}

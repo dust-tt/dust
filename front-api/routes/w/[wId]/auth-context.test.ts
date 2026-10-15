@@ -68,7 +68,7 @@ describe("GET /api/w/:wId/auth-context user locale", () => {
 
     expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
 
-    await user.setMetadata(USER_LOCALE_METADATA_KEY, "de-DE");
+    await user.setMetadata(USER_LOCALE_METADATA_KEY, "es-ES");
     expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
   });
 

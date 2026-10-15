@@ -246,6 +246,7 @@ const SIDEKICK_TRIGGERS_UI_LABELS_BY_LOCALE: Record<
   "en-US": EN_SIDEKICK_TRIGGERS_UI_LABELS,
   "en-GB": EN_SIDEKICK_TRIGGERS_UI_LABELS,
   "fr-FR": FR_SIDEKICK_TRIGGERS_UI_LABELS,
+  "de-DE": EN_SIDEKICK_TRIGGERS_UI_LABELS,
 };
 
 function triggersAndSchedulesSection(locale: SupportedLocale | null): string {
@@ -299,6 +300,12 @@ const FR_SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
   "Vous ne savez pas par où commencer ?\nDites-moi ce que votre agent doit faire, je vous aiderai à rédiger ses instructions et à le configurer.",
 ];
 
+const DE_SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
+  "Brauchen Sie Hilfe?\nErzählen Sie mir, was Sie bauen, und ich helfe Ihnen, die Anweisungen zu schreiben und alles einzurichten.",
+  "Möchten Sie Hilfe bei der Einrichtung?\nBeschreiben Sie, was Ihr Agent tun soll, und ich helfe Ihnen, seine Anweisungen zu entwerfen.",
+  "Sie wissen nicht, wo Sie anfangen sollen?\nSagen Sie mir, was Ihr Agent tun soll – ich helfe Ihnen, seine Anweisungen zu schreiben und ihn zu konfigurieren.",
+];
+
 const SIDEKICK_NEW_AGENT_STATIC_RESPONSES_BY_LOCALE: Record<
   SupportedLocale,
   string[]
@@ -306,6 +313,7 @@ const SIDEKICK_NEW_AGENT_STATIC_RESPONSES_BY_LOCALE: Record<
   "en-US": EN_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
   "en-GB": EN_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
   "fr-FR": FR_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
+  "de-DE": DE_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
 };
 
 function getSidekickNewAgentStaticResponse(
