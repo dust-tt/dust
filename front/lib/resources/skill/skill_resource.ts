@@ -849,6 +849,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             userFacingDescription: "",
             instructions: "",
             status: "pending",
+            source: "agent",
             availability: "editors",
             editedBy: user.id,
             requestedSpaceIds: [globalSpace.id],

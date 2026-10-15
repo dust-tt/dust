@@ -184,14 +184,6 @@ SkillConfigurationModel.init(
   {
     modelName: "skill_configuration",
     sequelize: frontSequelize,
-    hooks: {
-      beforeCreate: (skill) => {
-        // Pending configs are placeholders for conversational agent-created skills.
-        if (skill.status === "pending" && isNil(skill.source)) {
-          skill.source = "agent";
-        }
-      },
-    },
     indexes: [
       {
         fields: ["workspaceId", "status"],
