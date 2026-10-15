@@ -21,7 +21,7 @@ const HOMEPAGE_ANNOUNCEMENTS: HomepageAnnouncementEntry[] = [
   {
     icon: FigmaLogo,
     label: msg`Figma MCP is now available`,
-    href: "https://dust.tt/integrations",
+    href: "https://dust.tt/integrations/figma",
     target: "_blank",
   },
 ];
