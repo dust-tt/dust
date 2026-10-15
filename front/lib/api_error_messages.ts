@@ -391,11 +391,6 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   bigquery_locations_check_failed: msg`Couldn't list the BigQuery project's locations. Check the credentials and their permissions.`,
 };
 
-export type FormatErrorOptions = {
-  /** Whether the `localisation` feature flag is enabled for the current workspace. */
-  hasLocalisation: boolean;
-};
-
 export type FormattedError = {
   /** User-facing description of what failed. */
   description: string;
@@ -418,84 +413,33 @@ function getRawDetails(error: unknown): string | undefined {
   return lines.length > 0 ? lines.join("\n") : undefined;
 }
 
-// The untranslated message of a value, or of the error it wraps (`{ error: { message } }`).
-// Stops on self-referential wrappers instead of looping forever.
-function getRawMessage(error: unknown): string | undefined {
-  const seen = new Set<object>();
-  let current = error;
-  while (
-    typeof current === "object" &&
-    current !== null &&
-    !seen.has(current)
-  ) {
-    seen.add(current);
-    if (
-      "message" in current &&
-      typeof current.message === "string" &&
-      current.message
-    ) {
-      return current.message;
-    }
-    if (!("error" in current)) {
-      return undefined;
-    }
-    current = current.error;
-  }
-  return undefined;
-}
-
-/**
- * @cc [owner:Nils-Fedrigo,label:error-handling;product] error-translation-behind-localisation-flag
- * When `hasLocalisation` is false, `formatError` MUST return no `details`, and as `description` the
- * raw `message` of the value (an API error, an `APIErrorResponse`, an `Error`, or any value
- * wrapping one as `{ error: { message } }`), falling back to `UNEXPECTED_ERROR_MESSAGE` only when
- * there is none, so workspaces without the flag keep seeing the messages they saw before. Callers
- * MUST pass the `localisation` feature flag of the current workspace.
- */
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling;react] format-error-api-errors
- * When `hasLocalisation` is true, for an API error, or an `APIErrorResponse` wrapping one,
- * `description` MUST be the translation of its `type` from `API_ERROR_MESSAGES`, and `details` MUST
- * hold its raw `type` and untranslated `message`. The server `message` MUST NOT appear in
- * `description`.
+ * For an API error, or an `APIErrorResponse` wrapping one, `description` MUST be the translation of
+ * its `type` from `API_ERROR_MESSAGES`, and `details` MUST hold its raw `type` and untranslated
+ * `message`. The server `message` MUST NOT appear in `description`.
  */
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling;react] format-error-other-values
- * When `hasLocalisation` is true, for any other value (network `TypeError`, non-API `Error`,
- * connectors error, unknown `type`, `undefined`, ...), `description` MUST be the translated
- * `UNEXPECTED_ERROR_MESSAGE`, and `details` holds the value's `type` and `message` when it has them.
- * `formatError` MUST NOT throw.
+ * For any other value (network `TypeError`, non-API `Error`, connectors error, unknown `type`,
+ * `undefined`, ...), `description` MUST be the translated `UNEXPECTED_ERROR_MESSAGE`, and `details`
+ * holds the value's `type` and `message` when it has them. `formatError` MUST NOT throw.
  */
-export function formatError(
-  error: unknown,
-  options: FormatErrorOptions
-): FormattedError {
+export function formatError(error: unknown): FormattedError {
   try {
-    return formatErrorUnsafe(error, options);
+    return formatErrorUnsafe(error);
   } catch {
     // Inspecting `error` can throw (e.g. a throwing getter): fall back rather than fail the caller.
     return { description: t(UNEXPECTED_ERROR_MESSAGE) };
   }
 }
 
-function formatErrorUnsafe(
-  error: unknown,
-  { hasLocalisation }: FormatErrorOptions
-): FormattedError {
+function formatErrorUnsafe(error: unknown): FormattedError {
   const apiError = isAPIErrorResponse(error)
     ? error.error
     : isAPIError(error)
       ? error
       : null;
-
-  if (!hasLocalisation) {
-    return {
-      description:
-        apiError?.message ??
-        getRawMessage(error) ??
-        t(UNEXPECTED_ERROR_MESSAGE),
-    };
-  }
 
   return {
     description: apiError
@@ -508,12 +452,11 @@ function formatErrorUnsafe(
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling;react] error-notification-shape
  * Returns an `error` notification whose `title` is the given title (the action that failed) and
- * whose `description` and `details` are those of `formatError(error, options)`.
+ * whose `description` and `details` are those of `formatError(error)`.
  */
 export function errorNotification(
   title: string,
-  error: unknown,
-  options: FormatErrorOptions
+  error: unknown
 ): NotificationType {
-  return { type: "error", title, ...formatError(error, options) };
+  return { type: "error", title, ...formatError(error) };
 }

@@ -452,11 +452,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "adrsimon",
   },
-  localisation: {
-    description: "Workspace and user language settings for the product UI",
-    stage: "ask_owner",
-    owner: "sfriquet",
-  },
   co_edition: {
     description: "Collaborative editing features",
     stage: "dust_only",

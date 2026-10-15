@@ -95,8 +95,8 @@ export function getCalendarDay(date: Date | number): CalendarDay | null {
  * @cc [owner:sfriquet,label:product] calendar-date-in-ui-locale
  * Calendar labels and `getCalendarDay` MUST format their day names, weekdays, times and dates in
  * the UI locale (`getActiveLocale`), passed explicitly to the formatters, and MUST NOT fall back to
- * the default locale of `lib/i18n/format.ts`, which is the browser's when the `localisation` flag
- * is off: a French browser MUST then get "Yesterday", not "Hier". "Today", "Yesterday" and
+ * the default locale of `lib/i18n/format.ts`, which is the browser's when no format locale is set:
+ * a French browser MUST then get "Yesterday", not "Hier", in an `en-US` UI. "Today", "Yesterday" and
  * "Tomorrow" MUST come from `numeric: "auto"`. The words around them ("Last …", "… at …") MUST NOT
  * be part of a `CalendarDay`'s `day`: the labels take them from the `t` passed by the caller, as one
  * message per kind of day.

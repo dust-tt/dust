@@ -162,11 +162,7 @@ export function useMarkdownFileEditor({
     });
     return result.isOk()
       ? new Ok(undefined)
-      : new Err(
-          formatError(result.error, {
-            hasLocalisation: hasFeature("localisation"),
-          }).description
-        );
+      : new Err(formatError(result.error).description);
   };
 
   /**

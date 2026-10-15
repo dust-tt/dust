@@ -1,6 +1,5 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useWorkspaceLocale } from "@app/hooks/useWorkspaceLocale";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -18,16 +17,6 @@ interface WorkspaceLocalePickerProps {
 }
 
 export function WorkspaceLocalePicker({ owner }: WorkspaceLocalePickerProps) {
-  const { hasFeature } = useFeatureFlags();
-
-  if (!hasFeature("localisation")) {
-    return null;
-  }
-
-  return <WorkspaceLocaleRow owner={owner} />;
-}
-
-function WorkspaceLocaleRow({ owner }: WorkspaceLocalePickerProps) {
   const { t } = useLingui();
   const { workspaceLocale, isChanging, doUpdateWorkspaceLocale } =
     useWorkspaceLocale({ owner });

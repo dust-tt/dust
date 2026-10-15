@@ -1,4 +1,3 @@
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -23,10 +22,9 @@ function postMemberLocale(
 
 describe("POST /api/v1/w/:wId/members/locale", () => {
   it("returns the locale stored by an active member", async () => {
-    const { auth, workspace, key } = await createPublicApiMockRequest({
+    const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
-    await FeatureFlagFactory.basic(auth, "localisation");
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
@@ -56,7 +54,7 @@ describe("POST /api/v1/w/:wId/members/locale", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      localisationEnabled: false,
+      localisationEnabled: true,
       userLocale: null,
       workspaceLocale: workspace.locale,
     });
@@ -86,7 +84,7 @@ describe("POST /api/v1/w/:wId/members/locale", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      localisationEnabled: false,
+      localisationEnabled: true,
       userLocale: null,
       workspaceLocale: workspace.locale,
     });

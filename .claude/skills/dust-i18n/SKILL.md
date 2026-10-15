@@ -132,8 +132,8 @@ runs under `tsx`, which cannot compile Lingui macros, so the rules differ from f
   callee named `i18n._`.
 - `i18n` comes from `getBotI18nForWorkspace` in `connectors/src/lib/bot/workspace_locale.ts`,
   passed down as a parameter. It renders the locale set in the Dust workspace settings for every
-  recipient (`en-US` while the `localisation` flag is off). Never use the global `i18n` of
-  `@lingui/core`: the bot answers several workspaces with different locales concurrently.
+  recipient. Never use the global `i18n` of `@lingui/core`: the bot answers several workspaces
+  with different locales concurrently.
 - The locales are a copy of `front/types/locale.ts` in `connectors/src/types/locale.ts`: edit
   both (`i18n:check` fails when they differ).
 - Same never-translate rules as front: text sent to the Dust API or to models (content fragments,

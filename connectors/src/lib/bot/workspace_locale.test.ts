@@ -22,16 +22,6 @@ describe("resolveWorkspaceLocale", () => {
     ).toBe("en-US");
   });
 
-  it("renders en-US when localisation is disabled", () => {
-    expect(
-      resolveWorkspaceLocale({
-        localisationEnabled: false,
-        userLocale: "fr-FR",
-        workspaceLocale: "fr-FR",
-      })
-    ).toBe("en-US");
-  });
-
   it("renders en-US when the Dust locales are unknown", () => {
     expect(resolveWorkspaceLocale(null)).toBe("en-US");
   });

@@ -127,8 +127,8 @@ export interface RelativeResetDay {
  * @cc [owner:sfriquet,label:product] reset-day-in-ui-locale
  * The day MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
  * formatters, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`, which is the
- * browser's when the `localisation` flag is off: a French browser MUST then get "tomorrow", not
- * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`. The words around the day
+ * browser's when no format locale is set: a French browser MUST then get "tomorrow", not "demain",
+ * in an `en-US` UI. "today" and "tomorrow" MUST come from `numeric: "auto"`. The words around the day
  * ("on …") MUST NOT be part of `day`: callers write them in the message embedding it, selected on
  * `kind`.
  */

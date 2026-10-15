@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -120,7 +119,6 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
       role: "user",
       method: "POST",
     });
-    await FeatureFlagFactory.basic(auth, "localisation");
     await auth
       .getNonNullableUser()
       .setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");

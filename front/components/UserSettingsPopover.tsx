@@ -539,8 +539,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
   const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
     isAgentsSectionVisible
   );
-  const { hasFeature } = useFeatureFlags();
-  const hasLocalisation = hasFeature("localisation");
   const {
     userLocale,
     isSaving: isSavingLocale,
@@ -641,37 +639,35 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
       }
     >
       <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
-        {hasLocalisation && (
-          <SettingsList.Row
-            title={t`Language`}
-            description={t`Language used by Dust for you, across all your workspaces`}
-            action={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    label={LOCALE_LABELS[localLocale ?? userLocale]}
-                    isSelect
-                    disabled={isSavingLocale}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent mountPortalContainer={portalContainer}>
-                  <DropdownMenuRadioGroup value={localLocale ?? userLocale}>
-                    {SUPPORTED_LOCALES.map((locale) => (
-                      <DropdownMenuRadioItem
-                        key={locale}
-                        value={locale}
-                        label={LOCALE_LABELS[locale]}
-                        onClick={() => setLocalLocale(locale)}
-                      />
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            }
-          />
-        )}
+        <SettingsList.Row
+          title={t`Language`}
+          description={t`Language used by Dust for you, across all your workspaces`}
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={LOCALE_LABELS[localLocale ?? userLocale]}
+                  isSelect
+                  disabled={isSavingLocale}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuRadioGroup value={localLocale ?? userLocale}>
+                  {SUPPORTED_LOCALES.map((locale) => (
+                    <DropdownMenuRadioItem
+                      key={locale}
+                      value={locale}
+                      label={LOCALE_LABELS[locale]}
+                      onClick={() => setLocalLocale(locale)}
+                    />
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
 
         <SettingsList.Row
           title={t`Theme`}

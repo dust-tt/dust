@@ -1,4 +1,3 @@
-import { hasFeatureFlag } from "@app/lib/auth";
 import type { GetMemberLocaleResponseType } from "@dust-tt/client";
 import { GetMemberLocaleRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -19,7 +18,7 @@ import { validate } from "@front-api/middlewares/validator";
  * `workspaceLocale` MUST be the workspace's `locale`. `userLocale` MUST be the `getStoredLocale` of
  * the user whose active membership in the workspace, among the users with this email, is the oldest,
  * and `null` when no email is given or no user with this email is an active member.
- * `localisationEnabled` MUST be whether the workspace has the `localisation` feature flag.
+ * `localisationEnabled` MUST be `true`.
  */
 const app = publicApiApp();
 
@@ -31,16 +30,15 @@ app.post(
     const auth = ctx.get("auth");
     const { email } = ctx.req.valid("json");
 
-    const [localisationEnabled, userAuth] = await Promise.all([
-      hasFeatureFlag(auth, "localisation"),
-      email
-        ? auth.exchangeSystemKeyForUserAuthByEmail(auth, { userEmail: email })
-        : null,
-    ]);
+    const userAuth = email
+      ? await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
+          userEmail: email,
+        })
+      : null;
     const user = userAuth?.user() ?? null;
 
     return ctx.json({
-      localisationEnabled,
+      localisationEnabled: true,
       userLocale: user ? await user.getStoredLocale() : null,
       workspaceLocale: auth.getNonNullableWorkspace().locale,
     });

@@ -1,5 +1,4 @@
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
-import type { FormatErrorOptions } from "@app/lib/api_error_messages";
 import { API_ERROR_MESSAGES } from "@app/lib/api_error_messages";
 import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import type {
@@ -283,7 +282,7 @@ function getAgentErrorMessages(
   };
 }
 
-export type FormatAgentErrorOptions = FormatErrorOptions & {
+export type FormatAgentErrorOptions = {
   /** Whether the current user is an admin of the current workspace. */
   viewerIsAdmin: boolean;
 };
@@ -296,22 +295,14 @@ export type FormattedAgentError = {
 };
 
 /**
- * @cc [owner:sfriquet,label:error-handling;product] agent-error-translation-behind-localisation-flag
- * When `hasLocalisation` is false, `formatAgentError` MUST return no `details`, the server
- * `metadata.errorTitle` (or the translated default title when there is none) as `title`, and the
- * raw `message` as `description`, so workspaces without the flag keep seeing the messages they saw
- * before. Callers MUST pass the `localisation` feature flag of the current workspace.
- */
-/**
  * @cc [owner:sfriquet,label:error-handling;react] agent-error-translated-from-code
- * When `hasLocalisation` is true, `title` and `description` MUST be translated from the error
- * `code`, `metadata.category` and the codes and brand names carried in `metadata` (`llmErrorType`,
- * `provider`, `isByok`, `blockedReason`), falling back to a translated generic message for an
- * unknown code. Wording that depends on a role follows `viewerIsAdmin`, the role of the current
- * user in the current workspace, not the role of the user who triggered the error. The server
- * `message` and `metadata.errorTitle` MUST NOT appear in `title` or `description`: the raw `code`
- * and `message` go to `details`, except for the errors built on the client
- * (`CLIENT_BUILT_ERROR_CODES`), which have no `details`.
+ * `title` and `description` MUST be translated from the error `code`, `metadata.category` and the
+ * codes and brand names carried in `metadata` (`llmErrorType`, `provider`, `isByok`,
+ * `blockedReason`), falling back to a translated generic message for an unknown code. Wording that
+ * depends on a role follows `viewerIsAdmin`, the role of the current user in the current workspace,
+ * not the role of the user who triggered the error. The server `message` and `metadata.errorTitle`
+ * MUST NOT appear in `title` or `description`: the raw `code` and `message` go to `details`, except
+ * for the errors built on the client (`CLIENT_BUILT_ERROR_CODES`), which have no `details`.
  */
 const CLIENT_BUILT_ERROR_CODES: ReadonlySet<string> = new Set([
   "stream_error",
@@ -320,16 +311,8 @@ const CLIENT_BUILT_ERROR_CODES: ReadonlySet<string> = new Set([
 
 export function formatAgentError(
   error: GenericErrorContent,
-  { hasLocalisation, viewerIsAdmin }: FormatAgentErrorOptions
+  { viewerIsAdmin }: FormatAgentErrorOptions
 ): FormattedAgentError {
-  if (!hasLocalisation) {
-    const errorTitle = error.metadata?.errorTitle;
-    return {
-      title: typeof errorTitle === "string" ? errorTitle : t(DEFAULT_TITLE),
-      description: error.message,
-    };
-  }
-
   const { title, description } = getAgentErrorMessages(error, viewerIsAdmin);
   const { code, message: rawMessage } = error;
   if (CLIENT_BUILT_ERROR_CODES.has(code)) {
