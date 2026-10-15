@@ -47,10 +47,6 @@ impl Inodes {
 
     /// Counts one lookup of `object` and returns its inode number, giving it a new one if the
     /// kernel does not know it.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by `Fs::lookup`, not implemented yet")
-    )]
     pub(crate) fn lookup(&mut self, object: ObjectId) -> Ino {
         let ino = *self.inos.entry(object).or_insert_with(|| {
             let ino = self.next;
@@ -68,10 +64,6 @@ impl Inodes {
         ino
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by `Fs::getattr`, not implemented yet")
-    )]
     pub(crate) fn object(&self, ino: Ino) -> Option<ObjectId> {
         self.inodes.get(&ino).map(|inode| inode.object)
     }

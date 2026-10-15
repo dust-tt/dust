@@ -12,10 +12,6 @@ const PERMISSION_BITS: u32 = 0o7777;
 impl Attributes {
     /// The attributes of inode `ino`, which holds the dfs object `attr` describes. Fails with `EIO`
     /// for symlinks, which the mount does not support yet, and for kinds it does not know.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by `Fs::getattr`, not implemented yet")
-    )]
     pub(crate) fn from_attr(ino: Ino, attr: &Attr) -> Result<Self, Errno> {
         let kind = match ObjectKind::try_from(attr.kind) {
             Ok(ObjectKind::Directory) => Kind::Directory,
