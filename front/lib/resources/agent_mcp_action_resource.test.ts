@@ -20,6 +20,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { heartbeatWithoutCancelCheck } from "@app/lib/temporal";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -91,6 +92,11 @@ vi.mock("@app/lib/file_storage", async (importOriginal) => {
 });
 
 // Bypass Redis caching, pass through to the underlying function.
+vi.mock("@app/lib/temporal", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/temporal")>();
+  return { ...actual, heartbeatWithoutCancelCheck: vi.fn() };
+});
+
 vi.mock("@app/lib/utils/cache", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@app/lib/utils/cache")>();
   return {
@@ -754,6 +760,18 @@ describe("Output items with GCS storage", () => {
 
     return { action, outputItems, outputItemRows };
   };
+
+  it("heartbeats after each GCS write and each GCS path update", async () => {
+    vi.mocked(heartbeatWithoutCancelCheck).mockClear();
+
+    await createActionWithOutputItems([
+      { type: "text", text: "first" },
+      { type: "text", text: "second" },
+      { type: "text", text: "third" },
+    ]);
+
+    expect(heartbeatWithoutCancelCheck).toHaveBeenCalledTimes(6);
+  });
 
   it("should create output items in both DB and GCS", async () => {
     const { outputItems, outputItemRows } = await createActionWithOutputItems([
