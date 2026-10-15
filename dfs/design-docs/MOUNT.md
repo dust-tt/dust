@@ -124,9 +124,11 @@ Every change becomes an operation in one ordered log, and the log reaches the se
   attribute change, and buffered writes join the file's queued write while it stays under the
   size limit.
 - **Admission**: a new change waits while the log holds a full batch (512 operations or the
-  request size limit), or while the oldest pending change would miss the send window. To predict
-  that, the mount assumes each `Apply` ahead of it takes as long as the slowest of the last 8 (at
-  least 5 ms). A slow server slows writers instead of stretching the delay.
+  request size limit), or while the oldest pending change would miss the send window. A pending
+  change leaves only when the `Apply` in flight returns, and nobody knows yet when that will be,
+  so the mount guesses from recent calls: as slow as the slowest of the last 8. Waiting before
+  acknowledging, rather than reacting once a change is already late, keeps the window even when
+  the server slows down: writers slow down instead.
 - **Results**: each operation succeeds or fails on its own, and the successful ones commit
   together (a storage failure fails them all). A committed batch updates the cache with the attributes and names it changed, at the
   commit version, so the mount does not read back its own changes; a directory it created is known
