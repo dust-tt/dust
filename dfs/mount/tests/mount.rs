@@ -274,6 +274,9 @@ async fn root_looks_up_readable_folders(channel: &Channel, tenant: &Tenant) -> R
     assert_eq!(workspace.permissions, 0o700);
     assert_eq!(fs.readdir(ROOT_INO).await?[0].ino, workspace.ino);
     assert_eq!(fs.getattr(workspace.ino).await?, workspace);
+    // The server does not support `Lookup` and `List` yet.
+    assert_eq!(fs.lookup(workspace.ino, "a").await, Err(Errno::EOPNOTSUPP));
+    assert_eq!(fs.readdir(workspace.ino).await, Err(Errno::EOPNOTSUPP));
 
     // Like the listing: not a directory, unreadable, missing, and not configured.
     for name in ["report", "secret", "missing", "other"] {

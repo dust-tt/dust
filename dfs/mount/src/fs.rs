@@ -131,7 +131,7 @@ impl Fs {
     pub async fn lookup(&self, parent: Ino, name: &str) -> Result<Attributes, Errno> {
         if parent != ROOT_INO {
             // Needs the server's `Lookup`, not supported yet.
-            return Err(Errno::EOPNOTSUPP);
+            return Err(self.unsupported_in(parent).await);
         }
         let entry = self
             .root_entries
@@ -156,7 +156,7 @@ impl Fs {
     pub async fn readdir(&self, ino: Ino) -> Result<Vec<DirEntry>, Errno> {
         if ino != ROOT_INO {
             // Needs the server's `List`, not supported yet.
-            return Err(Errno::EOPNOTSUPP);
+            return Err(self.unsupported_in(ino).await);
         }
         let references: Vec<ObjectRef> = self
             .root_entries
@@ -192,6 +192,18 @@ impl Fs {
     /// Must not be held across an `.await`.
     fn inodes(&self) -> MutexGuard<'_, Inodes> {
         self.inodes.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The error for an operation inside the dfs directory `ino` that the server does not support
+    /// yet: `EOPNOTSUPP`, unless the directory looks missing to the session.
+    async fn unsupported_in(&self, ino: Ino) -> Errno {
+        let Some(object) = self.inodes().object(ino) else {
+            return Errno::ENOENT;
+        };
+        match self.stat(object).await {
+            Ok(_) => Errno::EOPNOTSUPP,
+            Err(errno) => errno,
+        }
     }
 
     async fn stat(&self, object: ObjectId) -> Result<Attr, Errno> {
@@ -236,11 +248,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unknown_inodes_and_dfs_directories_fail_without_the_server() -> Result<(), Errno> {
+    async fn unknown_inodes_and_root_names_look_missing() -> Result<(), Errno> {
         let fs = new_fs(Vec::new())?;
         assert_eq!(fs.getattr(ROOT_INO + 1).await, Err(Errno::ENOENT));
-        assert_eq!(fs.lookup(ROOT_INO + 1, "a").await, Err(Errno::EOPNOTSUPP));
-        assert_eq!(fs.readdir(ROOT_INO + 1).await, Err(Errno::EOPNOTSUPP));
+        assert_eq!(fs.lookup(ROOT_INO + 1, "a").await, Err(Errno::ENOENT));
+        assert_eq!(fs.readdir(ROOT_INO + 1).await, Err(Errno::ENOENT));
         assert_eq!(fs.lookup(ROOT_INO, "a").await, Err(Errno::ENOENT));
         Ok(())
     }
