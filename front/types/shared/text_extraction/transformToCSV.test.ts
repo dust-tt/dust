@@ -1,4 +1,7 @@
-import { transformStreamToCSV } from "@app/types/shared/text_extraction/transformToCSV";
+import {
+  OUTPUT_CHUNK_BYTES,
+  transformStreamToCSV,
+} from "@app/types/shared/text_extraction/transformToCSV";
 import { Readable } from "stream";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +14,7 @@ async function collectChunks(stream: Readable): Promise<string[]> {
 }
 
 describe("transformStreamToCSV", () => {
-  it("emits rows batched into chunks of at least 64 KB", async () => {
+  it("emits rows batched into chunks of at least OUTPUT_CHUNK_BYTES", async () => {
     const rowCount = 20_000;
     const html =
       "<html><body><h1>Sheet1</h1><table>" +
@@ -28,7 +31,9 @@ describe("transformStreamToCSV", () => {
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks.length).toBeLessThan(rowCount / 100);
     for (const chunk of chunks.slice(0, -1)) {
-      expect(Buffer.byteLength(chunk)).toBeGreaterThanOrEqual(64 * 1024);
+      expect(Buffer.byteLength(chunk)).toBeGreaterThanOrEqual(
+        OUTPUT_CHUNK_BYTES
+      );
     }
 
     const lines = chunks.join("").split("\n");

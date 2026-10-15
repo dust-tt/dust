@@ -10,7 +10,7 @@ import { MAX_FILE_SIZES, TABLE_PREFIX } from "../../files";
 // workbook can expand into gigabytes of CSV. Cap the output at the size accepted for a CSV upload.
 const MAX_CSV_OUTPUT_BYTES = MAX_FILE_SIZES.delimited;
 
-const OUTPUT_CHUNK_BYTES = 64 * 1024;
+export const OUTPUT_CHUNK_BYTES = 64 * 1024;
 
 interface ParserState {
   tags: string[];
@@ -57,8 +57,8 @@ const HTML_TAGS = {
  */
 /**
  * @cc [owner:tdraier,label:performance] batched-csv-output
- * Every chunk emitted by the returned stream, except the last one, MUST hold at least 64 KB of
- * output: rows MUST NOT be emitted one chunk per row.
+ * Every chunk emitted by the returned stream, except the last one, MUST hold at least
+ * `OUTPUT_CHUNK_BYTES` of output.
  */
 export function transformStreamToCSV(
   input: Readable,
