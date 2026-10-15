@@ -67,6 +67,7 @@ import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flag
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { Transaction } from "sequelize";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 
@@ -748,8 +749,51 @@ async function loadFramePublicationFunctionDefinitions(
 }
 
 /**
+ * Make a stored publication invocable by creating its immutable function rows. Does not touch the
+ * Frame's pointers. Rows left behind by a publication that never goes live are purged by
+ * retention.
+ */
+async function createFramePublicationFunctionRows(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    descriptor,
+    functionArtifacts,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    descriptor: FramePublicationDescriptor;
+    functionArtifacts: FramePublicationFunctionArtifact[];
+  },
+  transaction?: Transaction
+): Promise<Result<void, FramePublicationError>> {
+  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
+    auth,
+    { frame, descriptor, publicationId, functionArtifacts }
+  );
+  if (functionDefinitions.isErr()) {
+    return functionDefinitions;
+  }
+
+  await withTransaction(async (tx) => {
+    await SandboxFunctionResource.createForFramePublication(
+      auth,
+      { frame, functions: functionDefinitions.value, publicationId },
+      tx
+    );
+  }, transaction);
+  return new Ok(undefined);
+}
+
+/**
  * Make a stored publication invocable and point the Frame's draft at it. Editors are served it in
  * the app; the share link keeps serving the live publication until `activateFramePublication`.
+ */
+/**
+ * @cc [owner:davidebbo,label:product] live-publish-never-writes-the-draft-pointer
+ * Only a draft publish stages. A live publish creates function rows and activates, so a failed
+ * activation never leaves a draft pointing at a publication that was meant to go live.
  */
 export async function stageFramePublication(
   auth: Authenticator,
@@ -767,26 +811,21 @@ export async function stageFramePublication(
     publishedByAgentConfigurationId?: string;
   }
 ): Promise<Result<void, FramePublicationError>> {
-  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
-    auth,
-    { frame, descriptor, publicationId, functionArtifacts }
-  );
-  if (functionDefinitions.isErr()) {
-    return functionDefinitions;
-  }
-
-  await withTransaction(async (transaction) => {
-    await SandboxFunctionResource.createForFramePublication(
+  return withTransaction(async (transaction) => {
+    const rows = await createFramePublicationFunctionRows(
       auth,
-      { frame, functions: functionDefinitions.value, publicationId },
+      { frame, publicationId, descriptor, functionArtifacts },
       transaction
     );
+    if (rows.isErr()) {
+      return rows;
+    }
     await frame.setDraftFramePublication(
       { publicationId, publishedByAgentConfigurationId },
       transaction
     );
+    return new Ok(undefined);
   });
-  return new Ok(undefined);
 }
 
 export async function activateFramePublication(
@@ -1004,23 +1043,38 @@ export async function publishFramePublication(
       }
     }
 
-    const staged = await withFramePublishTimingResult(
+    if (publishesDraft) {
+      const staged = await withFramePublishTimingResult(
+        "stage",
+        { ...timingContext, publicationId },
+        () =>
+          stageFramePublication(auth, {
+            frame: freshFrame,
+            publicationId,
+            descriptor,
+            functionArtifacts,
+            publishedByAgentConfigurationId,
+          })
+      );
+      if (staged.isErr()) {
+        return staged;
+      }
+      return new Ok({ publicationId, status: "draft" as const });
+    }
+
+    const rows = await withFramePublishTimingResult(
       "stage",
       { ...timingContext, publicationId },
       () =>
-        stageFramePublication(auth, {
+        createFramePublicationFunctionRows(auth, {
           frame: freshFrame,
           publicationId,
           descriptor,
           functionArtifacts,
-          publishedByAgentConfigurationId,
         })
     );
-    if (staged.isErr()) {
-      return staged;
-    }
-    if (publishesDraft) {
-      return new Ok({ publicationId, status: "draft" as const });
+    if (rows.isErr()) {
+      return rows;
     }
 
     const activation = await withFramePublishTimingResult(

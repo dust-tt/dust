@@ -12,6 +12,7 @@ import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_f
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
@@ -41,7 +42,7 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
@@ -1359,6 +1360,71 @@ describe("publishFramePublication modes", () => {
       published.isOk() && published.value.publicationId
     );
     expect(metadata?.draftPublicationId).toBeUndefined();
+  });
+
+  describe("when activation fails", () => {
+    function failAllowlistComputation() {
+      vi.spyOn(
+        FileResource.prototype,
+        "computeAuthorizedFileAccess"
+      ).mockResolvedValue(
+        new Err(new DustError("frame_user_required", "Simulated failure."))
+      );
+    }
+
+    it("keeps a pending draft and the live pointer on a failed live publish", async () => {
+      const { auth, frame } = await setupFrame();
+      const live = await publishBundle(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+      const draft = await publishBundle(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+      failAllowlistComputation();
+
+      const published = await publishBundle(
+        auth,
+        frame,
+        "export default function C() {}",
+        "live"
+      );
+
+      expect(published.isErr() && published.error.code).toBe(
+        "allowlist_failed"
+      );
+      const metadata = await metadataOf(auth, frame);
+      expect(metadata?.activePublicationId).toBe(
+        live.isOk() && live.value.publicationId
+      );
+      expect(metadata?.draftPublicationId).toBe(
+        draft.isOk() && draft.value.publicationId
+      );
+    });
+
+    it("leaves no pointer after a failed first publish", async () => {
+      const { auth, frame } = await setupFrame();
+      failAllowlistComputation();
+
+      const published = await publishBundle(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+
+      expect(published.isErr() && published.error.code).toBe(
+        "allowlist_failed"
+      );
+      const metadata = await metadataOf(auth, frame);
+      expect(metadata?.activePublicationId).toBeUndefined();
+      expect(metadata?.draftPublicationId).toBeUndefined();
+    });
   });
 
   it("creates function rows for a draft publication", async () => {
