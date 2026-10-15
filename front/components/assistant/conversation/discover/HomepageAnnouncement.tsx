@@ -1,5 +1,5 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isCreditPricedPlan } from "@app/types/plan";
+import { isCurrentPricingPlan } from "@app/lib/plans/plan_codes";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { AnnouncementPill, FigmaLogo } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
@@ -10,8 +10,8 @@ import type { ComponentType, CSSProperties } from "react";
 interface HomepageAnnouncementEntry {
   /** Restricts the entry to workspaces with the flag. */
   featureFlag?: WhitelistableFeature;
-  /** Restricts the entry to workspaces on a credit-priced plan. */
-  creditPricedPlansOnly?: boolean;
+  /** Restricts the entry to workspaces on the current pricing. */
+  currentPricingPlansOnly?: boolean;
   icon: ComponentType<{ className?: string }>;
   label: MessageDescriptor;
   /** Destination of the pill; it is static text without one. */
@@ -22,7 +22,7 @@ interface HomepageAnnouncementEntry {
 // The first entry the workspace qualifies for is shown; add new announcements at the top.
 const HOMEPAGE_ANNOUNCEMENTS: HomepageAnnouncementEntry[] = [
   {
-    creditPricedPlansOnly: true,
+    currentPricingPlansOnly: true,
     icon: FigmaLogo,
     label: msg`Figma MCP is now available`,
     href: "https://dust.tt/integrations/figma",
@@ -38,12 +38,12 @@ export function HomepageAnnouncement({ style }: HomepageAnnouncementProps) {
   const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const { subscription } = useAuth();
-  const isCreditPriced = isCreditPricedPlan(subscription.plan);
+  const isCurrentPricing = isCurrentPricingPlan(subscription.plan);
 
   const entry = HOMEPAGE_ANNOUNCEMENTS.find(
-    ({ featureFlag, creditPricedPlansOnly }) =>
+    ({ featureFlag, currentPricingPlansOnly }) =>
       (!featureFlag || hasFeature(featureFlag)) &&
-      (!creditPricedPlansOnly || isCreditPriced)
+      (!currentPricingPlansOnly || isCurrentPricing)
   );
   if (!entry) {
     return null;
