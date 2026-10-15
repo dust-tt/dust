@@ -629,6 +629,20 @@ impl LocalTable {
         Ok(())
     }
 
+    fn background_upsert_entry(&self) -> Result<String> {
+        Ok(serde_json::to_string(&TableUpsertActivityData {
+            time: utils::now(),
+            project_id: self.table.project().project_id(),
+            data_source_id: self.table.data_source_id().to_string(),
+            table_id: self.table.table_id().to_string(),
+            attempts: 0,
+        })?)
+    }
+
+    /// @cc [owner:tdraier,label:performance] rejected-upsert-keeps-table-scheduled
+    /// When rejecting with `TooManyPendingUpserts`, the table MUST have an entry in
+    /// `REDIS_TABLE_UPSERT_HASH_NAME` (an existing entry is left unchanged), so its pending files
+    /// are eventually processed and the table stops rejecting.
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
         // Backpressure: if too many files are already pending for this table, the background
         // worker has fallen behind (or is stuck). Reject the call rather than letting files
@@ -640,14 +654,22 @@ impl LocalTable {
                 &self.table,
             )
             .await?;
+
+        let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
+
         if pending_files.len() >= MAX_PENDING_UPSERT_FILES {
+            let _: bool = redis_conn
+                .hset_nx(
+                    REDIS_TABLE_UPSERT_HASH_NAME,
+                    self.table.unique_id(),
+                    self.background_upsert_entry()?,
+                )
+                .await?;
             return Err(TableUpsertError::TooManyPendingUpserts {
                 max: MAX_PENDING_UPSERT_FILES,
             }
             .into());
         }
-
-        let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         let now = utils::now();
 
@@ -662,18 +684,11 @@ impl LocalTable {
         .await?;
 
         // Tell the worker that there are things to process for this table.
-        let upsert_call = TableUpsertActivityData {
-            time: utils::now(),
-            project_id: self.table.project().project_id(),
-            data_source_id: self.table.data_source_id().to_string(),
-            table_id: self.table.table_id().to_string(),
-            attempts: 0,
-        };
         let _: () = redis_conn
             .hset(
                 REDIS_TABLE_UPSERT_HASH_NAME,
                 self.table.unique_id(),
-                serde_json::to_string(&upsert_call)?,
+                self.background_upsert_entry()?,
             )
             .await?;
 

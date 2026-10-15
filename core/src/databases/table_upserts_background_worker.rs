@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use redis::{AsyncCommands, Client as RedisClient};
+use redis::{AsyncCommands, Client as RedisClient, Script};
 use rslock::LockManager;
 use std::{collections::HashMap, env, sync::Arc, time::Duration};
 use tracing::{error, info};
@@ -38,6 +38,22 @@ const UPSERT_DEBOUNCE_TIME_MS: u64 = 10_000;
 // poison items (consistently failing), which we'd otherwise retry forever.
 // Drop them once they exceed this age.
 const MAX_UPSERT_AGE_MS: u64 = 60 * 60 * 1_000; // 1 hour
+
+// Producers refresh a table's entry while the worker processes it. These scripts never remove or
+// overwrite such a refreshed entry, so the files written meanwhile are processed later.
+const DELETE_ENTRY_IF_UNCHANGED_SCRIPT: &str = r"
+if redis.call('HGET', KEYS[1], ARGV[1]) == ARGV[2] then
+  return redis.call('HDEL', KEYS[1], ARGV[1])
+end
+return 0
+";
+const SET_ENTRY_UNLESS_REFRESHED_SCRIPT: &str = r"
+local current = redis.call('HGET', KEYS[1], ARGV[1])
+if current == false or current == ARGV[2] then
+  return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3])
+end
+return 0
+";
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct TableUpsertActivityData {
@@ -83,10 +99,45 @@ impl TableUpsertsBackgroundWorker {
         })
     }
 
+    async fn delete_entry_if_unchanged(
+        &mut self,
+        key: &str,
+        read_value: &str,
+    ) -> Result<(), anyhow::Error> {
+        let _: i64 = Script::new(DELETE_ENTRY_IF_UNCHANGED_SCRIPT)
+            .key(REDIS_TABLE_UPSERT_HASH_NAME)
+            .arg(key)
+            .arg(read_value)
+            .invoke_async(&mut self.redis_conn)
+            .await?;
+        Ok(())
+    }
+
+    async fn set_entry_unless_refreshed(
+        &mut self,
+        key: &str,
+        read_value: &str,
+        new_value: &str,
+    ) -> Result<(), anyhow::Error> {
+        let _: i64 = Script::new(SET_ENTRY_UNLESS_REFRESHED_SCRIPT)
+            .key(REDIS_TABLE_UPSERT_HASH_NAME)
+            .arg(key)
+            .arg(read_value)
+            .arg(new_value)
+            .invoke_async(&mut self.redis_conn)
+            .await?;
+        Ok(())
+    }
+
+    /// @cc [owner:tdraier,label:performance] keep-concurrently-refreshed-entry
+    /// The table's entry in `REDIS_TABLE_UPSERT_HASH_NAME` MUST only be removed if it still holds
+    /// `read_value`. An entry refreshed by a producer during processing MUST be kept, so the files
+    /// written after `files` was listed are processed by a later iteration.
     async fn process_table(
         &mut self,
         table: &Table,
         key: &str,
+        read_value: &str,
         table_data: &TableUpsertActivityData,
     ) -> Result<(), anyhow::Error> {
         let files =
@@ -137,10 +188,7 @@ impl TableUpsertsBackgroundWorker {
             }
         }
 
-        let _: () = self
-            .redis_conn
-            .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
-            .await?;
+        self.delete_entry_if_unchanged(key, read_value).await?;
 
         GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
 
@@ -155,15 +203,15 @@ impl TableUpsertsBackgroundWorker {
 
         // Get the list of tables for which there has been non-truncate activity (upserts or deletes)
         let active_tables = tokio::task::spawn_blocking(move || {
-            let mut active_tables: Vec<(String, TableUpsertActivityData)> = all_values
+            let mut active_tables: Vec<(String, String, TableUpsertActivityData)> = all_values
                 .into_iter()
                 .filter_map(|(key, json_value)| {
                     serde_json::from_str(&json_value)
                         .ok()
-                        .map(|call_data| (key, call_data))
+                        .map(|call_data| (key, json_value, call_data))
                 })
                 .collect();
-            active_tables.sort_by(|a, b| a.1.time.cmp(&b.1.time));
+            active_tables.sort_by(|a, b| a.2.time.cmp(&b.2.time));
             active_tables
         })
         .await?;
@@ -181,7 +229,7 @@ impl TableUpsertsBackgroundWorker {
         }
 
         let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
-        for (key, mut table_data) in active_tables {
+        for (key, read_value, mut table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
             // likely to be past the debounce time. As soon as we find one that is not
             // past the debounce time, we can stop processing.
@@ -229,10 +277,7 @@ impl TableUpsertsBackgroundWorker {
                                 e
                             );
                         }
-                        let _: () = self
-                            .redis_conn
-                            .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
-                            .await?;
+                        self.delete_entry_if_unchanged(&key, &read_value).await?;
                         continue;
                     }
 
@@ -265,7 +310,10 @@ impl TableUpsertsBackgroundWorker {
 
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
-                    if let Err(e) = self.process_table(&table, &key, &table_data).await {
+                    if let Err(e) = self
+                        .process_table(&table, &key, &read_value, &table_data)
+                        .await
+                    {
                         error!(
                             table_id = table.table_id(),
                             "TableUpsertsBackgroundWorker: Failed to process table: {}", e
@@ -276,14 +324,12 @@ impl TableUpsertsBackgroundWorker {
                         // unchanged so the age anchor is preserved. New activity from the
                         // producer will overwrite this entry and reset attempts to 0.
                         table_data.attempts += 1;
-                        let _: () = self
-                            .redis_conn
-                            .hset(
-                                REDIS_TABLE_UPSERT_HASH_NAME,
-                                &key,
-                                serde_json::to_string(&table_data)?,
-                            )
-                            .await?;
+                        self.set_entry_unless_refreshed(
+                            &key,
+                            &read_value,
+                            &serde_json::to_string(&table_data)?,
+                        )
+                        .await?;
                     }
 
                     lock_manager.unlock(&lock).await;
