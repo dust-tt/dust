@@ -104,20 +104,37 @@ A directory walk then costs about one `List` and a few `ReadFiles` per directory
   uncommitted changes fetches only the bytes those changes do not cover, so appending to a large
   file, or reading back a new one, downloads nothing. Once a change commits, its overlay is
   dropped and its bytes come from the server again.
-- **Buffered writes**: a file's writes collect locally until the file is closed or the next
-  `Apply` is formed, and then leave as one operation.
-- **One ordered log**: changes become `Apply` operations in a log. One `Apply` is in flight at a
-  time, in order, carrying as many operations as fit. Attribute changes fold into the previous
-  operation on the same object, and consecutive writes to a file merge.
-- **Admission**: a new change waits while the log is full, or while the oldest pending operation
-  could not be sent within the send window, since earlier `Apply` calls go first (judging from
-  their recent times). A slow server slows writers instead of stretching the delay.
-- **Results**: a committed batch updates the cache with the attributes it returns. A failed
-  operation is dropped: the objects it touched are fetched again, and the next `fsync` reports it.
 - **New objects get their ID from the mount**, so they can be used before their creation commits.
+- **Unmounting waits** until every change is committed.
+
+### Batching
+
+Every change becomes an operation in one ordered log, and the log reaches the server through
+`Apply` calls.
+
+- **One call at a time**: one `Apply` is in flight, and the next leaves as soon as it returns, with
+  everything queued since, up to 512 operations and the request size limit. There is no timer:
+  when the server is fast, each change leaves almost alone; when it is slow, changes pile up and
+  leave together.
+- **Buffered writes**: a file's writes collect locally, and leave as one operation when the file
+  is closed or when the next batch is formed. Forming a batch takes every file's buffered writes,
+  so an acknowledged write waits for at most one batch.
+- **Folding**: a change merges into the latest queued operation on the same object when it can,
+  instead of adding one. An attribute change folds into that object's queued create, write or
+  attribute change, and buffered writes join the file's queued write while it stays under the
+  size limit.
+- **Admission**: a new change waits while the log holds a full batch (512 operations or the
+  request size limit), or while the oldest change not yet committed could not make the window: its
+  age, plus the `Apply` in flight and its own, exceeds the send window. An `Apply` is assumed to
+  take as long as the slowest of the last 8 (and at least 5 ms). A slow server slows writers
+  instead of stretching the delay.
+- **Results**: each operation succeeds or fails on its own, and the successful ones commit
+  together (a storage failure fails them all). A committed batch updates the cache with the attributes and names it changed, at the
+  commit version, so the mount does not read back its own changes; a directory it created is known
+  to be empty. A failed operation is dropped: the objects it touched are fetched again, the drop is
+  logged, and the next `fsync` reports it.
 - **No replays**: `Apply` has no idempotency key, so a lost reply fails its operations instead of
   sending them again.
-- **Unmounting waits** until the log is committed.
 
 ### One FUSE thread
 
