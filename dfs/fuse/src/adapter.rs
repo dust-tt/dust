@@ -16,8 +16,8 @@ use tokio::runtime::Handle;
  */
 /**
  * @cc [owner:fontanierh,label:performance] no-default-permissions
- * The mount MUST be read-write without `default_permissions`: `access` and each change check the
- * mode bits the library caches, instead of the kernel fetching attributes before each check.
+ * The mount MUST be read-write without `default_permissions`. `access`, `open`, `opendir`, `create`
+ * and each change MUST check the caller against the mode bits the library caches instead.
  */
 pub(crate) fn config() -> Config {
     todo!()
@@ -46,7 +46,7 @@ impl Adapter {
 /**
  * @cc [owner:fontanierh,label:error-handling] no-enosys
  * The adapter MUST NOT leave `fuser`'s `ENOSYS` default on an operation unless the kernel then
- * handles it itself (locks, `lseek`, `copy_file_range`) or fails it with `EOPNOTSUPP` (extended
+ * handles it itself (`lseek`, `copy_file_range`) or fails it with `EOPNOTSUPP` (extended
  * attributes, `fallocate`).
  */
 impl Filesystem for Adapter {
@@ -193,6 +193,10 @@ impl Filesystem for Adapter {
         _datasync: bool,
         _reply: ReplyEmpty,
     ) {
+        todo!()
+    }
+
+    fn opendir(&self, _req: &Request, _ino: INodeNo, _flags: OpenFlags, _reply: ReplyOpen) {
         todo!()
     }
 

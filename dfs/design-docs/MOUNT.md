@@ -20,7 +20,8 @@ by answering most requests from memory and by acknowledging writes before they r
    `MAX_DELAY` later, on any mount, sees it or a later state. `MAX_DELAY` is 1 second by default.
    Losing read access also takes up to `MAX_DELAY` to apply.
 2. **Read your writes.** A mount sees its own changes at once.
-3. **Whole states.** A read returns bytes of one state of the file, never a mix of two writes.
+3. **Whole states.** Each read the mount serves returns bytes of one state of the file, never a
+   mix of two writes. A large `read(2)` that the kernel splits may still span two states.
 4. **Durable `fsync`.** Writes and metadata changes are acknowledged before they reach the server.
    `fsync` of any file or directory waits until every change the mount acknowledged before it is
    committed, and reports the first failure since the previous `fsync`.
@@ -53,6 +54,10 @@ latest. This holds because the server reads at a version taken after each reques
 Entries and attributes have a zero TTL, every file is opened with direct I/O, and the mount turns
 off readdirplus and the kernel's writeback cache. The kernel asks the mount every time, and the
 mount answers from its own cache. Only the library caches, so the budget holds.
+
+The one exception is a private `mmap`, which reads through the page cache even with direct I/O.
+The kernel drops a file's page cache on every `open` and `mmap`, so a mapping only holds pages read
+after it was made. A shared writable `mmap` fails.
 
 ### The cache
 
@@ -96,8 +101,9 @@ others.
 
 The mount has no access rules of its own: everything it returns about a dfs object comes from a
 server reply to its session, and the server checks grants again when it commits a change. The
-mount checks mode bits itself, without `default_permissions`: with a zero TTL, the kernel would
-fetch attributes again before each check.
+mount checks the cached mode bits itself on `access`, on opening a file or directory, and before
+each change. It does not use `default_permissions`: with a zero TTL, the kernel would fetch
+attributes again before each check.
 
 Like the server, it hides what the session cannot read:
 
@@ -130,9 +136,9 @@ kernel forgets every lookup of it, and the number is never reused during the lif
 
 Failures without dfs error details, such as transport errors, map from their gRPC code, and are
 `EIO` when no closer errno fits. `symlink` and `link` fail with `EPERM`, as POSIX asks of a
-filesystem without them. The adapter answers `ENOSYS` only where the kernel then does the work
-itself (locks, `lseek`, `copy_file_range`) or fails with `EOPNOTSUPP` (extended attributes,
-`fallocate`): for any other operation, the kernel stops asking for the rest of the mount, and for
+filesystem without them. Locks stay in the kernel. The adapter answers `ENOSYS` only where the
+kernel then does the work itself (`lseek`, `copy_file_range`) or fails with `EOPNOTSUPP` (extended
+attributes, `fallocate`): for any other operation, the kernel stops asking for the rest of the mount, and for
 `fsync`, `flush` and `access` it then reports success.
 
 ### The connection
