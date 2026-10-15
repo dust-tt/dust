@@ -56,6 +56,23 @@ reads `ENOSYS` as "never supported" and stops sending that operation for the res
 Operations that may call the server are `async`, so the adapter can serve several kernel requests
 at once.
 
+### The FUSE adapter
+
+`dfs-fuse` (`dfs/fuse`) mounts one session with `fuser`, in pure Rust through `fusermount3`. It
+reads the endpoint (HTTPS with the system's root certificates outside local development) and the
+path of a private session key file from flags or the environment, never the key itself, and takes
+the root folders as `--folder NAME=OBJECT_ID`. It refreshes the session every 15 minutes, and
+unmounts on SIGINT or SIGTERM.
+
+- **Read-only, owner-only**: every user that can reach the mount acts as the session, so there is
+  no `allow_other`, and every inode belongs to the user running the adapter. With
+  `default_permissions`, the kernel checks the server's mode bits against that user.
+- **No kernel caching**: entries and attributes have a zero TTL, so the kernel asks again on every
+  access instead of reusing what the server may have refused since.
+- **One FUSE thread**: each request runs as a task on a Tokio runtime, so a slow server reply does
+  not hold the next request.
+- **No `ENOSYS`**: the adapter overrides every operation the kernel sends to this mount.
+
 ## Future work
 
 - **Symlinks**: root entries as symlinks to anchors, as URI.md specifies, and symlinks stored in

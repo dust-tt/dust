@@ -80,27 +80,32 @@ jobs:
             dfs/protocol
             dfs/server
             dfs/mount
+            dfs/fuse
 
       - name: Format
         run: |
           cargo fmt --manifest-path dfs/protocol/Cargo.toml --all -- --check
           cargo fmt --manifest-path dfs/server/Cargo.toml --all -- --check
           cargo fmt --manifest-path dfs/mount/Cargo.toml --all -- --check
+          cargo fmt --manifest-path dfs/fuse/Cargo.toml --all -- --check
 
       - name: Lint
         run: |
           cargo clippy --manifest-path dfs/protocol/Cargo.toml --all-targets --all-features --locked -- -D warnings
           cargo clippy --manifest-path dfs/server/Cargo.toml --all-targets --all-features --locked -- -D warnings
           cargo clippy --manifest-path dfs/mount/Cargo.toml --all-targets --all-features --locked -- -D warnings
+          cargo clippy --manifest-path dfs/fuse/Cargo.toml --all-targets --all-features --locked -- -D warnings
 
       - name: Build
         run: |
           cargo build --manifest-path dfs/protocol/Cargo.toml --locked
           cargo build --manifest-path dfs/server/Cargo.toml --locked
           cargo build --manifest-path dfs/mount/Cargo.toml --locked
+          cargo build --manifest-path dfs/fuse/Cargo.toml --locked
 
       - name: Test
         run: |
           cargo test --manifest-path dfs/protocol/Cargo.toml --all --locked
           cargo test --manifest-path dfs/server/Cargo.toml --all --locked
           cargo test --manifest-path dfs/mount/Cargo.toml --all --locked
+          cargo test --manifest-path dfs/fuse/Cargo.toml --all --locked
