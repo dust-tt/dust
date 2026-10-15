@@ -607,6 +607,7 @@ async function replaceLegacyFrameFromSource(
         sourceFiles,
         uiBundleCode,
         publishedByAgentConfigurationId: params.publishedByAgentConfigurationId,
+        mode: "live",
       });
       if (published.isErr()) {
         logger.warn(

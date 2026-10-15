@@ -42,11 +42,14 @@ import {
 } from "@app/types/api/frame_manifest";
 import type {
   FramePublicationDescriptor,
+  FramePublicationStatus,
+  FramePublishMode,
   FrameToolCallPair,
 } from "@app/types/api/frame_publication";
 import {
   FRAME_PUBLICATION_SCHEMA_VERSION,
   FramePublicationDescriptorSchema,
+  isSameFramePublicationContent,
   parseFramePublicationDescriptor,
 } from "@app/types/api/frame_publication";
 import {
@@ -744,6 +747,48 @@ async function loadFramePublicationFunctionDefinitions(
   });
 }
 
+/**
+ * Make a stored publication invocable and point the Frame's draft at it. Editors are served it in
+ * the app; the share link keeps serving the live publication until `activateFramePublication`.
+ */
+export async function stageFramePublication(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    descriptor,
+    functionArtifacts,
+    publishedByAgentConfigurationId,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    descriptor: FramePublicationDescriptor;
+    functionArtifacts: FramePublicationFunctionArtifact[];
+    publishedByAgentConfigurationId?: string;
+  }
+): Promise<Result<void, FramePublicationError>> {
+  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
+    auth,
+    { frame, descriptor, publicationId, functionArtifacts }
+  );
+  if (functionDefinitions.isErr()) {
+    return functionDefinitions;
+  }
+
+  await withTransaction(async (transaction) => {
+    await SandboxFunctionResource.createForFramePublication(
+      auth,
+      { frame, functions: functionDefinitions.value, publicationId },
+      transaction
+    );
+    await frame.setDraftFramePublication(
+      { publicationId, publishedByAgentConfigurationId },
+      transaction
+    );
+  });
+  return new Ok(undefined);
+}
+
 export async function activateFramePublication(
   auth: Authenticator,
   {
@@ -752,7 +797,6 @@ export async function activateFramePublication(
     publishedByAgentConfigurationId,
     descriptor: providedDescriptor,
     uiBundleCode: providedUiBundleCode,
-    functionArtifacts,
   }: {
     frame: FileResource;
     publicationId: string;
@@ -761,8 +805,6 @@ export async function activateFramePublication(
     descriptor?: FramePublicationDescriptor;
     /** When set (publish path), skip re-fetching ui/bundle.js from GCS. */
     uiBundleCode?: string;
-    /** When set (publish path), skip re-fetching functions.tar from GCS. */
-    functionArtifacts?: FramePublicationFunctionArtifact[];
   }
 ): Promise<Result<void, FramePublicationError>> {
   let descriptor: FramePublicationDescriptor;
@@ -782,19 +824,6 @@ export async function activateFramePublication(
   const frameIdentity = getFrameIdentity(auth, frame);
   if (frameIdentity.isErr()) {
     return frameIdentity;
-  }
-
-  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
-    auth,
-    {
-      frame,
-      descriptor,
-      publicationId,
-      functionArtifacts,
-    }
-  );
-  if (functionDefinitions.isErr()) {
-    return functionDefinitions;
   }
 
   let uiBundleCode: string;
@@ -852,15 +881,6 @@ export async function activateFramePublication(
       transaction
     );
     await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
-    await SandboxFunctionResource.createForFramePublication(
-      auth,
-      {
-        frame,
-        functions: functionDefinitions.value,
-        publicationId,
-      },
-      transaction
-    );
   });
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
@@ -902,6 +922,7 @@ export async function publishFramePublication(
     sourceFiles,
     uiBundleCode,
     publishedByAgentConfigurationId,
+    mode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
@@ -909,10 +930,11 @@ export async function publishFramePublication(
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
     publishedByAgentConfigurationId?: string;
+    mode: FramePublishMode;
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -925,48 +947,98 @@ export async function publishFramePublication(
   };
 
   const publication = await withFramePublishLock<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >(frame.sId, async () => {
+    // Re-read under the lock so concurrent publishes see each other's pointers.
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    if (!freshFrame) {
+      return new Err(
+        new FramePublicationError("invalid_frame", "Frame not found.")
+      );
+    }
+
     // DB reconcile runs during build (shared Frame-sandbox staging). Store then
-    // activate using in-memory artifacts — no GCS re-fetch of what we just wrote.
-    const storedPublication = await withFramePublishTimingResult(
+    // stage or activate using in-memory artifacts — no GCS re-fetch of what we just wrote.
+    const stored = await withFramePublishTimingResult(
       "store",
       timingContext,
       () =>
         storeFramePublication(auth, {
-          frame,
+          frame: freshFrame,
           functionArtifacts,
           manifest,
           sourceFiles,
           uiBundleCode,
         })
     );
-    if (storedPublication.isErr()) {
-      return storedPublication;
+    if (stored.isErr()) {
+      return stored;
+    }
+    const { publicationId, descriptor } = stored.value;
+    const livePublicationId = freshFrame.useCaseMetadata?.activePublicationId;
+    // A Frame with nothing live has nothing to protect: its first publish always goes live.
+    const publishesDraft = mode === "draft" && livePublicationId !== undefined;
+
+    if (publishesDraft) {
+      const live = await withFramePublishTimingResult(
+        "compare",
+        timingContext,
+        () =>
+          loadFramePublicationDescriptor(auth, {
+            frame: freshFrame,
+            publicationId: livePublicationId,
+          })
+      );
+      if (live.isErr()) {
+        return live;
+      }
+      if (isSameFramePublicationContent(live.value, descriptor)) {
+        if (freshFrame.useCaseMetadata?.draftPublicationId) {
+          await freshFrame.clearDraftFramePublication();
+        }
+        return new Ok({
+          publicationId: livePublicationId,
+          status: "live" as const,
+        });
+      }
+    }
+
+    const staged = await withFramePublishTimingResult(
+      "stage",
+      { ...timingContext, publicationId },
+      () =>
+        stageFramePublication(auth, {
+          frame: freshFrame,
+          publicationId,
+          descriptor,
+          functionArtifacts,
+          publishedByAgentConfigurationId,
+        })
+    );
+    if (staged.isErr()) {
+      return staged;
+    }
+    if (publishesDraft) {
+      return new Ok({ publicationId, status: "draft" as const });
     }
 
     const activation = await withFramePublishTimingResult(
       "activate",
-      {
-        ...timingContext,
-        publicationId: storedPublication.value.publicationId,
-      },
+      { ...timingContext, publicationId },
       () =>
         activateFramePublication(auth, {
-          frame,
-          publicationId: storedPublication.value.publicationId,
+          frame: freshFrame,
+          publicationId,
           publishedByAgentConfigurationId,
-          descriptor: storedPublication.value.descriptor,
+          descriptor,
           uiBundleCode,
-          functionArtifacts,
         })
     );
     if (activation.isErr()) {
       return activation;
     }
-
-    return new Ok({ publicationId: storedPublication.value.publicationId });
+    return new Ok({ publicationId, status: "live" as const });
   });
   if (publication.isErr()) {
     const error = publication.error;

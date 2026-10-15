@@ -544,6 +544,7 @@ export async function buildAndPublishFramePublication(
         sourceFiles,
         uiBundleCode: buildResult.value.uiBundleCode,
         publishedByAgentConfigurationId,
+        mode: "live",
       });
     }
   );
