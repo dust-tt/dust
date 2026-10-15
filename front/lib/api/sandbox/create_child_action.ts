@@ -24,6 +24,7 @@ import { notifyManualActionRequired } from "@app/lib/notifications/triggers/manu
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
@@ -328,8 +329,24 @@ export async function createSandboxChildAction(
     // wait-and-collect wake-up flow.
     return new Ok({
       actionId: action.sId,
-      pauseSandbox: () =>
-        pauseSandboxBashForBlockedChild(auth, action, conversationJson),
+      pauseSandbox: async () => {
+        const pauseRes = await pauseSandboxBashForBlockedChild(
+          auth,
+          action,
+          conversationJson
+        );
+        if (pauseRes.isErr()) {
+          logger.error(
+            {
+              err: pauseRes.error,
+              actionId: action.sId,
+              conversationId: conversation.sId,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+            },
+            "Sandbox-child blocked but its parent action is final"
+          );
+        }
+      },
     });
   }
 

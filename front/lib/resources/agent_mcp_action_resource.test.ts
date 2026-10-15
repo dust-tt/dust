@@ -573,9 +573,11 @@ describe("listBlockedActionsForConversation", () => {
     expect(currentParent.status).toBe("running");
     await currentParent.updateStatus("succeeded");
 
-    await expect(staleParent.blockForSandboxChild(auth)).rejects.toThrow(
+    const blockRes = await staleParent.blockForSandboxChild(auth);
+    expect(blockRes.isErr() && blockRes.error.message).toContain(
       "cannot transition from succeeded to blocked_child_action_input_required"
     );
+    expect(staleParent.status).toBe("succeeded");
     const reloadedParent = await AgentMCPActionResource.fetchById(
       auth,
       action.sId

@@ -12,6 +12,8 @@ import type {
   ConversationWithoutContentType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Called when a sandbox-child action enters a blocked state. Flips the
@@ -26,10 +28,10 @@ export async function pauseSandboxBashForBlockedChild(
   auth: Authenticator,
   action: AgentMCPActionResource,
   conversation: ConversationWithoutContentType
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const info = action.stepContext.sandboxChildActionInfo;
   if (!isSandboxChildActionInfo(info)) {
-    return;
+    return new Ok(undefined);
   }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -47,13 +49,16 @@ export async function pauseSandboxBashForBlockedChild(
       },
       "Sandbox-child blocked but parent action not found"
     );
-    return;
+    return new Ok(undefined);
   }
 
   // DB-first keeps the pause self-converging if the provider call fails. The resource owns the
   // atomic lifecycle check: running parents become blocked, concurrent siblings are idempotent,
   // and a stale child attempting to rewind a final parent fails loudly.
-  await parentAction.blockForSandboxChild(auth);
+  const blockRes = await parentAction.blockForSandboxChild(auth);
+  if (blockRes.isErr()) {
+    return new Err(blockRes.error);
+  }
 
   const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,
@@ -70,6 +75,7 @@ export async function pauseSandboxBashForBlockedChild(
       "Failed to pause sandbox for blocked sandbox-child"
     );
   }
+  return new Ok(undefined);
 }
 
 interface AgentLoopRelaunchArgs {
