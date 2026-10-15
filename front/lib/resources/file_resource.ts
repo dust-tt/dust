@@ -1131,11 +1131,11 @@ export class FileResource extends BaseResource<FileModel> {
    * When `publishedByAgentConfigurationId` is given, `useCaseMetadata.lastEditedByAgentConfigurationId`
    * MUST be set to it. The conversation UI reads this field to enable "Ask agent to fix" on a
    * Frame runtime error; if a publication path omits it, the retry affordance stays silently
-   * unavailable for every publication of that Frame, not just the failing one.
+   * unavailable for every publication of that Frame, not just the failing one. Drafts record it
+   * through `setDraftFramePublication`.
    *
    * The Frame's name is not part of a publication: it is the source folder's basename. See the
    * `frame-name-is-the-source-folder` contract in `types/api/frame_manifest.ts`.
-   * Drafts record it through `setDraftFramePublication`.
    */
   /**
    * @cc [owner:davidebbo,label:product] activation-resolves-the-draft
@@ -1171,6 +1171,13 @@ export class FileResource extends BaseResource<FileModel> {
       this.useCaseMetadata?.draftPublicationId ??
       this.useCaseMetadata?.activePublicationId
     );
+  }
+
+  /** The publication a target serves: the live one, or the latest (draft ?? live). */
+  framePublicationIdFor(target: FramePublicationTarget): string | undefined {
+    return target === "latest"
+      ? this.latestFramePublicationId
+      : this.useCaseMetadata?.activePublicationId;
   }
 
   async setDraftFramePublication(
@@ -1265,10 +1272,7 @@ export class FileResource extends BaseResource<FileModel> {
       return this.getFileContent(owner, this.getRenderableVersion());
     }
 
-    const publicationId =
-      publication === "latest"
-        ? this.latestFramePublicationId
-        : this.useCaseMetadata?.activePublicationId;
+    const publicationId = this.framePublicationIdFor(publication);
     if (!publicationId || owner.id !== this.workspaceId) {
       return null;
     }
@@ -2224,10 +2228,7 @@ export class FileResource extends BaseResource<FileModel> {
   }: {
     publication: FramePublicationTarget;
   }): Promise<boolean> {
-    const publicationId =
-      publication === "latest"
-        ? this.latestFramePublicationId
-        : this.useCaseMetadata?.activePublicationId;
+    const publicationId = this.framePublicationIdFor(publication);
     if (!this.isFrameV2 || !publicationId) {
       return false;
     }

@@ -84,12 +84,9 @@ async function resolveFrameV2FunctionReference(
  * (see isFramesV2FunctionsEnabled), whatever publication or sharing state the Frame is in.
  */
 /**
- * @cc [owner:davidebbo,label:product;security] frame-draft-functions-require-write-access
- * A draft publication's functions MUST resolve only when the caller asks for `target: "latest"`
- * and can write the Frame's source (`canWriteFrameV2Source`). Every other caller MUST resolve
- * against the live publication only. The one exception is `allowInactiveFramePublication`
- * resolution, used only to act on an existing invocation: it may resolve any publication because
- * invocation reads are scoped to the caller's own invocations.
+ * Draft publications resolve only for `target: "latest"` with write access; everything else
+ * resolves live. See the `frame-draft-functions-require-write-access` contract on
+ * `resolveSandboxFunctionWithCapability`.
  */
 /** Resolve one function from the live or latest publication of a Frame the caller may use. */
 export async function resolveActiveFrameFunctionForUse(
@@ -167,10 +164,7 @@ async function resolveFrameV2FunctionAccess(
     return sandboxFunction;
   }
   // Re-checked on the function's freshly loaded Frame: fail closed if the pointer moved.
-  const servedPublicationId =
-    publication === "latest"
-      ? frame.latestFramePublicationId
-      : frame.useCaseMetadata?.activePublicationId;
+  const servedPublicationId = frame.framePublicationIdFor(publication);
   return sandboxFunction.publicationId === servedPublicationId
     ? sandboxFunction
     : null;
