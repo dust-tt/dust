@@ -2730,7 +2730,7 @@ export const GetMemberLocaleRequestSchema = z.object({
 });
 
 export const GetMemberLocaleResponseSchema = z.object({
-  localisationEnabled: z.boolean(),
+  localisationEnabled: z.boolean().optional(),
   userLocale: z.string().nullable(),
   workspaceLocale: z.string(),
 });
