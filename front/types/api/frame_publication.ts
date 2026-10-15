@@ -11,6 +11,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import isEqual from "lodash/isEqual";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -176,4 +177,39 @@ export function parseFramePublicationDescriptor(
   }
 
   return new Ok(validation.data);
+}
+
+export const FramePublicationTargetSchema = z.enum(["live", "latest"]);
+/** `latest` is the pending draft when there is one, else the live publication. */
+export type FramePublicationTarget = z.infer<
+  typeof FramePublicationTargetSchema
+>;
+
+export const FramePublishModeSchema = z.enum(["live", "draft"]);
+export type FramePublishMode = z.infer<typeof FramePublishModeSchema>;
+
+export type FramePublicationStatus = "live" | "draft";
+
+/**
+ * @cc [owner:davidebbo,label:product] identical-publish-is-not-a-draft
+ * Two publications MUST compare equal exactly when everything a viewer or a function caller can
+ * observe matches: the manifest, the UI bundle, every function contract and every database
+ * schema. Source hashes, publish time and publisher are not compared.
+ */
+export function isSameFramePublicationContent(
+  a: FramePublicationDescriptor,
+  b: FramePublicationDescriptor
+): boolean {
+  const observable = ({
+    manifest,
+    ui,
+    functions,
+    databases,
+  }: FramePublicationDescriptor) => ({
+    manifest,
+    ui,
+    functions,
+    databases,
+  });
+  return isEqual(observable(a), observable(b));
 }

@@ -1132,6 +1132,12 @@ export class FileResource extends BaseResource<FileModel> {
    *
    * The Frame's name is not part of a publication: it is the source folder's basename. See the
    * `frame-name-is-the-source-folder` contract in `types/api/frame_manifest.ts`.
+   * Drafts record it through `setDraftFramePublication`.
+   */
+  /**
+   * @cc [owner:davidebbo,label:product] activation-resolves-the-draft
+   * Activating a publication MUST clear `draftPublicationId`: whatever was pending is either the
+   * publication being activated or superseded by it, since both are built from the same source.
    */
   async setActiveFramePublication(
     {
@@ -1145,12 +1151,37 @@ export class FileResource extends BaseResource<FileModel> {
     },
     transaction?: Transaction
   ) {
+    const useCaseMetadata: FileUseCaseMetadata = {
+      ...this.useCaseMetadata,
+      activePublicationId: publicationId,
+      frameDescription: description,
+      ...(publishedByAgentConfigurationId
+        ? { lastEditedByAgentConfigurationId: publishedByAgentConfigurationId }
+        : {}),
+    };
+    delete useCaseMetadata.draftPublicationId;
+    return this.update({ useCaseMetadata }, transaction);
+  }
+
+  get latestFramePublicationId(): string | undefined {
+    return (
+      this.useCaseMetadata?.draftPublicationId ??
+      this.useCaseMetadata?.activePublicationId
+    );
+  }
+
+  async setDraftFramePublication(
+    {
+      publicationId,
+      publishedByAgentConfigurationId,
+    }: { publicationId: string; publishedByAgentConfigurationId?: string },
+    transaction?: Transaction
+  ) {
     return this.update(
       {
         useCaseMetadata: {
           ...this.useCaseMetadata,
-          activePublicationId: publicationId,
-          frameDescription: description,
+          draftPublicationId: publicationId,
           ...(publishedByAgentConfigurationId
             ? {
                 lastEditedByAgentConfigurationId:
@@ -1161,6 +1192,12 @@ export class FileResource extends BaseResource<FileModel> {
       },
       transaction
     );
+  }
+
+  async clearDraftFramePublication(transaction?: Transaction) {
+    const useCaseMetadata = { ...this.useCaseMetadata };
+    delete useCaseMetadata.draftPublicationId;
+    return this.update({ useCaseMetadata }, transaction);
   }
 
   // Content access logic.

@@ -73,8 +73,11 @@ export type FileUseCaseMetadata = {
   // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
   // click) reuse it to know what to rebuild from, rather than guessing from fileName.
   frameEntryRelPath?: string;
-  // Immutable Frames v2 publication currently served by the Frame.
+  // Live Frames v2 publication: the one the share link, and anyone who cannot edit, is served.
   activePublicationId?: string;
+  // Newer publication published as a draft, served only to editors in the app until it is made
+  // live. Absent when nothing is pending.
+  draftPublicationId?: string;
   // Description from the manifest of the active publication, refreshed on every activation, so
   // it describes what is served rather than what the source folder currently says. The Frame's
   // name is not stored: it is derived from the folder holding the manifest.
