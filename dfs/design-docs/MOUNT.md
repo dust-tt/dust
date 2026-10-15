@@ -16,9 +16,10 @@ by answering most requests from memory and by acknowledging writes before they r
 
 ## Guarantees
 
-1. **Bounded delay.** Once a mount acknowledges a change, every request that starts more than
-   `MAX_DELAY` later, on any mount, sees it or a later state. `MAX_DELAY` is 1 second by default.
-   Losing read access also takes up to `MAX_DELAY` to apply.
+1. **Bounded client delay.** The time a mount holds a change before sending it to the server,
+   plus the time it serves a cached reply, is at most `MAX_DELAY` (1 second by default). This
+   bound covers only what the mount waits on its own: network and server time come on top. A
+   cached reply also outlives a lost read access by at most the cache TTL.
 2. **Read your writes.** A mount sees its own changes at once.
 3. **Whole states.** Each read the mount serves returns bytes of one state of the file, never a
    mix of two writes. A large `read(2)` that the kernel splits may still span two states.
@@ -41,13 +42,14 @@ the choice of FUSE crate stays with the adapter. Operations that may wait for th
 
 `MAX_DELAY` is split in two:
 
-- **Commit window**: `min(MAX_DELAY / 4, 1 s)`. Every acknowledged change is committed within it.
+- **Send window**: `min(MAX_DELAY / 4, 1 s)`. An acknowledged change is sent to the server within
+  it.
 - **Cache TTL**: the rest. A cached server reply is served only while less than the TTL has passed
   since its request was sent.
 
-At 1 second, that is 250 ms and 750 ms. A change acknowledged at `t` is committed by `t + window`,
-and a reply that misses it was requested before then, so it is served until `t + MAX_DELAY` at the
-latest. This holds because the server reads at a version taken after each request arrives.
+At 1 second, that is 250 ms and 750 ms. Both are measured on the mount's clock, so a change
+reaches another mount after at most `MAX_DELAY` of waiting on the two mounts, plus the time the
+network and the server take to commit and read it.
 
 ### No kernel caching
 
@@ -81,8 +83,8 @@ after it was made. A shared writable `mmap` fails.
   time, in order, carrying as many operations as fit. Attribute changes fold into the previous
   operation on the same object, and consecutive writes to a file merge.
 - **Admission**: a new change waits while the log is full, or while the oldest pending operation
-  would miss the commit window (judging from recent `Apply` times). A slow server slows writers
-  instead of stretching the delay.
+  could not be sent within the send window, since earlier `Apply` calls go first (judging from
+  their recent times). A slow server slows writers instead of stretching the delay.
 - **Results**: a committed batch updates the cache with the attributes it returns. A failed
   operation is dropped: the objects it touched are fetched again, and the next `fsync` reports it.
 - **New objects get their ID from the mount**, so they can be used before their creation commits.
@@ -164,8 +166,8 @@ calls it uses.
 4. **One FUSE thread**: answers from memory on the FUSE thread.
 5. **Writes**: the overlay, the log and its committer, `fsync`, and draining on unmount, with the
    server's `Apply`.
-6. **Admission**: changes wait for the commit window.
-7. **Proof**: a visibility test that checks `MAX_DELAY` for every kind of change, and benchmarks
+6. **Admission**: changes wait so that each is sent within the send window.
+7. **Proof**: a visibility test that checks the delay budget for every kind of change, and benchmarks
    (untar, `git clone` and `git status`, `rg`, `stat`) against local disk.
 
 ## Future work
