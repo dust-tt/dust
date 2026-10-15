@@ -452,6 +452,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "adrsimon",
   },
+  localisation: {
+    description:
+      "No longer read. Kept so clients loaded before its removal keep localisation on; remove once they have cycled out.",
+    stage: "ask_owner",
+    owner: "sfriquet",
+  },
   co_edition: {
     description: "Collaborative editing features",
     stage: "dust_only",
