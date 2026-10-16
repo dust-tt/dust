@@ -21,6 +21,7 @@ const STATIC_ALLOWED_ORIGINS = [
   // Next.js server (landing page, OAuth, API routes).
   "https://dust.tt",
   "https://eu.dust.tt",
+  "https://eu2.dust.tt",
   // Marketing edge (standalone marketing Next.js app).
   "https://marketing-edge.dust.tt",
 ] as const;
