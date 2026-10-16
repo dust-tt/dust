@@ -63,6 +63,12 @@ vi.mock("@app/lib/swr/frames", () => ({
     hasFrameFunctions: mocks.hasFrameFunctions,
     framePath: mocks.framePath,
   }),
+  useFramePermissions: () => ({
+    requiredTools: [],
+    hasAuthorizedRequiredTools: true,
+    isFramePermissionsLoading: false,
+    mutateFramePermissions: vi.fn(),
+  }),
 }));
 
 vi.mock("@app/lib/swr/user", () => ({
