@@ -210,7 +210,7 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Search` | `r` on each hit and supplied scope directory. |
 | create | `w` on the parent. |
 | update, write | `w` on the target. |
-| rename | `w` on the source, any replacement, and affected parents. |
+| move | `w` on the source, any replacement, and affected parents. |
 | remove | `w` on the target and its parent. |
 
 Namespace permissions are checked on each participating object using its effective read/write
@@ -619,7 +619,7 @@ ApplyRequest {
 Operation = create(CreateOperation)
           | update(UpdateOperation)
           | write(WriteOperation)
-          | rename(RenameOperation)
+          | move(MoveOperation)
           | remove(RemoveOperation)
 ```
 
@@ -735,14 +735,14 @@ WriteOperation {
 **Successful result:** `mutation.object` contains the file's final attributes if it survives.
 Sparse gaps read as zeroes. Append observes earlier successful operations in the same request.
 
-### rename operation
+### move operation
 
-Renames or moves an object while preserving its identity.
+Moves or renames an object while preserving its identity.
 
 **Arguments**
 
 ```text
-RenameOperation {
+MoveOperation {
   object_id: ObjectId            // Object to move or rename.
   parent_id: ObjectId            // Source directory.
   target_id?: ObjectId           // Destination directory; defaults to parent_id.

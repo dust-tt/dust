@@ -955,7 +955,7 @@ export class DfsFileSystem {
     }
     return this.applyForObject([
       {
-        type: "rename",
+        type: "move",
         objectId: objectId.value,
         parentId: parentId.value,
         targetId: targetId === parentId.value ? undefined : targetId,

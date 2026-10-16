@@ -408,7 +408,7 @@ export class InMemoryDfs implements DfsFileSystemClient {
         this.touch(node, { content: op.data.length > 0 });
         return node.id;
       }
-      case "rename": {
+      case "move": {
         checkName(op.name);
         const node = this.node(op.objectId);
         if (node.parentId !== op.parentId) {

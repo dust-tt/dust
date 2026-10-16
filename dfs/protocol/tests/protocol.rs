@@ -267,11 +267,11 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
 }
 
 #[test]
-fn rename_preserves_source_parent_and_optional_destination() -> Result<()> {
+fn move_preserves_source_parent_and_optional_destination() -> Result<()> {
     let object_id = ObjectId::new_v7();
     let parent_id = ObjectId::new_v7();
     for target_id in [None, Some(ObjectId::new_v7())] {
-        let operation = rpc::RenameOperation {
+        let operation = rpc::MoveOperation {
             object_id,
             parent_id,
             target_id,
@@ -279,7 +279,7 @@ fn rename_preserves_source_parent_and_optional_destination() -> Result<()> {
             replace: false,
         };
         assert_eq!(
-            rpc::RenameOperation::decode(operation.encode_to_vec().as_slice())?,
+            rpc::MoveOperation::decode(operation.encode_to_vec().as_slice())?,
             operation
         );
     }

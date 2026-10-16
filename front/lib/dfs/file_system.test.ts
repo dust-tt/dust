@@ -485,7 +485,7 @@ describe("DfsFileSystem", () => {
     expect(await readText(fs, at("dir/renamed.txt"))).toBe("a");
     expect(dfs.applyCalls.at(-1)).toEqual([
       {
-        type: "rename",
+        type: "move",
         objectId: original.value.attr.id,
         parentId: dfs.rootId,
         targetId: directory.value.attr.id,
@@ -514,7 +514,7 @@ describe("DfsFileSystem", () => {
     expect(dfs.applyCalls).toEqual([
       [
         {
-          type: "rename",
+          type: "move",
           objectId,
           parentId,
           targetId: undefined,

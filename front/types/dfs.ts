@@ -208,8 +208,8 @@ export interface DfsWriteOperation {
   append: boolean;
 }
 
-export interface DfsRenameOperation {
-  type: "rename";
+export interface DfsMoveOperation {
+  type: "move";
   objectId: DfsObjectId;
   // The source directory.
   parentId: DfsObjectId;
@@ -229,7 +229,7 @@ export type DfsOperation =
   | DfsCreateOperation
   | DfsUpdateOperation
   | DfsWriteOperation
-  | DfsRenameOperation
+  | DfsMoveOperation
   | DfsRemoveOperation;
 
 // The commit version is in each returned `Attr.storeVersion`.

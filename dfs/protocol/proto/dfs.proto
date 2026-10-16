@@ -368,7 +368,7 @@ message Operation {
     CreateOperation create = 1;
     UpdateOperation update = 2;
     WriteOperation write = 3;
-    RenameOperation rename = 4;
+    MoveOperation move = 4;
     RemoveOperation remove = 5;
   }
 }
@@ -435,13 +435,13 @@ message WriteOperation {
   required bool append = 4;
 }
 
-// @cc [owner:spolu,label:api] dfs-rename-name-limit
+// @cc [owner:spolu,label:api] dfs-move-name-limit
 // The destination name MUST satisfy the stored-basename limits in Attr.name.
 
-// @cc [owner:spolu,label:api;security] dfs-rename-parents
+// @cc [owner:spolu,label:api;security] dfs-move-parents
 // The server MUST verify that parent_id is the object's current parent in the transaction and
 // return NOT_FOUND on mismatch. The destination MUST be target_id when present, otherwise parent_id.
-message RenameOperation {
+message MoveOperation {
   required ObjectId object_id = 1;
   // The source directory.
   required ObjectId parent_id = 2;

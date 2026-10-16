@@ -296,7 +296,7 @@ describe("DfsClient", () => {
           append: false,
         },
         {
-          type: "rename",
+          type: "move",
           objectId: FILE_ID,
           parentId: ROOT_ID,
           name: "new.txt",
@@ -326,7 +326,7 @@ describe("DfsClient", () => {
           },
         },
         {
-          rename: {
+          move: {
             objectId: wireId(FILE_ID),
             parentId: wireId(ROOT_ID),
             name: "new.txt",
@@ -354,7 +354,7 @@ describe("DfsClient", () => {
   });
 
   it.each([undefined, "0190c3a0b1c47aaa9bbbccccddddeeee"])(
-    "encodes a rename with destination %s",
+    "encodes a move with destination %s",
     async (targetId) => {
       const { client, transport } = setup({
         Apply: new Ok({
@@ -365,7 +365,7 @@ describe("DfsClient", () => {
       const res = await client.apply({
         operations: [
           {
-            type: "rename",
+            type: "move",
             objectId: FILE_ID,
             parentId: ROOT_ID,
             targetId,
@@ -379,7 +379,7 @@ describe("DfsClient", () => {
       expect(transport.calls[0].request).toEqual({
         operations: [
           {
-            rename: {
+            move: {
               objectId: wireId(FILE_ID),
               parentId: wireId(ROOT_ID),
               targetId: targetId === undefined ? undefined : wireId(targetId),
