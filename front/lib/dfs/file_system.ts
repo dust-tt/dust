@@ -909,32 +909,32 @@ export class DfsFileSystem {
     if (source.isErr()) {
       return source;
     }
-    if (source.value.segments.length === 0) {
+    const { anchorId: sourceAnchorId, segments: sourceSegments } = source.value;
+    if (sourceSegments.length === 0) {
       return new Err(
         new DfsError("invalid_input", "The source requires a path.")
       );
     }
-    const sourceAttrs = await this.walk(
-      source.value.anchorId,
-      source.value.segments
-    );
+    const sourceAttrs = await this.walk(sourceAnchorId, sourceSegments);
     if (sourceAttrs.isErr()) {
       return sourceAttrs;
     }
     const attr = sourceAttrs.value.at(-1);
-    if (!attr || sourceAttrs.value.length !== source.value.segments.length) {
+    if (!attr || sourceAttrs.value.length !== sourceSegments.length) {
       return new Err(new DfsError("not_found", `Not found: ${src}.`));
     }
     const objectId = realIdOf(attr);
     if (objectId.isErr()) {
       return objectId;
     }
+    let parentId = sourceAnchorId;
     const sourceParent = sourceAttrs.value.at(-2);
-    const parentId = sourceParent
-      ? realIdOf(sourceParent)
-      : new Ok(source.value.anchorId);
-    if (parentId.isErr()) {
-      return parentId;
+    if (sourceParent) {
+      const id = realIdOf(sourceParent);
+      if (id.isErr()) {
+        return id;
+      }
+      parentId = id.value;
     }
     let targetId = anchorId;
     if (segments.length > 1) {
@@ -957,8 +957,8 @@ export class DfsFileSystem {
       {
         type: "move",
         objectId: objectId.value,
-        parentId: parentId.value,
-        targetId: targetId === parentId.value ? undefined : targetId,
+        parentId,
+        targetId: targetId === parentId ? undefined : targetId,
         name,
         replace,
       },
