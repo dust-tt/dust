@@ -29,6 +29,7 @@ runs:
           const path = require('node:path');
           const { readFileSync } = require('node:fs');
           const { labelPmrr, requestReviews, formatSlackNotification } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'review-bot.ts'));
+          const { formatPullRequestPreview } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'pr-preview.ts'));
           await labelPmrr({ github, context });
           const notification = await requestReviews({ github, context, core });
           if (notification) {
@@ -45,7 +46,8 @@ runs:
             core.setOutput('slack_payload', JSON.stringify({
               channel: process.env.SLACK_CHANNEL_ID,
               text,
-              unfurl_links: true,
+              attachments: [formatPullRequestPreview(notification.pullRequest)],
+              unfurl_links: false,
               unfurl_media: false,
             }));
           }
