@@ -1,4 +1,8 @@
-import { alignCellsToColumns } from "@app/components/editor/document/DocumentTable";
+import {
+  alignCellsToColumns,
+  findDocumentTable,
+  TABLE_ROW_NODE_NAME,
+} from "@app/components/editor/document/DocumentTable";
 import {
   Button,
   DropdownMenu,
@@ -13,7 +17,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ChainedCommands, Editor } from "@tiptap/core";
-import { findParentNode, isTextSelection } from "@tiptap/core";
+import { isTextSelection } from "@tiptap/core";
 import type { EditorState, Selection } from "@tiptap/pm/state";
 import { CellSelection } from "@tiptap/pm/tables";
 import { useEditorState } from "@tiptap/react";
@@ -23,7 +27,10 @@ import { useMemo } from "react";
 
 const TABLE_TOOLBAR_ATTRIBUTE = "data-document-table-toolbar";
 
-const findTable = findParentNode((node) => node.type.name === "table");
+const TABLE_TOOLBAR_OPTIONS: BubbleMenuProps["options"] = {
+  placement: "top-end",
+  offset: 8,
+};
 
 const isCellSelection = (selection: Selection): selection is CellSelection =>
   selection instanceof CellSelection;
@@ -34,12 +41,14 @@ const isElement = (node: Node | null): node is Element =>
 /** Whether the cursor sits in a table without selecting text, which the selection toolbar owns. */
 const isInTable = ({ selection }: EditorState) =>
   isCellSelection(selection) ||
-  (isTextSelection(selection) && selection.empty && !!findTable(selection));
+  (isTextSelection(selection) &&
+    selection.empty &&
+    !!findDocumentTable(selection));
 
 const isInFirstRow = (state: EditorState) => {
   const { $from } = state.selection;
   for (let depth = $from.depth; depth > 0; depth--) {
-    if ($from.node(depth).type.name === "tableRow") {
+    if ($from.node(depth).type.name === TABLE_ROW_NODE_NAME) {
       return $from.index(depth - 1) === 0;
     }
   }
@@ -59,7 +68,7 @@ const showTableToolbar: NonNullable<BubbleMenuProps["shouldShow"]> = ({
     ));
 
 const tableElement = (editor: Editor) => {
-  const table = findTable(editor.state.selection);
+  const table = findDocumentTable(editor.state.selection);
   const dom = table ? editor.view.nodeDOM(table.pos) : null;
   return isElement(dom) ? dom : null;
 };
@@ -77,10 +86,6 @@ export const DocumentTableToolbar = ({ editor }: DocumentTableToolbarProps) => {
     editor,
     selector: ({ editor }) => ({ inFirstRow: isInFirstRow(editor.state) }),
   });
-  const options = useMemo(
-    (): BubbleMenuProps["options"] => ({ placement: "top-end", offset: 8 }),
-    []
-  );
   const getReferencedVirtualElement = useMemo(
     () => () => tableElement(editor),
     [editor]
@@ -96,7 +101,7 @@ export const DocumentTableToolbar = ({ editor }: DocumentTableToolbarProps) => {
     <BubbleMenu
       editor={editor}
       pluginKey="documentTableToolbar"
-      options={options}
+      options={TABLE_TOOLBAR_OPTIONS}
       getReferencedVirtualElement={getReferencedVirtualElement}
       className="relative z-40 font-sans text-foreground antialiased print:hidden"
       shouldShow={showTableToolbar}

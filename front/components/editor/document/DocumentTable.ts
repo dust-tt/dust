@@ -20,7 +20,11 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 const DOCUMENT_TABLE_NODE_NAME = "table";
 export const TABLE_CELL_NODE_NAME = "tableCell";
-const TABLE_ROW_NODE_NAME = "tableRow";
+export const TABLE_ROW_NODE_NAME = "tableRow";
+
+export const findDocumentTable = findParentNode(
+  (node) => node.type.name === DOCUMENT_TABLE_NODE_NAME
+);
 
 interface MarkdownTableCell {
   tokens: MarkdownToken[];
@@ -81,9 +85,7 @@ export const withColumnAlignments = (table: JSONContent): JSONContent => {
 
 /** Aligns every cell of the table holding the selection as its column is written. */
 export const alignCellsToColumns = ({ tr }: CommandProps): boolean => {
-  const table = findParentNode(
-    (node) => node.type.name === DOCUMENT_TABLE_NODE_NAME
-  )(tr.selection);
+  const table = findDocumentTable(tr.selection);
   if (!table) {
     return false;
   }
