@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    convert::Infallible,
     fmt,
     time::{Duration, Instant},
 };
@@ -15,7 +16,7 @@ use uuid::Uuid;
 use super::{fdb, resources::keys::namespace_subspace};
 use crate::{clock, storage};
 
-const FAMILY: &str = "receipt";
+const FAMILY: &str = "idempotency-receipt";
 const LIFETIME_MS: u64 = fdb::TRANSACTION_TIMEOUT_MS as u64;
 const CLEANUP_GRACE_MS: u64 = 60_000;
 const CLEANUP_BATCH_SIZE: usize = 100;
@@ -94,6 +95,25 @@ impl<T: Clone> Receipt<T> {
             .or(commit_version)
             .ok_or(Error::InvalidVersion)?;
         Ok((result, version))
+    }
+
+    // Consuming the receipt prevents reuse after deletion. Only its key survives in the task.
+    pub(super) fn clear_in_background(self) {
+        let key = self.key();
+        // Dropping the task handle detaches cleanup from the caller.
+        drop(tokio::spawn(async move {
+            let result = fdb::with_transaction(|tx| {
+                let key = &key;
+                async move {
+                    tx.clear(key);
+                    Ok::<_, storage::Error<Infallible>>(())
+                }
+            })
+            .await;
+            if let Err(error) = result {
+                tracing::warn!(%error, "idempotency receipt cleanup failed");
+            }
+        }));
     }
 
     async fn attempt<F, Fut, E>(

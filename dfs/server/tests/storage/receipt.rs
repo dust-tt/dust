@@ -23,10 +23,11 @@ fn receipt_storage() -> Result<()> {
     // SAFETY: this is the only FDB network boot in the library test binary.
     #[allow(unsafe_code)]
     let _network = unsafe { foundationdb::boot() };
-    let runtime = tokio::runtime::Builder::new_multi_thread()
+    let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
     runtime.block_on(async {
+        completed_calls_return_before_cleanup_and_preserve_other_receipts().await?;
         receipts_retry_uncommitted_bodies_and_replay_committed_results().await?;
         late_commits_replay_the_committing_attempts_result().await?;
         body_errors_abort_writes_without_a_receipt().await?;
@@ -45,6 +46,58 @@ async fn increment(tx: &Transaction, key: &[u8]) -> TestResult<u64> {
         .unwrap_or(0);
     tx.set(key, &pack(&(value + 1)));
     Ok(value + 1)
+}
+
+async fn completed_calls_return_before_cleanup_and_preserve_other_receipts() -> Result<()> {
+    let mut other = Receipt::new()?;
+    other
+        .with_transaction(|_tx| async { Ok::<_, storage::Error<TestError>>(()) })
+        .await?;
+    let key = namespace_subspace().pack(&("receipt-test", Uuid::now_v7().as_bytes().as_slice()));
+    let (result, version) = fdb::with_idempotent_transaction(|tx| {
+        let key = &key;
+        async move { increment(&tx, key).await }
+    })
+    .await?;
+    assert_eq!(result, 1);
+
+    // The single-thread runtime cannot poll spawned cleanup until this task yields. FDB reads
+    // still complete on its own network thread, so check the marker without yielding to Tokio.
+    let tx = fdb::database()?.create_trx()?;
+    let range = RangeOption::from(subspace().range());
+    let entries = futures::executor::block_on(tx.get_range(&range, 1, false))?;
+    let mut receipt_key = None;
+    for entry in &entries {
+        let (_, stamp): (Uuid, Versionstamp) = unpack(entry.value())?;
+        if fdb::version_from_stamp(stamp.transaction_version()) == version {
+            receipt_key = Some(entry.key().to_vec());
+        }
+    }
+    let receipt_key = receipt_key.context("cleanup must not finish before the result returns")?;
+
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let tx = fdb::database()?.create_trx()?;
+            if tx.get(&receipt_key, false).await?.is_none() {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        Ok::<_, anyhow::Error>(())
+    })
+    .await??;
+    let tx = fdb::database()?.create_trx()?;
+    assert!(tx.get(&other.key(), false).await?.is_some());
+    let value: u64 = unpack(
+        &tx.get(&key, false)
+            .await?
+            .context("missing committed write")?,
+    )?;
+    assert_eq!(value, result);
+    tx.clear(&other.key());
+    tx.clear(&key);
+    tx.commit().await?;
+    Ok(())
 }
 
 async fn receipts_retry_uncommitted_bodies_and_replay_committed_results() -> Result<()> {

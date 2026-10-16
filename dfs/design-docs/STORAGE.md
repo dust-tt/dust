@@ -89,10 +89,11 @@ index entries are also removed. Authentication rejects expired sessions independ
 ## Transaction receipts
 
 `fdb::with_idempotent_transaction` protects any transaction body across FDB retries within one call.
-Receipts use `dfs-v1-{env}/receipt/<createdAtMs>/<receiptId>` and store the attempt ID and commit
-versionstamp. One in-memory receipt retains each attempt's result across FDB retries; a marker skips
-the body. Cleanup can remove 100 markers per transaction after the retry timeout plus a 60-second
-clock-skew grace. Scheduling cleanup is follow-up work.
+Receipts use `dfs-v1-{env}/idempotency-receipt/<createdAtMs>/<receiptId>` and store the attempt ID
+and commit versionstamp. One in-memory receipt retains each attempt's result across FDB retries;
+a marker skips the body. Success spawns receipt deletion in a separate transaction without delaying
+the response. Failed cleanup leaves the receipt for expiry cleanup, which removes up to 100 markers
+per transaction after the retry timeout plus a 60-second grace. Periodic sweeping is follow-up work.
 
 ## Objects and contents
 

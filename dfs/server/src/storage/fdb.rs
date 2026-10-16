@@ -54,6 +54,13 @@ where
  * executing the body. The mechanism MUST remain independent of resource and API types.
  * All persistent writes performed by the body MUST use the supplied transaction.
  */
+/**
+ * @cc [owner:spolu,label:backend;concurrency] idempotent-transaction-cleanup
+ * Only after the retry loop succeeds, cleanup MUST be spawned in a separate bounded transaction
+ * that clears only this invocation's receipt. Returning the result MUST NOT await cleanup.
+ * Cleanup failures MUST be logged and MUST NOT change the successful result. Failed or cancelled
+ * invocations MUST retain any committed receipt for expiry cleanup.
+ */
 pub async fn with_idempotent_transaction<F, Fut, T, E>(body: F) -> Result<(T, i64), Error<E>>
 where
     F: Fn(RetryableTransaction) -> Fut,
@@ -62,7 +69,9 @@ where
     E: std::error::Error + Send + Sync + 'static,
 {
     let mut receipt = Receipt::new()?;
-    receipt.with_transaction(body).await
+    let result = receipt.with_transaction(body).await?;
+    receipt.clear_in_background();
+    Ok(result)
 }
 
 /**
