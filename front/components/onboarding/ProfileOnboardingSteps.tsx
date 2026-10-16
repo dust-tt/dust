@@ -121,7 +121,7 @@ interface UserProfileStepProps {
   isAdmin: boolean;
   formData: ProfileFormData;
   setFormData: React.Dispatch<React.SetStateAction<ProfileFormData>>;
-  locale: SupportedLocale | null;
+  locale: SupportedLocale;
   onLocaleChange: (locale: SupportedLocale) => void;
   formErrors: ProfileFormErrors;
   showErrors: boolean;
@@ -203,43 +203,41 @@ export function UserProfileStep({
           </div>
         </div>
       </div>
-      {locale && (
-        <div>
-          <p id={localeLabelId} className="pb-2 text-muted-foreground">
-            <Trans>Your preferred language:</Trans>
-          </p>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                id={localeButtonId}
-                aria-labelledby={`${localeLabelId} ${localeButtonId}`}
-                variant="outline"
-                size="sm"
-                label={LOCALE_LABELS[locale]}
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuRadioGroup
-                value={locale}
-                onValueChange={(value) => {
-                  if (isSupportedLocale(value)) {
-                    onLocaleChange(value);
-                  }
-                }}
-              >
-                {SUPPORTED_LOCALES.map((supportedLocale) => (
-                  <DropdownMenuRadioItem
-                    key={supportedLocale}
-                    value={supportedLocale}
-                    label={LOCALE_LABELS[supportedLocale]}
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
+      <div>
+        <p id={localeLabelId} className="pb-2 text-muted-foreground">
+          <Trans>Your preferred language:</Trans>
+        </p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              id={localeButtonId}
+              aria-labelledby={`${localeLabelId} ${localeButtonId}`}
+              variant="outline"
+              size="sm"
+              label={LOCALE_LABELS[locale]}
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuRadioGroup
+              value={locale}
+              onValueChange={(value) => {
+                if (isSupportedLocale(value)) {
+                  onLocaleChange(value);
+                }
+              }}
+            >
+              {SUPPORTED_LOCALES.map((supportedLocale) => (
+                <DropdownMenuRadioItem
+                  key={supportedLocale}
+                  value={supportedLocale}
+                  label={LOCALE_LABELS[supportedLocale]}
+                />
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div>
         <p className="pb-2 text-muted-foreground">
           <Trans>Your pronouns (optional):</Trans>

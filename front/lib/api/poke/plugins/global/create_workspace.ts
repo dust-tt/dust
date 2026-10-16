@@ -57,9 +57,9 @@ export const createWorkspacePlugin = createPlugin({
       },
       locale: {
         type: "enum",
-        label: "Locale (not released yet)",
+        label: "Locale",
         description:
-          "Default locale of the workspace. Members who did not pick a locale use it. Localization is not released yet: keep en-US unless the workspace is internal or for testing.",
+          "Default locale of the workspace. Members who did not pick a locale use it.",
         values: mapToEnumValues(SUPPORTED_LOCALES, (locale) => ({
           label: `${LOCALE_LABELS[locale]} (${locale})`,
           value: locale,

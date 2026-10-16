@@ -9,17 +9,12 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  hasLocalisation: false,
   userLocale: "en-US" as SupportedLocale,
   isDevModeActive: true,
 }));
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useWorkspace: () => LightWorkspaceFactory.build(),
-  useFeatureFlags: () => ({
-    hasFeature: (flag: string) =>
-      flag === "localisation" && state.hasLocalisation,
-  }),
 }));
 
 vi.mock("@app/hooks/useUserLocale", () => ({
@@ -59,18 +54,7 @@ describe("UserLocaleSync", () => {
     setLocaleOverride(null);
   });
 
-  it("keeps the default locale when the flag is disabled", async () => {
-    state.hasLocalisation = false;
-    state.userLocale = "fr-FR";
-
-    renderUserLocaleSync();
-
-    await waitFor(() => expect(document.documentElement.lang).toBe("en-US"));
-    expect(i18n.locale).toBe("en-US");
-  });
-
-  it("activates the user locale when the flag is enabled", async () => {
-    state.hasLocalisation = true;
+  it("activates the user locale", async () => {
     state.userLocale = "fr-FR";
 
     renderUserLocaleSync();
@@ -80,7 +64,6 @@ describe("UserLocaleSync", () => {
   });
 
   it("activates en-GB with the en-GB catalog", async () => {
-    state.hasLocalisation = true;
     state.userLocale = "en-GB";
 
     renderUserLocaleSync();
@@ -90,19 +73,7 @@ describe("UserLocaleSync", () => {
     expect(i18n.messages).toEqual(await loadCatalog("en-GB"));
   });
 
-  it("formats in the browser locale when the flag is disabled", async () => {
-    state.hasLocalisation = false;
-    state.userLocale = "fr-FR";
-    setFormatLocale("fr-FR");
-
-    renderUserLocaleSync();
-
-    await waitFor(() => expect(document.documentElement.lang).toBe("en-US"));
-    expect(formatNumber(1234.5)).toBe((1234.5).toLocaleString());
-  });
-
-  it("formats in the user locale when the flag is enabled", async () => {
-    state.hasLocalisation = true;
+  it("formats in the user locale", async () => {
     state.userLocale = "fr-FR";
 
     renderUserLocaleSync();
@@ -112,7 +83,6 @@ describe("UserLocaleSync", () => {
   });
 
   it("renders English for messages missing from the active catalog", async () => {
-    state.hasLocalisation = true;
     state.userLocale = "fr-FR";
 
     renderUserLocaleSync();
@@ -122,7 +92,6 @@ describe("UserLocaleSync", () => {
   });
 
   it("calls onReady once the user locale is active", async () => {
-    state.hasLocalisation = true;
     state.userLocale = "fr-FR";
     const localesAtReady: string[] = [];
 
@@ -132,7 +101,6 @@ describe("UserLocaleSync", () => {
   });
 
   it("activates the locale override over the user locale", async () => {
-    state.hasLocalisation = true;
     state.userLocale = "en-US";
     setLocaleOverride("fr-FR");
 
@@ -142,18 +110,7 @@ describe("UserLocaleSync", () => {
     expect(formatNumber(1234.5)).toBe("1\u202f234,5");
   });
 
-  it("activates the locale override when the flag is disabled", async () => {
-    state.hasLocalisation = false;
-    state.userLocale = "en-US";
-    setLocaleOverride("fr-FR");
-
-    renderUserLocaleSync();
-
-    await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
-  });
-
   it("switches locale as soon as the override changes", async () => {
-    state.hasLocalisation = true;
     state.userLocale = "en-GB";
     renderUserLocaleSync();
     await waitFor(() => expect(i18n.locale).toBe("en-GB"));
@@ -167,7 +124,6 @@ describe("UserLocaleSync", () => {
 
   it("ignores the locale override when the dev console is inactive", async () => {
     state.isDevModeActive = false;
-    state.hasLocalisation = true;
     state.userLocale = "en-GB";
     setLocaleOverride("fr-FR");
 
@@ -178,7 +134,6 @@ describe("UserLocaleSync", () => {
   });
 
   it("activates the bracketed pseudo locale with default formatting", async () => {
-    state.hasLocalisation = true;
     state.userLocale = "fr-FR";
     setLocaleOverride("pseudo");
 

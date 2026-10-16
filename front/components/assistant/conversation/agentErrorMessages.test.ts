@@ -2,8 +2,7 @@ import { formatAgentError } from "@app/components/assistant/conversation/agentEr
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import { describe, expect, it } from "vitest";
 
-const WITH_LOCALISATION = { hasLocalisation: true, viewerIsAdmin: false };
-const WITHOUT_LOCALISATION = { hasLocalisation: false, viewerIsAdmin: false };
+const NON_ADMIN = { viewerIsAdmin: false };
 
 const overloadedError = {
   code: "multi_actions_error",
@@ -17,30 +16,8 @@ const overloadedError = {
 };
 
 describe("formatAgentError", () => {
-  it("keeps the raw server title and message without the localisation flag", () => {
-    expect(
-      formatAgentError(
-        {
-          code: "max_step_reached",
-          message: "This agent took too many steps.",
-          metadata: { category: "empty_content", errorTitle: "Too many steps" },
-        },
-        WITHOUT_LOCALISATION
-      )
-    ).toEqual({
-      title: "Too many steps",
-      description: "This agent took too many steps.",
-    });
-    expect(
-      formatAgentError(
-        { code: "unknown", message: "Raw message.", metadata: null },
-        WITHOUT_LOCALISATION
-      )
-    ).toEqual({ title: "Something went wrong", description: "Raw message." });
-  });
-
   it("describes a model error from its type and provider, with raw details", () => {
-    expect(formatAgentError(overloadedError, WITH_LOCALISATION)).toEqual({
+    expect(formatAgentError(overloadedError, NON_ADMIN)).toEqual({
       title: "Something went wrong",
       description: "Anthropic is currently overloaded. Try again in a moment.",
       details:
@@ -59,7 +36,7 @@ describe("formatAgentError", () => {
             isByok: true,
           },
         },
-        WITH_LOCALISATION
+        NON_ADMIN
       ).description
     ).toBe(
       "Your workspace's Anthropic credentials are invalid. Contact your workspace administrator to update them."
@@ -74,7 +51,7 @@ describe("formatAgentError", () => {
           message: "Legacy message.",
           metadata: { category: "provider_internal_error" },
         },
-        WITH_LOCALISATION
+        NON_ADMIN
       ).description
     ).toBe("The model provider ran into an issue. Try again in a moment.");
   });
@@ -89,14 +66,13 @@ describe("formatAgentError", () => {
         blockedReason: "no_seat",
       },
     };
-    expect(formatAgentError(noSeatError, WITH_LOCALISATION)).toMatchObject({
+    expect(formatAgentError(noSeatError, NON_ADMIN)).toMatchObject({
       title: "No seat assigned",
       description:
         "You don't have a seat assigned in this workspace. Contact your administrator to assign you one.",
     });
     expect(
       formatAgentError(noSeatError, {
-        ...WITH_LOCALISATION,
         viewerIsAdmin: true,
       }).description
     ).toBe(
@@ -112,7 +88,7 @@ describe("formatAgentError", () => {
           message: "Raw limit message.",
           metadata: { errorTitle: "Plan message limit exceeded" },
         },
-        WITH_LOCALISATION
+        NON_ADMIN
       )
     ).toMatchObject({
       title: "Plan message limit exceeded",
@@ -124,7 +100,7 @@ describe("formatAgentError", () => {
     expect(
       formatAgentError(
         { code: "brand_new_code", message: "Raw message.", metadata: null },
-        WITH_LOCALISATION
+        NON_ADMIN
       )
     ).toEqual({
       title: "Something went wrong",
@@ -141,7 +117,7 @@ describe("formatAgentError", () => {
           message: "Connexion perdue.",
           metadata: { errorTitle: "Connexion perdue" },
         },
-        WITH_LOCALISATION
+        NON_ADMIN
       )
     ).toEqual({
       title: "Connection lost",
@@ -155,7 +131,7 @@ describe("formatAgentError", () => {
           message: "Erreur inattendue",
           metadata: {},
         },
-        WITH_LOCALISATION
+        NON_ADMIN
       )
     ).toEqual({
       title: "Something went wrong",
@@ -167,7 +143,7 @@ describe("formatAgentError", () => {
     const messages = await loadCatalog("fr-FR");
     i18n.loadAndActivate({ locale: "fr-FR", messages });
 
-    expect(formatAgentError(overloadedError, WITH_LOCALISATION)).toEqual({
+    expect(formatAgentError(overloadedError, NON_ADMIN)).toEqual({
       title: "Une erreur s’est produite",
       description:
         "Anthropic est actuellement surchargé. Réessayez dans un instant.",
@@ -181,7 +157,7 @@ describe("formatAgentError", () => {
           message: "Raw message.",
           metadata: { category: "empty_content", errorTitle: "Too many steps" },
         },
-        WITH_LOCALISATION
+        NON_ADMIN
       ).title
     ).toBe("Trop d’étapes");
   });

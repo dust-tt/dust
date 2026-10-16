@@ -1195,9 +1195,7 @@ export async function getGlobalAgents(
 
   const sidekickContext =
     variant === "full"
-      ? await buildSidekickContext(auth, agentsIdsToFetch, {
-          featureFlags: flags,
-        })
+      ? await buildSidekickContext(auth, agentsIdsToFetch)
       : null;
 
   const autoDefaultModelConfig = await getDefaultStreamConfigForAuth(auth);

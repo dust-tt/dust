@@ -21,7 +21,6 @@ import { parseFavoritePlatforms } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 interface SidekickUserMetadata {
   jobType: JobType | null;
@@ -255,8 +254,7 @@ export async function buildWorkspaceContext(
 
 export async function buildSidekickContext(
   auth: Authenticator,
-  agentsIdsToFetch: string[],
-  { featureFlags }: { featureFlags: WhitelistableFeature[] }
+  agentsIdsToFetch: string[]
 ): Promise<SidekickContext | null> {
   if (!agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK)) {
     return null;
@@ -273,7 +271,7 @@ export async function buildSidekickContext(
       AGENT_TEMPLATES_SERVER_NAME,
       { mode: "configuration" }
     ),
-    getAgentLocale(auth, featureFlags),
+    getAgentLocale(auth),
   ]);
   return {
     mcpServerViews: context ? { context, templates } : null,

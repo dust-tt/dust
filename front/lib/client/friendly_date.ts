@@ -33,7 +33,7 @@ const FRIENDLY_DATE_OPTIONS: Record<
  * @cc [owner:sfriquet,label:product] friendly-date-in-ui-locale
  * The result MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
  * formatter, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`: its month names
- * are text, so a French browser MUST get "September 23, 2025" while the `localisation` flag is off.
+ * are text, so a French browser MUST get "September 23, 2025" in an `en-US` UI.
  */
 export function formatTimestampToFriendlyDate(
   timestamp: number,

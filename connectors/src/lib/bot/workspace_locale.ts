@@ -11,15 +11,15 @@ import type { I18n } from "@lingui/core";
 
 /**
  * @cc [owner:Nils-Fedrigo,label:product] workspace-locale-resolution
- * MUST return `DEFAULT_LOCALE` when `dustLocales` is `null` or its `localisationEnabled` is false.
- * Otherwise it MUST return the locale set in the Dust workspace settings (`workspaceLocale`) if it
- * is a `SUPPORTED_LOCALES` entry, and `DEFAULT_LOCALE` otherwise. The locales of individual users
+ * MUST return `DEFAULT_LOCALE` when `dustLocales` is `null`. Otherwise it MUST return the locale
+ * set in the Dust workspace settings (`workspaceLocale`) if it is a `SUPPORTED_LOCALES` entry, and
+ * `DEFAULT_LOCALE` otherwise. The locales of individual users
  * (in Dust or in the chat platform) MUST NOT be used.
  */
 export function resolveWorkspaceLocale(
   dustLocales: GetMemberLocaleResponseType | null
 ): SupportedLocale {
-  if (!dustLocales?.localisationEnabled) {
+  if (!dustLocales) {
     return DEFAULT_LOCALE;
   }
   return isSupportedLocale(dustLocales.workspaceLocale)

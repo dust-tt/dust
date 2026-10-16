@@ -944,7 +944,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "fixed_window_fair_use"
   | "remote_db_query_identity_labels"
   | "discovery_homepage"
-  | "localisation"
   | "co_edition"
   | "self_configuration_tool"
 >();
@@ -2730,7 +2729,7 @@ export const GetMemberLocaleRequestSchema = z.object({
 });
 
 export const GetMemberLocaleResponseSchema = z.object({
-  localisationEnabled: z.boolean(),
+  localisationEnabled: z.boolean().optional(),
   userLocale: z.string().nullable(),
   workspaceLocale: z.string(),
 });

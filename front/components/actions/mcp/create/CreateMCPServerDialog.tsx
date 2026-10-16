@@ -37,7 +37,6 @@ import type {
   MCPServerViewNameConflictDetails,
 } from "@app/lib/api/mcp";
 import { formatError } from "@app/lib/api_error_messages";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   useCreateInternalMCPServer,
@@ -174,8 +173,6 @@ export function CreateMCPServerDialog({
   const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const { hasFeature } = useFeatureFlags();
-  const hasLocalisation = hasFeature("localisation");
   const cellContext = useCellContext();
 
   // Determine if this is a multi-instance server that already has an existing instance.
@@ -371,7 +368,7 @@ export function CreateMCPServerDialog({
           err.remoteMCPServerOAuthDiscoveryDone
         );
         setServerError({
-          message: formatError(err.cause, { hasLocalisation }).description,
+          message: formatError(err.cause).description,
           domain: getServerErrorDomain(
             values,
             defaultServerConfig?.hostDerivedOAuth

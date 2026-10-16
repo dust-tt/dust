@@ -2985,7 +2985,7 @@ describe("AgentResource", () => {
       );
     });
 
-    it("greets a new agent's builder in their locale once localisation is on", async () => {
+    it("greets a new agent's builder in their locale", async () => {
       const { authenticator, user } = testContext;
       const globalAgentContext = {
         userMessageRank: 0,
@@ -3001,10 +3001,9 @@ describe("AgentResource", () => {
         return sidekick?.modelConfiguration.metaData?.staticResponse;
       };
 
-      await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
       expect(await fetchStaticResponse()).toMatch(/^(Need|Want|Not sure)/);
 
-      await FeatureFlagFactory.basic(authenticator, "localisation");
+      await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
       expect(await fetchStaticResponse()).toMatch(
         /^(Besoin|Envie|Vous ne savez pas)/
       );

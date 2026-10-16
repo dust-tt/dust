@@ -5,7 +5,6 @@ import {
   getPinnedModelRetryTier,
 } from "@app/components/model_picker/modelPickerUtils";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
@@ -51,9 +50,7 @@ export function ErrorMessage({
   modelResolutionMethod,
 }: ErrorMessageProps) {
   const { t } = useLingui();
-  const { hasFeature } = useFeatureFlags();
   const formattedError = formatAgentError(error, {
-    hasLocalisation: hasFeature("localisation"),
     viewerIsAdmin: isAdmin(owner),
   });
   const isContextWindowExceeded =

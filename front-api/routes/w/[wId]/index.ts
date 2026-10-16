@@ -1010,17 +1010,6 @@ app.post(
         },
       });
     } else if ("locale" in body) {
-      if (!(await hasFeatureFlag(auth, "localisation"))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_not_enabled",
-            message:
-              "The localisation feature is not enabled for this workspace.",
-          },
-        });
-      }
-
       await workspace.updateWorkspaceSettings({ locale: body.locale });
       owner.locale = body.locale;
     }
