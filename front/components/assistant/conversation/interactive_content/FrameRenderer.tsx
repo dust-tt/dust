@@ -175,7 +175,7 @@ export function FrameRenderer({
   } = useFramePermissions({
     owner,
     frameId: fileId,
-    disabled: renderMode !== "v2" || !conversation,
+    disabled: renderMode !== "v2",
   });
   const framePackageRoot =
     framePath && framePath.includes("/")
@@ -183,15 +183,13 @@ export function FrameRenderer({
       : packageRoot;
   // useFile("./…") resolves against framePackageRoot on first fetch and never retries. Wait until
   // permissions (packageRoot) have loaded so the iframe does not mount with a null root.
-  const isFramePathPending =
-    renderMode === "v2" && Boolean(conversation) && isFramePermissionsLoading;
+  const isFramePathPending = renderMode === "v2" && isFramePermissionsLoading;
   const editFrameText = useEditFrameText({
     owner,
     fileId,
     conversationId: conversation?.sId,
   });
-  const isEditable =
-    renderMode === "legacy" || Boolean(conversation && canWriteFrameSource);
+  const isEditable = renderMode === "legacy" || canWriteFrameSource;
   // Frames v2 source writers edit in a Preview|Edit session with batch Save. Legacy Frames keep
   // the always-on double-click + blur-save path.
   const canEditV2 = renderMode === "v2" && isEditable;
