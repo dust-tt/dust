@@ -39,7 +39,13 @@ r? @reviewer please take a look https://github.com/dust-tt/dust/pull/123 (req:@r
 The requester and reviewer handles become real Slack mentions through `.authors` email mappings
 and Slack's `users.lookupByEmail`. Unmapped handles remain plain text. Only request lines are
 forwarded, each followed by the PR URL and requester on the same line. Trailing prose is preserved;
-other PR description or comment text is omitted.
+comment text is omitted.
+
+The notification carries a GitHub-style PR preview attachment instead of a Slack unfurl, which Slack
+does not run for links posted by bots: author, title, the start of the `Description` section, state,
+diff size, branches, labels, and comment count. Link unfurling is disabled to avoid a duplicate
+preview.
+
 Slack delivery errors fail the workflow so rejected notifications are visible in the run logs.
 
 The workflow uses `GITHUB_TOKEN` and the existing `SLACK_BOT_TOKEN`, and loads this action from the

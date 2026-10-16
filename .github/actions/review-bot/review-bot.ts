@@ -1,4 +1,5 @@
 import { escapeSlackText, resolveSlackMentions } from "../lib/slack.ts";
+import type { PullRequestSummary } from "./pr-preview.ts";
 
 type Repository = { owner: string; repo: string };
 type PullRequestParams = Repository & { pull_number: number };
@@ -11,6 +12,7 @@ type ReviewNotification = {
   requester: string;
   pullNumber: number;
   prUrl: string;
+  pullRequest: PullRequestSummary;
   requests: ReviewRequest[];
 };
 
@@ -52,10 +54,7 @@ type ReviewBotOptions = {
       };
       pulls: {
         get(params: PullRequestParams): Promise<{
-          data: {
-            user: { login: string };
-            html_url: string;
-            state: string;
+          data: PullRequestSummary & {
             head: { ref: string; repo: { full_name: string } | null };
           };
         }>;
@@ -228,8 +227,8 @@ export async function labelPmrr({
  * Request every parsed GitHub reviewer except the PR author for each eligible description edit or
  * new request, including users who previously reviewed. Open, closed, and merged PRs are eligible.
  * GitHub validation failures do not block other reviewers, contract reviews, or Slack delivery.
- * Return the requester, PR number, URL, and request lines only for eligible requests. Title edits
- * and pushes do not request reviews.
+ * Return the requester, PR number, URL, PR details, and request lines only for eligible requests.
+ * Title edits and pushes do not request reviews.
  */
 /**
  * @cc [label:product] contract-review-delivery
@@ -308,6 +307,7 @@ export async function requestReviews({
     requester: context.actor,
     pullNumber: request.number,
     prUrl: pr.html_url,
+    pullRequest: pr,
     requests,
   };
 }
@@ -370,7 +370,8 @@ export async function dispatchContractReview({
 /**
  * @cc [label:product] review-request-slack-format
  * Format each eligible `r?` line with trailing prose preserved, prefixed by
- * `from: @requester` and followed by the PR URL and on the same line. Resolve
+ * `from: @requester` and followed by the PR URL and on the same line. Callers attach the
+ * `formatPullRequestPreview` attachment and disable Slack link unfurling. Resolve
  * requester and reviewer mentions through `.authors` emails and Slack user
  * lookup; unresolved handles remain plain text.
  */
