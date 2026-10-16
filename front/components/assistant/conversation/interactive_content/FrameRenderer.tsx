@@ -2,6 +2,7 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
@@ -30,7 +31,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CheckCircle,
-  CodeBlock,
   LinkExternal01,
   Maximize01,
   Minimize01,
@@ -349,7 +349,11 @@ export function FrameRenderer({
           contentType={fileMetadata?.contentType}
           contentHash={contentHash}
           showCode={showCode}
-          onToggleCode={() => setShowCode(!showCode)}
+          onToggleCode={
+            renderMode === "legacy" || canWriteFrameSource
+              ? () => setShowCode(!showCode)
+              : undefined
+          }
           hasFrameFunctions={hasFrameFunctions}
           editSession={editSession}
           canEditV2={canEditV2}
@@ -475,40 +479,6 @@ export function FrameRenderer({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-interface FrameCodeViewProps {
-  code?: string;
-  hasError: boolean;
-  isLoading: boolean;
-}
-
-function FrameCodeView({ code, hasError, isLoading }: FrameCodeViewProps) {
-  if (isLoading) {
-    return (
-      <CenteredState>
-        <Spinner size="sm" />
-      </CenteredState>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <CenteredState>
-        <p className="text-warning-500">
-          <Trans>Error loading the Frame source.</Trans>
-        </p>
-      </CenteredState>
-    );
-  }
-
-  return (
-    <div className="h-full overflow-auto px-4">
-      <CodeBlock wrapLongLines className="language-tsx">
-        {code}
-      </CodeBlock>
     </div>
   );
 }

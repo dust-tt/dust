@@ -7,7 +7,14 @@ import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Eye, Terminal } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  Eye,
+  Maximize01,
+  Minimize01,
+  Terminal,
+} from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode, RefObject } from "react";
 
@@ -30,6 +37,11 @@ interface FrameToolbarProps {
   fileName?: string;
   contentType?: string;
   contentHash?: string;
+  /**
+   * `spread` puts code/beta on the left and actions on the right (conversation
+   * panel). `end` packs everything in one trailing cluster (sheet / overlays).
+   */
+  layout?: "spread" | "end";
   /** When set, shows the code / render toggle. */
   showCode?: boolean;
   onToggleCode?: () => void;
@@ -40,6 +52,10 @@ interface FrameToolbarProps {
   hideEditLabels?: boolean;
   /** Pin / open-as-tab actions when the Frame lives in a Pod. */
   podActions?: FrameToolbarPodActions | null;
+  fullscreen?: {
+    isFullscreen: boolean;
+    onToggle: () => void;
+  };
   /** Conversation-only actions (e.g. save-to-pod) rendered after the shared cluster. */
   trailing?: ReactNode;
 }
@@ -56,6 +72,7 @@ export function FrameToolbar({
   fileName,
   contentType,
   contentHash,
+  layout = "spread",
   showCode,
   onToggleCode,
   hasFrameFunctions = false,
@@ -63,69 +80,97 @@ export function FrameToolbar({
   canEditV2 = false,
   hideEditLabels = false,
   podActions = null,
+  fullscreen,
   trailing,
 }: FrameToolbarProps) {
   const { t } = useLingui();
 
-  return (
-    <div className="flex w-full items-center justify-between">
-      <div className="flex items-center gap-2">
-        {onToggleCode !== undefined && (
-          <Button
-            icon={showCode ? Eye : Terminal}
-            onClick={onToggleCode}
-            tooltip={showCode ? t`Switch to rendering` : t`Switch to code`}
-            variant="ghost"
+  const leading = (
+    <div className="flex items-center gap-2">
+      {onToggleCode !== undefined && (
+        <Button
+          icon={showCode ? Eye : Terminal}
+          onClick={onToggleCode}
+          tooltip={showCode ? t`Switch to rendering` : t`Switch to code`}
+          variant="ghost"
+        />
+      )}
+      {hasFrameFunctions && <FrameBetaChip />}
+    </div>
+  );
+
+  const actions = (
+    <div className="flex min-w-0 items-center gap-1">
+      {canEditV2 && editSession && (
+        <FrameEditControls session={editSession} hideLabels={hideEditLabels} />
+      )}
+      <ExportContentDropdown
+        iframeRef={iframeRef}
+        owner={owner}
+        fileId={fileId}
+        fileContent={fileContent}
+        fileName={fileName}
+        contentType={contentType}
+      />
+      <ShareFramePopover
+        key={contentHash ?? fileId}
+        fileId={fileId}
+        owner={owner}
+        contentHash={contentHash}
+      />
+      {podActions && (
+        <>
+          <PinPodBannerButton
+            owner={owner}
+            spaceId={podActions.spaceId}
+            pinnedFramePath={podActions.pinnedFramePath}
+            isEditor={podActions.isEditor}
+            framePath={podActions.framePath}
+            fileName={podActions.fileName}
+            hidden={podActions.hidden}
           />
-        )}
-        {hasFrameFunctions && <FrameBetaChip />}
-      </div>
+          <PodFileTabButton
+            owner={owner}
+            spaceId={podActions.spaceId}
+            fileTabs={podActions.fileTabs}
+            tabsOrder={podActions.tabsOrder}
+            isEditor={podActions.isEditor}
+            filePath={podActions.framePath}
+            fileName={podActions.fileName}
+            hidden={podActions.hidden}
+          />
+        </>
+      )}
+      {fullscreen && (
+        <Button
+          icon={fullscreen.isFullscreen ? Minimize01 : Maximize01}
+          variant="ghost"
+          size="sm"
+          tooltip={
+            fullscreen.isFullscreen
+              ? t`Exit full screen`
+              : t`Open in full screen`
+          }
+          onClick={fullscreen.onToggle}
+        />
+      )}
+      {trailing}
+    </div>
+  );
+
+  if (layout === "end") {
+    return (
       <div className="flex min-w-0 items-center gap-1">
-        {canEditV2 && editSession && (
-          <FrameEditControls
-            session={editSession}
-            hideLabels={hideEditLabels}
-          />
-        )}
-        <ExportContentDropdown
-          iframeRef={iframeRef}
-          owner={owner}
-          fileId={fileId}
-          fileContent={fileContent}
-          fileName={fileName}
-          contentType={contentType}
-        />
-        <ShareFramePopover
-          key={contentHash ?? fileId}
-          fileId={fileId}
-          owner={owner}
-          contentHash={contentHash}
-        />
-        {podActions && (
-          <>
-            <PinPodBannerButton
-              owner={owner}
-              spaceId={podActions.spaceId}
-              pinnedFramePath={podActions.pinnedFramePath}
-              isEditor={podActions.isEditor}
-              framePath={podActions.framePath}
-              fileName={podActions.fileName}
-              hidden={podActions.hidden}
-            />
-            <PodFileTabButton
-              owner={owner}
-              spaceId={podActions.spaceId}
-              fileTabs={podActions.fileTabs}
-              tabsOrder={podActions.tabsOrder}
-              isEditor={podActions.isEditor}
-              filePath={podActions.framePath}
-              fileName={podActions.fileName}
-              hidden={podActions.hidden}
-            />
-          </>
-        )}
-        {trailing}
+        {leading}
+        {actions}
       </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex w-full items-center justify-between")}>
+      {leading}
+      {actions}
     </div>
   );
 }
