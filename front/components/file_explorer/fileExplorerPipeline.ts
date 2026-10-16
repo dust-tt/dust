@@ -10,6 +10,7 @@ import type {
 } from "@app/components/file_explorer/types";
 import {
   buildFileSystemTree,
+  collectDirectoryTreeNodesAtOrBelow,
   collectFileTreeNodesAtOrBelow,
   compareTreeNodesForSort,
   fileExplorerNodeMatchesSearch,
@@ -176,6 +177,21 @@ function filterVisibleNodes(
   });
 }
 
+/** True when `path` is a strict descendant of a collapsed Frame package root. */
+function isInsideFramePackage(
+  path: string,
+  packagesByPath: Map<string, FramePackageEntry>
+): boolean {
+  let ancestorPath = getParentFolderRelativePath(path);
+  while (ancestorPath) {
+    if (packagesByPath.has(ancestorPath)) {
+      return true;
+    }
+    ancestorPath = getParentFolderRelativePath(ancestorPath);
+  }
+  return false;
+}
+
 /**
  * Derives all explorer data from raw files + the current navigation/search/filter/sort state.
  * Pure function — callers should wrap it in `useMemo` keyed on the inputs.
@@ -230,21 +246,31 @@ export function getFileExplorerPipeline({
 
   const q = searchQuery.trim().toLowerCase();
   const isSearching = q.length > 0;
-  const currentNodes = isSearching
-    ? [
-        ...collectFileTreeNodesAtOrBelow(tree, currentFolderPath),
-        ...(currentFolderPath ? [] : contentNodeTreeNodes),
-      ]
-    : currentFolderPath
-      ? getChildrenAtFolderPath(tree, currentFolderPath)
-      : virtualScopeRoots
-        ? getVirtualScopeRootNodes(tree, virtualScopeRoots)
-        : [...tree, ...contentNodeTreeNodes];
+  const isTypeFilter = activeFilter !== "all";
 
-  const visibleNodes = filterVisibleNodes(currentNodes, q);
+  const hierarchicalNodes = currentFolderPath
+    ? getChildrenAtFolderPath(tree, currentFolderPath)
+    : virtualScopeRoots
+      ? getVirtualScopeRootNodes(tree, virtualScopeRoots)
+      : [...tree, ...contentNodeTreeNodes];
 
+  const flatFileNodes = [
+    ...collectFileTreeNodesAtOrBelow(tree, currentFolderPath),
+    ...(currentFolderPath ? [] : contentNodeTreeNodes),
+  ];
+  // Type filters (and chip counts) ignore hierarchy so nested matches are findable.
+  // Frame packages stay opaque: never surface nodes from inside a collapsed bundle.
+  const flatDescendantNodes = [
+    ...flatFileNodes,
+    ...collectDirectoryTreeNodesAtOrBelow(tree, currentFolderPath),
+  ].filter(
+    (node) => !isInsideFramePackage(node.path, collapsed.packagesByPath)
+  );
+
+  // Chip counts always use descendants so nested Frames/etc. appear in the chip row.
+  const nodesForCounts = filterVisibleNodes(flatDescendantNodes, q);
   const filterCounts: Partial<Record<FileExplorerFilter, number>> = {};
-  for (const node of visibleNodes) {
+  for (const node of nodesForCounts) {
     const entry = entryByRelativePath.get(node.path);
     if (entry?.kind === "node") {
       filterCounts["nodes"] = (filterCounts["nodes"] ?? 0) + 1;
@@ -256,6 +282,16 @@ export function getFileExplorerPipeline({
     }
     filterCounts[bucket] = (filterCounts[bucket] ?? 0) + 1;
   }
+
+  // "All" keeps the folder tree (or search's flat file list). Other filters list
+  // every matching descendant, ignoring the tree.
+  const currentNodes = isTypeFilter
+    ? flatDescendantNodes
+    : isSearching
+      ? flatFileNodes
+      : hierarchicalNodes;
+
+  const visibleNodes = filterVisibleNodes(currentNodes, q);
 
   const matchingNodes =
     activeFilter === "all"

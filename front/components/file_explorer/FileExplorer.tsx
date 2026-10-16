@@ -120,8 +120,12 @@ export function FileExplorer({
     [preferences, setPreferences]
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const searchFolderPath = searchQuery.trim() ? currentFolderPath : undefined;
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
+  // Flat listings (search or a type filter) show explorer-relative paths as titles.
+  const searchFolderPath =
+    searchQuery.trim() || activeFilter !== "all"
+      ? currentFolderPath
+      : undefined;
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileEntry | null>(null);

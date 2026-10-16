@@ -340,6 +340,17 @@ function collectAllFileTreeNodes(
   );
 }
 
+/** All directory nodes in a tree (recursive). */
+function collectAllDirectoryTreeNodes(
+  nodes: FileSystemTreeNode[]
+): FileSystemTreeNode[] {
+  return nodes.flatMap((node) =>
+    node.isDirectory
+      ? [node, ...collectAllDirectoryTreeNodes(node.children)]
+      : []
+  );
+}
+
 /** File leaves at `folderPath` and in descendant folders (empty path = entire tree). */
 export function collectFileTreeNodesAtOrBelow(
   tree: FileSystemTreeNode[],
@@ -352,6 +363,23 @@ export function collectFileTreeNodesAtOrBelow(
 
   const prefix = `${folderPath}/`;
   return allFiles.filter((node) => node.path.startsWith(prefix));
+}
+
+/**
+ * Directory nodes at `folderPath` and in descendant folders (empty path = entire tree).
+ * Does not include the `folderPath` node itself — only directories under it.
+ */
+export function collectDirectoryTreeNodesAtOrBelow(
+  tree: FileSystemTreeNode[],
+  folderPath: string
+): FileSystemTreeNode[] {
+  if (!folderPath) {
+    return collectAllDirectoryTreeNodes(tree);
+  }
+
+  return collectAllDirectoryTreeNodes(
+    getChildrenAtFolderPath(tree, folderPath)
+  );
 }
 
 export function isFileExplorerNodeHidden(node: FileSystemTreeNode): boolean {
