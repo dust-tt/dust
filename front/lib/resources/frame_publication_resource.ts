@@ -4,6 +4,8 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { FrameToolCallPair } from "@app/types/api/frame_publication";
+import { FrameToolCallPairSchema } from "@app/types/api/frame_publication";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import assert from "assert";
@@ -35,18 +37,30 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
 
   /**
    * The publisher is the auth's user, null for a non-user caller.
+   * `requiredTools` is the frame-level union of literal tools.call pairs from the publication.
    */
   static async makeNew(
     auth: Authenticator,
-    { frame, publicationId }: { frame: FileResource; publicationId: string }
+    {
+      frame,
+      publicationId,
+      requiredTools = [],
+    }: {
+      frame: FileResource;
+      publicationId: string;
+      requiredTools?: FrameToolCallPair[];
+    }
   ): Promise<FramePublicationResource> {
     this.assertFrameOfWorkspace(auth, frame);
+
+    const parsedTools = FrameToolCallPairSchema.array().parse(requiredTools);
 
     const row = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       fileId: frame.id,
       publicationId,
       publishedByUserId: auth.user()?.id ?? null,
+      requiredTools: parsedTools,
     });
 
     return new this(this.model, row.get());

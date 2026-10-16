@@ -461,6 +461,7 @@ export async function storeFramePublication(
   await FramePublicationResource.makeNew(auth, {
     frame,
     publicationId: identity.publicationId,
+    requiredTools: contracts.value.requiredTools,
   });
 
   const publicationFiles: Array<{
