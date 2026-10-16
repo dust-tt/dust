@@ -142,6 +142,21 @@ Hello!`);
     );
   });
 
+  it("renders sent at metadata instead of throwing on an unknown timezone", async () => {
+    const { conversation, userMessage } = await buildMessage({
+      content: "Ping",
+      created: "2025-01-15T12:34:56.000Z",
+      context: { timezone: "Not/AZone" },
+    });
+
+    const res = renderUserMessage(conversation, userMessage);
+    const text = (res.content[0] as TextContent).text;
+
+    expect(text.split("\n").some((l) => l.startsWith("- Sent at: "))).toBe(
+      true
+    );
+  });
+
   it("adds trigger source metadata and previous run when origin is 'triggered'", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "Scheduled report",

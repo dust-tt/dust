@@ -14,6 +14,7 @@ import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { formatDateTime } from "@app/lib/i18n/format";
@@ -475,6 +476,11 @@ function sanitizeDustSystemValue(value: string): string {
 /**
  * Renders a user message with metadata
  */
+/**
+ * @cc [owner:tdraier,label:error-handling] unknown-timezone-does-not-throw
+ * MUST NOT throw on an unrecognized `m.context.timezone`: dates are then rendered in the same
+ * server default timezone as when the message has no timezone.
+ */
 export function renderUserMessage(
   conversation: ConversationWithoutContentType,
   m: UserMessageType
@@ -524,7 +530,9 @@ export function renderUserMessage(
   metadataItems.push(`- Conversation: ${conversation.sId}`);
 
   const timeZone =
-    m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    m.context.timezone && isValidTimezone(m.context.timezone)
+      ? m.context.timezone
+      : Intl.DateTimeFormat().resolvedOptions().timeZone;
   const formatWithTimeZone = (date: Date) =>
     formatDateTime(date, {
       timeZone,
