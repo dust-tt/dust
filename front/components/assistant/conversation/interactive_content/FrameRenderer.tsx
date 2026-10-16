@@ -2,15 +2,10 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
-import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
-import { FrameEditControls } from "@app/components/assistant/conversation/interactive_content/frame/FrameEditControls";
-import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
+import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { ConfirmContext } from "@app/components/Confirm";
-import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
-import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import {
   useSendApiErrorNotification,
@@ -36,14 +31,12 @@ import {
   Button,
   CheckCircle,
   CodeBlock,
-  Eye,
   LinkExternal01,
   Maximize01,
   Minimize01,
   RefreshCw01,
   ReverseLeft,
   Spinner,
-  Terminal,
   Tooltip,
   UploadCloud02,
 } from "@dust-tt/sparkle";
@@ -349,84 +342,64 @@ export function FrameRenderer({
   return (
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={onClosePanel}>
-        <div className="flex w-full items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              icon={showCode ? Eye : Terminal}
-              onClick={() => setShowCode(!showCode)}
-              tooltip={showCode ? t`Switch to rendering` : t`Switch to code`}
-              variant="ghost"
-            />
-            {hasFrameFunctions && <FrameBetaChip />}
-          </div>
-          <div className="flex min-w-0 items-center gap-1">
-            {canEditV2 && (
-              <FrameEditControls session={editSession} hideLabels={isMobile} />
-            )}
-            <ExportContentDropdown
-              iframeRef={iframeRef}
-              owner={owner}
-              fileId={fileId}
-              fileContent={fileContent ?? null}
-              fileName={fileMetadata?.fileName}
-              contentType={fileMetadata?.contentType}
-            />
-            <ShareFramePopover
-              key={contentHash ?? fileId}
-              fileId={fileId}
-              owner={owner}
-              contentHash={contentHash}
-            />
-            {renderMode === "legacy" && (
-              <>
-                <PinPodBannerButton
-                  owner={owner}
-                  spaceId={projectId ?? ""}
-                  pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
-                  isEditor={projectInfo?.isEditor ?? false}
-                  framePath={framePath}
-                  fileName={fileMetadata?.fileName}
-                  hidden={!isFrameInPod}
-                />
-                <PodFileTabButton
-                  owner={owner}
-                  spaceId={projectId ?? ""}
-                  fileTabs={projectInfo?.frameTabs ?? []}
-                  tabsOrder={projectInfo?.tabsOrder ?? []}
-                  isEditor={projectInfo?.isEditor ?? false}
-                  filePath={framePath}
-                  fileName={fileMetadata?.fileName}
-                  hidden={!isFrameInPod}
-                />
-              </>
-            )}
-            {projectSaveState === "saved" && (
-              <Button
-                icon={CheckCircle}
-                variant="ghost"
-                disabled={true}
-                label={isMobile ? undefined : t`Saved`}
-                tooltip={t`Saved in "${savePodName}"`}
-              />
-            )}
-            {projectSaveState === "supported" && (
-              <Button
-                icon={UploadCloud02}
-                variant="ghost"
-                label={
-                  isMobile
-                    ? undefined
-                    : isSavingToProject
-                      ? t`Saving…`
-                      : t`Save`
+        <FrameToolbar
+          owner={owner}
+          fileId={fileId}
+          iframeRef={iframeRef}
+          fileContent={fileContent ?? null}
+          fileName={fileMetadata?.fileName}
+          contentType={fileMetadata?.contentType}
+          contentHash={contentHash}
+          showCode={showCode}
+          onToggleCode={() => setShowCode(!showCode)}
+          hasFrameFunctions={hasFrameFunctions}
+          editSession={editSession}
+          canEditV2={canEditV2}
+          hideEditLabels={isMobile}
+          podActions={
+            renderMode === "legacy"
+              ? {
+                  spaceId: projectId ?? "",
+                  pinnedFramePath: projectInfo?.pinnedFramePath ?? null,
+                  isEditor: projectInfo?.isEditor ?? false,
+                  framePath,
+                  fileName: fileMetadata?.fileName,
+                  fileTabs: projectInfo?.frameTabs ?? [],
+                  tabsOrder: projectInfo?.tabsOrder ?? [],
+                  hidden: !isFrameInPod,
                 }
-                isLoading={isSavingToProject}
-                tooltip={t`Save to "${savePodName}"`}
-                onClick={handleSaveToProject}
-              />
-            )}
-          </div>
-        </div>
+              : null
+          }
+          trailing={
+            <>
+              {projectSaveState === "saved" && (
+                <Button
+                  icon={CheckCircle}
+                  variant="ghost"
+                  disabled={true}
+                  label={isMobile ? undefined : t`Saved`}
+                  tooltip={t`Saved in "${savePodName}"`}
+                />
+              )}
+              {projectSaveState === "supported" && (
+                <Button
+                  icon={UploadCloud02}
+                  variant="ghost"
+                  label={
+                    isMobile
+                      ? undefined
+                      : isSavingToProject
+                        ? t`Saving…`
+                        : t`Save`
+                  }
+                  isLoading={isSavingToProject}
+                  tooltip={t`Save to "${savePodName}"`}
+                  onClick={handleSaveToProject}
+                />
+              )}
+            </>
+          }
+        />
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
