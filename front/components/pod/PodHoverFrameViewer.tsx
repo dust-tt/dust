@@ -141,11 +141,16 @@ export function PodHoverFrameViewer({
   const [isReloading, setIsReloading] = useState(false);
   const reloadFile = useCallback(async () => {
     setIsReloading(true);
-    await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
-    if (isV2) {
-      editSession.remount();
+    try {
+      await mutateFileContent(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      if (isV2) {
+        editSession.remount();
+      }
+    } finally {
+      setIsReloading(false);
     }
-    setIsReloading(false);
   }, [editSession, fileId, isV2, mutateFileContent, owner.sId]);
 
   useEffect(() => {
