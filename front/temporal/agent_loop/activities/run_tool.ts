@@ -19,6 +19,7 @@ import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
+import { annotateInFlightActivity } from "@app/temporal/agent_loop/lib/event_loop_stall_watchdog";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { claimToolActivityStart } from "@app/temporal/agent_loop/lib/tool_activity_start_marker";
 import type {
@@ -229,6 +230,12 @@ export async function runToolActivity(
     },
     "Tool activity starting execution"
   );
+  annotateInFlightActivity(Context.current().info, {
+    actionId,
+    workspaceId: authType.workspaceId,
+    toolName: action.toolConfiguration.name,
+    mcpServerName: action.toolConfiguration.mcpServerName,
+  });
 
   const {
     agentConfiguration,

@@ -37,6 +37,10 @@ import {
   PROGRAMMATIC_QUEUE_NAME,
   SCHEDULES_QUEUE_NAME,
 } from "@app/temporal/agent_loop/config";
+import {
+  StallTrackingActivityInterceptor,
+  startEventLoopStallWatchdog,
+} from "@app/temporal/agent_loop/lib/event_loop_stall_watchdog";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import {
   createTemporalWorker,
@@ -159,6 +163,9 @@ async function runAgentLoopWorkerForQueue({
           inbound: new OpenTelemetryActivityInboundInterceptor(ctx),
           outbound: new OpenTelemetryActivityOutboundInterceptor(ctx),
         }),
+        (ctx: Context) => ({
+          inbound: new StallTrackingActivityInterceptor(ctx.info),
+        }),
       ],
     },
     sinks: {
@@ -185,6 +192,8 @@ async function runAgentLoopWorkerForQueue({
     markShuttingDownWithDelayedAbort(SHUTDOWN_TOOL_ABORT_DELAY_MS);
     void worker.shutdown();
   });
+
+  startEventLoopStallWatchdog();
 
   try {
     await worker.run(); // this resolves after shutdown completes
