@@ -1,4 +1,7 @@
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type {
+  UserMessageOrigin,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 
 export const DOCUMENT_COMMENT_DIRECTIVE_NAME = "document_comment";
 
@@ -88,3 +91,11 @@ export function replaceDocumentCommentDirectives(
       replace(toDocumentComment(label, commentId, documentPath))
   );
 }
+
+export const documentCommentOf = ({
+  content,
+  context,
+}: Pick<UserMessageType, "content" | "context">): DocumentComment | null =>
+  isDocumentCommentOrigin(context.origin)
+    ? (parseDocumentCommentMessage(content)?.comment ?? null)
+    : null;
