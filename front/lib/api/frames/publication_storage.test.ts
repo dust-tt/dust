@@ -15,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import {
   computeSandboxFunctionBundleSha256,
   SandboxFunctionResource,
@@ -1429,9 +1430,10 @@ describe("publishFramePublication modes", () => {
 
   describe("draft publish allowlist", () => {
     async function countFunctionRows(auth: Authenticator, frame: FileResource) {
-      const publications = await FramePublicationModel.findAll({
-        where: { workspaceId: frame.workspaceId, fileId: frame.id },
-      });
+      const publications = await FramePublicationResource.listForFrame(
+        auth,
+        frame
+      );
       const byPublication = new Map<string, number>();
       for (const publication of publications) {
         const functions = await SandboxFunctionResource.listByFramePublication(
@@ -1514,6 +1516,30 @@ describe("publishFramePublication modes", () => {
         "export default function C() {}",
         "draft"
       );
+
+      expect(draft.isErr() && draft.error.code).toBe("allowlist_failed");
+      const metadata = await metadataOf(auth, frame);
+      expect(metadata?.activePublicationId).toBe(
+        live.isOk() && live.value.publicationId
+      );
+      expect(metadata?.draftPublicationId).toBe(
+        pending.isOk() && pending.value.publicationId
+      );
+    });
+
+    it("fails a draft publish that matches the live bundle when the allowlist would refuse it", async () => {
+      const { auth, frame } = await setupFrame();
+      const bundle = "export default function A() {}";
+      const live = await publishBundle(auth, frame, bundle, "live");
+      const pending = await publishBundle(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+      failAllowlistComputation();
+
+      const draft = await publishBundle(auth, frame, bundle, "draft");
 
       expect(draft.isErr() && draft.error.code).toBe("allowlist_failed");
       const metadata = await metadataOf(auth, frame);

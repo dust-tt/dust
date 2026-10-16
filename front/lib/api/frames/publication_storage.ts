@@ -979,6 +979,20 @@ export async function publishFramePublication(
     const publishesDraft = mode === "draft" && livePublicationId !== undefined;
 
     if (publishesDraft) {
+      // The allowlist is only checked here, not persisted: the share link keeps serving the live
+      // one until activation computes and persists its own. It runs before the compare-to-live
+      // shortcut so a draft publish fails exactly when a live publish of the same content would,
+      // even when that content matches what is live. The shareable row already exists because a
+      // draft only exists on a Frame that went live.
+      const allowlist = await withFramePublishTimingResult(
+        "allowlist",
+        timingContext,
+        () => computeFramePublicationAllowlist(auth, freshFrame, uiBundleCode)
+      );
+      if (allowlist.isErr()) {
+        return allowlist;
+      }
+
       const live = await withFramePublishTimingResult(
         "compare",
         timingContext,
@@ -999,18 +1013,6 @@ export async function publishFramePublication(
           publicationId: livePublicationId,
           status: "live" as const,
         });
-      }
-
-      // The allowlist is only checked here, not persisted: the share link keeps serving the live
-      // one until activation computes and persists its own. The shareable row already exists
-      // because a draft only exists on a Frame that went live.
-      const allowlist = await withFramePublishTimingResult(
-        "allowlist",
-        timingContext,
-        () => computeFramePublicationAllowlist(auth, freshFrame, uiBundleCode)
-      );
-      if (allowlist.isErr()) {
-        return allowlist;
       }
     }
 
