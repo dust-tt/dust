@@ -79,7 +79,7 @@ function frameSourceConflictError() {
  * before any build, unless Frame functions are enabled (see isFramesV2FunctionsEnabled). The
  * previous publication stays live.
  */
-async function checkFrameFunctionsFeature(
+export async function checkFrameFunctionsFeature(
   auth: Authenticator,
   manifest: FrameManifest
 ): Promise<Result<void, FramePublicationError>> {
@@ -106,7 +106,7 @@ type CheckFrameFunctionSharingParams = {
  * Refuses, before the build, a publication with functions that would lock out viewers the Frame is
  * already shared with. The previous publication stays live.
  */
-async function checkFrameFunctionSharing(
+export async function checkFrameFunctionSharing(
   auth: Authenticator,
   { frame, manifest }: CheckFrameFunctionSharingParams
 ): Promise<Result<void, FramePublicationError>> {
