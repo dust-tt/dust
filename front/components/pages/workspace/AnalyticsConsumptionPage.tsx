@@ -247,7 +247,7 @@ export function AnalyticsConsumptionPage() {
                       <Button
                         variant="primary"
                         icon={Robot}
-                        label={t`Ask @analyst`}
+                        label={t`Ask analyst`}
                         onClick={() => setIsOpen(true)}
                       />
                     )

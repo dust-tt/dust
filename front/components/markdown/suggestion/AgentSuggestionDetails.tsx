@@ -189,7 +189,7 @@ function SuggestedSubAgentRow({
     });
 
   const displayName = subAgent
-    ? `@${subAgent.name}`
+    ? subAgent.name
     : isAgentConfigurationLoading
       ? t`Loading…`
       : childAgentId;

@@ -167,8 +167,8 @@ msgid "Make skills discoverable to agents"
 msgstr "Rendre les compétences détectables par les agents"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
-msgid "Who can make skills discoverable to @Dust and agents with Discover Skills"
-msgstr "Qui peut rendre les compétences détectables par @Dust et les agents dotés de Discover Skills"
+msgid "Who can make skills discoverable to Dust and agents with Discover Skills"
+msgstr "Qui peut rendre les compétences détectables par Dust et les agents dotés de Discover Skills"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "@dust discover skills"

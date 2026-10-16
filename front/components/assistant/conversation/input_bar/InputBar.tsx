@@ -250,7 +250,7 @@ export const InputBar = React.memo(function InputBar({
         (a) => a.sId === blockedActionMessage.agentId
       )?.name;
       return name
-        ? t`Resolve the pending action from @${name} before switching agents`
+        ? t`Resolve the pending action from ${name} before switching agents`
         : t`Resolve the pending action from another agent before switching agents`;
     }
 

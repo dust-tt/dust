@@ -327,12 +327,12 @@ msgid "List tools"
 msgstr "Liste des outils"
 
 #: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
-msgid "Running @{agentName}"
-msgstr "Exécution de @{agentName}"
+msgid "Running {agentName}"
+msgstr "Exécution de {agentName}"
 
 #: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
-msgid "Run @{agentName}"
-msgstr "Exécution de @{agentName}"
+msgid "Run {agentName}"
+msgstr "Exécution de {agentName}"
 
 #: front/components/actions/mcp/details/MCPRunAgentActionDetails.tsx
 msgid "Added tools"
