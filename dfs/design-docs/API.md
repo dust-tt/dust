@@ -543,6 +543,12 @@ pass the full root-to-object grant evaluation. This includes descendants reopene
 below an inaccessible parent. Use returned real IDs for subsequent metadata, content, and mutation
 operations.
 
+A missing or unreadable directory fails with `NOT_FOUND`; `NOT_DIRECTORY` is only returned for a
+readable file. Unreadable children are left out, so a page can hold fewer entries than `limit`, or
+none. Under virtual `root`, the stored root's read access is not required, each child is still
+checked, and `shared` appears in name order among the stored root's children. Listing virtual
+`shared` currently fails with `UNSUPPORTED`.
+
 ### Read
 
 Reads a byte range from a file.

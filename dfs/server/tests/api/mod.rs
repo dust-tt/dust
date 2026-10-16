@@ -22,6 +22,7 @@ pub(crate) mod capacity;
 pub(crate) mod create_session;
 pub(crate) mod create_tenant;
 pub(crate) mod grants;
+pub(crate) mod list;
 pub(crate) mod lookup;
 pub(crate) mod read;
 pub(crate) mod read_files;
