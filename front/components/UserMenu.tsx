@@ -448,7 +448,7 @@ export function UserMenu({
                 />
                 <DropdownMenuLabel label={t`Ask questions`} />
                 <DropdownMenuItem
-                  label={t`Ask help`}
+                  label={t`Ask @help`}
                   icon={MessageChatCircle}
                   onClick={() => {
                     trackUserMenuEvent("help_ask");
