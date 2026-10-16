@@ -59,6 +59,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { heartbeatWithoutCancelCheck } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -100,6 +101,7 @@ type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+const SLOW_OUTPUT_PERSIST_MS = 10_000;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -1193,15 +1195,47 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return pending;
   }
 
+  /**
+   * @cc [owner:tdraier,label:performance] heartbeat-per-gcs-path-update
+   * MUST heartbeat the current Temporal activity, if any, after each output item
+   * `contentGcsPath` update.
+   */
+  /**
+   * @cc [owner:tdraier,label:logging] slow-persist-timing
+   * When a persist takes at least `SLOW_OUTPUT_PERSIST_MS`, whatever its outcome, MUST log one
+   * "Slow MCP output persist" warning with the workspaceId, the item count, and the GCS write and
+   * DB update durations.
+   */
   private async persistOutputItemsToGcs(
     auth: Authenticator,
     outputItems: AgentMCPActionOutputItemModel[]
   ): Promise<Result<void, Error>> {
+    const startMs = performance.now();
+    let gcsWriteMs: number | null = null;
+    const logIfSlow = () => {
+      const totalMs = performance.now() - startMs;
+      if (totalMs < SLOW_OUTPUT_PERSIST_MS) {
+        return;
+      }
+      logger.warn(
+        {
+          actionId: this.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          itemCount: outputItems.length,
+          gcsWriteMs: Math.round(gcsWriteMs ?? totalMs),
+          dbUpdateMs:
+            gcsWriteMs === null ? 0 : Math.round(totalMs - gcsWriteMs),
+        },
+        "Slow MCP output persist"
+      );
+    };
+
     const gcsResult = await batchWriteContentsToGcs(
       auth,
       this,
       outputItems.map((item) => item.content)
     );
+    gcsWriteMs = performance.now() - startMs;
 
     if (gcsResult.isErr()) {
       // Rows already exist with DB content; log and surface the error so deferred
@@ -1210,6 +1244,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         { err: gcsResult.error, actionId: this.sId },
         "Failed to write MCP output items to GCS"
       );
+      logIfSlow();
       return new Err(gcsResult.error);
     }
 
@@ -1219,14 +1254,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           const contentGcsPath = gcsResult.value[index];
           assert(contentGcsPath, "GCS path not found for output item.");
           await item.update({ contentGcsPath });
+          heartbeatWithoutCancelCheck();
         })
       );
     } catch (err) {
+      logIfSlow();
       // Keep the GCS objects rather than risk deleting content that may already be
       // referenced; action-prefix cleanup removes orphans.
       return new Err(normalizeError(err));
     }
 
+    logIfSlow();
     return new Ok(undefined);
   }
 
