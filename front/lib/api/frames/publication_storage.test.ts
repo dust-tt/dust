@@ -1362,16 +1362,16 @@ describe("publishFramePublication modes", () => {
     expect(metadata?.draftPublicationId).toBeUndefined();
   });
 
-  describe("when activation fails", () => {
-    function failAllowlistComputation() {
-      vi.spyOn(
-        FileResource.prototype,
-        "computeAuthorizedFileAccess"
-      ).mockResolvedValue(
-        new Err(new DustError("frame_user_required", "Simulated failure."))
-      );
-    }
+  function failAllowlistComputation() {
+    vi.spyOn(
+      FileResource.prototype,
+      "computeAuthorizedFileAccess"
+    ).mockResolvedValue(
+      new Err(new DustError("frame_user_required", "Simulated failure."))
+    );
+  }
 
+  describe("when activation fails", () => {
     it("keeps a pending draft and the live pointer on a failed live publish", async () => {
       const { auth, frame } = await setupFrame();
       const live = await publishBundle(
@@ -1424,6 +1424,136 @@ describe("publishFramePublication modes", () => {
       const metadata = await metadataOf(auth, frame);
       expect(metadata?.activePublicationId).toBeUndefined();
       expect(metadata?.draftPublicationId).toBeUndefined();
+    });
+  });
+
+  describe("draft publish allowlist", () => {
+    async function countFunctionRows(auth: Authenticator, frame: FileResource) {
+      const publications = await FramePublicationModel.findAll({
+        where: { workspaceId: frame.workspaceId, fileId: frame.id },
+      });
+      const byPublication = new Map<string, number>();
+      for (const publication of publications) {
+        const functions = await SandboxFunctionResource.listByFramePublication(
+          auth,
+          { frame, publicationId: publication.publicationId }
+        );
+        byPublication.set(publication.publicationId, functions.length);
+      }
+      return byPublication;
+    }
+
+    const publishWithFunction = (
+      auth: Authenticator,
+      frame: FileResource,
+      code: string,
+      mode: "live" | "draft"
+    ) =>
+      publishFramePublication(auth, {
+        frame,
+        functionArtifacts,
+        manifest: manifestWithFunction,
+        sourceFiles: sourceFilesWithFunction,
+        uiBundleCode: code,
+        mode,
+      });
+
+    it("fails a draft publish whose files the share allowlist would refuse", async () => {
+      const { auth, frame } = await setupFrame();
+      const live = await publishWithFunction(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+      expect(live.isOk()).toBe(true);
+      if (live.isErr()) {
+        return;
+      }
+      failAllowlistComputation();
+
+      const draft = await publishWithFunction(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+
+      expect(draft.isErr() && draft.error.code).toBe("allowlist_failed");
+      const metadata = await metadataOf(auth, frame);
+      expect(metadata?.activePublicationId).toBe(live.value.publicationId);
+      expect(metadata?.draftPublicationId).toBeUndefined();
+      const rows = await countFunctionRows(auth, frame);
+      expect(rows.get(live.value.publicationId)).toBe(1);
+      for (const [publicationId, count] of rows) {
+        if (publicationId !== live.value.publicationId) {
+          expect(count).toBe(0);
+        }
+      }
+    });
+
+    it("keeps a pending draft when a later draft publish fails the allowlist", async () => {
+      const { auth, frame } = await setupFrame();
+      const live = await publishBundle(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+      const pending = await publishBundle(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+      failAllowlistComputation();
+
+      const draft = await publishBundle(
+        auth,
+        frame,
+        "export default function C() {}",
+        "draft"
+      );
+
+      expect(draft.isErr() && draft.error.code).toBe("allowlist_failed");
+      const metadata = await metadataOf(auth, frame);
+      expect(metadata?.activePublicationId).toBe(
+        live.isOk() && live.value.publicationId
+      );
+      expect(metadata?.draftPublicationId).toBe(
+        pending.isOk() && pending.value.publicationId
+      );
+    });
+
+    it("does not persist the allowlist on a draft publish", async () => {
+      const { auth, frame } = await setupFrame();
+      vi.spyOn(
+        FileResource.prototype,
+        "computeAuthorizedFileAccess"
+      ).mockImplementation(
+        async (_auth, { frameContent }) =>
+          new Ok({
+            generatedByUserId: auth.getNonNullableUser().id,
+            frameContentHash: computeFrameContentHash(frameContent),
+            refs: [{ kind: "file_id", ref: "fil_ABCDEFGHIJ" }],
+          })
+      );
+      const liveBundle = "export default function A() {}";
+      await publishBundle(auth, frame, liveBundle, "live");
+
+      const draft = await publishBundle(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+
+      expect(draft.isOk() && draft.value.status).toBe("draft");
+      const reloaded = await FileResource.fetchById(auth, frame.sId);
+      expect(
+        (await reloaded?.getActiveAuthorizedFileAccessAllowlist())
+          ?.frameContentHash
+      ).toBe(computeFrameContentHash(liveBundle));
     });
   });
 

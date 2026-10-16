@@ -61,7 +61,10 @@ import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import type { AllSupportedFileContentType } from "@app/types/files";
+import type {
+  AllSupportedFileContentType,
+  ComputedAuthorizedFileAccess,
+} from "@app/types/files";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
@@ -758,6 +761,27 @@ export async function createFramePublicationFunctionRows(
 }
 
 /**
+ * @cc [owner:davidebbo,label:product] draft-publish-checks-the-share-allowlist
+ * A draft publish MUST fail on the share allowlist exactly when a live publish of the same content
+ * would (both go through this helper), so a draft never hides a failure until make-live.
+ */
+async function computeFramePublicationAllowlist(
+  auth: Authenticator,
+  frame: FileResource,
+  uiBundleCode: string
+): Promise<Result<ComputedAuthorizedFileAccess, FramePublicationError>> {
+  const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
+    frameContent: uiBundleCode,
+  });
+  if (allowlist.isErr()) {
+    return new Err(
+      new FramePublicationError("allowlist_failed", allowlist.error.message)
+    );
+  }
+  return allowlist;
+}
+
+/**
  * @cc [owner:davidebbo,label:backend] activation-requires-staged-function-rows
  * Callers MUST have created the publication's function rows first
  * (`createFramePublicationFunctionRows`); activation only moves the live pointer, so activating an
@@ -833,13 +857,13 @@ export async function activateFramePublication(
   }
 
   await frame.ensureShareableFrame(auth);
-  const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
-    frameContent: uiBundleCode,
-  });
+  const allowlist = await computeFramePublicationAllowlist(
+    auth,
+    frame,
+    uiBundleCode
+  );
   if (allowlist.isErr()) {
-    return new Err(
-      new FramePublicationError("allowlist_failed", allowlist.error.message)
-    );
+    return allowlist;
   }
   const shareScope = await frame.getShareScope();
 
@@ -975,6 +999,18 @@ export async function publishFramePublication(
           publicationId: livePublicationId,
           status: "live" as const,
         });
+      }
+
+      // The allowlist is only checked here, not persisted: the share link keeps serving the live
+      // one until activation computes and persists its own. The shareable row already exists
+      // because a draft only exists on a Frame that went live.
+      const allowlist = await withFramePublishTimingResult(
+        "allowlist",
+        timingContext,
+        () => computeFramePublicationAllowlist(auth, freshFrame, uiBundleCode)
+      );
+      if (allowlist.isErr()) {
+        return allowlist;
       }
     }
 

@@ -10,6 +10,7 @@ export type FramePublishTimingStep =
   | "database_reconcile"
   | "store"
   | "compare"
+  | "allowlist"
   | "stage"
   | "activate"
   | "publish_total";
