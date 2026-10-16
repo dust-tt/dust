@@ -51,7 +51,7 @@ describe("GET /api/poke/workspaces/:wId/frames", () => {
             {
               name: "stale-function",
               description: "A function from a superseded publication.",
-              userIdentity: "optional",
+              userIdentity: "workspace_user_required",
               executionMode: "durable",
               defaultStake: "low",
               bundleCode: "export default {};",

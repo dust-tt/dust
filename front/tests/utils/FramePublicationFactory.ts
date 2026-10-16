@@ -51,7 +51,7 @@ export async function storeTestFramePublication(
       {
         name: TEST_PUBLICATION_FUNCTION_NAME,
         bundleCode: TEST_PUBLICATION_FUNCTION_CODE,
-        userIdentity: "optional",
+        userIdentity: "workspace_user_required",
         inputSchema,
         outputSchema,
       },
@@ -98,7 +98,7 @@ export async function storeTestFramePublication(
             {
               name: TEST_PUBLICATION_FUNCTION_NAME,
               description: "Add a task.",
-              userIdentity: "optional",
+              userIdentity: "workspace_user_required",
               executionMode: "durable",
               defaultStake: "low",
               bundleCode: TEST_PUBLICATION_FUNCTION_CODE,

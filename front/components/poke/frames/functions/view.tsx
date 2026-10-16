@@ -41,7 +41,7 @@ export function ViewFrameFunctionTable({
               <PokeTableRow>
                 <PokeTableHead>User identity</PokeTableHead>
                 <PokeTableCell>
-                  {frameFunction.userIdentity ?? "optional"}
+                  {frameFunction.userIdentity ?? "workspace_user_required"}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>

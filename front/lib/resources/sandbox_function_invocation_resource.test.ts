@@ -161,7 +161,7 @@ beforeEach(() => {
 });
 
 async function setupExecutionTest(
-  userIdentity: SandboxFunctionUserIdentityPolicy = "optional",
+  userIdentity: SandboxFunctionUserIdentityPolicy = "workspace_user_required",
   origin: SandboxFunctionInvocationOrigin = "delegated",
   executionMode: SandboxFunctionExecutionMode = "durable",
   slug: string = "add-comment"
@@ -176,7 +176,7 @@ async function setupExecutionTest(
 
 async function setupFrameExecutionTest({
   standalone = false,
-  userIdentity = "optional",
+  userIdentity = "workspace_user_required",
   origin = "delegated",
   executionMode = "durable",
   slug = "add-task",
@@ -1377,7 +1377,7 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     executionMode: SandboxFunctionExecutionMode = "fast"
   ) {
     const setup = await setupExecutionTest(
-      "optional",
+      "workspace_user_required",
       "delegated",
       executionMode
     );

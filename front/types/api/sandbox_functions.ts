@@ -17,7 +17,6 @@ export type SandboxFunctionInvocationStatus =
   (typeof SANDBOX_FUNCTION_INVOCATION_STATUSES)[number];
 
 export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
-  "optional",
   "workspace_user_required",
   "interactive_workspace_user_required",
   "frame_author_required",
@@ -28,7 +27,7 @@ export type SandboxFunctionUserIdentityPolicy =
   (typeof SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)[number];
 
 export const SandboxFunctionUserIdentityPolicySchema = z
-  .enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)
+  .enum([...SANDBOX_FUNCTION_USER_IDENTITY_POLICIES, "optional"])
   .transform((policy): SandboxFunctionUserIdentityPolicy =>
     policy === "optional" ? "workspace_user_required" : policy
   );

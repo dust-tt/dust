@@ -88,8 +88,6 @@ function userIdentityPolicyStrength(
 ): number {
   switch (policy) {
     case "public":
-      return -1;
-    case "optional":
       return 0;
     case "workspace_user_required":
       return 1;

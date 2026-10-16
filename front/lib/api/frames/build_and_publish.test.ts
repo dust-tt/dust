@@ -380,7 +380,7 @@ describe("buildAndPublishFramePublication", () => {
       .mockResolvedValueOnce(
         new Ok({
           bundleCode: "export const listTasks = true;",
-          userIdentity: "optional",
+          userIdentity: "workspace_user_required",
           inputSchema: { type: "object" },
           outputSchema: { type: "array" },
         })
@@ -463,7 +463,7 @@ describe("buildAndPublishFramePublication", () => {
       .mockResolvedValueOnce(
         new Ok({
           bundleCode: "export const listTasks = true;",
-          userIdentity: "optional",
+          userIdentity: "workspace_user_required",
           inputSchema: { type: "object" },
           outputSchema: { type: "array" },
         })
@@ -542,7 +542,7 @@ describe("buildAndPublishFramePublication", () => {
     vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(
       new Ok({
         bundleCode: "export const addTask = true;",
-        userIdentity: "optional",
+        userIdentity: "workspace_user_required",
         inputSchema: { type: "object" },
         outputSchema: { type: "object" },
       })
@@ -641,7 +641,7 @@ describe("buildAndPublishFramePublication", () => {
     vi.mocked(buildSandboxFunctionOnReadySandbox).mockResolvedValue(
       new Ok({
         bundleCode: "export const built = true;",
-        userIdentity: "optional",
+        userIdentity: "workspace_user_required",
         inputSchema: { type: "object" },
         outputSchema: { type: "object" },
       })

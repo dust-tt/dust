@@ -79,7 +79,7 @@ const PUBLICATION_ID = "publication-1";
 async function makeFunction(
   auth: Authenticator,
   space: SpaceResource,
-  userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
+  userIdentity: SandboxFunctionUserIdentityPolicy = "workspace_user_required"
 ): Promise<SandboxFunctionResource> {
   const frame = await FileFactory.create(auth, null, {
     contentType: frameV2ContentType,

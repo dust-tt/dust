@@ -213,7 +213,7 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
           {
             name: "greet",
             description: "Greet someone.",
-            userIdentity: "optional",
+            userIdentity: "workspace_user_required",
             // A token that denies tools only ever belongs to a function published as fast.
             executionMode: noTools ? "fast" : "durable",
             defaultStake: "low",
@@ -306,7 +306,7 @@ export async function createPersistedFrameFunctionInvocationTokenTestContext({
           {
             name: "greet",
             description: "Greet someone.",
-            userIdentity: "optional",
+            userIdentity: "workspace_user_required",
             executionMode: noTools ? "fast" : "durable",
             defaultStake: "low",
             bundleCode: "export default () => 'hello';",
