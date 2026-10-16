@@ -7,7 +7,6 @@ export interface FunctionSchema {
   name: string;
   description: string | null;
   userIdentity:
-    | "optional"
     | "workspace_user_required"
     | "interactive_workspace_user_required"
     | "frame_author_required"
@@ -20,7 +19,7 @@ function parseUserIdentityPolicy(
   value: unknown
 ): FunctionSchema["userIdentity"] {
   if (value === undefined || value === "optional") {
-    return "optional";
+    return "workspace_user_required";
   }
   if (
     value === "workspace_user_required" ||
@@ -31,7 +30,7 @@ function parseUserIdentityPolicy(
     return value;
   }
   throw new Error(
-    "`schema.userIdentity` must be `optional`, `workspace_user_required`, " +
+    "`schema.userIdentity` must be `workspace_user_required`, " +
       "`interactive_workspace_user_required`, `frame_author_required`, or `public`"
   );
 }

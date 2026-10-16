@@ -65,8 +65,8 @@ export const schema = {
 };
 ```
 
-- `optional` (or omit the field): no user is required.
-- `workspace_user_required`: require a current workspace member.
+- `workspace_user_required` (the default when the field is omitted): require a
+  current workspace member.
 - `interactive_workspace_user_required`: require a workspace member calling
   directly from a live Dust session, rather than through an agent, schedule, or
   API client acting on that member's behalf.

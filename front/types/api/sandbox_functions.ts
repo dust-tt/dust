@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { APIErrorType } from "@app/types/error";
+import { z } from "zod";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
   "created",
@@ -25,6 +26,12 @@ export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
 
 export type SandboxFunctionUserIdentityPolicy =
   (typeof SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)[number];
+
+export const SandboxFunctionUserIdentityPolicySchema = z
+  .enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES)
+  .transform((policy): SandboxFunctionUserIdentityPolicy =>
+    policy === "optional" ? "workspace_user_required" : policy
+  );
 
 // How an invocation reaches the sandbox.
 //

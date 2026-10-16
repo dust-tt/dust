@@ -145,6 +145,32 @@ describe("buildSandboxFunctionOnReadySandbox", () => {
     expect(command).toContain(schemaReadPath);
   });
 
+  it("maps the legacy optional user identity to workspace_user_required", async () => {
+    const { authenticator, sandbox } = await setup();
+    const legacySchemaFile = JSON.stringify({
+      ...JSON.parse(validSchemaFile),
+      userIdentity: "optional",
+    });
+    mockExecWithHashes(sandbox, {
+      "bundle.js": BUNDLE_CONTENT,
+      "schema.json": legacySchemaFile,
+    });
+    vi.spyOn(sandbox, "readFile")
+      .mockResolvedValueOnce(new Ok(Buffer.from(BUNDLE_CONTENT)))
+      .mockResolvedValueOnce(new Ok(Buffer.from(legacySchemaFile)));
+
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.userIdentity).toBe("workspace_user_required");
+  });
+
   it("surfaces a build failure from the envelope without reading files", async () => {
     const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(

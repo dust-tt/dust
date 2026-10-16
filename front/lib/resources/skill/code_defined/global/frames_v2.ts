@@ -297,8 +297,8 @@ refuses the tool call. Function \`fetch()\` requests use the same workspace egre
 
 The \`schema.userIdentity\` policy decides whether the function may run:
 
-- \`optional\` is the default and allows calls without a user.
-- \`workspace_user_required\` requires a current member of the owning workspace.
+- \`workspace_user_required\` is the default and requires a current member of the owning
+  workspace.
 - \`interactive_workspace_user_required\` additionally requires the member's live Dust session;
   delegated agents, schedules, and API clients are refused.
 - \`frame_author_required\` requires the caller to be able to modify the Frame v2 source files. In a
@@ -309,9 +309,8 @@ Frame UI calls are available only to authenticated members of the owning workspa
 viewers must get a typed authorization error. A function policy can impose a stricter requirement.
 
 Use \`currentUser()\` from \`@dust/pod\` for the trusted caller. It returns
-\`{ sId, firstName, lastName, fullName, image, isPodMember, isPodEditor }\`, or \`null\` under the
-optional policy when there is no user. Never accept a caller \`userId\` as function input: the caller
-can forge it. The frontend's \`useUserIdentity\` hook also returns \`isFrameAuthor\`; use that flag to
+\`{ sId, firstName, lastName, fullName, image, isPodMember, isPodEditor }\`. Never accept a caller
+\`userId\` as function input: the caller can forge it. The frontend's \`useUserIdentity\` hook also returns \`isFrameAuthor\`; use that flag to
 show author-only UI, but enforce every author-only operation with \`frame_author_required\` because
 client-side conditions are not access control.
 
