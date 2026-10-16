@@ -266,6 +266,18 @@ msgid "Something went wrong."
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame by {lastPublisherName} to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
 msgid "Allow this Frame to use tools?"
 msgstr ""
 

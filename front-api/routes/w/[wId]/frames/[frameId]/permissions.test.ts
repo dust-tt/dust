@@ -42,9 +42,11 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
       canWriteFrameSource: true,
       isFrameAuthor: true,
       packageRoot: `conversation-${conversation.sId}/Admin`,
+      frameName: "Admin",
       hasFunctions: false,
       requiredTools: [],
       isLastPublisher: false,
+      lastPublisherName: null,
       hasAuthorizedRequiredTools: true,
     });
   });
@@ -71,9 +73,11 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
       canWriteFrameSource: false,
       isFrameAuthor: false,
       packageRoot: null,
+      frameName: null,
       hasFunctions: false,
       requiredTools: [],
       isLastPublisher: false,
+      lastPublisherName: null,
       hasAuthorizedRequiredTools: true,
     });
   });

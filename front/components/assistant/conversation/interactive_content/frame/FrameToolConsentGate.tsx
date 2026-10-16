@@ -2,6 +2,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON, getAvatar } from "@app/lib/actions/mcp_icons";
 import { selectServerViewsByReference } from "@app/lib/api/sandbox/server_view_reference";
 import { clientFetch } from "@app/lib/egress/client";
+import { useFramePermissions } from "@app/lib/swr/frames";
 import { useMCPServerViewsFromMemberSpaces } from "@app/lib/swr/mcp_servers";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostFrameToolAuthorizationResponseBody } from "@app/types/api/frame_permissions";
@@ -42,6 +43,11 @@ export function FrameToolConsentGate({
   const { t } = useLingui();
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { frameName, lastPublisherName } = useFramePermissions({
+    owner,
+    frameId,
+  });
 
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromMemberSpaces(owner);
@@ -117,12 +123,23 @@ export function FrameToolConsentGate({
     }
   }, [frameId, onAuthorized, owner.sId, requiredTools, t]);
 
+  const consentTitle =
+    frameName && lastPublisherName ? (
+      <Trans>
+        Allow Frame “{frameName}” by {lastPublisherName} to use tools?
+      </Trans>
+    ) : frameName ? (
+      <Trans>Allow Frame “{frameName}” to use tools?</Trans>
+    ) : lastPublisherName ? (
+      <Trans>Allow this Frame by {lastPublisherName} to use tools?</Trans>
+    ) : (
+      <Trans>Allow this Frame to use tools?</Trans>
+    );
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
       <div className="max-w-md space-y-2">
-        <h2 className="heading-base text-foreground">
-          <Trans>Allow this Frame to use tools?</Trans>
-        </h2>
+        <h2 className="heading-base text-foreground">{consentTitle}</h2>
         <p className="text-sm text-muted-foreground">
           <Trans>
             This Frame can call the tools below on your behalf. Review them
