@@ -4,6 +4,7 @@ import { TriggerSelectionPageContent } from "@app/components/agent_builder/trigg
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import { SCOPE_INFO } from "@app/components/assistant/details/agentScopeInfo";
 import { EditedDot } from "@app/components/assistant/details/DetailsSectionHeading";
 import {
   useAgentSuggestionPreview,
@@ -26,7 +27,6 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useEmailAgentFooter } from "@app/lib/swr/user";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -60,8 +60,6 @@ import {
   Users01,
   XClose,
 } from "@dust-tt/sparkle";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 
@@ -104,32 +102,6 @@ function triggerTypeToBuilderType(
 
 const EMAIL_AGENTS_DOCS_URL =
   "https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents";
-
-export const SCOPE_INFO: Record<
-  AgentConfigurationScope,
-  {
-    label: MessageDescriptor;
-    color: "success" | "info" | "highlight" | "primary";
-    icon?: typeof Users01 | undefined;
-    text: MessageDescriptor;
-  }
-> = {
-  global: {
-    label: msg`Default agent`,
-    color: "primary",
-    text: msg`Default agents provided by Dust.`,
-  },
-  hidden: {
-    label: msg`Not published`,
-    color: "primary",
-    text: msg`Hidden agents.`,
-  },
-  visible: {
-    label: msg`Published`,
-    color: "success",
-    text: msg`Visible agents.`,
-  },
-} as const;
 
 interface AgentDetailsBodyProps {
   owner: WorkspaceType;
