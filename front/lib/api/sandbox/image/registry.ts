@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   getLocalAccountPrivilegeHardeningCommand,
   getRootConsumedPathHardeningCommand,
@@ -27,11 +28,13 @@ import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.124";
-const DSBX_CLI_VERSION = "0.1.68";
-// SHA-256 of dsbx-linux-x86_64 at DSBX_CLI_VERSION, printed in the release body.
-// Bump it with the version.
-const DSBX_CLI_SHA256 =
-  "75fdf424b9ab9a623dd67b9f347adc538593544209cf907fcfe7b7b5fc55d7c8";
+// The sandbox image registry workflow reads this line with sed.
+export const DSBX_CLI_VERSION = "0.1.68";
+// SHA-256 of dsbx-linux-x86_64 at DSBX_CLI_VERSION. The sandbox image registry
+// workflow sets it after verifying the release's build attestation (signed by
+// release-dsbx-cli.yml on main), so it is not pinned here. Only image builds
+// need it: sandbox_image_build.ts refuses to build without it.
+const DSBX_CLI_SHA256 = config.getDsbxCliSha256() ?? "";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -323,9 +326,12 @@ function getSshHardeningCommand(): string {
 /**
  * @cc [owner:fontanierh,label:security] dust-release-binaries-pinned-hash
  * Every binary downloaded from a dust-tt/dust GitHub release (dsbx, apply_patch) MUST pass
- * `sha256sum -c` against a SHA-256 constant held in this file before it is installed. A
- * checksums file fetched from the same release MUST NOT be the verification source, since the
- * release job that builds the binary also writes it.
+ * `sha256sum -c` against an expected SHA-256 before it is installed. That hash MUST come either
+ * from a constant held in this file (apply_patch) or, for dsbx, from DSBX_CLI_SHA256, which the
+ * sandbox image registry workflow sets only after `gh attestation verify` proves the binary was
+ * built by release-dsbx-cli.yml running on refs/heads/main. A checksums file fetched from the
+ * same release MUST NOT be the verification source, since the release job that builds the
+ * binary also writes it.
  */
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`

@@ -21,7 +21,7 @@ import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry
 import type { Operation } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 function getDustBaseImage() {
   const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
@@ -495,22 +495,36 @@ describe("sandbox image registry", () => {
     expect(firewall).not.toContain("delete table ip dust-gcs-token");
   });
 
-  test("installs the current dsbx CLI release", () => {
-    const runCommands = getRunCommands(getDustBaseImageOperations());
-
-    expect(runCommands).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.68/dsbx-linux-x86_64"
-        ),
-        expect.stringContaining(
-          'echo "75fdf424b9ab9a623dd67b9f347adc538593544209cf907fcfe7b7b5fc55d7c8  /tmp/dsbx" | sha256sum -c -'
-        ),
-        expect.stringContaining(
-          "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
-        ),
-      ])
-    );
+  test("installs the current dsbx CLI release, checked against DSBX_CLI_SHA256", async () => {
+    const sha256 =
+      "1111111111111111111111111111111111111111111111111111111111111111";
+    vi.stubEnv("DSBX_CLI_SHA256", sha256);
+    vi.resetModules();
+    try {
+      const registry = await import("@app/lib/api/sandbox/image/registry");
+      const imageResult = registry.getSandboxImageFromRegistry({
+        name: "dust-base",
+      });
+      if (imageResult.isErr()) {
+        throw imageResult.error;
+      }
+      expect(getRunCommands(imageResult.value.operations)).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(
+            `https://github.com/dust-tt/dust/releases/download/dsbx-v${registry.DSBX_CLI_VERSION}/dsbx-linux-x86_64`
+          ),
+          expect.stringContaining(
+            `echo "${sha256}  /tmp/dsbx" | sha256sum -c -`
+          ),
+          expect.stringContaining(
+            "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
+          ),
+        ])
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   test("installs the pinned apply_patch release", () => {
@@ -528,7 +542,7 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("verifies released binaries against repo-pinned hashes only", () => {
+  test("never trusts the checksums file shipped with a release", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
 
     expect(runCommands.join("\n")).not.toContain("checksums-sha256.txt");

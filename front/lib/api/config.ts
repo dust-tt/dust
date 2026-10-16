@@ -704,6 +704,11 @@ const config = {
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
     );
   },
+  // Attested SHA-256 of the dsbx release installed in sandbox images. Only
+  // needed to build images.
+  getDsbxCliSha256: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DSBX_CLI_SHA256");
+  },
   getSandboxGcpArtifactRegistry: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_REGISTRY"
