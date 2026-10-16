@@ -296,7 +296,7 @@ describe("DfsClient", () => {
           append: false,
         },
         {
-          type: "rename",
+          type: "move",
           objectId: FILE_ID,
           parentId: ROOT_ID,
           name: "new.txt",
@@ -326,7 +326,7 @@ describe("DfsClient", () => {
           },
         },
         {
-          rename: {
+          move: {
             objectId: wireId(FILE_ID),
             parentId: wireId(ROOT_ID),
             name: "new.txt",
@@ -352,6 +352,45 @@ describe("DfsClient", () => {
       );
     }
   });
+
+  it.each([undefined, "0190c3a0b1c47aaa9bbbccccddddeeee"])(
+    "encodes a move with destination %s",
+    async (targetId) => {
+      const { client, transport } = setup({
+        Apply: new Ok({
+          results: [{ mutation: { object: wireAttr(FILE_ID), related: [] } }],
+        }),
+      });
+
+      const res = await client.apply({
+        operations: [
+          {
+            type: "move",
+            objectId: FILE_ID,
+            parentId: ROOT_ID,
+            targetId,
+            name: "renamed.txt",
+            replace: false,
+          },
+        ],
+      });
+
+      expect(res.isOk()).toBe(true);
+      expect(transport.calls[0].request).toEqual({
+        operations: [
+          {
+            move: {
+              objectId: wireId(FILE_ID),
+              parentId: wireId(ROOT_ID),
+              targetId: targetId === undefined ? undefined : wireId(targetId),
+              name: "renamed.txt",
+              replace: false,
+            },
+          },
+        ],
+      });
+    }
+  );
 
   it("encodes update patches, removing xattrs whose value is omitted", async () => {
     const { client, transport } = setup({

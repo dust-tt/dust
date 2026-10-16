@@ -361,7 +361,8 @@ describe("DfsFileSystem", () => {
     expect(uri).toBe(`dfs://plan.md--${attr.id}`);
 
     await fs.mkdir(at("final"));
-    await fs.move(uri, at("final/renamed.md"));
+    const moved = await fs.move(at("drafts/plan.md"), at("final/renamed.md"));
+    expect(moved.isOk()).toBe(true);
 
     // The stale name in the stored URI is ignored.
     expect(await readText(fs, uri)).toBe("v1");
@@ -460,10 +461,14 @@ describe("DfsFileSystem", () => {
   });
 
   it("moves a file keeping its id and refuses to overwrite unless asked", async () => {
-    const { fs, at } = setup();
+    const { dfs, fs, at } = setup();
     const original = await fs.write(at("a.txt"), "a");
     await fs.write(at("b.txt"), "b");
-    await fs.mkdir(at("dir"));
+    const directory = await fs.mkdir(at("dir"));
+    expect(original.isOk() && directory.isOk()).toBe(true);
+    if (original.isErr() || directory.isErr()) {
+      return;
+    }
 
     const collision = await fs.move(at("a.txt"), at("b.txt"));
     expect(collision.isErr() && collision.error.code).toBe("already_exists");
@@ -478,11 +483,56 @@ describe("DfsFileSystem", () => {
       expect.objectContaining({ value: false })
     );
     expect(await readText(fs, at("dir/renamed.txt"))).toBe("a");
+    expect(dfs.applyCalls.at(-1)).toEqual([
+      {
+        type: "move",
+        objectId: original.value.attr.id,
+        parentId: dfs.rootId,
+        targetId: directory.value.attr.id,
+        name: "renamed.txt",
+        replace: false,
+      },
+    ]);
 
     const replaced = await fs.move(at("b.txt"), at("dir/renamed.txt"), {
       replace: true,
     });
     expect(replaced.isOk()).toBe(true);
     expect(await readText(fs, at("dir/renamed.txt"))).toBe("b");
+  });
+
+  it("renames within the source directory without a target id", async () => {
+    const { dfs, fs, at } = setup();
+    const parentId = dfs.createDirectory(dfs.rootId, "dir");
+    const objectId = dfs.createFile(parentId, "old.txt", "contents");
+
+    const renamed = await fs.move(at("dir/old.txt"), at("dir/new.txt"));
+
+    expect(renamed.isOk() && renamed.value.attr.id).toBe(objectId);
+    expect(dfs.paths()).toEqual(["/dir", "/dir/new.txt"]);
+    expect(await readText(fs, at("dir/new.txt"))).toBe("contents");
+    expect(dfs.applyCalls).toEqual([
+      [
+        {
+          type: "move",
+          objectId,
+          parentId,
+          targetId: undefined,
+          name: "new.txt",
+          replace: false,
+        },
+      ],
+    ]);
+  });
+
+  it("rejects a move without a source path before sending a mutation", async () => {
+    const { dfs, fs, at } = setup();
+    const objectId = dfs.createFile(dfs.rootId, "file.txt", "contents");
+
+    const moved = await fs.move(formatDfsUri(objectId), at("renamed.txt"));
+
+    expect(moved.isErr() && moved.error.code).toBe("invalid_input");
+    expect(dfs.applyCalls).toEqual([]);
+    expect(dfs.paths()).toEqual(["/file.txt"]);
   });
 });

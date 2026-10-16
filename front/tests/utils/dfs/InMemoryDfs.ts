@@ -62,6 +62,12 @@ function checkMimeType(mimeType: string | undefined) {
  * It follows the API's filesystem rules (names, kinds, non-empty directories, version bumps,
  * sequential `Apply` operations) but has no permissions or snapshots.
  */
+/**
+ * @cc [owner:spolu,label:testing;error-handling] in-memory-operation-errors
+ * Exception to `no-catching-own-errors`: this test server's synchronous operations and validation
+ * helpers MAY throw `OperationError`. Only `run` MAY catch it, returning its code as a `DfsError`;
+ * all other exceptions MUST propagate.
+ */
 export class InMemoryDfs implements DfsFileSystemClient {
   readonly rootId: DfsObjectId;
   readonly applyCalls: DfsOperation[][] = [];
@@ -402,10 +408,13 @@ export class InMemoryDfs implements DfsFileSystemClient {
         this.touch(node, { content: op.data.length > 0 });
         return node.id;
       }
-      case "rename": {
+      case "move": {
         checkName(op.name);
         const node = this.node(op.objectId);
-        const destination = this.directory(op.parentId);
+        if (node.parentId !== op.parentId) {
+          throw new OperationError("not_found");
+        }
+        const destination = this.directory(op.targetId ?? op.parentId);
         for (
           let ancestor: FakeNode | undefined = destination;
           ancestor;

@@ -1,5 +1,6 @@
 import type { DfsClient } from "@app/lib/dfs/client";
 import { newDfsObjectId } from "@app/lib/dfs/object_id";
+import type { ParsedDfsUri } from "@app/lib/dfs/uri";
 import { formatDfsUri, parseDfsUri } from "@app/lib/dfs/uri";
 import type {
   DfsAttr,
@@ -883,7 +884,12 @@ export class DfsFileSystem {
     );
   }
 
-  /** Moves or renames the object at `src` to `dest`, keeping its ObjectId. */
+  /** Moves or renames the object at `src` to `dest`, keeping its ObjectId. Both URIs need paths. */
+  /**
+   * @cc [owner:spolu,label:product] move-parent-targets
+   * `move` MUST require source and destination URIs with paths and send the resolved source parent
+   * as `parentId`. It MUST send `targetId` only when the destination parent differs.
+   */
   async move(
     src: string,
     dest: string,
@@ -893,23 +899,29 @@ export class DfsFileSystem {
     if (destination.isErr()) {
       return destination;
     }
-    const { anchorId, segments } = destination.value;
-    const name = segments.at(-1);
+    const name = destination.value.segments.at(-1);
     if (name === undefined) {
       return new Err(
         new DfsError("invalid_input", "The destination requires a path.")
       );
     }
-    const attr = await this.require(src);
-    if (attr.isErr()) {
-      return attr;
+    const source = parseDfsUri(src);
+    if (source.isErr()) {
+      return source;
     }
-    const objectId = realIdOf(attr.value);
-    if (objectId.isErr()) {
-      return objectId;
+    const sourceName = source.value.segments.at(-1);
+    if (sourceName === undefined) {
+      return new Err(
+        new DfsError("invalid_input", "The source requires a path.")
+      );
     }
-    let parentId = anchorId;
-    if (segments.length > 1) {
+    const resolveParentId = async ({
+      anchorId,
+      segments,
+    }: ParsedDfsUri): Promise<Result<DfsObjectId, DfsError>> => {
+      if (segments.length === 1) {
+        return new Ok(anchorId);
+      }
       const parent = await this.require(
         formatDfsUri(anchorId, { path: segments.slice(0, -1) })
       );
@@ -919,17 +931,35 @@ export class DfsFileSystem {
       if (!isDirectory(parent.value)) {
         return new Err(new DfsError("not_directory"));
       }
-      const id = realIdOf(parent.value);
-      if (id.isErr()) {
-        return id;
-      }
-      parentId = id.value;
+      return realIdOf(parent.value);
+    };
+
+    const parentId = await resolveParentId(source.value);
+    if (parentId.isErr()) {
+      return parentId;
+    }
+    const attr = await this.lookupChild(parentId.value, sourceName);
+    if (attr.isErr()) {
+      return attr;
+    }
+    if (!attr.value) {
+      return new Err(new DfsError("not_found", `Not found: ${src}.`));
+    }
+    const objectId = realIdOf(attr.value);
+    if (objectId.isErr()) {
+      return objectId;
+    }
+    const targetId = await resolveParentId(destination.value);
+    if (targetId.isErr()) {
+      return targetId;
     }
     return this.applyForObject([
       {
-        type: "rename",
+        type: "move",
         objectId: objectId.value,
-        parentId,
+        parentId: parentId.value,
+        targetId:
+          targetId.value === parentId.value ? undefined : targetId.value,
         name,
         replace,
       },
