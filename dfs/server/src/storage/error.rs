@@ -16,6 +16,7 @@ pub enum Error<E> {
     Transaction(FdbBindingError),
     InvalidKeyHash(InvalidKeyHash),
     InvalidObjectId(InvalidId),
+    Receipt(super::receipt::Error),
     Resource(E),
 }
 
@@ -26,6 +27,7 @@ impl<E: fmt::Display> fmt::Display for Error<E> {
             Self::Transaction(error) => write!(f, "transaction failed: {error}"),
             Self::InvalidKeyHash(error) => error.fmt(f),
             Self::InvalidObjectId(error) => error.fmt(f),
+            Self::Receipt(error) => error.fmt(f),
             Self::Resource(error) => error.fmt(f),
         }
     }
@@ -38,6 +40,7 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
             Self::Transaction(error) => Some(error),
             Self::InvalidKeyHash(error) => Some(error),
             Self::InvalidObjectId(error) => Some(error),
+            Self::Receipt(error) => Some(error),
             Self::Resource(error) => Some(error),
         }
     }
@@ -46,6 +49,12 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
 impl<E> From<InvalidKeyHash> for Error<E> {
     fn from(error: InvalidKeyHash) -> Self {
         Self::InvalidKeyHash(error)
+    }
+}
+
+impl<E> From<super::receipt::Error> for Error<E> {
+    fn from(error: super::receipt::Error) -> Self {
+        Self::Receipt(error)
     }
 }
 

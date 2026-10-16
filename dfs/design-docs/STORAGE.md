@@ -86,6 +86,14 @@ of at most 100 entries. Each batch rechecks session state with conflict tracking
 protecting refreshed sessions and allowing concurrent sweepers to retry safely. Stale and orphaned
 index entries are also removed. Authentication rejects expired sessions independently of cleanup.
 
+## Transaction receipts
+
+`fdb::with_idempotent_transaction` protects any transaction body across FDB retries within one call.
+Receipts use `dfs-v1-{env}/receipt/<createdAtMs>/<receiptId>` and store the attempt ID and commit
+versionstamp. One in-memory receipt retains each attempt's result across FDB retries; a marker skips
+the body. Cleanup can remove 100 markers per transaction after the retry timeout plus a 60-second
+clock-skew grace. Scheduling cleanup is follow-up work.
+
 ## Objects and contents
 
 | Key | Value | Rationale |

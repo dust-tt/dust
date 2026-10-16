@@ -69,6 +69,7 @@ impl From<storage::Error<object::Error>> for storage::Error<Error> {
             storage::Error::Transaction(error) => Self::Transaction(error),
             storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
             storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Receipt(error) => Self::Receipt(error),
             storage::Error::Resource(error) => Self::Resource(Error::Object(error)),
         }
     }
