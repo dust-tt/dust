@@ -21,3 +21,4 @@ this contract. Exceptions:
 - `SessionResource::revoke_expired` MAY clean up a further batch.
 - `ObjectResource::record_content_change` is not covered.
 - `ObjectResource::record_attr_change` is not covered.
+- `receipt::clear_expired` MAY clean up a further batch.

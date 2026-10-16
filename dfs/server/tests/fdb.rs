@@ -31,6 +31,7 @@ fn fdb_client() -> Result<()> {
 
     runtime.block_on(async {
         fdb::ping(fdb::database()?).await?;
+        commit_versions_follow_the_successful_attempt_and_read_only_commits().await?;
         ping_fails_instead_of_hanging_when_fdb_is_unreachable().await?;
         resource_errors_abort_staged_writes().await
     })
@@ -134,5 +135,52 @@ async fn resource_errors_abort_staged_writes() -> Result<()> {
     assert!(duplicate_lookup.is_none());
     assert!(pending_record.is_none());
     assert!(pending_lookup.is_none());
+    Ok(())
+}
+
+async fn commit_versions_follow_the_successful_attempt_and_read_only_commits() -> Result<()> {
+    let key = tenant_subspace(&ObjectId::new_v7().to_string()).pack(&"version-test");
+    let attempts = AtomicUsize::new(0);
+    let (attempt, version) = fdb::with_transaction_and_version(|tx| {
+        let key = &key;
+        let attempt = attempts.fetch_add(1, Ordering::Relaxed);
+        async move {
+            tx.set(key, b"committed");
+            if attempt == 0 {
+                return Err(storage::Error::<tenant::Error>::from(
+                    foundationdb::FdbBindingError::from(foundationdb::FdbError::from_code(1020)),
+                ));
+            }
+            Ok(attempt)
+        }
+    })
+    .await?;
+    assert_eq!(attempt, 1);
+    let version = version.context("missing commit version")?;
+    let before = fdb::database()?.create_trx()?;
+    before.set_read_version(version - 1);
+    assert!(before.get(&key, false).await?.is_none());
+    let committed = fdb::database()?.create_trx()?;
+    committed.set_read_version(version);
+    assert_eq!(
+        committed.get(&key, false).await?.as_deref(),
+        Some(b"committed".as_slice())
+    );
+    let (value, version) = fdb::with_transaction_and_version(|tx| {
+        let key = &key;
+        async move {
+            let value = tx
+                .get(key, false)
+                .await
+                .map_err(foundationdb::FdbBindingError::from)?;
+            Ok::<_, storage::Error<tenant::Error>>(value.map(|value| value.to_vec()))
+        }
+    })
+    .await?;
+    assert_eq!(value.as_deref(), Some(b"committed".as_slice()));
+    assert_eq!(version, None);
+    let tx = fdb::database()?.create_trx()?;
+    tx.clear(&key);
+    tx.commit().await?;
     Ok(())
 }

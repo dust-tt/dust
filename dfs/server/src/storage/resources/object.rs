@@ -121,6 +121,7 @@ impl From<storage::Error<directory::Error>> for storage::Error<Error> {
             storage::Error::Transaction(error) => Self::Transaction(error),
             storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
             storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Receipt(error) => Self::Receipt(error),
             storage::Error::Resource(error) => Self::Resource(Error::Directory(Box::new(error))),
         }
     }
@@ -133,6 +134,7 @@ impl From<storage::Error<file::Error>> for storage::Error<Error> {
             storage::Error::Transaction(error) => Self::Transaction(error),
             storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
             storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Receipt(error) => Self::Receipt(error),
             storage::Error::Resource(error) => Self::Resource(Error::File(Box::new(error))),
         }
     }

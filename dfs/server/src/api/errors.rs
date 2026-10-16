@@ -5,7 +5,7 @@ use dfs_protocol::{
 use tonic::Status;
 
 use crate::storage::{
-    self,
+    self, receipt,
     resources::{directory, file, object, session, tenant},
 };
 
@@ -246,6 +246,32 @@ impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
     }
 }
 
+impl From<receipt::Error> for ErrorCode {
+    fn from(error: receipt::Error) -> Self {
+        match error {
+            receipt::Error::Expired => ErrorCode::Unavailable,
+            error => {
+                tracing::error!(%error, "transaction receipt failed");
+                ErrorCode::Internal
+            }
+        }
+    }
+}
+
+impl From<receipt::Error> for ErrorDetails {
+    fn from(error: receipt::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<receipt::Error> for Status {
+    fn from(error: receipt::Error) -> Self {
+        status(error.into())
+    }
+}
+
 impl<E: Into<Status>> From<storage::Error<E>> for Status {
     fn from(error: storage::Error<E>) -> Self {
         match error {
@@ -262,6 +288,7 @@ impl<E: Into<Status>> From<storage::Error<E>> for Status {
                 tracing::error!(%error, "stored object ID decoding failed");
             }
             storage::Error::Resource(error) => return error.into(),
+            storage::Error::Receipt(error) => return error.into(),
         }
         status(ErrorCode::Internal)
     }
