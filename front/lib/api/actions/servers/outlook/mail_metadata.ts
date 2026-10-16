@@ -267,6 +267,13 @@ export const OUTLOOK_TOOLS_METADATA = [
         .describe(
           "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
         ),
+      attachmentFilePaths: z
+        .array(z.string())
+        .max(10)
+        .optional()
+        .describe(
+          "Optional. Scoped paths of several files to attach to the email (up to 10, e.g. [`conversation-<id>/report.pdf`, `pod-<id>/data.csv`]). Can be combined with attachmentFilePath; duplicates are ignored."
+        ),
       sharedMailboxAddress: z
         .string()
         .optional()
@@ -378,6 +385,13 @@ export const OUTLOOK_TOOLS_METADATA = [
         .optional()
         .describe(
           "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
+      attachmentFilePaths: z
+        .array(z.string())
+        .max(10)
+        .optional()
+        .describe(
+          "Optional. Scoped paths of several files to attach to the email (up to 10, e.g. [`conversation-<id>/report.pdf`, `pod-<id>/data.csv`]). Can be combined with attachmentFilePath; duplicates are ignored."
         ),
     },
     stake: "high",
