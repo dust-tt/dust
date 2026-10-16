@@ -2,13 +2,16 @@ use std::collections::HashMap;
 
 use dfs_protocol::{
     ObjectId,
-    rpc::{Mutation, operation::Operation},
+    rpc::{Mutation, UpdateOperation, operation::Operation},
 };
 use foundationdb::Transaction;
 use futures::future::try_join_all;
 
 use super::{Error, ObjectResource};
-use crate::storage::{self, resources::session::SessionResource};
+use crate::storage::{
+    self,
+    resources::{directory::DirectoryResource, file::FileResource, session::SessionResource},
+};
 
 #[cfg(test)]
 #[path = "../../../../tests/resources/object/apply.rs"]
@@ -58,17 +61,33 @@ impl ObjectResource {
     }
 
     async fn apply_operation(
-        _tx: &Transaction,
-        _session: &SessionResource,
+        tx: &Transaction,
+        session: &SessionResource,
         operation: Operation,
     ) -> Result<Mutation, storage::Error<Error>> {
         match operation {
-            Operation::Create(_) => Err(Error::UnsupportedOperation.into()),
-            Operation::Update(_) => Err(Error::UnsupportedOperation.into()),
-            Operation::Write(_) => Err(Error::UnsupportedOperation.into()),
-            Operation::Move(_) => Err(Error::UnsupportedOperation.into()),
-            Operation::Remove(_) => Err(Error::UnsupportedOperation.into()),
+            Operation::Create(operation) => {
+                Ok(DirectoryResource::apply_create(tx, session, operation).await?)
+            }
+            Operation::Update(operation) => Self::apply_update(tx, session, operation).await,
+            Operation::Write(operation) => {
+                Ok(FileResource::apply_write(tx, session, operation).await?)
+            }
+            Operation::Move(operation) => {
+                Ok(DirectoryResource::apply_move(tx, session, operation).await?)
+            }
+            Operation::Remove(operation) => {
+                Ok(DirectoryResource::apply_remove(tx, session, operation).await?)
+            }
         }
+    }
+
+    pub async fn apply_update(
+        _tx: &Transaction,
+        _session: &SessionResource,
+        _operation: UpdateOperation,
+    ) -> Result<Mutation, storage::Error<Error>> {
+        Err(Error::UnsupportedOperation.into())
     }
 
     /**

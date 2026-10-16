@@ -35,6 +35,14 @@ fn resource_errors_share_codes_across_api_conversions() {
         ErrorCode::Unsupported,
     );
     assert_api_codes(|| object::Error::VersionOverflow, ErrorCode::Internal);
+    assert_api_codes(
+        || object::Error::Directory(Box::new(directory::Error::NameTooLong)),
+        ErrorCode::NameTooLong,
+    );
+    assert_api_codes(
+        || object::Error::File(Box::new(file::Error::Capacity)),
+        ErrorCode::Capacity,
+    );
 
     assert_api_codes(|| session::Error::InvalidSubject, ErrorCode::InvalidInput);
     assert_api_codes(|| session::Error::InvalidKey, ErrorCode::Unauthenticated);
@@ -128,6 +136,47 @@ fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), pro
         // Follow the runner's boxing and unboxing before translating the final API response.
         let error = FdbBindingError::from(error);
         let error = storage::Error::<Status>::from(error);
+        let status: Status = error.into();
+        assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
+    }
+    Ok(())
+}
+
+#[test]
+fn operation_errors_preserve_retries_and_statuses_through_objects() -> Result<(), prost::DecodeError>
+{
+    for error in [
+        storage::Error::<object::Error>::from(storage::Error::<directory::Error>::from(
+            FdbBindingError::from(FdbError::from_code(1020)),
+        )),
+        storage::Error::<object::Error>::from(storage::Error::<file::Error>::from(
+            FdbBindingError::from(FdbError::from_code(1020)),
+        )),
+    ] {
+        let error = FdbBindingError::from(storage::Error::<Status>::from(error));
+        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+    }
+
+    for (error, expected) in [
+        (
+            storage::Error::<object::Error>::from(storage::Error::Resource(
+                directory::Error::NameTooLong,
+            )),
+            ErrorCode::NameTooLong,
+        ),
+        (
+            storage::Error::<object::Error>::from(storage::Error::Resource(file::Error::Capacity)),
+            ErrorCode::Capacity,
+        ),
+        (
+            storage::Error::<object::Error>::from(storage::Error::Resource(
+                directory::Error::Object(object::Error::NotAuthorized),
+            )),
+            ErrorCode::NotFound,
+        ),
+    ] {
+        let error = FdbBindingError::from(error);
+        let error = storage::Error::<object::Error>::from(error);
         let status: Status = error.into();
         assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
     }

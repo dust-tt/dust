@@ -31,7 +31,9 @@ impl From<file::Error> for ErrorCode {
     fn from(error: file::Error) -> Self {
         match error {
             file::Error::IsDirectory => ErrorCode::IsDirectory,
-            file::Error::UnsupportedKind => ErrorCode::Unsupported,
+            file::Error::UnsupportedKind | file::Error::UnsupportedOperation => {
+                ErrorCode::Unsupported
+            }
             file::Error::InvalidLength => ErrorCode::InvalidInput,
             file::Error::Capacity => ErrorCode::Capacity,
             file::Error::Object(error) => error.into(),
@@ -83,6 +85,8 @@ impl From<object::Error> for ErrorCode {
             object::Error::UnsupportedKind | object::Error::UnsupportedOperation => {
                 ErrorCode::Unsupported
             }
+            object::Error::Directory(error) => (*error).into(),
+            object::Error::File(error) => (*error).into(),
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
             | object::Error::InvalidStoredGrant
@@ -127,9 +131,9 @@ impl From<directory::Error> for ErrorCode {
             directory::Error::NameTooLong => ErrorCode::NameTooLong,
             directory::Error::NotDirectory => ErrorCode::NotDirectory,
             directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
-            directory::Error::UnsupportedKind | directory::Error::SharedUnsupported => {
-                ErrorCode::Unsupported
-            }
+            directory::Error::UnsupportedKind
+            | directory::Error::UnsupportedOperation
+            | directory::Error::SharedUnsupported => ErrorCode::Unsupported,
             directory::Error::Object(error) => error.into(),
             directory::Error::TimestampGeneration => {
                 tracing::error!(%error, "directory operation failed");
