@@ -20,6 +20,7 @@ import {
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
+import { DocumentTableToolbar } from "@app/components/editor/document/DocumentTableToolbar";
 import type {
   CollabParticipant,
   DocumentProps,
@@ -51,7 +52,9 @@ const CollabEditor = lazy(
  * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
  * text selection, image controls a hovered image (see `document-image-menu`), and Frame controls
  * a hovered Frame (see `document-frame-menu`). Block commands MUST require an editable document,
- * and either a typed `/` or the selection toolbar's text style and list menus.
+ * and either a typed `/` or the selection toolbar's text style and list menus; adding or deleting
+ * a table's rows and columns, or the table itself, MAY also come from the toolbar shown while the
+ * cursor is in that table.
  * className MUST apply only to the outer container.
  */
 /**
@@ -235,7 +238,7 @@ interface DocumentEditingControlsProps {
   blockMenu: ReturnType<typeof useDocumentBlockMenu>;
 }
 
-/** The formatting toolbar over a selection, the image menu and the `/` block menu, while editable. */
+/** The formatting toolbar over a selection, the image menu, the table toolbar and the `/` block menu, while editable. */
 const DocumentEditingControls = ({
   editor,
   comments,
@@ -248,6 +251,7 @@ const DocumentEditingControls = ({
         onComment={comments.canWrite ? comments.startDraft : undefined}
       />
       <DocumentImageMenu editor={editor} />
+      <DocumentTableToolbar editor={editor} />
       <DocumentBlockMenu editor={editor} menu={blockMenu} />
     </>
   );

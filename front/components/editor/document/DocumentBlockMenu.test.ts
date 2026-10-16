@@ -66,6 +66,22 @@ const press = (menu: ReturnType<typeof renderMenu>, key: string) =>
     })
   );
 
+describe("useDocumentBlockMenu blocks", () => {
+  it("inserts a 3 by 3 table, a paragraph after it, the cursor in its first header cell", () => {
+    const menu = renderMenu();
+    pick(menu, "Table");
+
+    const table = editor?.state.doc.child(1);
+    expect(table?.type.name).toBe("table");
+    expect([table?.childCount, table?.firstChild?.childCount]).toEqual([3, 3]);
+    expect(editor?.state.doc.child(2).type.name).toBe("paragraph");
+    const { $from } = editor?.state.selection ?? {};
+    expect($from?.node(2).type.name).toBe("tableRow");
+    expect($from?.index(1)).toBe(0);
+    expect($from?.index(2)).toBe(0);
+  });
+});
+
 describe("useDocumentBlockMenu embeds", () => {
   it("offers Frame and Image only with embeddable files", () => {
     const withoutFiles = names(renderMenu().result.current.items);

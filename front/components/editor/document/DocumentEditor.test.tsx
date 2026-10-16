@@ -33,6 +33,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
@@ -1564,6 +1565,37 @@ describe("Document Escape inside a host dialog", () => {
 });
 
 describe("Document tables", () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () => [],
+    });
+    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+      }),
+    });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const TABLE = "| Name | Count |\n| --- | --- |\n| apple | 3 |\n";
 
   const cellText = (editor: Editor, text: string) => {
@@ -1619,6 +1651,98 @@ describe("Document tables", () => {
     }
 
     expect(editor.state.doc.eq(before)).toBe(true);
+  });
+
+  const openTableMenu = async () => {
+    const user = userEvent.setup();
+    // TipTap's focus command focuses the editor on the next frame, which would close an open menu.
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    await user.click(await screen.findByRole("button", { name: "Edit table" }));
+    return user;
+  };
+
+  const rowTexts = (editor: Editor) => {
+    const rows: string[] = [];
+    editor.state.doc.firstChild?.forEach((row) => {
+      const cells: string[] = [];
+      row.forEach((cell) => cells.push(cell.textContent));
+      rows.push(cells.join("|"));
+    });
+    return rows;
+  };
+
+  it("adds and deletes rows and columns from the table toolbar", async () => {
+    const { editor } = await renderDocument(TABLE);
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "apple").to);
+    });
+
+    const shape = () => {
+      const table = editor.state.doc.firstChild;
+      return [table?.childCount, table?.firstChild?.childCount];
+    };
+    const choose = async (name: string) => {
+      const user = await openTableMenu();
+      await user.click(await screen.findByRole("menuitem", { name }));
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    };
+
+    await choose("Add row below");
+    await waitFor(() =>
+      expect(rowTexts(editor)).toEqual(["Name|Count", "apple|3", "|"])
+    );
+    await choose("Add column right");
+    await waitFor(() => expect(rowTexts(editor)[0]).toBe("Name||Count"));
+    await choose("Add column left");
+    await waitFor(() => expect(shape()).toEqual([3, 4]));
+    await choose("Delete column");
+    await waitFor(() => expect(shape()).toEqual([3, 3]));
+    await choose("Delete row");
+    await waitFor(() => expect(shape()).toEqual([2, 3]));
+    await choose("Delete table");
+    await waitFor(() =>
+      expect(editor.state.doc.firstChild?.type.name).not.toBe("table")
+    );
+  });
+
+  it("offers no row above the header row", async () => {
+    const { editor } = await renderDocument(TABLE);
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "Name").to);
+    });
+
+    await openTableMenu();
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Add row below" })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("menuitem", { name: "Add row above" })
+    ).toBeNull();
+  });
+
+  it("aligns a row added from the table toolbar as its columns", async () => {
+    const { editor } = await renderDocument(
+      "| Name | Count |\n| --- | --: |\n| apple | 3 |\n"
+    );
+    act(() => {
+      editor.commands.focus();
+      editor.commands.setTextSelection(cellText(editor, "apple").to);
+    });
+
+    const user = await openTableMenu();
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add row below" })
+    );
+
+    const table = editor.state.doc.firstChild;
+    expect(table?.childCount).toBe(3);
+    expect(table?.lastChild?.textContent).toBe("");
+    const aligns: unknown[] = [];
+    table?.lastChild?.forEach((cell) => aligns.push(cell.attrs.align));
+    expect(aligns).toEqual([null, "right"]);
   });
 
   it("offers no text style or list menu over a selection in a cell", async () => {
