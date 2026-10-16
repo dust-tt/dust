@@ -8,12 +8,6 @@ use super::ObjectResource;
 #[path = "../../../../tests/resources/object/apply.rs"]
 mod tests;
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct ApplyBatch {
-    pub operation_indexes: Vec<usize>,
-    pub targets: Vec<ObjectId>,
-}
-
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] apply-operation-targets
@@ -43,11 +37,15 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] apply-group-by-targets
      * Batches MUST be the connected components of operation target overlap, including indirect
-     * overlaps. Every operation MUST appear exactly once. Each batch MUST contain its original
-     * operation indexes in request order and the unique union of its targets. Batches MUST follow
-     * their first operation's order. Grouping MUST NOT change the input operations or their order.
+     * overlaps. Every operation MUST be moved into exactly one batch, unchanged and without
+     * cloning its payload. Each batch MUST contain operations with their original indexes in
+     * request order and the unique union of its targets. Batches MUST follow their first
+     * operation's order.
      */
-    pub fn group_by_targets(operations: &[Operation]) -> Vec<ApplyBatch> {
+    #[allow(clippy::type_complexity)]
+    pub fn group_by_targets(
+        operations: Vec<Operation>,
+    ) -> Vec<(Vec<(usize, Operation)>, Vec<ObjectId>)> {
         let targets_by_operation: Vec<_> =
             operations.iter().map(Self::targets_for_operation).collect();
         let mut operations_by_target = HashMap::<ObjectId, Vec<usize>>::new();
@@ -58,6 +56,7 @@ impl ObjectResource {
         }
 
         let mut visited = vec![false; operations.len()];
+        let mut batch_indexes = vec![0; operations.len()];
         let mut batches = Vec::new();
         for start in 0..operations.len() {
             if visited[start] {
@@ -65,14 +64,14 @@ impl ObjectResource {
             }
             visited[start] = true;
             let mut pending = vec![start];
-            let mut batch = ApplyBatch::default();
+            let mut targets = Vec::new();
             while let Some(index) = pending.pop() {
-                batch.operation_indexes.push(index);
+                batch_indexes[index] = batches.len();
                 for target in &targets_by_operation[index] {
                     // Removing each target's neighbors visits them only once, even if many
                     // operations share that target.
                     if let Some(neighbors) = operations_by_target.remove(target) {
-                        batch.targets.push(*target);
+                        targets.push(*target);
                         for neighbor in neighbors {
                             if !visited[neighbor] {
                                 visited[neighbor] = true;
@@ -82,9 +81,15 @@ impl ObjectResource {
                     }
                 }
             }
-            batch.operation_indexes.sort_unstable();
-            batch.targets.sort_unstable();
-            batches.push(batch);
+            targets.sort_unstable();
+            batches.push((Vec::new(), targets));
+        }
+
+        // Move operations in request order so each batch preserves it without cloning payloads.
+        for (index, (operation, batch_index)) in
+            operations.into_iter().zip(batch_indexes).enumerate()
+        {
+            batches[batch_index].0.push((index, operation));
         }
         batches
     }

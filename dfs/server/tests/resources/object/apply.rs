@@ -98,6 +98,7 @@ fn grouping_merges_overlaps_preserves_order_and_keeps_unrelated_operations_separ
     let operations = vec![
         Operation::Write(WriteOperation {
             object_id: first,
+            data: b"first".to_vec(),
             ..Default::default()
         }),
         Operation::Write(WriteOperation {
@@ -132,23 +133,41 @@ fn grouping_merges_overlaps_preserves_order_and_keeps_unrelated_operations_separ
     ];
     let mut merged_targets = vec![first, second, child, third];
     merged_targets.sort_unstable();
+    let merged_operations = [0, 1, 3, 4, 5, 6]
+        .into_iter()
+        .map(|index| (index, operations[index].clone()))
+        .collect();
+    let unrelated_operations = vec![(2, operations[2].clone())];
 
     assert_eq!(
-        ObjectResource::group_by_targets(&operations),
+        ObjectResource::group_by_targets(operations),
         vec![
-            ApplyBatch {
-                operation_indexes: vec![0, 1, 3, 4, 5, 6],
-                targets: merged_targets,
-            },
-            ApplyBatch {
-                operation_indexes: vec![2],
-                targets: vec![unrelated],
-            },
+            (merged_operations, merged_targets),
+            (unrelated_operations, vec![unrelated]),
         ]
     );
 }
 
 #[test]
 fn grouping_empty_operations_returns_no_batches() {
-    assert!(ObjectResource::group_by_targets(&[]).is_empty());
+    assert!(ObjectResource::group_by_targets(Vec::new()).is_empty());
+}
+
+#[test]
+fn grouping_moves_write_payloads_without_cloning() {
+    let data = b"payload".to_vec();
+    let data_ptr = data.as_ptr();
+    let operations = vec![Operation::Write(WriteOperation {
+        object_id: ObjectId::new_v7(),
+        data,
+        ..Default::default()
+    })];
+
+    let batches = ObjectResource::group_by_targets(operations);
+
+    let Operation::Write(write) = &batches[0].0[0].1 else {
+        panic!("expected a write operation");
+    };
+    assert_eq!(write.data, b"payload");
+    assert_eq!(write.data.as_ptr(), data_ptr);
 }
