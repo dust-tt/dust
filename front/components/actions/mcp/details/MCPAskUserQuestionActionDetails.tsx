@@ -17,17 +17,19 @@ export function MCPAskUserQuestionActionDetails({
   const userQuestion = parsed.success ? parsed.data : null;
 
   const outputText = toolOutput?.find(isTextContent)?.text ?? null;
-  const { selectedLabels, customAnswer, isDeclined, isRanking } =
+  const { selectedLabels, removedLabels, customAnswer, isDeclined, isRanking } =
     outputText && userQuestion
       ? parseUserQuestionAnswer(outputText, userQuestion.question)
       : {
           selectedLabels: [],
+          removedLabels: [],
           customAnswer: null,
           isDeclined: false,
           isRanking: false,
         };
 
-  // A ranking answer lists every option, in the order the user ranked them.
+  // A ranking answer lists the kept options in the order the user ranked them, then the removed
+  // ones.
   const displayedOptions =
     userQuestion && isRanking
       ? removeNulls(
@@ -87,6 +89,15 @@ export function MCPAskUserQuestionActionDetails({
                 </div>
               );
             })}
+            {removedLabels.map((label, index) => (
+              <div
+                key={`removed-${index}`}
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <span className="w-4 shrink-0" />
+                <span className="line-through">{label}</span>
+              </div>
+            ))}
             {customAnswer && (
               <div className="flex items-center gap-2 text-sm">
                 <Icon visual={Check} size="xs" className="text-primary" />
