@@ -38,14 +38,12 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend] apply-group-by-targets
      * Batches MUST be the connected components of operation target overlap, including indirect
      * overlaps. Every operation MUST be moved into exactly one batch, unchanged and without
-     * cloning its payload. Each batch MUST contain operations with their original indexes in
-     * request order and the unique union of its targets. Batches MUST follow their first
-     * operation's order.
+     * cloning its payload. Each batch MUST contain operations in request order and the unique
+     * union of its targets. Batches MUST follow their first operation's order.
      */
-    #[allow(clippy::type_complexity)]
-    pub fn group_by_targets(
-        operations: Vec<Operation>,
-    ) -> Vec<(Vec<(usize, Operation)>, Vec<ObjectId>)> {
+    pub fn group_by_targets(operations: Vec<Operation>) -> Vec<(Vec<Operation>, Vec<ObjectId>)> {
+        // Index both directions of the operation/target graph. For n operations with at most three
+        // targets each, indexing takes expected O(n) time; all grouping bookkeeping uses O(n) memory.
         let targets_by_operation: Vec<_> =
             operations.iter().map(Self::targets_for_operation).collect();
         let mut operations_by_target = HashMap::<ObjectId, Vec<usize>>::new();
@@ -55,6 +53,8 @@ impl ObjectResource {
             }
         }
 
+        // Follow shared targets transitively to form the smallest disjoint batches. Each operation
+        // and target's neighbor list is visited once, giving expected O(n) traversal time.
         let mut visited = vec![false; operations.len()];
         let mut batch_indexes = vec![0; operations.len()];
         let mut batches = Vec::new();
@@ -81,15 +81,15 @@ impl ObjectResource {
                     }
                 }
             }
+            // Sort each batch's targets: O(n log n) overall, the only superlinear step.
             targets.sort_unstable();
             batches.push((Vec::new(), targets));
         }
 
         // Move operations in request order so each batch preserves it without cloning payloads.
-        for (index, (operation, batch_index)) in
-            operations.into_iter().zip(batch_indexes).enumerate()
-        {
-            batches[batch_index].0.push((index, operation));
+        // This final pass is O(n).
+        for (operation, batch_index) in operations.into_iter().zip(batch_indexes) {
+            batches[batch_index].0.push(operation);
         }
         batches
     }

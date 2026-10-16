@@ -135,9 +135,9 @@ fn grouping_merges_overlaps_preserves_order_and_keeps_unrelated_operations_separ
     merged_targets.sort_unstable();
     let merged_operations = [0, 1, 3, 4, 5, 6]
         .into_iter()
-        .map(|index| (index, operations[index].clone()))
+        .map(|index| operations[index].clone())
         .collect();
-    let unrelated_operations = vec![(2, operations[2].clone())];
+    let unrelated_operations = vec![operations[2].clone()];
 
     assert_eq!(
         ObjectResource::group_by_targets(operations),
@@ -165,7 +165,7 @@ fn grouping_moves_write_payloads_without_cloning() {
 
     let batches = ObjectResource::group_by_targets(operations);
 
-    let Operation::Write(write) = &batches[0].0[0].1 else {
+    let Operation::Write(write) = &batches[0].0[0] else {
         panic!("expected a write operation");
     };
     assert_eq!(write.data, b"payload");
