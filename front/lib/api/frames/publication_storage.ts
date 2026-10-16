@@ -1014,6 +1014,29 @@ export async function publishFramePublication(
           status: "live" as const,
         });
       }
+
+      const pendingDraftId = freshFrame.pendingDraftPublicationId;
+      if (pendingDraftId) {
+        const pending = await withFramePublishTimingResult(
+          "compare",
+          timingContext,
+          () =>
+            loadFramePublicationDescriptor(auth, {
+              frame: freshFrame,
+              publicationId: pendingDraftId,
+            })
+        );
+        if (pending.isErr()) {
+          return pending;
+        }
+        // Republishing the same draft keeps its id, so a Make live click on it does not 409.
+        if (isSameFramePublicationContent(pending.value, descriptor)) {
+          return new Ok({
+            publicationId: pendingDraftId,
+            status: "draft" as const,
+          });
+        }
+      }
     }
 
     const rows = await withFramePublishTimingResult(

@@ -194,7 +194,8 @@ export type FramePublicationStatus = "live" | "draft";
  * @cc [owner:davidebbo,label:product] identical-publish-is-not-a-draft
  * Two publications MUST compare equal exactly when everything a viewer or a function caller can
  * observe matches: the manifest, the UI bundle, every function contract and every database
- * schema. Source hashes, publish time and publisher are not compared.
+ * schema. Source hashes, publish time and publisher are not compared. A draft publish matching the
+ * pending draft keeps the pending draft's id.
  */
 export function isSameFramePublicationContent(
   a: FramePublicationDescriptor,
