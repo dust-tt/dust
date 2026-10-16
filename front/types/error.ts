@@ -318,6 +318,7 @@ const API_ERROR_TYPES = [
   "file_not_mounted",
   "branding_asset_mismatch",
   "frame_text_edit_failed",
+  "frame_draft_conflict",
   "file_referenced_by_skill",
   "file_deletion_failed",
   "file_not_in_conversation",

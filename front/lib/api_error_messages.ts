@@ -292,6 +292,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   file_not_mounted: msg`This file can't be moved to a Pod.`,
   branding_asset_mismatch: msg`This file doesn't match the branding asset.`,
   frame_text_edit_failed: msg`The Frame text couldn't be updated.`,
+  frame_draft_conflict: msg`This Frame's pending changes were replaced. Review the latest changes first.`,
   file_referenced_by_skill: msg`This file is used by a skill and can't be deleted.`,
   file_deletion_failed: msg`The file couldn't be deleted.`,
   file_not_in_conversation: msg`Only files from a conversation can be saved to a Pod.`,

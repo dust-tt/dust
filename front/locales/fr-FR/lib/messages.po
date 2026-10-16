@@ -1114,6 +1114,10 @@ msgid "The Frame text couldn't be updated."
 msgstr "Impossible de mettre à jour le texte du Frame."
 
 #: front/lib/api_error_messages.ts
+msgid "This Frame's pending changes were replaced. Review the latest changes first."
+msgstr "Les modifications en attente de ce Frame ont été remplacées. Consultez d’abord les dernières modifications."
+
+#: front/lib/api_error_messages.ts
 msgid "This file is used by a skill and can't be deleted."
 msgstr "Ce fichier est utilisé par une compétence et ne peut pas être supprimé."
 
