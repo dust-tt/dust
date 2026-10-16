@@ -1,42 +1,20 @@
-use std::collections::HashMap;
-
 use anyhow::{Context, Result};
-use dfs_api::storage::{
-    fdb,
-    resources::{directory::DirectoryResource, object::ObjectResource, tenant::TenantResource},
-};
+use dfs_api::storage::{fdb, resources::tenant::TenantResource};
 use dfs_protocol::{
     ObjectId, ObjectRef,
     rpc::{
-        AllowGrant, AttrResult, CreateSessionRequest, CreateTenantRequest, DenyGrant, ErrorCode,
-        Grant, GrantUpdate, LookupRequest, LookupTarget, ObjectKind, UpdateGrantsRequest,
-        dfs_client::DfsClient, grant,
+        AttrResult, CreateSessionRequest, CreateTenantRequest, ErrorCode, LookupRequest,
+        LookupTarget, ObjectKind, dfs_client::DfsClient,
     },
 };
-use foundationdb::Transaction;
-use tonic::transport::Channel;
 
+use super::{allow, attach, create_directory_child, deny};
 use crate::{MASTER_KEY, error_code, serve, with_authorization};
 
 fn target(parent_id: impl Into<ObjectRef>, name: &str) -> LookupTarget {
     LookupTarget {
         parent_id: parent_id.into(),
         name: name.to_owned(),
-    }
-}
-
-fn allow(subject: &str, mode: u32) -> Grant {
-    Grant {
-        kind: Some(grant::Kind::Allow(AllowGrant {
-            subject: subject.to_owned(),
-            mode,
-        })),
-    }
-}
-
-fn deny(mode: u32) -> Grant {
-    Grant {
-        kind: Some(grant::Kind::Deny(DenyGrant { mode })),
     }
 }
 
@@ -47,50 +25,6 @@ fn error(result: &AttrResult) -> Result<ErrorCode> {
         .as_ref()
         .context("missing result error")?
         .code())
-}
-
-async fn create_directory_child(
-    tx: &Transaction,
-    tenant: &TenantResource,
-    parent_id: &ObjectId,
-    name: &str,
-    kind: ObjectKind,
-) -> Result<ObjectId> {
-    let parent = ObjectResource::fetch(tx, tenant, parent_id)
-        .await?
-        .context("missing parent")?;
-    let child = DirectoryResource::try_from(parent)?
-        .create_child(
-            tx,
-            ObjectId::new_v7(),
-            name.to_owned(),
-            kind,
-            None,
-            HashMap::new(),
-        )
-        .await?;
-    Ok(child.object_id)
-}
-
-async fn attach(
-    client: &mut DfsClient<Channel>,
-    tenant_authorization: &str,
-    object_id: ObjectId,
-    grant: Grant,
-) -> Result<()> {
-    client
-        .update_grants(with_authorization(
-            UpdateGrantsRequest {
-                object_id,
-                changes: vec![GrantUpdate {
-                    grant,
-                    remove: false,
-                }],
-            },
-            tenant_authorization,
-        )?)
-        .await?;
-    Ok(())
 }
 
 pub(crate) async fn lookup_resolves_readable_children_and_conceals_the_rest() -> Result<()> {
