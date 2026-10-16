@@ -206,12 +206,12 @@ export const ConversationMessageTitle = React.forwardRef<
         )}
         {...props}
       >
-        <div className="inline-flex items-baseline gap-2 text-foreground">
-          <span className="text-sm font-medium">{renderName(name)}</span>
-          <span className="text-xs text-muted-foreground">{timestamp}</span>
-          {infoChip && (
-            <div className="inline-flex self-center">{infoChip}</div>
-          )}
+        <div className="inline-flex items-center gap-2 text-foreground">
+          <div className="inline-flex items-baseline gap-2">
+            <span className="text-sm font-medium">{renderName(name)}</span>
+            <span className="text-xs text-muted-foreground">{timestamp}</span>
+          </div>
+          {infoChip && <div className="inline-flex">{infoChip}</div>}
         </div>
         <div className="ml-1 inline-flex items-center">
           {completionStatus ?? null}
