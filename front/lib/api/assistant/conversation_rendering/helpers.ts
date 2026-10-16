@@ -476,11 +476,6 @@ function sanitizeDustSystemValue(value: string): string {
 /**
  * Renders a user message with metadata
  */
-/**
- * @cc [owner:tdraier,label:error-handling] unknown-timezone-does-not-throw
- * MUST NOT throw on an unrecognized `m.context.timezone`: dates are then rendered in the same
- * server default timezone as when the message has no timezone.
- */
 export function renderUserMessage(
   conversation: ConversationWithoutContentType,
   m: UserMessageType
