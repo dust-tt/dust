@@ -19,6 +19,7 @@ import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_f
 import { SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX } from "@app/lib/api/sandbox/env_vars";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import { isAllowlistShareScopeStale } from "@app/lib/api/viz/authorized_file_access_policy";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -923,7 +924,8 @@ export async function activateFramePublication(
   // The stored list was checked when the publication was published; it only goes stale when the
   // share scope changed since (rows are stamped with the scope they were computed for).
   const allowlist =
-    providedAllowlist && providedAllowlist.shareScope === currentShareScope
+    providedAllowlist &&
+    !isAllowlistShareScopeStale(providedAllowlist.shareScope, currentShareScope)
       ? new Ok(providedAllowlist)
       : await computeFramePublicationAllowlist(auth, frame, uiBundleCode);
   if (allowlist.isErr()) {

@@ -82,7 +82,7 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     }
   ): Promise<void> {
     this.assertFrameOfWorkspace(auth, frame);
-    await this.model.update(
+    const [affectedCount] = await this.model.update(
       { authorizedFileAccess },
       {
         where: {
@@ -91,6 +91,10 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
           publicationId,
         },
       }
+    );
+    assert(
+      affectedCount === 1,
+      `Expected one frame publication row to be updated, got ${affectedCount}.`
     );
   }
 

@@ -252,7 +252,7 @@ export async function getShareFrameViewerFiles(
 }
 
 /**
- * @cc [owner:davidebbo,label:product] draft-viewer-files-are-editor-only
+ * @cc [owner:davidebbo,label:product;security] draft-viewer-files-are-editor-only
  * The files a pending draft would expose MUST only be returned to a caller who can write the
  * Frame's source: a viewer of the share link must not learn what an unpublished draft references.
  */
@@ -294,8 +294,10 @@ export async function buildShareFileResponse(
     return null;
   }
 
-  const viewerFiles = await getShareFrameViewerFilesForFrame(auth, file);
-  const draftViewerFiles = await getDraftShareFrameViewerFiles(auth, file);
+  const [viewerFiles, draftViewerFiles] = await Promise.all([
+    getShareFrameViewerFilesForFrame(auth, file),
+    getDraftShareFrameViewerFiles(auth, file),
+  ]);
 
   return {
     ...shareInfo,

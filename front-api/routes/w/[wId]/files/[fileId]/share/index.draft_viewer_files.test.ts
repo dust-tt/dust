@@ -1,16 +1,17 @@
 import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
-import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import {
   createTestAuthorFrameWithDraft,
   makeTestFrameFunction,
+  storeTestDraftPublicationAllowlist,
 } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import type { FramePublicationAllowlist } from "@app/types/api/frame_publication";
 import type { AuthorizedFileRef } from "@app/types/files";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 const DRAFT_ONLY_REF: AuthorizedFileRef = {
@@ -19,30 +20,15 @@ const DRAFT_ONLY_REF: AuthorizedFileRef = {
   fileName: "draft_only.csv",
 };
 
-// Stores the draft publication row the way a draft publish does, with an allowlist the live
-// bundle does not have.
-async function storeDraftAllowlist(auth: Authenticator, frame: FileResource) {
-  const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
-  if (!draftPublicationId) {
-    throw new Error("Expected the Frame to have a pending draft.");
-  }
-  await FramePublicationResource.makeNew(auth, {
-    frame,
-    publicationId: draftPublicationId,
-  });
-  await FramePublicationResource.setAuthorizedFileAccess(auth, {
-    frame,
-    publicationId: draftPublicationId,
-    authorizedFileAccess: {
-      shareScope: "workspace_and_emails",
-      allowlist: {
-        generatedByUserId: null,
-        frameContentHash: "draft-hash",
-        refs: [DRAFT_ONLY_REF],
-      },
-    },
-  });
-}
+// An allowlist the live bundle does not have.
+const DRAFT_ALLOWLIST: FramePublicationAllowlist = {
+  shareScope: "workspace_and_emails",
+  allowlist: {
+    generatedByUserId: null,
+    frameContentHash: "draft-hash",
+    refs: [DRAFT_ONLY_REF],
+  },
+};
 
 function getShare(workspace: { sId: string }, fileId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/files/${fileId}/share`);
@@ -53,8 +39,8 @@ describe("GET /files/:fileId/share draftViewerFiles", () => {
     const { auth, workspace } = await createPrivateApiMockRequest();
     const { frame } = await createTestAuthorFrameWithDraft(auth, {
       messagesCreatedAt: [],
+      draftAuthorizedFileAccess: DRAFT_ALLOWLIST,
     });
-    await storeDraftAllowlist(auth, frame);
 
     const response = await getShare(workspace, frame.sId);
 
@@ -74,9 +60,11 @@ describe("GET /files/:fileId/share draftViewerFiles", () => {
     const { frame } = await createTestAuthorFrameWithDraft(auth, {
       messagesCreatedAt: [],
     });
+    const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
+    assert(draftPublicationId, "Expected the Frame to have a pending draft.");
     await FramePublicationResource.makeNew(auth, {
       frame,
-      publicationId: frame.useCaseMetadata?.draftPublicationId ?? "",
+      publicationId: draftPublicationId,
     });
 
     const response = await getShare(workspace, frame.sId);
@@ -89,6 +77,7 @@ describe("GET /files/:fileId/share draftViewerFiles", () => {
     const { auth, workspace } = await createPrivateApiMockRequest();
     const { frame } = await createTestAuthorFrameWithDraft(auth, {
       messagesCreatedAt: [],
+      draftAuthorizedFileAccess: DRAFT_ALLOWLIST,
     });
     await frame.setActiveFramePublication({
       publicationId: "publication-live",
@@ -110,7 +99,10 @@ describe("GET /files/:fileId/share draftViewerFiles", () => {
     await frame.setDraftFramePublication({
       publicationId: "publication-draft",
     });
-    await storeDraftAllowlist(adminAuth, frame);
+    await storeTestDraftPublicationAllowlist(adminAuth, {
+      frame,
+      authorizedFileAccess: DRAFT_ALLOWLIST,
+    });
     expect(await canWriteFrameV2Source(auth, frame)).toBe(false);
 
     const response = await getShare(workspace, frame.sId);

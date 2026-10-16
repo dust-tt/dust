@@ -1822,8 +1822,10 @@ describe("publishFramePublication modes", () => {
 
       expect(activated.isOk()).toBe(true);
       expect(compute).toHaveBeenCalledTimes(1);
-      expect(await frame.getShareScope()).toBe(changedScope);
       const reloaded = await FileResource.fetchById(auth, frame.sId);
+      expect(await reloaded?.getActiveAuthorizedFileAccessShareScope()).toBe(
+        changedScope
+      );
       expect(
         (await reloaded?.getActiveAuthorizedFileAccessAllowlist())
           ?.frameContentHash
