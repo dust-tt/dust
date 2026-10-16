@@ -28,6 +28,8 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = [
       "weigh side by side, with a description and a preview of the result for each option\n" +
       "- Use format: 'yes_no' for a yes/no or go/no-go decision, with exactly 2 short options " +
       "such as 'Yes'/'No' or 'Send'/'Cancel'\n" +
+      "- Use format: 'chips' to pick among many short values (time zone, channel, language, " +
+      "period), with up to 12 options and no descriptions\n" +
       '- If a specific option is recommended, it should be the first option in the list and have "(Recommended)" ' +
       "at the end of its label",
     schema: {
