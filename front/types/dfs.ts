@@ -112,7 +112,7 @@ export interface DfsSession {
 // Grants. Modes use r=4 and w=2 only (at most 0o6); directory traversal follows read access.
 
 export type DfsGrant =
-  // Adds `mode` for sessions holding exactly `subject` (e.g. `u:spolu@dust.tt`, `g:engineering`).
+  // Adds `mode` for sessions holding exactly `subject` (e.g. `u:<userSId>`, `g:<groupSId>`).
   | { type: "allow"; subject: string; mode: number }
   // Removes `mode` for every session.
   | { type: "deny"; mode: number };

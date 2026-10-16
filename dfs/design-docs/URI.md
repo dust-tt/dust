@@ -117,7 +117,7 @@ under its owner's user folder:
 ```text
 <tenant-root>/
   users/
-    spolu@dust.tt/
+    <userSId>/
       pods/
         pod-<podSId>/
       conversations/
@@ -128,9 +128,9 @@ Only user folders are created from the tenant root. Pod and conversation folders
 their owner's user folder ID, which front already stores:
 
 ```text
-create dfs://<tenant-root-id>/users/spolu%40dust.tt
-create dfs://spolu%40dust.tt--<user-folder-id>/pods/pod-<podSId>
-create dfs://spolu%40dust.tt--<user-folder-id>/conversations/conv-<conversationSId>
+create dfs://<tenant-root-id>/users/<userSId>
+create dfs://<userSId>--<user-folder-id>/pods/pod-<podSId>
+create dfs://<userSId>--<user-folder-id>/conversations/conv-<conversationSId>
 ```
 
 - **Layout:** namespace folders (`users/`, `pods/`, `conversations/`) keep listings small and leave
@@ -145,10 +145,9 @@ create dfs://spolu%40dust.tt--<user-folder-id>/conversations/conv-<conversationS
   workspace, so a user who belongs to several workspaces has one folder per workspace, and its ID is
   stored per user and workspace, not on the global user. Deleting a user's folder deletes the pods
   and conversations it contains.
-- **Names:** user folders are named after the user's email, which is unique in the workspace and
-  readable in sandboxes; `@` is percent-encoded in URIs (`%40`). The product never changes a user's
-  email, so user folders never need renaming. Pod and conversation folders derive from their sId,
-  which never changes either. Two contexts can therefore never claim the same name.
+- **Names:** user folders are named after the user's sId, like pod and conversation folders. An sId
+  never changes, so folders never need renaming, and it needs no percent-encoding in URIs. Two
+  contexts can therefore never claim the same name.
 - **Retries:** `Apply` has no idempotency key, so a lost response leaves the outcome unknown. A
   retry that fails with `ALREADY_EXISTS` looks the name up under the same parent folder and uses the
   existing folder's ID. This recovery is the only case where front resolves an existing context

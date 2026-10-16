@@ -374,34 +374,10 @@ export class Authenticator {
       return;
     }
 
-    // Group set to re-grant from: every workspace group for the "all" scope, an explicit scope
-    // verbatim (can't be recomputed), else a user's live membership, else an API key's groups.
-    let groupModelIds: ModelId[];
-    if (this._requestedGroupModelIds !== null) {
-      groupModelIds = await Authenticator.listScopeGroupModelIds(
-        this._workspace,
-        this._requestedGroupModelIds,
-        transaction
-      );
-    } else if (this._user) {
-      if (Authenticator.isMember(this._role)) {
-        const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
-          {
-            user: this._user,
-            workspace: renderLightWorkspaceType({ workspace: this._workspace }),
-            transaction,
-          }
-        );
-        groupModelIds = authGroups.groupModelIds;
-        this._globalGroupModelId = authGroups.globalGroupModelId;
-      } else {
-        groupModelIds = [];
-        this._globalGroupModelId = null;
-      }
-    } else if (this._key) {
-      groupModelIds = await this.groupModelIdsFromKey();
-    } else {
-      groupModelIds = [];
+    const { groupModelIds, globalGroupModelId } =
+      await this.resolveGroupModelIds({ transaction });
+    if (globalGroupModelId !== undefined) {
+      this._globalGroupModelId = globalGroupModelId;
     }
 
     // Re-resolve grants: they can change on the same group set, so this runs for every auth. The
@@ -410,6 +386,60 @@ export class Authenticator {
       workspace: this._workspace,
       groupModelIds,
     });
+  }
+
+  // Group set to re-grant from: every workspace group for the "all" scope, an explicit scope
+  // verbatim (can't be recomputed), else a user's live membership, else an API key's groups.
+  // `globalGroupModelId` is only resolved from a user's membership.
+  private async resolveGroupModelIds({
+    transaction,
+  }: { transaction?: Transaction } = {}): Promise<{
+    groupModelIds: ModelId[];
+    globalGroupModelId?: ModelId | null;
+  }> {
+    if (!this._workspace) {
+      return { groupModelIds: [] };
+    }
+    if (this._requestedGroupModelIds !== null) {
+      return {
+        groupModelIds: await Authenticator.listScopeGroupModelIds(
+          this._workspace,
+          this._requestedGroupModelIds,
+          transaction
+        ),
+      };
+    }
+    if (this._user) {
+      if (!Authenticator.isMember(this._role)) {
+        return { groupModelIds: [], globalGroupModelId: null };
+      }
+      return GroupResource.dangerouslyListUserGroupsForAuth({
+        user: this._user,
+        workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        transaction,
+      });
+    }
+    if (this._key) {
+      return { groupModelIds: await this.groupModelIdsFromKey() };
+    }
+    return { groupModelIds: [] };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] group-ids-match-refresh
+   * `listGroupIds` MUST return the sIds of exactly the groups `refresh()` resolves grants from, so
+   * that what is derived from them (e.g. dfs session subjects) never exceeds the authenticator's
+   * scope.
+   */
+  async listGroupIds(): Promise<string[]> {
+    const workspace = this._workspace;
+    if (!workspace) {
+      return [];
+    }
+    const { groupModelIds } = await this.resolveGroupModelIds();
+    return groupModelIds.map((id) =>
+      GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
+    );
   }
 
   /**
