@@ -6,7 +6,7 @@ use dfs_protocol::{
     rpc::{
         ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
         ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
-        LookupRequest, OperationBatch, ReadData, ReadFilesRequest, ReadRequest,
+        LookupRequest, OperationBatch, OperationResult, ReadData, ReadFilesRequest, ReadRequest,
         RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
         UpdateGrantsRequest, dfs_server::Dfs,
     },
@@ -36,6 +36,7 @@ mod errors;
 const READ_FILES_RESULT_OVERHEAD_BYTES: usize = 512;
 
 const LOOKUP_MAX_TARGETS: usize = 256;
+const APPLY_MAX_REQUEST_BYTES: usize = 1024 * 1024;
 
 #[cfg(test)]
 #[path = "../tests/api/read_files_budget.rs"]
@@ -352,8 +353,49 @@ impl Dfs for API {
         &self,
         request: Request<ApplyRequest>,
     ) -> Result<Response<OperationBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let request = request.into_inner();
+        if request.operations.is_empty() {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        if request.encoded_len() > APPLY_MAX_REQUEST_BYTES {
+            return Err(status(ErrorCode::Capacity));
+        }
+        let operations = request
+            .operations
+            .into_iter()
+            .map(|operation| {
+                operation
+                    .operation
+                    .ok_or_else(|| status(ErrorCode::InvalidInput))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let response = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            // Grouping consumes the operations, so every FDB attempt needs its own copy.
+            let operations = operations.clone();
+            async move {
+                let results = ObjectResource::apply(&tx, session, operations).await?;
+                let response = OperationBatch {
+                    results: results
+                        .into_iter()
+                        .map(|result| match result {
+                            Ok(mutation) => OperationResult {
+                                mutation: Some(mutation),
+                                error: None,
+                            },
+                            Err(error) => OperationResult {
+                                mutation: None,
+                                error: Some(error.into()),
+                            },
+                        })
+                        .collect(),
+                };
+                within_message_budget(response).map_err(storage::Error::Resource)
+            }
+        })
+        .await?;
+        Ok(Response::new(response))
     }
 
     async fn search(

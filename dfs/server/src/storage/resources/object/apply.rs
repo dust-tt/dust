@@ -1,14 +1,74 @@
 use std::collections::HashMap;
 
-use dfs_protocol::{ObjectId, rpc::operation::Operation};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{Mutation, operation::Operation},
+};
+use foundationdb::Transaction;
+use futures::future::try_join_all;
 
-use super::ObjectResource;
+use super::{Error, ObjectResource};
+use crate::storage::{self, resources::session::SessionResource};
 
 #[cfg(test)]
 #[path = "../../../../tests/resources/object/apply.rs"]
 mod tests;
 
 impl ObjectResource {
+    /**
+     * @cc [owner:spolu,label:backend;concurrency] object-apply-batches
+     * Apply MUST run disjoint target batches concurrently in the caller's transaction and each
+     * batch's operations sequentially.
+     */
+    /**
+     * @cc [owner:spolu,label:backend;error-handling] object-apply-results
+     * Results MUST preserve request order and duplicates, with exactly one result per operation.
+     * Resource failures MUST become per-operation errors without stopping later operations.
+     * Storage failures MUST abort the attempt and preserve FDB errors for retry.
+     */
+    pub async fn apply(
+        tx: &Transaction,
+        session: &SessionResource,
+        operations: Vec<Operation>,
+    ) -> Result<Vec<Result<Mutation, Error>>, storage::Error<Error>> {
+        let mut results: Vec<_> = (0..operations.len()).map(|_| None).collect();
+        let batches = Self::group_by_targets(operations);
+        let completed = try_join_all(batches.into_iter().map(
+            |(operations, _targets)| async move {
+                let mut results = Vec::with_capacity(operations.len());
+                for (index, operation) in operations {
+                    let result = match Self::apply_operation(tx, session, operation).await {
+                        Ok(mutation) => Ok(mutation),
+                        Err(storage::Error::Resource(error)) => Err(error),
+                        Err(error) => return Err(error),
+                    };
+                    results.push((index, result));
+                }
+                Ok(results)
+            },
+        ))
+        .await?;
+        // Grouping assigns every original index exactly once, regardless of batch completion order.
+        for (index, result) in completed.into_iter().flatten() {
+            results[index] = Some(result);
+        }
+        Ok(results.into_iter().flatten().collect())
+    }
+
+    async fn apply_operation(
+        _tx: &Transaction,
+        _session: &SessionResource,
+        operation: Operation,
+    ) -> Result<Mutation, storage::Error<Error>> {
+        match operation {
+            Operation::Create(_) => Err(Error::UnsupportedOperation.into()),
+            Operation::Update(_) => Err(Error::UnsupportedOperation.into()),
+            Operation::Write(_) => Err(Error::UnsupportedOperation.into()),
+            Operation::Move(_) => Err(Error::UnsupportedOperation.into()),
+            Operation::Remove(_) => Err(Error::UnsupportedOperation.into()),
+        }
+    }
+
     /**
      * @cc [owner:spolu,label:backend;security] apply-operation-targets
      * Create MUST target its parent and proposed object. Remove MUST target its object and parent.
@@ -38,10 +98,14 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend] apply-group-by-targets
      * Batches MUST be the connected components of operation target overlap, including indirect
      * overlaps. Every operation MUST be moved into exactly one batch, unchanged and without
-     * cloning its payload. Each batch MUST contain operations in request order and the unique
-     * union of its targets. Batches MUST follow their first operation's order.
+     * cloning its payload. Each batch MUST contain operations with their original indexes in
+     * request order and the unique union of its targets. Batches MUST follow their first
+     * operation's order.
      */
-    pub fn group_by_targets(operations: Vec<Operation>) -> Vec<(Vec<Operation>, Vec<ObjectId>)> {
+    #[allow(clippy::type_complexity)]
+    pub fn group_by_targets(
+        operations: Vec<Operation>,
+    ) -> Vec<(Vec<(usize, Operation)>, Vec<ObjectId>)> {
         // Index both directions of the operation/target graph. For n operations with at most three
         // targets each, indexing takes expected O(n) time; all grouping bookkeeping uses O(n) memory.
         let targets_by_operation: Vec<_> =
@@ -86,8 +150,10 @@ impl ObjectResource {
 
         // Move operations in request order so each batch preserves it without cloning payloads.
         // This final pass is O(n), so grouping takes expected O(n) time overall.
-        for (operation, batch_index) in operations.into_iter().zip(batch_indexes) {
-            batches[batch_index].0.push(operation);
+        for (index, (operation, batch_index)) in
+            operations.into_iter().zip(batch_indexes).enumerate()
+        {
+            batches[batch_index].0.push((index, operation));
         }
         batches
     }

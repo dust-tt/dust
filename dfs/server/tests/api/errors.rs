@@ -30,6 +30,10 @@ fn resource_errors_share_codes_across_api_conversions() {
     );
 
     assert_api_codes(|| object::Error::InvalidId, ErrorCode::InvalidInput);
+    assert_api_codes(
+        || object::Error::UnsupportedOperation,
+        ErrorCode::Unsupported,
+    );
     assert_api_codes(|| object::Error::VersionOverflow, ErrorCode::Internal);
 
     assert_api_codes(|| session::Error::InvalidSubject, ErrorCode::InvalidInput);
