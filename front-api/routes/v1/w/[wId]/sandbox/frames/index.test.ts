@@ -318,9 +318,12 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       "draft"
     );
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
-      error: { message: "Frame drafts are not enabled for this workspace." },
+      error: {
+        type: "feature_not_enabled",
+        message: "Frame drafts are not enabled for this workspace.",
+      },
     });
   });
 

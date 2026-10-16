@@ -98,9 +98,9 @@ app.post(
     const { manifestPath, replacesPath, mode } = ctx.req.valid("json");
     if (mode === "draft" && !(await hasFeatureFlag(auth, "frames_v2_drafts"))) {
       return apiError(ctx, {
-        status_code: 400,
+        status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "feature_not_enabled",
           message: "Frame drafts are not enabled for this workspace.",
         },
       });
