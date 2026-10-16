@@ -206,6 +206,34 @@ describe("sandbox Frame calls", () => {
     });
   });
 
+  it("runs the draft publication's function when live and draft both have it", async () => {
+    const context = await setup();
+    await createTestFramePublicationFunctions(context.auth, {
+      frame: context.frame,
+      publicationId: "publication-draft",
+      slug: "get-status",
+    });
+    await context.frame.setLatestFramePublication({
+      publicationId: "publication-draft",
+    });
+
+    const response = await requestFrameCallById({
+      workspaceId: context.workspace.sId,
+      token: context.token,
+      frameId: context.frame.sId,
+    });
+
+    expect(response.status).toBe(200);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sandboxFunction: expect.objectContaining({
+          publicationId: "publication-draft",
+        }),
+      })
+    );
+  });
+
   it("calls the live function of a Frame the caller can use but not write", async () => {
     const context = await setup();
     // A Pod the caller is not a member of: the Frame is shared with the workspace, so the caller
