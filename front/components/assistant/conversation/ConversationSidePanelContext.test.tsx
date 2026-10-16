@@ -1,11 +1,23 @@
 import {
   ConversationSidePanelProvider,
   useConversationSidePanelContext,
+  useRegisterSidePanelConversation,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const activeConversation = vi.hoisted(() => ({ id: "conv_1" }));
+
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frameTracking",
+  () => ({ trackFrameOpen: vi.fn() })
+);
+
+const FRAME_CLICK = {
+  source: "user",
+  uiElement: "message_frame_card",
+} as const;
 
 vi.mock("@app/hooks/useActiveConversationId", () => ({
   useActiveConversationId: () => activeConversation.id,
@@ -60,6 +72,18 @@ vi.mock("@app/hooks/useHashParams", async () => {
   };
 });
 
+// Like the conversation page, Analytics or the agent builder preview: the host registers the
+// conversation it shows, which is not always the one in the URL.
+function renderSidePanelHosting(conversationId: string) {
+  return renderHook(
+    () => {
+      useRegisterSidePanelConversation(conversationId);
+      return useConversationSidePanelContext();
+    },
+    { wrapper: ConversationSidePanelProvider }
+  );
+}
+
 function renderSidePanel() {
   return renderHook(() => useConversationSidePanelContext(), {
     wrapper: ConversationSidePanelProvider,
@@ -69,6 +93,7 @@ function renderSidePanel() {
 beforeEach(() => {
   hash.reset();
   activeConversation.id = "conv_1";
+  vi.mocked(trackFrameOpen).mockClear();
 });
 
 describe("ConversationSidePanelProvider history", () => {
@@ -134,6 +159,7 @@ describe("ConversationSidePanelProvider history", () => {
         type: "interactive_content",
         fileId: "fil_1",
         timestamp: "1",
+        openedFrom: FRAME_CLICK,
       })
     );
     act(() =>
@@ -141,6 +167,7 @@ describe("ConversationSidePanelProvider history", () => {
         type: "interactive_content",
         fileId: "fil_1",
         timestamp: "2",
+        openedFrom: FRAME_CLICK,
       })
     );
     expect(result.current.data).toBe("fil_1@2");
@@ -156,6 +183,7 @@ describe("ConversationSidePanelProvider history", () => {
         type: "interactive_content",
         fileId: "fil_1",
         timestamp: "1",
+        openedFrom: FRAME_CLICK,
       })
     );
     act(() => result.current.openPanel({ type: "files" }));
@@ -209,6 +237,7 @@ describe("ConversationSidePanelProvider auto-open dismiss", () => {
       result.current.openPanel({
         type: "interactive_content",
         fileId: "fil_frame",
+        openedFrom: FRAME_CLICK,
       })
     );
     expect(result.current.wasAutoOpenDismissedForFileId("fil_frame")).toBe(
@@ -270,7 +299,11 @@ describe("ConversationSidePanelProvider full screen", () => {
   it("leaves full screen when another panel takes over", () => {
     const { result } = renderSidePanel();
     act(() =>
-      result.current.openPanel({ type: "interactive_content", fileId: "fil_1" })
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_1",
+        openedFrom: FRAME_CLICK,
+      })
     );
     act(() => hash.set({ fullScreen: "true" }));
 
@@ -281,7 +314,11 @@ describe("ConversationSidePanelProvider full screen", () => {
   it("stays full screen while the same Frame refreshes", () => {
     const { result } = renderSidePanel();
     act(() =>
-      result.current.openPanel({ type: "interactive_content", fileId: "fil_1" })
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_1",
+        openedFrom: FRAME_CLICK,
+      })
     );
     act(() => hash.set({ fullScreen: "true" }));
 
@@ -290,6 +327,7 @@ describe("ConversationSidePanelProvider full screen", () => {
         type: "interactive_content",
         fileId: "fil_1",
         timestamp: "123",
+        openedFrom: FRAME_CLICK,
       })
     );
     expect(hash.values.fullScreen).toBe("true");
@@ -300,9 +338,17 @@ describe("ConversationSidePanelProvider hash encoding", () => {
   it.each([
     [{ type: "actions", messageId: "msg_1" }, "msg_1"],
     [{ type: "actions", messageId: "msg_1", actionId: "act_2" }, "msg_1@act_2"],
-    [{ type: "interactive_content", fileId: "fil_1" }, "fil_1"],
     [
-      { type: "interactive_content", fileId: "fil_1", timestamp: "123" },
+      { type: "interactive_content", fileId: "fil_1", openedFrom: FRAME_CLICK },
+      "fil_1",
+    ],
+    [
+      {
+        type: "interactive_content",
+        fileId: "fil_1",
+        timestamp: "123",
+        openedFrom: FRAME_CLICK,
+      },
       "fil_1@123",
     ],
     [
@@ -332,5 +378,80 @@ describe("ConversationSidePanelProvider hash encoding", () => {
     restored.rerender();
     act(() => restored.result.current.togglePanel(params));
     expect(restored.result.current.currentPanel).toBeUndefined();
+  });
+});
+
+describe("ConversationSidePanelProvider Frame open tracking", () => {
+  it("counts a Frame once while it refreshes, and again once replaced", () => {
+    const { result } = renderSidePanelHosting("cnv_hosted");
+    act(() =>
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_1",
+        timestamp: "1",
+        openedFrom: { source: "agent", uiElement: "side_panel_auto_open" },
+      })
+    );
+    act(() =>
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_1",
+        timestamp: "2",
+        openedFrom: { source: "agent", uiElement: "side_panel_auto_open" },
+      })
+    );
+    expect(trackFrameOpen).toHaveBeenCalledTimes(1);
+    expect(trackFrameOpen).toHaveBeenCalledWith({
+      frameId: "fil_1",
+      origin: { source: "agent", uiElement: "side_panel_auto_open" },
+      location: { type: "conversation", id: "cnv_hosted" },
+    });
+
+    act(() =>
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_2",
+        openedFrom: FRAME_CLICK,
+      })
+    );
+    expect(trackFrameOpen).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not count closing a Frame or going back to it", () => {
+    const { result } = renderSidePanelHosting("cnv_hosted");
+    const frame = {
+      type: "interactive_content",
+      fileId: "fil_1",
+      openedFrom: FRAME_CLICK,
+    } as const;
+    act(() => result.current.openPanel(frame));
+    act(() => result.current.openPanel({ type: "files" }));
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBe("interactive_content");
+    act(() => result.current.togglePanel(frame));
+    expect(trackFrameOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts a Frame opened from the URL as page_url", () => {
+    hash.set({ spid: "fil_1@123", spt: "interactive_content" });
+    renderSidePanelHosting("cnv_hosted");
+    expect(trackFrameOpen).toHaveBeenCalledTimes(1);
+    expect(trackFrameOpen).toHaveBeenCalledWith({
+      frameId: "fil_1",
+      origin: { source: "user", uiElement: "page_url" },
+      location: { type: "conversation", id: "cnv_hosted" },
+    });
+  });
+
+  it("does not count Frames when no host registered a conversation", () => {
+    const { result } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_1",
+        openedFrom: FRAME_CLICK,
+      })
+    );
+    expect(trackFrameOpen).not.toHaveBeenCalled();
   });
 });

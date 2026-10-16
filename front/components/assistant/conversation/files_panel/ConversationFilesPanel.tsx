@@ -70,7 +70,11 @@ export function ConversationFilesPanel({
       contentType: string;
     }) => {
       if (isFrameContentType(contentType)) {
-        openPanel({ type: "interactive_content", fileId });
+        openPanel({
+          type: "interactive_content",
+          fileId,
+          openedFrom: { source: "user", uiElement: "conversation_files_panel" },
+        });
       } else {
         openFilePreview({
           fileId,

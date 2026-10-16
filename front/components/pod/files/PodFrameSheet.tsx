@@ -2,6 +2,7 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
+import { trackFrameExpand } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -153,7 +154,16 @@ export function PodFrameSheet({
                   tooltip={
                     isFullscreen ? t`Exit full screen` : t`Open in full screen`
                   }
-                  onClick={() => setIsFullscreen((prev) => !prev)}
+                  onClick={() => {
+                    if (!isFullscreen && fileId) {
+                      trackFrameExpand({
+                        frameId: fileId,
+                        uiElement: "pod_files",
+                        location: { type: "pod", id: podId },
+                      });
+                    }
+                    setIsFullscreen((prev) => !prev);
+                  }}
                 />
               </div>
             )}

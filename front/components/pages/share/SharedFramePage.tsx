@@ -1,3 +1,4 @@
+import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
 import Custom404 from "@app/components/pages/Custom404";
 import CustomErrorPage from "@app/components/pages/CustomErrorPage";
@@ -13,8 +14,7 @@ import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 import { LogIn01, Spinner } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
-import { usePostHog } from "posthog-js/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCookies } from "react-cookie";
 
 // Origins from which the share frame is considered as embedded.
@@ -26,6 +26,37 @@ function buildLoginUrl() {
   return `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
+// Tracks the open once the frame successfully loads, not again when it is refetched.
+// Takes the objects as returned by their hooks so the null checks stay out of SharedFramePage.
+function useTrackSharedFrameOpen({
+  frameMetadata,
+  shareMetadata,
+}: {
+  frameMetadata: ReturnType<typeof usePublicFrame>["frameMetadata"];
+  shareMetadata: ReturnType<typeof useShareFrameMetadata>["shareMetadata"];
+}) {
+  const frameId = frameMetadata?.sId;
+  const workspaceId = shareMetadata?.workspaceId;
+  const requiresEmailVerification = !!shareMetadata?.requiresEmailVerification;
+  const trackedFrameIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!frameId || !workspaceId || trackedFrameIdRef.current === frameId) {
+      return;
+    }
+    trackedFrameIdRef.current = frameId;
+    // Viewers are often anonymous, so the workspace is not attached to the event on its own.
+    trackFrameOpen({
+      frameId,
+      origin: { source: "user", uiElement: "shared_link" },
+      location: { type: "public_share" },
+      extra: {
+        workspace_id: workspaceId,
+        requires_email_verification: requiresEmailVerification,
+      },
+    });
+  }, [frameId, workspaceId, requiresEmailVerification]);
+}
+
 /**
  * @cc [owner:flvndvd,label:react] shared-frame-theme-context
  * Shared Frame content MUST have theme context even without the authenticated app layout,
@@ -34,7 +65,6 @@ function buildLoginUrl() {
 export function SharedFramePage() {
   const { t } = useLingui();
   const token = usePathParam("token");
-  const posthog = usePostHog();
 
   const [isVerified, setIsVerified] = useState(false);
   const [cookies] = useCookies([DUST_HAS_SESSION]);
@@ -72,16 +102,7 @@ export function SharedFramePage() {
     shareToken: shareMetadata ? token : null,
   });
 
-  // Track frame view once the frame successfully loads.
-  useEffect(() => {
-    if (!frameMetadata || !shareMetadata) {
-      return;
-    }
-    posthog.capture("frame_shared_view", {
-      workspace_id: shareMetadata.workspaceId,
-      requires_email_verification: shareMetadata.requiresEmailVerification,
-    });
-  }, [frameMetadata, shareMetadata, posthog]);
+  useTrackSharedFrameOpen({ frameMetadata, shareMetadata });
 
   // Show the email form when:
   // 1. Metadata says the scope requires email verification, AND

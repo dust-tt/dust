@@ -2,6 +2,7 @@ import {
   FileDropProvider,
   useFileDrop,
 } from "@app/components/assistant/conversation/FileUploaderContext";
+import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
@@ -939,6 +940,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         onRename={!isArchived ? onRename : undefined}
         onOpenInteractive={(entry) => {
           if (entry.fileId) {
+            trackFrameOpen({
+              frameId: entry.fileId,
+              origin: { source: "user", uiElement: "pod_files" },
+              location: { type: "pod", id: pod.sId },
+            });
             setFramePreview({
               fileId: entry.fileId,
               path: entry.path,

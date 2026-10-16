@@ -114,10 +114,6 @@ vi.mock("@dust-tt/sparkle", () => ({
   Spinner: () => <div>loading</div>,
 }));
 
-vi.mock("posthog-js/react", () => ({
-  usePostHog: () => ({ capture: vi.fn() }),
-}));
-
 vi.mock("react-cookie", () => ({
   useCookies: () => [{}],
 }));

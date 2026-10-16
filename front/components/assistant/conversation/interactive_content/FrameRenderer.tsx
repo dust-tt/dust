@@ -7,6 +7,7 @@ import { FrameBetaChip } from "@app/components/assistant/conversation/interactiv
 import { FrameEditControls } from "@app/components/assistant/conversation/interactive_content/frame/FrameEditControls";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
+import { trackFrameExpand } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { ConfirmContext } from "@app/components/Confirm";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -122,11 +123,23 @@ export function FrameRenderer({
   const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
 
   const {
+    canEnterFullScreen,
     isFullScreen,
     enterFullScreen,
     exitFullScreen,
     closePanel: onClosePanel,
   } = useSidePanelFullScreen(DEFAULT_FRAME_PANEL_SIZE);
+
+  const enterFullScreenAndTrack = () => {
+    if (conversation && canEnterFullScreen) {
+      trackFrameExpand({
+        frameId: fileId,
+        uiElement: "conversation_side_panel",
+        location: { type: "conversation", id: conversation.sId },
+      });
+    }
+    enterFullScreen();
+  };
 
   const { fileContent, error, mutateFileContent, isFileContentLoading } =
     useFileContent({
@@ -496,7 +509,7 @@ export function FrameRenderer({
                 onRevert={onRevert}
                 isFullScreen={isFullScreen}
                 exitFullScreen={exitFullScreen}
-                enterFullScreen={enterFullScreen}
+                enterFullScreen={enterFullScreenAndTrack}
                 shareUrl={fileShare?.shareUrl}
                 reloadFile={reloadFile}
               />

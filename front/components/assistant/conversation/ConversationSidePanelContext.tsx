@@ -1,4 +1,6 @@
 import { getDefaultRightPanelSize } from "@app/components/assistant/conversation/constant";
+import type { FrameOpenOrigin } from "@app/components/assistant/conversation/interactive_content/frameTracking";
+import { trackFrameOpen } from "@app/components/assistant/conversation/interactive_content/frameTracking";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -34,6 +36,8 @@ type OpenPanelParams =
       type: "interactive_content";
       fileId: string;
       timestamp?: string;
+      // What opened the Frame, for tracking. Not part of the panel's identity.
+      openedFrom: FrameOpenOrigin;
     }
   | ({
       type: "file_preview";
@@ -151,7 +155,11 @@ function panelIdentityKey(params: OpenPanelParams): string {
 // loads its latest version rather than a streaming-era snapshot.
 function panelHistoryEntry(params: OpenPanelParams): OpenPanelParams {
   if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
-    return { type: params.type, fileId: params.fileId };
+    return {
+      type: params.type,
+      fileId: params.fileId,
+      openedFrom: params.openedFrom,
+    };
   }
   return params;
 }
@@ -171,7 +179,12 @@ function panelParamsFromHash(
     }
     case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE: {
       const [fileId, timestamp] = data.split("@");
-      return { type, fileId, timestamp };
+      return {
+        type,
+        fileId,
+        timestamp,
+        openedFrom: { source: "user", uiElement: "page_url" },
+      };
     }
     case FILE_PREVIEW_SIDE_PANEL_TYPE: {
       const target = parseFilePreviewData(data);
@@ -268,19 +281,22 @@ export function useConversationSidePanelContext() {
 
 // Separate from the main context so the setter stays out of consumers' reach.
 const SidePanelConversationRegistrationContext = React.createContext<
-  ((hasConversation: boolean) => void) | undefined
+  ((conversationId: string | null) => void) | undefined
 >(undefined);
 
-// Called by whichever surface renders the panel content.
-export function useRegisterSidePanelConversation(hasConversation: boolean) {
-  const setHasConversation = React.useContext(
+// Called by whichever surface renders the panel content, with the sId of the conversation it hosts:
+// the conversation page, Analytics and the agent builder preview. Not every host has it in the URL.
+export function useRegisterSidePanelConversation(
+  conversationId: string | null
+) {
+  const registerConversation = React.useContext(
     SidePanelConversationRegistrationContext
   );
 
   useEffect(() => {
-    setHasConversation?.(hasConversation);
-    return () => setHasConversation?.(false);
-  }, [hasConversation, setHasConversation]);
+    registerConversation?.(conversationId);
+    return () => registerConversation?.(null);
+  }, [conversationId, registerConversation]);
 }
 
 export function parseDataAsMessageIdAndActionId(data?: string): {
@@ -295,6 +311,44 @@ export function parseDataAsMessageIdAndActionId(data?: string): {
     : [data, undefined];
 
   return { messageId, actionId };
+}
+
+// Keeps the conversation registered by the panel's host, and returns the tracker to call only when a
+// Frame replaces what the panel showed: refreshes and republishes of the shown Frame, and going back
+// to one through the history, are not opens. The conversation is kept in a ref so a conversation
+// switch does not re-run the effects that call the tracker.
+function useFrameOpenTracking() {
+  const conversationIdRef = React.useRef<string | null>(null);
+  const [hasConversation, setHasConversation] = React.useState(false);
+
+  const registerConversation = useCallback((conversationId: string | null) => {
+    conversationIdRef.current = conversationId;
+    setHasConversation(conversationId !== null);
+  }, []);
+
+  const trackFrameOpenInConversation = useCallback(
+    (params: OpenPanelParams) => {
+      const conversationId = conversationIdRef.current;
+      if (
+        params.type !== INTERACTIVE_CONTENT_SIDE_PANEL_TYPE ||
+        !conversationId
+      ) {
+        return;
+      }
+      trackFrameOpen({
+        frameId: params.fileId,
+        origin: params.openedFrom,
+        location: { type: "conversation", id: conversationId },
+      });
+    },
+    []
+  );
+
+  return {
+    hasConversation,
+    registerConversation,
+    trackFrameOpenInConversation,
+  };
 }
 
 interface ConversationSidePanelProviderProps {
@@ -314,7 +368,6 @@ export function ConversationSidePanelProvider({
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const layoutBeforeFullScreenRef = React.useRef<SidePanelLayout | null>(null);
-  const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
@@ -395,6 +448,12 @@ export function ConversationSidePanelProvider({
     [setCurrentPanel, setData, setFullScreenHash]
   );
 
+  const {
+    hasConversation,
+    registerConversation,
+    trackFrameOpenInConversation,
+  } = useFrameOpenTracking();
+
   const closePanel = useCallback(() => {
     rememberDismissedAutoOpenFile();
     const history = panelHistoryRef.current;
@@ -462,8 +521,9 @@ export function ConversationSidePanelProvider({
       }
       panelHistoryRef.current = history;
       showPanel(params);
+      trackFrameOpenInConversation(params);
     },
-    [isPanelClosing, closePanel, showPanel]
+    [isPanelClosing, closePanel, showPanel, trackFrameOpenInConversation]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
@@ -526,12 +586,19 @@ export function ConversationSidePanelProvider({
           panelHistoryRef.current = panelHistoryRef.current.filter(
             (entry) => panelIdentityKey(entry) !== shownKey
           );
+          trackFrameOpenInConversation(fromHash);
         }
       }
     } else if (!data) {
       collapsePanel();
     }
-  }, [data, currentPanel, setCurrentPanel, collapsePanel]);
+  }, [
+    data,
+    currentPanel,
+    setCurrentPanel,
+    collapsePanel,
+    trackFrameOpenInConversation,
+  ]);
 
   const value = useMemo(
     () => ({
@@ -571,7 +638,7 @@ export function ConversationSidePanelProvider({
 
   return (
     <SidePanelConversationRegistrationContext.Provider
-      value={setHasConversation}
+      value={registerConversation}
     >
       <ConversationSidePanelContext.Provider value={value}>
         {children}

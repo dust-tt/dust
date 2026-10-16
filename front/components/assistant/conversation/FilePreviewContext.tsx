@@ -95,7 +95,11 @@ export function FilePreviewProvider({
       }
 
       openPanel(
-        { type: "interactive_content", fileId: resolvedFileId },
+        {
+          type: "interactive_content",
+          fileId: resolvedFileId,
+          openedFrom: { source: "user", uiElement: "file_citation" },
+        },
         { keepCurrent: keepCurrentPanel }
       );
     },
