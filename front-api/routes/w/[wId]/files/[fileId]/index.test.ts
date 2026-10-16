@@ -236,7 +236,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     );
   });
 
-  it("serves the pending draft bundle to a Frame editor", async () => {
+  async function setupEditorWithDraftFrame() {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -270,16 +270,42 @@ describe("GET /api/w/:wId/files/:fileId", () => {
         `bundle ${publicationId}`
       );
     }
+    return { frame, workspace };
+  }
+
+  it("serves the pending draft bundle to a Frame editor who asks for latest", async () => {
+    const { frame, workspace } = await setupEditorWithDraftFrame();
 
     const response = await honoApp.request(
-      fileUrl(workspace, frame.sId, "?action=view")
+      fileUrl(workspace, frame.sId, "?action=view&publication=latest")
     );
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("bundle publication-draft");
   });
 
-  it("serves the live bundle to a viewer who cannot edit the Frame", async () => {
+  it("serves the live bundle to a Frame editor who does not ask for latest", async () => {
+    const { frame, workspace } = await setupEditorWithDraftFrame();
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view")
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("bundle publication-live");
+  });
+
+  it("rejects an unknown publication", async () => {
+    const { frame, workspace } = await setupEditorWithDraftFrame();
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view&publication=draft")
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("serves the live bundle to a viewer who cannot edit the Frame, even when asked for latest", async () => {
     const { frame, space, workspace } = await makeTestFrameFunction();
     const { globalGroup } = await GroupFactory.defaults(workspace);
     await SpaceFactory.attachGroup(space, globalGroup, "project_viewer");
@@ -298,7 +324,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     }
 
     const response = await honoApp.request(
-      fileUrl(workspace, frame.sId, "?action=view")
+      fileUrl(workspace, frame.sId, "?action=view&publication=latest")
     );
 
     expect(response.status).toBe(200);

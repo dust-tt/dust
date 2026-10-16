@@ -1292,8 +1292,10 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * @cc [owner:davidebbo,label:product;security] frame-share-serves-live-publication
    * Share-link paths (share token lookup, the share allowlist, `/api/v1/viz/content`) MUST pass
-   * `publication: "live"`. Only in-app callers that checked `canWriteFrameV2Source` MAY pass
-   * `"latest"`, which serves the latest publication (the pending draft, if any).
+   * `publication: "live"`. An in-app caller MAY pass `"latest"`, which serves the latest
+   * publication (the pending draft, if any), only when the request explicitly asked for it (the
+   * conversation panel) and the caller passes `canWriteFrameV2Source`; every other in-app surface
+   * MUST pass `"live"`. See `frame-view-serves-latest-only-when-asked` on the files route.
    */
   async getRenderableContent(
     owner: LightWorkspaceType,

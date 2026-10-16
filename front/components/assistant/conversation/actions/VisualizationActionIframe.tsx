@@ -803,8 +803,8 @@ export interface VisualizationActionIframeProps {
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   /**
-   * Which publication function invocations run against. In-app hosts pass `"latest"` (the draft
-   * for editors, live otherwise); omitted, the live publication runs.
+   * Which publication function invocations run against. Only the conversation panel passes
+   * `"latest"` (the draft for editors, live otherwise); omitted, the live publication runs.
    */
   functionTarget?: FramePublicationTarget;
   isEditable?: boolean;

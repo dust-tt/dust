@@ -51,6 +51,9 @@ describe("PodFrameVisualization", () => {
           framePackageRoot,
         })
       );
+      expect(mocks.iframe).toHaveBeenCalledWith(
+        expect.not.objectContaining({ functionTarget: expect.anything() })
+      );
     }
   );
 });

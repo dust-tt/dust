@@ -9725,6 +9725,19 @@
                 "download"
               ]
             }
+          },
+          {
+            "in": "query",
+            "name": "publication",
+            "required": false,
+            "description": "Frames v2 publication to view. `latest` serves the newest publication (a pending draft) only to callers who can write the Frame's source; everyone else, and every request without it, is served the live publication.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "live",
+                "latest"
+              ]
+            }
           }
         ],
         "security": [

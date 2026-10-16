@@ -2,6 +2,7 @@ import {
   fetchFileHeadMetadataFromPath,
   fetchFileIdFromPath,
   fetchFileMetadataFromPath,
+  getFileContentViewKey,
   getFilePathContentApiPath,
   prepareFolderArchiveDownload,
 } from "@app/lib/swr/files";
@@ -22,6 +23,25 @@ const owner = LightWorkspaceFactory.build({ sId: "w_test_ws" });
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("getFileContentViewKey", () => {
+  it("asks for no publication by default, so a Frame is served live", () => {
+    expect(getFileContentViewKey({ owner, fileId: "fil_1" })).toBe(
+      "/api/w/w_test_ws/files/fil_1?action=view"
+    );
+  });
+
+  it("asks for the latest publication when requested", () => {
+    expect(
+      getFileContentViewKey({
+        owner,
+        fileId: "fil_1",
+        cacheKey: "abc",
+        publication: "latest",
+      })
+    ).toBe("/api/w/w_test_ws/files/fil_1?action=view&publication=latest&v=abc");
+  });
 });
 
 describe("file path API", () => {

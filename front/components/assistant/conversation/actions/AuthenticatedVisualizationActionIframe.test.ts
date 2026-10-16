@@ -116,8 +116,24 @@ describe("AuthenticatedVisualizationActionIframe", () => {
     expect(renderedLocale("pseudo")).toBe("en-US");
   });
 
-  it("targets function invocations at the latest publication", () => {
+  it("targets no publication by default, so functions run live", () => {
     renderedLocale("en-US");
+    expect(
+      mocks.renderIframe.mock.lastCall?.[0].functionTarget
+    ).toBeUndefined();
+  });
+
+  it("passes the host's function target through", () => {
+    render(
+      createElement(AuthenticatedVisualizationActionIframe, {
+        agentConfigurationId: null,
+        conversationId: null,
+        functionTarget: "latest",
+        visualization: VisualizationFactory.buildProtected(),
+        vizUrl: "https://viz.dust.tt",
+        workspaceId: "w_current",
+      })
+    );
     expect(mocks.renderIframe.mock.lastCall?.[0].functionTarget).toBe("latest");
   });
 });
