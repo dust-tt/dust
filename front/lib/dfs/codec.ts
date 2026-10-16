@@ -422,6 +422,10 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
         rename: {
           objectId: encodeObjectId(operation.objectId),
           parentId: encodeObjectId(operation.parentId),
+          targetId:
+            operation.targetId === undefined
+              ? undefined
+              : encodeObjectId(operation.targetId),
           name: operation.name,
           replace: operation.replace,
         },

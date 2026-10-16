@@ -437,11 +437,18 @@ message WriteOperation {
 
 // @cc [owner:spolu,label:api] dfs-rename-name-limit
 // The destination name MUST satisfy the stored-basename limits in Attr.name.
+
+// @cc [owner:spolu,label:api;security] dfs-rename-parents
+// The server MUST verify that parent_id is the object's current parent in the transaction and
+// return NOT_FOUND on mismatch. The destination MUST be target_id when present, otherwise parent_id.
 message RenameOperation {
   required ObjectId object_id = 1;
+  // The source directory.
   required ObjectId parent_id = 2;
   required string name = 3;
   required bool replace = 4;
+  // The destination directory; omitted for a rename within the source directory.
+  optional ObjectId target_id = 5;
 }
 
 message RemoveOperation {

@@ -883,7 +883,12 @@ export class DfsFileSystem {
     );
   }
 
-  /** Moves or renames the object at `src` to `dest`, keeping its ObjectId. */
+  /** Moves or renames the object at `src` to `dest`, keeping its ObjectId. Both URIs need paths. */
+  /**
+   * @cc [owner:spolu,label:product] move-parent-targets
+   * `move` MUST require source and destination URIs with paths and send the resolved source parent
+   * as `parentId`. It MUST send `targetId` only when the destination parent differs.
+   */
   async move(
     src: string,
     dest: string,
@@ -900,15 +905,38 @@ export class DfsFileSystem {
         new DfsError("invalid_input", "The destination requires a path.")
       );
     }
-    const attr = await this.require(src);
-    if (attr.isErr()) {
-      return attr;
+    const source = parseDfsUri(src);
+    if (source.isErr()) {
+      return source;
     }
-    const objectId = realIdOf(attr.value);
+    if (source.value.segments.length === 0) {
+      return new Err(
+        new DfsError("invalid_input", "The source requires a path.")
+      );
+    }
+    const sourceAttrs = await this.walk(
+      source.value.anchorId,
+      source.value.segments
+    );
+    if (sourceAttrs.isErr()) {
+      return sourceAttrs;
+    }
+    const attr = sourceAttrs.value.at(-1);
+    if (!attr || sourceAttrs.value.length !== source.value.segments.length) {
+      return new Err(new DfsError("not_found", `Not found: ${src}.`));
+    }
+    const objectId = realIdOf(attr);
     if (objectId.isErr()) {
       return objectId;
     }
-    let parentId = anchorId;
+    const sourceParent = sourceAttrs.value.at(-2);
+    const parentId = sourceParent
+      ? realIdOf(sourceParent)
+      : new Ok(source.value.anchorId);
+    if (parentId.isErr()) {
+      return parentId;
+    }
+    let targetId = anchorId;
     if (segments.length > 1) {
       const parent = await this.require(
         formatDfsUri(anchorId, { path: segments.slice(0, -1) })
@@ -923,13 +951,14 @@ export class DfsFileSystem {
       if (id.isErr()) {
         return id;
       }
-      parentId = id.value;
+      targetId = id.value;
     }
     return this.applyForObject([
       {
         type: "rename",
         objectId: objectId.value,
-        parentId,
+        parentId: parentId.value,
+        targetId: targetId === parentId.value ? undefined : targetId,
         name,
         replace,
       },

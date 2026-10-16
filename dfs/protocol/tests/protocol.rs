@@ -267,6 +267,26 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
 }
 
 #[test]
+fn rename_preserves_source_parent_and_optional_destination() -> Result<()> {
+    let object_id = ObjectId::new_v7();
+    let parent_id = ObjectId::new_v7();
+    for target_id in [None, Some(ObjectId::new_v7())] {
+        let operation = rpc::RenameOperation {
+            object_id,
+            parent_id,
+            target_id,
+            name: "renamed".into(),
+            replace: false,
+        };
+        assert_eq!(
+            rpc::RenameOperation::decode(operation.encode_to_vec().as_slice())?,
+            operation
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn search_preserves_defaults_filters_and_optional_hit_metadata() -> Result<()> {
     let request = rpc::SearchRequest {
         fields: vec![

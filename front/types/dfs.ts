@@ -211,7 +211,10 @@ export interface DfsWriteOperation {
 export interface DfsRenameOperation {
   type: "rename";
   objectId: DfsObjectId;
+  // The source directory.
   parentId: DfsObjectId;
+  // The destination directory; defaults to parentId.
+  targetId?: DfsObjectId;
   name: string;
   replace: boolean;
 }

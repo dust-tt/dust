@@ -744,13 +744,15 @@ Renames or moves an object while preserving its identity.
 ```text
 RenameOperation {
   object_id: ObjectId            // Object to move or rename.
-  parent_id: ObjectId            // Destination directory.
+  parent_id: ObjectId            // Source directory.
+  target_id?: ObjectId           // Destination directory; defaults to parent_id.
   name: string                  // Destination basename.
   replace: bool                 // Whether an existing destination may be replaced.
 }
 ```
 
 **Successful result:** `mutation.object` contains the moved object's final attributes if it survives.
+The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
 The source object and affected parents must be accessible. Replacement requires the same kind;
 a destination directory must be empty. Moving a directory into itself or a descendant is rejected.
 
