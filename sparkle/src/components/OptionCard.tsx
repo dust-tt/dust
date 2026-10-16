@@ -36,8 +36,10 @@ interface OptionCardOptionProps extends OptionCardSharedProps {
   description?: string | null;
   /** Sample of what the option produces (e.g. rendered Markdown), shown full width below the label; scrolls when tall. */
   preview?: React.ReactNode;
-  /** Trailing radio or checkbox visual making the selection mode unambiguous. */
+  /** Radio or checkbox visual making the selection mode unambiguous. */
   selectionIndicator?: OptionCardSelectionIndicator;
+  /** Where the selection indicator sits: trailing (the default) or leading, before the counter. */
+  selectionIndicatorPosition?: "start" | "end";
   /** Called when the card is clicked or activated with Enter/Space; without it the card is display-only. */
   onClick?: () => void;
 }
@@ -87,6 +89,9 @@ export function OptionCard(props: OptionCardProps) {
   const isInput = props.type === "input";
   const onClick = isInput ? undefined : props.onClick;
   const selectionIndicator = isInput ? undefined : props.selectionIndicator;
+  const selectionIndicatorPosition = isInput
+    ? "end"
+    : (props.selectionIndicatorPosition ?? "end");
   const preview = isInput ? null : (props.preview ?? null);
   const isInteractive = onClick !== undefined && !disabled;
 
@@ -96,6 +101,33 @@ export function OptionCard(props: OptionCardProps) {
       onClick();
     }
   };
+
+  const indicator = (
+    <>
+      {selectionIndicator === "radio" && (
+        <div
+          aria-hidden="true"
+          className={cn(radioStyles(), "pointer-events-none shrink-0")}
+        >
+          {selected && <div className={radioIndicatorStyles()} />}
+        </div>
+      )}
+      {selectionIndicator === "checkbox" && (
+        <div
+          aria-hidden="true"
+          data-state={selected ? "checked" : "unchecked"}
+          className={cn(checkboxStyles(), "pointer-events-none shrink-0")}
+        >
+          <div
+            data-state={selected ? "checked" : "unchecked"}
+            className={checkboxIndicatorStyles()}
+          >
+            <Check className={checkboxIconStyles({ state: "checked" })} />
+          </div>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <Card
@@ -123,6 +155,7 @@ export function OptionCard(props: OptionCardProps) {
       }
       aria-pressed={isInteractive ? selected : undefined}
     >
+      {selectionIndicatorPosition === "start" && indicator}
       {counterValue !== undefined && (
         <Counter
           value={counterValue}
@@ -168,28 +201,7 @@ export function OptionCard(props: OptionCardProps) {
           </>
         )}
       </div>
-      {selectionIndicator === "radio" && (
-        <div
-          aria-hidden="true"
-          className={cn(radioStyles(), "pointer-events-none shrink-0")}
-        >
-          {selected && <div className={radioIndicatorStyles()} />}
-        </div>
-      )}
-      {selectionIndicator === "checkbox" && (
-        <div
-          aria-hidden="true"
-          data-state={selected ? "checked" : "unchecked"}
-          className={cn(checkboxStyles(), "pointer-events-none shrink-0")}
-        >
-          <div
-            data-state={selected ? "checked" : "unchecked"}
-            className={checkboxIndicatorStyles()}
-          >
-            <Check className={checkboxIconStyles({ state: "checked" })} />
-          </div>
-        </div>
-      )}
+      {selectionIndicatorPosition === "end" && indicator}
       {preview !== null && (
         <div className="max-h-64 basis-full overflow-y-auto rounded-xl bg-muted-background px-3 py-2">
           {preview}
