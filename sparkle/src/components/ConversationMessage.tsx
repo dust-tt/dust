@@ -215,9 +215,11 @@ const ConversationMessageHeader = React.forwardRef<
           size="sm"
         />
         <div className="inline-flex w-full justify-between gap-0.5">
-          <div className="inline-flex items-baseline gap-2 text-foreground">
-            <span className="heading-sm">{renderName(name)}</span>
-            <span className="text-xs text-muted-foreground">{timestamp}</span>
+          <div className="inline-flex items-center gap-2 text-foreground">
+            <div className="inline-flex items-baseline gap-2">
+              <span className="heading-sm">{renderName(name)}</span>
+              <span className="text-xs text-muted-foreground">{timestamp}</span>
+            </div>
             {infoChip && infoChip}
           </div>
           <div className="flex items-center gap-2">
