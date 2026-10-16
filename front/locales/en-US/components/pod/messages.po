@@ -116,6 +116,18 @@ msgstr "You are the last editor of this Pod and cannot leave it."
 msgid "Leave the Pod"
 msgstr "Leave the Pod"
 
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Publishing your changes..."
+msgstr "Publishing your changes..."
+
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Done"
+msgstr "Done"
+
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Frame actions"
+msgstr "Frame actions"
+
 #: front/components/pod/PodMenu.tsx
 msgid "Link copied"
 msgstr "Link copied"

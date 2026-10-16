@@ -116,6 +116,18 @@ msgstr "Vous êtes le dernier éditeur de ce Pod et ne pouvez pas le quitter."
 msgid "Leave the Pod"
 msgstr "Quitter le Pod"
 
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Publishing your changes..."
+msgstr "Publication de vos modifications…"
+
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Done"
+msgstr "Terminé"
+
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Frame actions"
+msgstr "Actions du Frame"
+
 #: front/components/pod/PodMenu.tsx
 msgid "Link copied"
 msgstr "Lien copié"
