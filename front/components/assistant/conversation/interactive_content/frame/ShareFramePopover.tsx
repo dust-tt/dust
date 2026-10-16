@@ -139,13 +139,14 @@ function ShareFramePopoverContent({
   const viewerFiles = fileShare?.viewerFiles ?? [];
   const draftViewerFiles = fileShare?.draftViewerFiles ?? null;
   const liveViewerFileRefs = new Set(viewerFiles.map((file) => file.ref));
-  // Only worth a second list when making the draft live would change what the link exposes.
-  // `FrameSharingFiles` renders nothing for an empty list, which would leave the heading alone.
-  const draftExposesDifferentFiles =
+  // Only worth a section when making the draft live would change what the link exposes. Unlike
+  // the live list, it also covers a draft that stops sharing files.
+  const pendingDraftFiles =
     draftViewerFiles !== null &&
-    draftViewerFiles.length > 0 &&
     (draftViewerFiles.length !== viewerFiles.length ||
-      draftViewerFiles.some((file) => !liveViewerFileRefs.has(file.ref)));
+      draftViewerFiles.some((file) => !liveViewerFileRefs.has(file.ref)))
+      ? draftViewerFiles
+      : null;
 
   const externalSharingDisabledByPolicy =
     owner.sharingPolicy === "workspace_only";
@@ -246,14 +247,26 @@ function ShareFramePopoverContent({
             {draftViewerFiles && (
               <p className="px-2 copy-xs text-muted-foreground">
                 <Trans>
-                  The link shows the live version, not your unpublished changes.
+                  The link shows the live version, not the changes you haven’t
+                  made live yet.
                 </Trans>
               </p>
             )}
-            <FrameSharingFiles viewerFiles={viewerFiles} />
-            {draftViewerFiles && draftExposesDifferentFiles && (
+            <FrameSharingFiles viewerFiles={viewerFiles} variant="live" />
+            {pendingDraftFiles && (
               <Section label={t`After you make your changes live`}>
-                <FrameSharingFiles viewerFiles={draftViewerFiles} />
+                {pendingDraftFiles.length === 0 ? (
+                  <p className="px-2 copy-xs text-muted-foreground">
+                    <Trans>
+                      No files will be shared once your changes are live.
+                    </Trans>
+                  </p>
+                ) : (
+                  <FrameSharingFiles
+                    viewerFiles={pendingDraftFiles}
+                    variant="pending"
+                  />
+                )}
               </Section>
             )}
             <AccessScopeSection

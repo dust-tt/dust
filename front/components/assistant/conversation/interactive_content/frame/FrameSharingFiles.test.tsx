@@ -30,7 +30,7 @@ it("opens a file dialog and returns keyboard focus to the sharing popover", asyn
       trigger={<Button label="Share" />}
       popoverTriggerAsChild
       aria-label="Share frame"
-      content={<FrameSharingFiles viewerFiles={viewerFiles} />}
+      content={<FrameSharingFiles viewerFiles={viewerFiles} variant="live" />}
       preventAutoFocusOnClose={false}
     />
   );
@@ -80,6 +80,22 @@ it("opens a file dialog and returns keyboard focus to the sharing popover", asyn
 });
 
 it("omits the file notice when no files are included", () => {
-  const { container } = render(<FrameSharingFiles viewerFiles={[]} />);
+  const { container } = render(
+    <FrameSharingFiles viewerFiles={[]} variant="live" />
+  );
   expect(container).toBeEmptyDOMElement();
+});
+
+it("uses future tense for the files a pending draft will share", () => {
+  render(<FrameSharingFiles viewerFiles={viewerFiles} variant="pending" />);
+
+  expect(
+    screen.getByText("These files and data will be shared too")
+  ).toBeVisible();
+  expect(
+    screen.getByText(/Once your changes are live, people who can view/)
+  ).toBeVisible();
+  expect(
+    screen.queryByText("Files and data used by this frame are shared too")
+  ).not.toBeInTheDocument();
 });
