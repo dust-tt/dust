@@ -304,6 +304,26 @@ export class DfsFileSystem {
       : new Err(new DfsError("not_found", `Not found: ${uri}.`));
   }
 
+  /** Resolves the parent directory of a parsed URI with a nonempty path. */
+  private async resolveParentId({
+    anchorId,
+    segments,
+  }: ParsedDfsUri): Promise<Result<DfsObjectId, DfsError>> {
+    if (segments.length === 1) {
+      return new Ok(anchorId);
+    }
+    const parent = await this.require(
+      formatDfsUri(anchorId, { path: segments.slice(0, -1) })
+    );
+    if (parent.isErr()) {
+      return parent;
+    }
+    if (!isDirectory(parent.value)) {
+      return new Err(new DfsError("not_directory"));
+    }
+    return realIdOf(parent.value);
+  }
+
   /**
    * The ID of the directory at `segments` under `anchorId`, creating the missing ones one level at a
    * time (see `create-missing-parents`).
@@ -766,14 +786,34 @@ export class DfsFileSystem {
     return written ? new Ok(written) : this.applyForObject(operations);
   }
 
-  /** Removes the object at `uri`; non-empty directories require `recursive`. */
+  /** Removes the object at a URI with a path; non-empty directories require `recursive`. */
+  /**
+   * @cc [owner:spolu,label:product] remove-parent-targets
+   * `remove` MUST require a URI with a path. Every emitted Remove operation, including recursive
+   * children, MUST carry the parent ID from the path or listing used to resolve that object.
+   */
   async remove(
     uri: string,
     { recursive = false }: { recursive?: boolean } = {}
   ): Promise<Result<void, DfsError>> {
-    const attr = await this.require(uri);
+    const parsed = parseDfsUri(uri);
+    if (parsed.isErr()) {
+      return parsed;
+    }
+    const name = parsed.value.segments.at(-1);
+    if (name === undefined) {
+      return new Err(new DfsError("invalid_input", "The URI requires a path."));
+    }
+    const parentId = await this.resolveParentId(parsed.value);
+    if (parentId.isErr()) {
+      return parentId;
+    }
+    const attr = await this.lookupChild(parentId.value, name);
     if (attr.isErr()) {
       return attr;
+    }
+    if (!attr.value) {
+      return new Err(new DfsError("not_found", `Not found: ${uri}.`));
     }
     const objectId = realIdOf(attr.value);
     if (objectId.isErr()) {
@@ -782,6 +822,7 @@ export class DfsFileSystem {
     const self: DfsOperation = {
       type: "remove",
       objectId: objectId.value,
+      parentId: parentId.value,
       kind: attr.value.kind,
     };
     if (!isDirectory(attr.value) || !recursive) {
@@ -837,6 +878,7 @@ export class DfsFileSystem {
         removals.push({
           type: "remove",
           objectId: childId.value,
+          parentId,
           kind: attr.value.kind,
         });
         if (isDirectory(attr.value)) {
@@ -915,26 +957,7 @@ export class DfsFileSystem {
         new DfsError("invalid_input", "The source requires a path.")
       );
     }
-    const resolveParentId = async ({
-      anchorId,
-      segments,
-    }: ParsedDfsUri): Promise<Result<DfsObjectId, DfsError>> => {
-      if (segments.length === 1) {
-        return new Ok(anchorId);
-      }
-      const parent = await this.require(
-        formatDfsUri(anchorId, { path: segments.slice(0, -1) })
-      );
-      if (parent.isErr()) {
-        return parent;
-      }
-      if (!isDirectory(parent.value)) {
-        return new Err(new DfsError("not_directory"));
-      }
-      return realIdOf(parent.value);
-    };
-
-    const parentId = await resolveParentId(source.value);
+    const parentId = await this.resolveParentId(source.value);
     if (parentId.isErr()) {
       return parentId;
     }
@@ -949,7 +972,7 @@ export class DfsFileSystem {
     if (objectId.isErr()) {
       return objectId;
     }
-    const targetId = await resolveParentId(destination.value);
+    const targetId = await this.resolveParentId(destination.value);
     if (targetId.isErr()) {
       return targetId;
     }

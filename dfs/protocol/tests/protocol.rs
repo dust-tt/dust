@@ -209,6 +209,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
             rpc::Operation {
                 operation: Some(rpc::operation::Operation::Remove(rpc::RemoveOperation {
                     object_id,
+                    parent_id,
                     kind: rpc::ObjectKind::File.into(),
                 })),
             },

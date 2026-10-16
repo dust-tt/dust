@@ -222,6 +222,7 @@ export interface DfsMoveOperation {
 export interface DfsRemoveOperation {
   type: "remove";
   objectId: DfsObjectId;
+  parentId: DfsObjectId;
   kind: DfsObjectKind;
 }
 

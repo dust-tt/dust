@@ -434,6 +434,7 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
       return {
         remove: {
           objectId: encodeObjectId(operation.objectId),
+          parentId: encodeObjectId(operation.parentId),
           kind: encodeObjectKind(operation.kind),
         },
       };

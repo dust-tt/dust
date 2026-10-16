@@ -451,9 +451,13 @@ message MoveOperation {
   optional ObjectId target_id = 5;
 }
 
+// @cc [owner:spolu,label:api;security] dfs-remove-parent
+// The server MUST verify that parent_id is the object's current parent in the transaction and
+// return NOT_FOUND on mismatch.
 message RemoveOperation {
   required ObjectId object_id = 1;
   required ObjectKind kind = 2;
+  required ObjectId parent_id = 3;
 }
 
 enum SearchField {
