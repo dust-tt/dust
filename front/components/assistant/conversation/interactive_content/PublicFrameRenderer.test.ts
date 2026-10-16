@@ -62,6 +62,7 @@ vi.mock("@app/lib/swr/frames", () => ({
     isPodEditor: mocks.isPodEditor,
     hasFrameFunctions: mocks.hasFrameFunctions,
     framePath: mocks.framePath,
+    mutateFrame: vi.fn(),
   }),
   useFramePermissions: () => ({
     requiredTools: [],

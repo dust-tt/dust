@@ -83,6 +83,7 @@ export function PublicFrameRenderer({
     isPodEditor,
     framePath,
     hasFrameFunctions,
+    mutateFrame,
   } = usePublicFrame({
     shareToken,
   });
@@ -182,6 +183,9 @@ export function PublicFrameRenderer({
               frameId={frameId}
               requiredTools={requiredTools}
               onAuthorized={async () => {
+                // Viz JWTs expire in 1 minute. Refresh before flipping off consent so
+                // the iframe does not mount with a token issued when this page loaded.
+                await mutateFrame();
                 await mutateFramePermissions();
               }}
             />
