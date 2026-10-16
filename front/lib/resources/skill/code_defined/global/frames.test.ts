@@ -92,7 +92,11 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("canonical Frame resource");
     expect(instructions).toContain("`index.tsx` by default");
     expect(instructions).toContain("single `.tsx` entry file");
-    expect(instructions).toContain("atomically activates the publication");
+    expect(instructions).toContain("publication and makes it live");
+    expect(instructions).not.toContain("atomically activates the publication");
+    expect(instructions).toContain(
+      "from the Frame's current publication (your draft when you can edit the Frame, else the live one)"
+    );
     expect(instructions).toContain("## Authoring a function");
     expect(instructions).toContain('userIdentity: "workspace_user_required"');
     expect(instructions).toContain("### Fast and durable functions");
@@ -180,6 +184,63 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).not.toContain("dsbx db");
     expect(instructions).not.toContain("frame_author_required");
     expect(instructions).not.toContain("--replaces");
+  });
+
+  it("teaches drafts and make-live when drafts are enabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_drafts");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("## Drafts");
+    expect(instructions).toContain("dsbx frame publish --draft");
+    expect(instructions).toContain(
+      "dsbx frame make-live <frameId> <publicationId>"
+    );
+    expect(instructions).toContain(
+      "while the share link keeps serving the live version"
+    );
+    expect(instructions).toContain(
+      "using the `frameId`\nand `publicationId` from that publish's output"
+    );
+    expect(instructions).toContain(
+      "never say the change is visible on the share link"
+    );
+    expect(instructions).not.toContain(
+      "do not parse the Frame ID from the CLI output"
+    );
+    expect(instructions).toContain("the IDs are only needed for `make-live`");
+  });
+
+  it("does not mention drafts without the drafts flag", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain("--draft");
+    expect(instructions).not.toContain("make-live");
+    expect(instructions).not.toContain("## Drafts");
+    expect(instructions).toContain(
+      "do not parse the Frame ID from the CLI output"
+    );
+  });
+
+  it("does not teach drafts when only frames_v2_drafts is on", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2_drafts");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain("--draft");
+    expect(instructions).not.toContain("make-live");
   });
 
   it("teaches the computer-first flow when the Computer is enabled", async () => {

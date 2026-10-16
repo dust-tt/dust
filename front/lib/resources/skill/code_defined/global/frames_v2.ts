@@ -469,9 +469,11 @@ Edit existing Pod Frames in place.
  */
 export const buildFramesV2Instructions = ({
   hasFunctions,
+  hasDrafts,
   isPod,
 }: {
   hasFunctions: boolean;
+  hasDrafts: boolean;
   isPod: boolean;
 }) => `\
 # Frames v2
@@ -486,13 +488,13 @@ ${
     ? `- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The published
   manifest is the canonical Frame resource; its folder contains the UI source, assets, and
   function source. The manifest declares one UI entry point (\`index.tsx\` by default) and every
-  server function. Publishing snapshots the whole folder, builds every declared function, and
-  atomically activates the publication. The first publish also assigns the Frame's stable identity.
+  server function. Publishing snapshots the whole folder, builds every declared function, records a
+  publication and makes it live. The first publish also assigns the Frame's stable identity.
 `
     : `- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The published
   manifest is the canonical Frame resource; its folder contains the UI source and assets. The
   manifest declares one UI entry point (\`index.tsx\` by default). Publishing snapshots the whole
-  folder and atomically activates the publication. The first publish also assigns the Frame's
+  folder, records a publication and makes it live. The first publish also assigns the Frame's
   stable identity.
 `
 }- A legacy (v1) Frame is anchored by a single \`.tsx\` entry file. Publishing resolves that entry
@@ -527,7 +529,7 @@ Every Computer command is a round trip of several seconds. When possible, write 
 and publish a new Frame in one Computer command. There is no scaffold step: create the folder,
 write \`manifest.json\` and \`index.tsx\`${hasFunctions ? " (plus any functions or databases)" : ""}, lint, then publish.
 The first \`dsbx frame publish\` mints the Frame's stable identity from the manifest path and
-activates the publication.
+makes its publication live.
 
 \`\`\`bash
 FRAME=/files/conversation-<conversationId>/<frame-folder>
@@ -677,10 +679,10 @@ the Frame. Use the suggested \`./…\` path so those references still work when 
 ${
   hasFunctions
     ? `There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
-functions, and all declared database schemas are built or reconciled, stored, and activated
-atomically:
+functions, and all declared database schemas are built or reconciled and stored, and the
+publication is recorded and made live:
 `
-    : `Publish the manifest once; the UI source is built, stored, and activated atomically:
+    : `Publish the manifest once; the UI source is built and stored, and the publication is recorded and made live:
 `
 }
 \`\`\`bash
@@ -689,19 +691,23 @@ dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 
 Publishing runs the manifest, UI, ${hasFunctions ? "function-build, database-contract " : ""}and Tailwind checks.
 If any fails, no partial publication
-becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
+is recorded or made live: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
 are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
 before publishing to check in-package file paths${hasFunctions ? " and function names" : ""}. For a brand-new folder,
 publish also assigns the Frame identity; republishing the same path updates that Frame in place.
 
 Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
 Frame build context and report unrelated or noisy failures. A successful publish adds the Frame
-card to the answer and opens it for the user; do not parse the Frame ID from the CLI output for
-that.
+card to the answer and opens it for the user; ${
+  hasDrafts
+    ? "the card appears automatically, so the IDs are only needed for `make-live`."
+    : "do not parse the Frame ID from the CLI output for\nthat."
+}
 
 ${
   hasFunctions
-    ? `Call a function from the active publication by its stable Frame ID and bare manifest name:
+    ? `Call a function from the Frame's current publication (your draft when you can edit the Frame, else the live one)
+by its stable Frame ID and bare manifest name:
 
 \`\`\`bash
 dsbx frame call <frame-id> <function-name> --input '<json>'
@@ -741,7 +747,39 @@ for available operations.
 Do not use \`mv\` or \`cp\` on a Frame folder: move and clone are not supported in this
 initial scope.
 
-${hasFunctions ? `${MIGRATING_LEGACY_FRAME}\n` : ""}## Editing
+${
+  hasDrafts
+    ? `## Drafts
+
+Publish with \`--draft\` when you change a Frame other people already use, or when the user wants to
+review a change before it goes live:
+
+\`\`\`bash
+dsbx frame publish --draft /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+The output's \`"status"\` says what happened. \`"draft"\` means the change shows in the conversation's
+Frame panel, functions included, while the share link keeps serving the live version. A Frame's
+first publish is always live, so \`--draft\` on a new Frame reports \`"live"\`. A draft publish whose
+content matches the live version also reports \`"live"\` and clears any pending draft: that is how
+to drop a draft, by reverting the source and publishing again with \`--draft\`.
+
+After a draft publish, never say the change is visible on the share link. Tell the user to review
+it in the Frame panel, and make it live when they ask you to or approve it, using the \`frameId\`
+and \`publicationId\` from that publish's output:
+
+\`\`\`bash
+dsbx frame make-live <frameId> <publicationId>
+\`\`\`
+
+If make-live fails because a newer draft replaced yours (the user saved an edit in the panel), do
+not retry with the old id: tell the user the draft changed. A publish without \`--draft\` goes
+live immediately and also ships any pending draft's changes, since both are built from the same
+folder.
+
+`
+    : ""
+}${hasFunctions ? `${MIGRATING_LEGACY_FRAME}\n` : ""}## Editing
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
 read the current file, apply one edit, then start the next edit to that file. Apply the edit, run
