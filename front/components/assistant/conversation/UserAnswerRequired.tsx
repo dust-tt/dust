@@ -80,15 +80,19 @@ function getArrowKeyDirection(
 }
 
 function OptionPreviewPane({ option }: { option: UserQuestionOption }) {
+  if (!option.description && !option.preview) {
+    return null;
+  }
+
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2 rounded-2xl bg-muted-background px-4 py-3">
       {option.description && (
         <div className="text-sm text-muted-foreground">
           {option.description}
         </div>
       )}
       {option.preview && (
-        <div className="max-h-64 overflow-y-auto rounded-xl bg-muted-background px-3 py-2">
+        <div className="max-h-64 overflow-y-auto">
           <Markdown content={option.preview} forcedTextSize="text-sm" />
         </div>
       )}
@@ -358,10 +362,12 @@ export function UserAnswerRequired({
           <Markdown content={option.preview} forcedTextSize="text-sm" />
         ) : undefined
       }
-      counterValue={index + 1}
+      // In the preview pane, leading radios keep the list visually apart from the pane.
+      counterValue={layout === "preview_pane" ? undefined : index + 1}
       selected={answerDraft.selectedOptions.includes(index)}
       disableHover={isKeyboardNavigating}
       selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
+      selectionIndicatorPosition={layout === "preview_pane" ? "start" : "end"}
       onFocusCapture={() => activateOption(index)}
       onMouseEnter={() => activateOption(index)}
       className={cn(
