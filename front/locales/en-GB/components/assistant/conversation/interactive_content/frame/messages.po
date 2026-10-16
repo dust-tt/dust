@@ -338,6 +338,14 @@ msgid "Viewers will only be able to access files you can verify. Fix or remove t
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "The link shows the live version, not your unpublished changes."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "After you make your changes live"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
 msgid "Who has access"
 msgstr ""
 

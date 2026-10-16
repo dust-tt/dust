@@ -338,6 +338,14 @@ msgid "Viewers will only be able to access files you can verify. Fix or remove t
 msgstr "Les lecteurs n’auront accès qu’aux fichiers que vous pouvez vérifier. Corrigez ou supprimez ces références avant de partager : {blockedRefs}"
 
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "The link shows the live version, not your unpublished changes."
+msgstr "Le lien affiche la version en ligne, pas vos modifications non publiées."
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "After you make your changes live"
+msgstr "Une fois vos modifications mises en ligne"
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
 msgid "Who has access"
 msgstr "Qui a accès"
 

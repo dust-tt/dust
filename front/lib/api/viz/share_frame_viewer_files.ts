@@ -1,7 +1,9 @@
+import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/files";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
@@ -249,6 +251,36 @@ export async function getShareFrameViewerFiles(
   );
 }
 
+/**
+ * @cc [owner:davidebbo,label:product] draft-viewer-files-are-editor-only
+ * The files a pending draft would expose MUST only be returned to a caller who can write the
+ * Frame's source: a viewer of the share link must not learn what an unpublished draft references.
+ */
+async function getDraftShareFrameViewerFiles(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<ShareFrameViewerFile[] | null> {
+  const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
+  if (!draftPublicationId || !(await canWriteFrameV2Source(auth, frame))) {
+    return null;
+  }
+
+  const draftPublication =
+    await FramePublicationResource.fetchForFramePublication(
+      auth,
+      frame,
+      draftPublicationId
+    );
+  if (!draftPublication?.authorizedFileAccess) {
+    return null;
+  }
+
+  return getShareFrameViewerFiles(
+    auth,
+    draftPublication.authorizedFileAccess.allowlist.refs
+  );
+}
+
 export async function buildShareFileResponse(
   auth: Authenticator,
   file: FileResource
@@ -263,9 +295,11 @@ export async function buildShareFileResponse(
   }
 
   const viewerFiles = await getShareFrameViewerFilesForFrame(auth, file);
+  const draftViewerFiles = await getDraftShareFrameViewerFiles(auth, file);
 
   return {
     ...shareInfo,
     viewerFiles,
+    draftViewerFiles,
   };
 }

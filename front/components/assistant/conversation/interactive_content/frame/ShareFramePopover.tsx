@@ -137,6 +137,15 @@ function ShareFramePopoverContent({
     fileShare?.scope ?? "workspace_and_emails";
   const shareURL = fileShare?.shareUrl ?? "";
   const viewerFiles = fileShare?.viewerFiles ?? [];
+  const draftViewerFiles = fileShare?.draftViewerFiles ?? null;
+  const liveViewerFileRefs = new Set(viewerFiles.map((file) => file.ref));
+  // Only worth a second list when making the draft live would change what the link exposes.
+  // `FrameSharingFiles` renders nothing for an empty list, which would leave the heading alone.
+  const draftExposesDifferentFiles =
+    draftViewerFiles !== null &&
+    draftViewerFiles.length > 0 &&
+    (draftViewerFiles.length !== viewerFiles.length ||
+      draftViewerFiles.some((file) => !liveViewerFileRefs.has(file.ref)));
 
   const externalSharingDisabledByPolicy =
     owner.sharingPolicy === "workspace_only";
@@ -234,7 +243,19 @@ function ShareFramePopoverContent({
                 </Trans>
               </ContentMessage>
             )}
+            {draftViewerFiles && (
+              <p className="px-2 copy-xs text-muted-foreground">
+                <Trans>
+                  The link shows the live version, not your unpublished changes.
+                </Trans>
+              </p>
+            )}
             <FrameSharingFiles viewerFiles={viewerFiles} />
+            {draftViewerFiles && draftExposesDifferentFiles && (
+              <Section label={t`After you make your changes live`}>
+                <FrameSharingFiles viewerFiles={draftViewerFiles} />
+              </Section>
+            )}
             <AccessScopeSection
               titleId={titleId}
               currentScope={currentScope}
