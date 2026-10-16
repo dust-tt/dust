@@ -501,7 +501,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.68/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.69/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           'echo "75fdf424b9ab9a623dd67b9f347adc538593544209cf907fcfe7b7b5fc55d7c8  /tmp/dsbx" | sha256sum -c -'
