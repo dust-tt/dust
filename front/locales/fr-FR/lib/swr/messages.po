@@ -381,6 +381,18 @@ msgid "Failed to revoke access"
 msgstr "Impossible de révoquer l’accès"
 
 #: front/lib/swr/frames.ts
+msgid "Could not make the changes live"
+msgstr "Impossible de mettre les modifications en ligne"
+
+#: front/lib/swr/frames.ts
+msgid "Changes are live"
+msgstr "Les modifications sont en ligne"
+
+#: front/lib/swr/frames.ts
+msgid "The share link now shows this version."
+msgstr "Le lien de partage affiche désormais cette version."
+
+#: front/lib/swr/frames.ts
 msgid "Couldn't save edits"
 msgstr "Impossible d’enregistrer les modifications"
 

@@ -58,6 +58,8 @@ interface FrameToolbarProps {
   };
   /** Conversation-only actions (e.g. save-to-pod) rendered after the shared cluster. */
   trailing?: ReactNode;
+  /** Conversation-only status (e.g. the pending-draft chip), rendered after the Beta chip. */
+  status?: ReactNode;
 }
 
 /**
@@ -82,6 +84,7 @@ export function FrameToolbar({
   podActions = null,
   fullscreen,
   trailing,
+  status,
 }: FrameToolbarProps) {
   const { t } = useLingui();
 
@@ -96,6 +99,7 @@ export function FrameToolbar({
         />
       )}
       {hasFrameFunctions && <FrameBetaChip />}
+      {status}
     </div>
   );
 

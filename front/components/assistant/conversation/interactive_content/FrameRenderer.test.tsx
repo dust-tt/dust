@@ -159,6 +159,9 @@ vi.mock("@app/lib/swr/frames", () => ({
       hasFrameFunctions: mocks.hasFrameFunctions,
       isFramePermissionsLoading: false,
       isFramePermissionsError: null,
+      draftPublicationId: null,
+      livePublishedAt: null,
+      mutateFramePermissions: async () => undefined,
     };
   },
 }));

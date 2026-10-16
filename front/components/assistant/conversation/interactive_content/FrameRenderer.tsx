@@ -3,6 +3,7 @@ import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
+import { FrameDraftControls } from "@app/components/assistant/conversation/interactive_content/frame/FrameDraftControls";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
@@ -175,10 +176,14 @@ export function FrameRenderer({
     packageRoot,
     hasFrameFunctions,
     isFramePermissionsLoading,
+    draftPublicationId,
+    livePublishedAt,
+    mutateFramePermissions,
   } = useFramePermissions({
     owner,
     frameId: fileId,
     publication: "latest",
+    cacheKey: contentHash,
     disabled: renderMode !== "v2",
   });
   const framePackageRoot =
@@ -203,6 +208,7 @@ export function FrameRenderer({
     conversationId: conversation?.sId,
     iframeRef,
     mutateFileContent,
+    onSaved: mutateFramePermissions,
   });
   // Remount via React key only (identifier stays stable so Next.js keeps one /content URL):
   // on a new contentHash (agent publish / interactive content) and, for v2, after Save/discard/reload.
@@ -362,6 +368,18 @@ export function FrameRenderer({
           editSession={editSession}
           canEditV2={canEditV2}
           hideEditLabels={isMobile}
+          status={
+            canEditV2 && draftPublicationId ? (
+              <FrameDraftControls
+                owner={owner}
+                frameId={fileId}
+                draftPublicationId={draftPublicationId}
+                livePublishedAt={livePublishedAt}
+                hideLabels={isMobile}
+                onMadeLive={() => mutateFramePermissions()}
+              />
+            ) : null
+          }
           podActions={
             renderMode === "legacy"
               ? {
