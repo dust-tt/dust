@@ -163,15 +163,14 @@ impl FileResource {
                     return Err(Error::Capacity);
                 }
                 remaining_bytes -= object.size as usize;
-                let length = object.size as u32;
-                Ok((file, object, length))
+                Ok((file, object))
             });
             async move {
-                let (file, object, length) = match result {
+                let (file, object) = match result {
                     Ok(file) => file,
                     Err(error) => return Ok(Err(error)),
                 };
-                match file.read(tx, 0, length).await {
+                match file.read(tx, 0, object.size as u32).await {
                     Ok(data) => Ok(Ok((object, data))),
                     Err(storage::Error::Resource(error)) => Ok(Err(error)),
                     Err(error) => Err(error),
