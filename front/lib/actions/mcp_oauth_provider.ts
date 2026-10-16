@@ -1,6 +1,8 @@
-import config from "@app/lib/api/config";
+import {
+  DUST_PUBLIC_SITE_URL,
+  MCP_CLIENT_INFORMATIONAL_URIS,
+} from "@app/lib/api/mcp_server/urls";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
-import { isDevelopment } from "@app/types/shared/env";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { extractWWWAuthenticateParams } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
@@ -114,33 +116,20 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     return finalizeUriForProvider({ provider: "mcp", connection: null });
   }
 
+  /**
+   * @cc [owner:smb2268,label:mcp] dcr-informational-uris-are-dust-tt
+   * `client_uri`, `logo_uri`, `tos_uri` and `policy_uri` sent at dynamic client registration MUST
+   * be on `https://dust.tt` in every region and environment: servers allowlist that origin, and
+   * the EU site URL is rejected.
+   */
   get clientMetadata(): OAuthClientMetadata {
-    const baseUrl = config.getStaticWebsiteUrl();
-
-    // In production `baseUrl` is always https so these URIs are always set.
-    // In dev `baseUrl` is http://localhost and OAuth servers reject non-https
-    // URIs here — we drop these informational fields entirely; they don't
-    // matter for local testing.
-    if (!isDevelopment() && !baseUrl.startsWith("https://")) {
-      throw new Error(
-        `OAuth client metadata requires an HTTPS base URL, got: ${baseUrl}`
-      );
-    }
-    const informationalUris = isDevelopment()
-      ? {}
-      : {
-          client_uri: baseUrl,
-          logo_uri: baseUrl + "/static/AppIcon.png",
-          tos_uri: baseUrl + "/terms",
-          policy_uri: baseUrl + "/privacy",
-        };
-
     return {
       redirect_uris: [
         finalizeUriForProvider({ provider: "mcp", connection: null }),
       ],
       client_name: "Dust",
-      ...informationalUris,
+      client_uri: DUST_PUBLIC_SITE_URL,
+      ...MCP_CLIENT_INFORMATIONAL_URIS,
       contacts: ["support@dust.com"],
       software_id: "dust",
       token_endpoint_auth_method: "none",

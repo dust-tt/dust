@@ -6,6 +6,16 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 /** Flip to disable OAuth proxying in dev (e.g. native MCP clients → AuthKit direct). */
 const MCP_OAUTH_PROXY_ENABLED = true;
 
+// Dust's public site, regardless of region: remote servers allowlist this origin for
+// the informational URIs of our OAuth client.
+export const DUST_PUBLIC_SITE_URL = "https://dust.tt";
+
+export const MCP_CLIENT_INFORMATIONAL_URIS = {
+  logo_uri: `${DUST_PUBLIC_SITE_URL}/static/AppIcon.png`,
+  tos_uri: `${DUST_PUBLIC_SITE_URL}/terms`,
+  policy_uri: `${DUST_PUBLIC_SITE_URL}/privacy`,
+} as const;
+
 /**
  * @cc [owner:tdraier,label:security;mcp] cimd-client-id-matches-document
  * The CIMD `client_id` is the document URL on the region's legacy OAuth redirect
@@ -28,9 +38,7 @@ export function getMcpClientIdMetadataDocument() {
     client_id: getMcpClientIdMetadataDocumentUrl(),
     client_name: "Dust",
     client_uri: config.getLegacyOAuthRedirectBaseUrl(),
-    logo_uri: "https://dust.tt/static/AppIcon.png",
-    tos_uri: "https://dust.tt/terms",
-    policy_uri: "https://dust.tt/privacy",
+    ...MCP_CLIENT_INFORMATIONAL_URIS,
     contacts: ["support@dust.com"],
     software_id: "dust",
     redirect_uris: [

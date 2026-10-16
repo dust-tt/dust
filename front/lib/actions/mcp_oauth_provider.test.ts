@@ -21,9 +21,6 @@ describe("remote MCP OAuth client registration", () => {
         legacyBaseUrl
       );
       vi.spyOn(config, "getAppUrl").mockReturnValue("https://app.dust.tt");
-      vi.spyOn(config, "getStaticWebsiteUrl").mockReturnValue(
-        "https://dust.tt"
-      );
       vi.spyOn(config, "getDevOAuthRedirectBaseUrl").mockReturnValue(undefined);
 
       const provider = new MCPOAuthProvider();
@@ -31,6 +28,23 @@ describe("remote MCP OAuth client registration", () => {
 
       expect(provider.redirectUrl).toBe(redirectUri);
       expect(provider.clientMetadata.redirect_uris).toEqual([redirectUri]);
+    }
+  );
+
+  it.each(["https://dust.tt", "https://eu.dust.tt"])(
+    "sends dust.tt informational URIs from %s",
+    (legacyBaseUrl) => {
+      vi.spyOn(config, "getLegacyOAuthRedirectBaseUrl").mockReturnValue(
+        legacyBaseUrl
+      );
+      vi.spyOn(config, "getDevOAuthRedirectBaseUrl").mockReturnValue(undefined);
+
+      expect(new MCPOAuthProvider().clientMetadata).toMatchObject({
+        client_uri: "https://dust.tt",
+        logo_uri: "https://dust.tt/static/AppIcon.png",
+        tos_uri: "https://dust.tt/terms",
+        policy_uri: "https://dust.tt/privacy",
+      });
     }
   );
 });
@@ -101,8 +115,6 @@ describe("re-authentication after a tool call rejected with 403 insufficient_sco
   });
 
   it("asks for the upscoped auth once, then refuses instead of asking again", async () => {
-    vi.spyOn(config, "getStaticWebsiteUrl").mockReturnValue("https://dust.tt");
-
     const firstError = await callToolWithTokenScope(READ_SCOPE);
     expect(firstError.challenge).toMatchObject({
       status: 403,
