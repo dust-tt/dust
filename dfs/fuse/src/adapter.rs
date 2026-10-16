@@ -20,10 +20,14 @@ use tokio::runtime::Handle;
 const TTL: Duration = Duration::ZERO;
 /// `st_blocks` counts 512-byte blocks, whatever the filesystem's block size.
 const STAT_BLOCK_BYTES: u64 = 512;
+/// A file's links: its one entry, since the mount has no hard links.
+const FILE_LINKS: u32 = 1;
 /// A directory's links: its entry in its parent and its own `.`.
 const DIRECTORY_LINKS: u32 = 2;
 /// The largest write the kernel sends in one request.
 const MAX_WRITE_BYTES: u32 = 1024 * 1024;
+/// How many threads read kernel requests (`one-fuse-thread`).
+const FUSE_THREADS: usize = 1;
 /// How many background requests, such as readahead, the kernel may have pending.
 const MAX_BACKGROUND: u16 = 32;
 
@@ -53,7 +57,7 @@ pub(crate) fn config() -> Config {
         MountOption::NoAtime,
     ];
     config.acl = SessionACL::Owner;
-    config.n_threads = Some(1);
+    config.n_threads = Some(FUSE_THREADS);
     config
 }
 
@@ -89,7 +93,7 @@ impl Owner {
     fn file_attr(self, attributes: &Attributes) -> FileAttr {
         let nlink = match attributes.kind {
             Kind::Directory => DIRECTORY_LINKS,
-            Kind::File => 1,
+            Kind::File => FILE_LINKS,
         };
         FileAttr {
             ino: INodeNo(attributes.ino),
