@@ -129,7 +129,9 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     const informationalUris = isDevelopment()
       ? {}
       : {
-          client_uri: baseUrl,
+          // Same in every region: Figma's DCR allowlists Dust by this exact value
+          // and rejects regional hosts such as https://eu.dust.tt.
+          client_uri: "https://dust.tt",
           logo_uri: baseUrl + "/static/AppIcon.png",
           tos_uri: baseUrl + "/terms",
           policy_uri: baseUrl + "/privacy",
