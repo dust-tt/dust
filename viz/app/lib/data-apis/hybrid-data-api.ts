@@ -32,7 +32,7 @@ export class HybridDataAPI implements VisualizationDataAPI {
     return this.rpc.writeFile(params);
   }
 
-  async fetchCode(): Promise<string | null> {
+  async fetchCode() {
     return this.cache.fetchCode();
   }
 }

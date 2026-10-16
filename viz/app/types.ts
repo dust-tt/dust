@@ -106,7 +106,7 @@ export type VisualizationRPCCommand = keyof VisualizationRPCRequestMap;
 export interface CommandResultMap {
   callFunction: unknown;
   getUserIdentity: UserIdentityState;
-  getCodeToExecute: { code: string };
+  getCodeToExecute: { code: string; props?: unknown };
   getFile: {
     fileBlob: Blob | null;
     revision?: string | null;

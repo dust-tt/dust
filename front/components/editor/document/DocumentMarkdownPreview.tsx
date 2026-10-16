@@ -12,6 +12,7 @@ import {
   FRAME_EMBED_DIRECTIVE_NAME,
   parseFrameEmbedDirective,
   parseFrameEmbedHeight,
+  parseFrameEmbedPropsJson,
 } from "@app/lib/markdown/frame_embed";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
@@ -69,7 +70,11 @@ function withFrameEmbeds(
       data: {
         ...node.data,
         hName: FRAME_EMBED_COMPONENT_NAME,
-        hProperties: { path: parsed.path, height: parsed.height },
+        hProperties: {
+          path: parsed.path,
+          height: parsed.height,
+          props: JSON.stringify(parsed.props),
+        },
       },
     };
   }
@@ -98,13 +103,22 @@ const MARKDOWN_PLUGINS = [frameEmbedDirective, filePreviewDirective];
 interface FrameEmbedDirectiveProps {
   path: string;
   height?: unknown;
+  props?: string;
 }
 
-const FrameEmbed = ({ path, height }: FrameEmbedDirectiveProps) => (
-  <div className="my-6">
-    <DocumentFrameDisplay path={path} height={parseFrameEmbedHeight(height)} />
-  </div>
-);
+const FrameEmbed = ({ path, height, props }: FrameEmbedDirectiveProps) => {
+  const frameProps = useMemo(() => parseFrameEmbedPropsJson(props), [props]);
+
+  return (
+    <div className="my-6">
+      <DocumentFrameDisplay
+        path={path}
+        height={parseFrameEmbedHeight(height)}
+        frameProps={frameProps}
+      />
+    </div>
+  );
+};
 
 interface FilePreviewDirectiveProps {
   path: string;

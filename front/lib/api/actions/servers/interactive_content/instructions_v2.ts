@@ -25,7 +25,7 @@ Before declaring a frame done, mentally check both the default panel width and f
 
 - Export a single default React component.
 - Wrap all JSX in a proper React function component. Do not generate standalone JSX outside a component.
-- The component must not require props.
+- The component must not require props. It may take optional string props, which a document embedding the Frame can set; give each a default.
 - Import React hooks from \`react\` when using them.
 - Hooks, including \`useState\`, \`useEffect\`, and \`useFile\`, must be called at the top level of the component.
 - \`React.createElement\` is not supported.

@@ -78,11 +78,13 @@ interface BaseVisualization {
 type PublicVisualization = BaseVisualization & {
   accessToken: string | null;
   code?: undefined;
+  props?: undefined;
 };
 
 type ProtectedVisualization = BaseVisualization & {
   accessToken?: undefined;
   code: string;
+  props?: Record<string, string>;
 };
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
@@ -519,7 +521,7 @@ function useVisualizationDataHandler({
 }) {
   const { t } = useLingui();
   const sendNotification = useSendNotification();
-  const { code } = visualization;
+  const { code, props: frameProps } = visualization;
 
   const downloadFileFromBlob = useCallback(
     (blob: Blob, filename?: string) => {
@@ -685,7 +687,11 @@ function useVisualizationDataHandler({
 
         case "getCodeToExecute":
           if (code) {
-            sendResponseToIframe(data, { code }, event.source);
+            sendResponseToIframe(
+              data,
+              { code, props: frameProps ?? {} },
+              event.source
+            );
           }
 
           break;
@@ -741,6 +747,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
+    frameProps,
     conversationId,
     createSandboxFunctionInvocation,
     downloadFileFromBlob,

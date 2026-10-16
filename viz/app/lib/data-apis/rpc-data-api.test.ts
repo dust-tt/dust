@@ -306,7 +306,10 @@ describe("revision-aware file access", () => {
     const updated = await api.fetchFile("./notes.json");
     expect(await updated?.file.text()).toBe("Updated content");
     expect(updated).toMatchObject({ revision: "124", canWrite: true });
-    await expect(api.fetchCode()).resolves.toBe("Published code");
+    await expect(api.fetchCode()).resolves.toEqual({
+      code: "Published code",
+      props: {},
+    });
     expect(sendMessage).toHaveBeenCalledTimes(3);
   });
 
@@ -333,6 +336,42 @@ describe("revision-aware file access", () => {
     await expect(api.writeFile(fileEdit)).resolves.toEqual(denied);
     expect(sendMessage).toHaveBeenNthCalledWith(1, "getFile", {
       fileId: "./notes.json",
+    });
+  });
+});
+
+describe("Frame code", () => {
+  it("reads the props the host sends with the code", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      code: "code",
+      props: { region: "EU", year: "2026" },
+    });
+
+    await expect(new RPCDataAPI(sendMessage).fetchCode()).resolves.toEqual({
+      code: "code",
+      props: { region: "EU", year: "2026" },
+    });
+    expect(sendMessage).toHaveBeenCalledWith("getCodeToExecute", null);
+  });
+
+  it("reads no props when they are not all strings", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      code: "code",
+      props: { region: "EU", count: 1 },
+    });
+
+    await expect(new RPCDataAPI(sendMessage).fetchCode()).resolves.toEqual({
+      code: "code",
+      props: {},
+    });
+  });
+
+  it("reads no props from hosts that omit them", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ code: "code" });
+
+    await expect(new RPCDataAPI(sendMessage).fetchCode()).resolves.toEqual({
+      code: "code",
+      props: {},
     });
   });
 });

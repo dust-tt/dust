@@ -1676,6 +1676,52 @@ describe("Document Frame embeds", () => {
     ).toBeDefined();
   });
 
+  it("gives the host's renderer the Frame's props, in the editor and the read-only preview", async () => {
+    const source =
+      'Intro\n\n::embed_frame{path="pod-abc/a.tsx" region="EU" year="2026"}\n\nOutro\n';
+    const renderFrame: DocumentProps["renderFrame"] = (
+      path,
+      _height,
+      props
+    ) => <iframe title={`Frame ${path} ${JSON.stringify(props)}`} />;
+    const title = 'Frame pod-abc/a.tsx {"region":"EU","year":"2026"}';
+
+    const { dom } = await renderDocument(source, { renderFrame });
+    expect(await within(dom).findByTitle(title)).toBeDefined();
+
+    render(
+      <DocumentEditor
+        initialContent={`${source}\n~~~\ncode\n~~~\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={renderFrame}
+      />
+    );
+    expect(await screen.findAllByTitle(title)).toHaveLength(2);
+  });
+
+  it("keeps a Frame's props when its HTML is pasted back", async () => {
+    const { dom } = await renderDocument(
+      'Intro\n\n::embed_frame{path="pod-abc/a.tsx" region="EU"}\n',
+      {}
+    );
+    const html = dom.editor.getHTML();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        html
+      );
+    });
+
+    expect(
+      dom.editor
+        .getMarkdown()
+        .match(/::embed_frame\{path="pod-abc\/a\.tsx" region="EU"\}/g)
+    ).toHaveLength(2);
+  });
+
   it("shows a Frame as its path without a renderer", async () => {
     const dom = await renderFrames();
 
@@ -1740,7 +1786,7 @@ describe("Document Frame embeds", () => {
 
   it("shows in the read-only preview only the Frames the editor reads", async () => {
     const rejected = [
-      '::embed_frame{path="pod-abc/b.tsx" title="B"}',
+      "::embed_frame{path=\"pod-abc/b.tsx\" title='B'}",
       "::embed_frame{path=pod-abc/c.tsx}",
       '::embed_frame[D]{path="pod-abc/d.tsx"}',
       '   ::embed_frame{path="pod-abc/e.tsx"}',

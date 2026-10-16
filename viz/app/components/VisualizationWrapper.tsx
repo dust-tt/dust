@@ -374,6 +374,11 @@ export function VisualizationWrapperWithErrorBoundary({
 
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
+/**
+ * @cc [owner:tdraier,label:product] frame-component-props
+ * The Frame's default export MUST render with exactly the props `fetchCode` returns with its
+ * code, and none when it returns none.
+ */
 export function VisualizationWrapper({
   config,
   api,
@@ -479,11 +484,11 @@ export function VisualizationWrapper({
 
     const loadCode = async () => {
       try {
-        const fetchedCode = await api.data.fetchCode();
+        const fetched = await api.data.fetchCode();
         if (cancelled) {
           return;
         }
-        if (!fetchedCode) {
+        if (!fetched) {
           setErrorMessage(
             new Error("No code provided to visualization component")
           );
@@ -491,6 +496,7 @@ export function VisualizationWrapper({
         }
         // Validate Tailwind code before processing to catch arbitrary values early. Error gets
         // exposed to user for retry, providing feedback to the model.
+        const { code: fetchedCode, props: frameProps } = fetched;
         validateTailwindCode(fetchedCode);
 
         // Wrap JSXText nodes with editable spans when inline editing is enabled.
@@ -544,8 +550,9 @@ export function VisualizationWrapper({
         });
 
         setRunnerParams({
-          code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
+          code: "() => {import Comp from '@dust/generated-code'; return (<Comp {...frameProps} />);}",
           scope: {
+            frameProps,
             import: {
               ...baseImports,
               "@dust/generated-code": generatedModule,

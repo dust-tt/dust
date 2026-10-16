@@ -199,7 +199,7 @@ export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 export interface CommandResultMap {
   callFunction: unknown;
   getUserIdentity: UserIdentityState;
-  getCodeToExecute: { code: string };
+  getCodeToExecute: { code: string; props: Record<string, string> };
   getFile: {
     fileBlob: Blob | null;
     revision?: string | null;
