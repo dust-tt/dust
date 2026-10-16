@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   iframeProps: null as {
     canInvokeFunctions: boolean;
     frameId?: string;
+    functionTarget?: string;
     scopedUserIdentity?: ScopedWorkspaceUserIdentity;
     viewer: unknown;
   } | null,
@@ -30,6 +31,7 @@ vi.mock(
     VisualizationActionIframe: (props: {
       canInvokeFunctions: boolean;
       frameId?: string;
+      functionTarget?: string;
       scopedUserIdentity?: ScopedWorkspaceUserIdentity;
       viewer: unknown;
     }) => {
@@ -188,6 +190,26 @@ describe("PublicFrameRenderer", () => {
         user: expect.objectContaining({ sId: "usr_123" }),
       },
     });
+  });
+
+  it("never targets a draft publication on the share page", () => {
+    mocks.isUserLoading = false;
+    mocks.user = user;
+
+    render(
+      createElement(PublicFrameRenderer, {
+        fileId: "fil_frame",
+        frameId: "fil_frame",
+        hideHeader: true,
+        shareToken: "share-token",
+        title: "Frame",
+        workspaceId: "w_current",
+        vizUrl: "https://viz.dust.tt",
+      })
+    );
+
+    expect(mocks.iframeProps).not.toBeNull();
+    expect(mocks.iframeProps?.functionTarget).toBeUndefined();
   });
 
   it("marks a shared Frame declaring functions as beta", () => {

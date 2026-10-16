@@ -3,9 +3,9 @@ import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
   activateFramePublication,
+  createFramePublicationFunctionRows,
   loadFramePublicationDescriptor,
   publishFramePublication,
-  stageFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
@@ -886,7 +886,7 @@ describe("activateFramePublication", () => {
       return;
     }
 
-    const staged = await stageFramePublication(auth, {
+    const staged = await createFramePublicationFunctionRows(auth, {
       frame,
       publicationId: stored.value.publicationId,
       descriptor: stored.value.descriptor,

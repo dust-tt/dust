@@ -115,4 +115,9 @@ describe("AuthenticatedVisualizationActionIframe", () => {
   it("falls back to the default locale for the pseudo-locale", () => {
     expect(renderedLocale("pseudo")).toBe("en-US");
   });
+
+  it("targets function invocations at the latest publication", () => {
+    renderedLocale("en-US");
+    expect(mocks.renderIframe.mock.lastCall?.[0].functionTarget).toBe("latest");
+  });
 });

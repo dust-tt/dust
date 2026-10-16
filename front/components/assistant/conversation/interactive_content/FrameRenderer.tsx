@@ -441,8 +441,6 @@ export function FrameRenderer({
                 spaceId={frameSpaceId ?? undefined}
                 framePackageRoot={framePackageRoot}
                 frameId={renderMode === "v2" ? fileId : undefined}
-                // Authors are served the draft bundle by `?action=view`; run its functions too.
-                functionTarget={isFrameAuthor ? "latest" : "live"}
                 isInDrawer={true}
                 isEditable={isEditable}
                 stagedEditMode={canEditV2 ? editSession.mode : undefined}

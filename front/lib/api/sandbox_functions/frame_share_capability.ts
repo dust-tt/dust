@@ -21,10 +21,11 @@ import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 /**
  * @cc [owner:davidebbo,label:product;security] frame-draft-functions-require-write-access
  * A draft publication's functions MUST resolve only when the caller asks for `target: "latest"`
- * and can write the Frame's source (`canWriteFrameV2Source`). Every other caller MUST resolve
- * against the live publication only. The one exception is `allowInactiveFramePublication`
- * resolution, used only to act on an existing invocation: it may resolve any publication because
- * invocation reads are scoped to the caller's own invocations.
+ * and can write the Frame's source (`canWriteFrameV2Source`). A caller who cannot write the Frame
+ * and asks for `latest` MUST be served the live publication, as must every `live` caller. The one
+ * exception is `allowInactiveFramePublication` resolution, used only to act on an existing
+ * invocation: it may resolve any publication because invocation reads are scoped to the caller's
+ * own invocations.
  */
 export async function resolveSandboxFunctionWithCapability(
   auth: Authenticator,
@@ -84,9 +85,9 @@ async function resolveFrameV2FunctionReference(
  * (see isFramesV2FunctionsEnabled), whatever publication or sharing state the Frame is in.
  */
 /**
- * Draft publications resolve only for `target: "latest"` with write access; everything else
- * resolves live. See the `frame-draft-functions-require-write-access` contract on
- * `resolveSandboxFunctionWithCapability`.
+ * Draft publications resolve only for `target: "latest"` from a caller who can write the Frame;
+ * every other caller, `latest` included, is served live. See the
+ * `frame-draft-functions-require-write-access` contract on `resolveSandboxFunctionWithCapability`.
  */
 /** Resolve one function from the live or latest publication of a Frame the caller may use. */
 export async function resolveActiveFrameFunctionForUse(
@@ -114,11 +115,11 @@ export async function resolveActiveFrameFunctionForUse(
   if (!frame?.isFrameV2 || !(await frame.canCurrentUserUseFrame(auth))) {
     return null;
   }
-  const publicationId = await resolveFramePublicationForTarget(
-    auth,
-    frame,
-    target
-  );
+  const servedTarget: FramePublicationTarget =
+    target === "latest" && (await canWriteFrameV2Source(auth, frame))
+      ? "latest"
+      : "live";
+  const publicationId = frame.framePublicationIdFor(servedTarget);
   if (!publicationId) {
     return null;
   }
@@ -130,22 +131,8 @@ export async function resolveActiveFrameFunctionForUse(
       slug: functionName,
     });
   return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
-    publication: target,
+    publication: servedTarget,
   });
-}
-
-async function resolveFramePublicationForTarget(
-  auth: Authenticator,
-  frame: FileResource,
-  target: FramePublicationTarget
-): Promise<string | null> {
-  if (target === "live") {
-    return frame.useCaseMetadata?.activePublicationId ?? null;
-  }
-  if (!(await canWriteFrameV2Source(auth, frame))) {
-    return null;
-  }
-  return frame.latestFramePublicationId ?? null;
 }
 
 async function resolveFrameV2FunctionAccess(

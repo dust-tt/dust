@@ -1,5 +1,4 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
-import { useFramePermissions } from "@app/lib/swr/frames";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useRef } from "react";
 
@@ -35,11 +34,6 @@ export function PodFrameVisualization({
   framePath,
 }: PodFrameVisualizationProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { isFrameAuthor } = useFramePermissions({
-    owner,
-    frameId: frameId ?? "",
-    disabled: !frameId,
-  });
 
   return (
     <AuthenticatedVisualizationActionIframe
@@ -59,8 +53,6 @@ export function PodFrameVisualization({
           : null
       }
       frameId={frameId}
-      // Authors are served the draft bundle by `?action=view`; run its functions too.
-      functionTarget={isFrameAuthor ? "latest" : "live"}
       isInDrawer={true}
       isPodEditor={isPodEditor}
       isPodMember={isPodMember}

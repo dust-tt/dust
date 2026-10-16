@@ -124,8 +124,9 @@ describe("resolveActiveFrameFunctionForUse", () => {
     expect(fn?.publicationId).toBe("publication-live");
   });
 
-  it("refuses the latest publication to a caller who cannot write the Frame", async () => {
-    const { adminAuth, auth, frame } = await makeTestFrameFunction();
+  it("serves live to a caller who cannot write the Frame when asked for latest", async () => {
+    const { adminAuth, auth, frame, sandboxFunction } =
+      await makeTestFrameFunction();
     await createTestFramePublicationFunctions(adminAuth, {
       frame,
       publicationId: "publication-draft",
@@ -135,12 +136,11 @@ describe("resolveActiveFrameFunctionForUse", () => {
       publicationId: "publication-draft",
     });
 
-    await expect(
-      resolveActiveFrameFunctionForUse(auth, {
-        frameId: frame.sId,
-        functionName: "run-function",
-        target: "latest",
-      })
-    ).resolves.toBeNull();
+    const fn = await resolveActiveFrameFunctionForUse(auth, {
+      frameId: frame.sId,
+      functionName: "run-function",
+      target: "latest",
+    });
+    expect(fn?.publicationId).toBe(sandboxFunction.publicationId);
   });
 });

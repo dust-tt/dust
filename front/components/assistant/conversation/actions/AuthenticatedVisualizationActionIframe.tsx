@@ -78,6 +78,8 @@ export const AuthenticatedVisualizationActionIframe = forwardRef<
     <VisualizationActionIframe
       {...props}
       ref={ref}
+      // In-app hosts serve what the viewer would see: the draft for editors, live otherwise.
+      functionTarget="latest"
       locale={isSupportedLocale(i18n.locale) ? i18n.locale : DEFAULT_LOCALE}
       canInvokeFunctions={scopedUserIdentity !== undefined}
       scopedUserIdentity={scopedUserIdentity}
