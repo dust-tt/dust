@@ -35,6 +35,7 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
         }),
         Operation::Remove(RemoveOperation {
             object_id: file,
+            parent_id: destination,
             ..Default::default()
         }),
         Operation::Create(CreateOperation {
@@ -75,7 +76,7 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
             (parent, vec![0, 2, 3, 7, 8]),
             (file, vec![0, 1, 3, 4, 6]),
             (other, vec![5, 9]),
-            (destination, vec![3, 5, 7, 9]),
+            (destination, vec![3, 4, 5, 7, 9]),
         ])
     );
 }

@@ -11,13 +11,13 @@ mod tests;
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] apply-operation-targets
-     * Create MUST target its parent and proposed object. Update, Write, and Remove MUST target
-     * their object. Move MUST target its object, source parent, and optional destination parent.
-     * Each target MUST appear only once.
+     * Create MUST target its parent and proposed object. Remove MUST target its object and parent.
+     * Update and Write MUST target their object. Move MUST target its object, source parent, and
+     * optional destination parent. Each target MUST appear only once.
      */
     pub fn targets_for_operation(operation: &Operation) -> Vec<ObjectId> {
-        // These are grouping targets available from the request. Remove's parent and move
-        // replacements still require stored state when validating mutations.
+        // These are grouping targets available from the request. Move replacements still require
+        // stored state when validating mutations.
         let mut targets = match operation {
             Operation::Create(operation) => vec![operation.parent_id, operation.object_id],
             Operation::Update(operation) => vec![operation.object_id],
@@ -27,7 +27,7 @@ impl ObjectResource {
                 targets.extend(operation.target_id);
                 targets
             }
-            Operation::Remove(operation) => vec![operation.object_id],
+            Operation::Remove(operation) => vec![operation.object_id, operation.parent_id],
         };
         targets.sort_unstable();
         targets.dedup();
