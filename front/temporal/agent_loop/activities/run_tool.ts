@@ -129,9 +129,26 @@ export async function runToolActivity(
 
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
+  const setupStartMs = performance.now();
+  const pendingSetupSteps = new Set<string>();
+  const trackSetupStep = async <T>(
+    name: string,
+    promise: Promise<T>
+  ): Promise<T> => {
+    pendingSetupSteps.add(name);
+    try {
+      return await promise;
+    } finally {
+      pendingSetupSteps.delete(name);
+    }
+  };
+
   const { auth, runAgentDataRes, action } = await withPeriodicHeartbeat(
     async () => {
-      const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+      const auth = await trackSetupStep(
+        "authenticator",
+        Authenticator.fromJsonWithRefrehedGroups(authType)
+      );
 
       const [runAgentDataRes, action] = await startActiveObservation(
         "get-agent-loop-data",
@@ -139,15 +156,21 @@ export async function runToolActivity(
           Promise.all([
             // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
             // during the same step. Each tool would otherwise fetch the same conversation independently.
-            getFullAgentLoopDataWithAuth(auth, {
-              ...runAgentArgs,
-              caching: {
-                useCachedGetConversation: true,
-                unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
-                ttlMs: CONVERSATION_CACHE_TTL_MS,
-              },
-            }),
-            AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
+            trackSetupStep(
+              "agent_loop_data",
+              getFullAgentLoopDataWithAuth(auth, {
+                ...runAgentArgs,
+                caching: {
+                  useCachedGetConversation: true,
+                  unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
+                  ttlMs: CONVERSATION_CACHE_TTL_MS,
+                },
+              })
+            ),
+            trackSetupStep(
+              "action",
+              AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId)
+            ),
           ])
       );
 
@@ -164,6 +187,8 @@ export async function runToolActivity(
             agentMessageId: runAgentArgs.agentMessageId,
             step,
             workspaceId: authType.workspaceId,
+            pendingSetupSteps: Array.from(pendingSetupSteps),
+            setupElapsedMs: Math.round(performance.now() - setupStartMs),
           },
           "MCP tool setup heartbeat"
         );
