@@ -19,11 +19,13 @@ by answering most requests from memory and by acknowledging writes before they r
 1. **Bounded client delay.** `MAX_DELAY` (1 second by default) is the cache TTL plus the write
    delay: how long a mount may serve a cached reply, plus how long it lets a change wait before
    the change leaves in an `Apply`. Server and network time are not counted, including the wait
-   behind a slow `Apply` (see [The delay budget](#the-delay-budget)). A cached reply also outlives a lost read
-   access by at most the cache TTL.
-2. **Read your writes.** A mount sees its own changes at once.
-3. **Whole states.** Each read the mount serves returns bytes of one state of the file, never a
-   mix of two writes. A large `read(2)` that the kernel splits may still span two states.
+   behind a slow `Apply` (see [The delay budget](#the-delay-budget)). A cached reply also
+   outlives a lost read access by at most the cache TTL.
+2. **Read your writes.** A mount sees its own changes at once, until they commit. A newer state
+   from the server does not hide them before then.
+3. **Progress.** Once a mount has shown a state of an object, it never shows an older one: the
+   server reads at a version taken after each request arrives, a cached reply is only replaced by
+   one at the same or a later version, and replies older than the mount's own commits are ignored.
 4. **Durable `fsync`.** Writes and metadata changes are acknowledged before they reach the server.
    `fsync` of any file or directory waits until every change the mount acknowledged before it is
    committed, and reports the first failure since the previous `fsync`.
