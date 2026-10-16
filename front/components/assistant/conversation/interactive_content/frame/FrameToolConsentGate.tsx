@@ -1,11 +1,11 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON, getAvatar } from "@app/lib/actions/mcp_icons";
 import { selectServerViewsByReference } from "@app/lib/api/sandbox/server_view_reference";
-import { clientFetch } from "@app/lib/egress/client";
-import { useFramePermissions } from "@app/lib/swr/frames";
+import {
+  useAuthorizeFrameTools,
+  useFramePermissions,
+} from "@app/lib/swr/frames";
 import { useMCPServerViewsFromMemberSpaces } from "@app/lib/swr/mcp_servers";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { PostFrameToolAuthorizationResponseBody } from "@app/types/api/frame_permissions";
 import type { FrameToolCallPair } from "@app/types/api/frame_publication";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -55,6 +55,7 @@ export function FrameToolConsentGate({
       frameId,
     }
   );
+  const { doAuthorize } = useAuthorizeFrameTools({ owner, frameId });
 
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromMemberSpaces(owner);
@@ -70,7 +71,9 @@ export function FrameToolConsentGate({
 
   const toolRows = useMemo((): ConsentToolRow[] => {
     return requiredTools.map(([serverRef, toolName]) => {
-      const view = selectServerViewsByReference(serverViews, serverRef)[0];
+      // Ambiguous refs must not pick an arbitrary instance for labels/descriptions.
+      const matches = selectServerViewsByReference(serverViews, serverRef);
+      const view = matches.length === 1 ? matches[0] : undefined;
       const tool = view?.server.tools.find(
         (candidate) => candidate.name === toolName
       );
@@ -120,27 +123,16 @@ export function FrameToolConsentGate({
     setIsAuthorizing(true);
     setError(null);
     try {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/tool-authorizations`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ authorizedTools: requiredTools }),
-        }
-      );
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        setError(errorData.message);
+      const result = await doAuthorize(requiredTools);
+      if (!result.success) {
+        setError(result.error);
         return;
       }
-      (await response.json()) as PostFrameToolAuthorizationResponseBody;
       await onAuthorized();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t`Something went wrong.`);
     } finally {
       setIsAuthorizing(false);
     }
-  }, [frameId, onAuthorized, owner.sId, requiredTools, t]);
+  }, [doAuthorize, onAuthorized, requiredTools]);
 
   const consentTitle =
     frameName && lastPublisherName ? (

@@ -1,14 +1,20 @@
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import {
   useSendApiErrorNotification,
   useSendNotification,
 } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  emptyArray,
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
+import type {
+  GetFramePermissionsResponseBody,
+  PostFrameToolAuthorizationResponseBody,
+} from "@app/types/api/frame_permissions";
+import type { FrameToolCallPair } from "@app/types/api/frame_publication";
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -23,13 +29,14 @@ export function useFramePermissions({
   frameId,
   disabled = false,
 }: {
-  owner: LightWorkspaceType;
+  owner: Pick<LightWorkspaceType, "sId"> | null;
   frameId: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const permissionsFetcher: Fetcher<GetFramePermissionsResponseBody> = fetcher;
-  const swrKey = disabled
+  const isDisabled = disabled || !owner || !frameId;
+  const swrKey = isDisabled
     ? null
     : `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions`;
 
@@ -37,7 +44,7 @@ export function useFramePermissions({
     swrKey,
     permissionsFetcher,
     {
-      disabled,
+      disabled: isDisabled,
       revalidateOnFocus: false,
     }
   );
@@ -47,15 +54,63 @@ export function useFramePermissions({
     packageRoot: data?.packageRoot ?? null,
     frameName: data?.frameName ?? null,
     hasFrameFunctions: data?.hasFunctions ?? false,
-    requiredTools: data?.requiredTools ?? [],
-    authorizedTools: data?.authorizedTools ?? [],
+    requiredTools: data?.requiredTools ?? emptyArray<FrameToolCallPair>(),
+    authorizedTools: data?.authorizedTools ?? emptyArray<FrameToolCallPair>(),
     isLastPublisher: data?.isLastPublisher ?? false,
     lastPublisherName: data?.lastPublisherName ?? null,
     hasAuthorizedRequiredTools: data?.hasAuthorizedRequiredTools ?? true,
-    isFramePermissionsLoading: !disabled && !data && !error,
+    isFramePermissionsLoading: !isDisabled && !data && !error,
     isFramePermissionsError: error,
     mutateFramePermissions: mutate,
   };
+}
+
+/**
+ * Persist the viewer's consent to a Frame's required tools.
+ * Callers should refresh permissions (e.g. via `mutateFramePermissions`) after success.
+ */
+export function useAuthorizeFrameTools({
+  owner,
+  frameId,
+}: {
+  owner: Pick<LightWorkspaceType, "sId">;
+  frameId: string;
+}) {
+  const formatErrorDescription = useFormatErrorDescription();
+
+  const doAuthorize = useCallback(
+    async (
+      authorizedTools: FrameToolCallPair[]
+    ): Promise<{ success: true } | { success: false; error: string }> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/tool-authorizations`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ authorizedTools }),
+          }
+        );
+        if (!response.ok) {
+          const errorData = await getErrorFromResponse(response);
+          return {
+            success: false,
+            error: formatErrorDescription(errorData),
+          };
+        }
+        (await response.json()) as PostFrameToolAuthorizationResponseBody;
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: formatErrorDescription(error),
+        };
+      }
+    },
+    [formatErrorDescription, frameId, owner.sId]
+  );
+
+  return { doAuthorize };
 }
 
 export function useEditFrameText({

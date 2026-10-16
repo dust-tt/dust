@@ -9,7 +9,6 @@ import type {
   ScopedWorkspaceUserIdentity,
   WorkspaceUserIdentity,
 } from "@app/types/assistant/visualization";
-import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 import { Trans } from "@lingui/react/macro";
 import { useCookies } from "react-cookie";
@@ -123,10 +122,7 @@ export function PublicFrameRenderer({
     isFramePermissionsLoading,
     mutateFramePermissions,
   } = useFramePermissions({
-    // Placeholder only used while disabled; fetch runs once viewerWorkspace is set.
-    owner: (viewerWorkspace ?? {
-      sId: workspaceId,
-    }) as LightWorkspaceType,
+    owner: viewerWorkspace ?? null,
     frameId: frameId ?? "",
     disabled: !canCheckToolConsent,
   });
