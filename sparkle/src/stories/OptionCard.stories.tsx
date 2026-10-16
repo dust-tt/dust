@@ -18,6 +18,7 @@ const meta = {
 - Provide \`onClick\` to make the card interactive; without it the card is display-only.
 - Use \`counterValue\` to convey ordering or quantity, and \`selected\` to reflect the current choice (it sets \`aria-pressed\`).
 - Use \`selectionIndicator="radio"\` for single-select lists and \`selectionIndicator="checkbox"\` for multi-select lists, so the selection mode is visually unambiguous.
+- Set \`selectionIndicatorPosition="start"\` to put the radio or checkbox before the label, e.g. when the list sits next to other content on its right.
 - Pass \`preview\` (e.g. a rendered **Markdown** sample) to show what the option would produce below its label, so the user can compare alternatives side by side.
 - Set \`type="input"\` for a free-text "type something else" option; OptionCard renders the field itself (pass \`value\`/\`onChange\`) and keeps the same chrome and counter.
 - Stack multiple cards in a column; for one-tap suggested prompts that send immediately, use **QuickReplyBlock** instead.`,
@@ -252,6 +253,29 @@ export const WithPreview: StoryObj = {
             forcedTextSize="text-sm"
           />
         }
+      />
+    </div>
+  ),
+};
+
+/**
+ * `selectionIndicatorPosition="start"` puts the radio before the label, which
+ * keeps the right edge of the list clear when content sits next to it.
+ * @summary Leading radio indicators.
+ */
+export const LeadingIndicator: StoryObj = {
+  render: () => (
+    <div className="flex w-full max-w-sm flex-col gap-2">
+      <OptionCard
+        label="Short and direct"
+        selectionIndicator="radio"
+        selectionIndicatorPosition="start"
+        selected
+      />
+      <OptionCard
+        label="Detailed recap"
+        selectionIndicator="radio"
+        selectionIndicatorPosition="start"
       />
     </div>
   ),
