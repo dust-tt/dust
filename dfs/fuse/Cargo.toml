@@ -9,7 +9,7 @@ anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 dfs-mount = { path = "../mount" }
 dfs-protocol = { path = "../protocol" }
-nix = { version = "0.30", features = ["user"] }
+nix = { version = "0.30", features = ["fs", "user"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
 tonic = { version = "0.14", features = ["tls-native-roots", "tls-ring"] }
 tracing = "0.1"
