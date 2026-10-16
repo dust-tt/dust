@@ -1,5 +1,5 @@
 use dfs_protocol::rpc::{
-    CreateOperation, RemoveOperation, RenameOperation, UpdateOperation, WriteOperation,
+    CreateOperation, MoveOperation, RemoveOperation, UpdateOperation, WriteOperation,
 };
 
 use super::*;
@@ -26,9 +26,10 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
             object_id: parent,
             ..Default::default()
         }),
-        Operation::Rename(RenameOperation {
+        Operation::Move(MoveOperation {
             object_id: file,
-            parent_id: destination,
+            parent_id: parent,
+            target_id: Some(destination),
             name: "renamed".to_owned(),
             ..Default::default()
         }),
@@ -47,9 +48,10 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
             data: b"first".to_vec(),
             ..Default::default()
         }),
-        Operation::Rename(RenameOperation {
+        Operation::Move(MoveOperation {
             object_id: destination,
-            parent_id: destination,
+            parent_id: parent,
+            target_id: Some(destination),
             name: "invalid-self-move".to_owned(),
             ..Default::default()
         }),
@@ -59,15 +61,21 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
             name: "invalid-self-create".to_owned(),
             ..Default::default()
         }),
+        Operation::Move(MoveOperation {
+            object_id: other,
+            parent_id: destination,
+            name: "renamed-in-place".to_owned(),
+            ..Default::default()
+        }),
     ];
 
     assert_eq!(
         ObjectResource::group_by_targets(&operations),
         HashMap::from([
-            (parent, vec![0, 2, 8]),
+            (parent, vec![0, 2, 3, 7, 8]),
             (file, vec![0, 1, 3, 4, 6]),
-            (other, vec![5]),
-            (destination, vec![3, 5, 7]),
+            (other, vec![5, 9]),
+            (destination, vec![3, 5, 7, 9]),
         ])
     );
 }

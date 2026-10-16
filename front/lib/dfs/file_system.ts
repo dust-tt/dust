@@ -947,6 +947,7 @@ export class DfsFileSystem {
         new DfsError("invalid_input", "The destination requires a path.")
       );
     }
+
     const source = parseDfsUri(src);
     if (source.isErr()) {
       return source;
@@ -957,10 +958,12 @@ export class DfsFileSystem {
         new DfsError("invalid_input", "The source requires a path.")
       );
     }
+
     const parentId = await this.resolveParentId(source.value);
     if (parentId.isErr()) {
       return parentId;
     }
+
     const attr = await this.lookupChild(parentId.value, sourceName);
     if (attr.isErr()) {
       return attr;
@@ -972,10 +975,12 @@ export class DfsFileSystem {
     if (objectId.isErr()) {
       return objectId;
     }
+
     const targetId = await this.resolveParentId(destination.value);
     if (targetId.isErr()) {
       return targetId;
     }
+
     return this.applyForObject([
       {
         type: "move",
