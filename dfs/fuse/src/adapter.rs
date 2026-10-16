@@ -1,14 +1,35 @@
 //! Serves `dfs_mount::Fs` to the kernel through `fuser`.
 
-use dfs_mount::Fs;
+use dfs_mount::{Attributes, Errno, Fs, Kind};
+use dfs_protocol::READ_MAX_BYTES;
 use fuser::{
-    AccessFlags, BsdFileFlags, Config, FileHandle, Filesystem, INodeNo, IoctlFlags, KernelConfig,
-    LockOwner, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory,
-    ReplyEmpty, ReplyEntry, ReplyIoctl, ReplyOpen, ReplyStatfs, ReplyWrite, Request, TimeOrNow,
-    WriteFlags,
+    AccessFlags, BsdFileFlags, Config, FileAttr, FileHandle, FileType, Filesystem, Generation,
+    INodeNo, InitFlags, IoctlFlags, KernelConfig, LockOwner, MountOption, OpenFlags, RenameFlags,
+    ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyIoctl,
+    ReplyOpen, ReplyStatfs, ReplyWrite, Request, SessionACL, TimeOrNow, WriteFlags,
 };
-use std::{ffi::OsStr, io, sync::Arc, time::SystemTime};
+use std::{
+    ffi::OsStr,
+    io,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use tokio::runtime::Handle;
+
+/// How long the kernel may reuse an entry or attribute reply: not at all (`library-cache-only`).
+const TTL: Duration = Duration::ZERO;
+/// `st_blocks` counts 512-byte blocks, whatever the filesystem's block size.
+const STAT_BLOCK_BYTES: u64 = 512;
+/// A file's links: its one entry, since the mount has no hard links.
+const FILE_LINKS: u32 = 1;
+/// A directory's links: its entry in its parent and its own `.`.
+const DIRECTORY_LINKS: u32 = 2;
+/// The largest write the kernel sends in one request.
+const MAX_WRITE_BYTES: u32 = 1024 * 1024;
+/// How many threads read kernel requests (`one-fuse-thread`).
+const FUSE_THREADS: usize = 1;
+/// How many background requests, such as readahead, the kernel may have pending.
+const MAX_BACKGROUND: u16 = 32;
 
 /**
  * @cc [owner:fontanierh,label:security] owner-only
@@ -26,21 +47,84 @@ use tokio::runtime::Handle;
  * MUST finish on the Tokio runtime instead of holding that thread.
  */
 pub(crate) fn config() -> Config {
-    todo!()
+    let mut config = Config::default();
+    config.mount_options = vec![
+        MountOption::FSName("dfs".to_owned()),
+        MountOption::RW,
+        MountOption::NoDev,
+        MountOption::NoSuid,
+        // Reads never update dfs timestamps.
+        MountOption::NoAtime,
+    ];
+    config.acl = SessionACL::Owner;
+    config.n_threads = Some(FUSE_THREADS);
+    config
 }
 
 /// The `fuser` filesystem. Each request runs on the FUSE thread until it would wait for the server,
 /// then finishes as a task on `runtime`. Every inode belongs to the user running the adapter.
-#[expect(dead_code, reason = "read once the operations are implemented")]
 pub(crate) struct Adapter {
     fs: Arc<Fs>,
     runtime: Handle,
+    owner: Owner,
+}
+
+/// The owner of every inode: the user running the adapter, the only one who can use the mount.
+#[derive(Clone, Copy)]
+struct Owner {
+    uid: u32,
+    gid: u32,
 }
 
 impl Adapter {
-    pub(crate) fn new(_fs: Arc<Fs>, _runtime: Handle) -> Self {
-        todo!()
+    pub(crate) fn new(fs: Arc<Fs>, runtime: Handle) -> Self {
+        Self {
+            fs,
+            runtime,
+            owner: Owner {
+                uid: nix::unistd::getuid().as_raw(),
+                gid: nix::unistd::getgid().as_raw(),
+            },
+        }
     }
+}
+
+impl Owner {
+    fn file_attr(self, attributes: &Attributes) -> FileAttr {
+        let nlink = match attributes.kind {
+            Kind::Directory => DIRECTORY_LINKS,
+            Kind::File => FILE_LINKS,
+        };
+        FileAttr {
+            ino: INodeNo(attributes.ino),
+            size: attributes.size,
+            blocks: attributes.size.div_ceil(STAT_BLOCK_BYTES),
+            atime: attributes.atime,
+            mtime: attributes.mtime,
+            ctime: attributes.ctime,
+            crtime: attributes.ctime,
+            kind: file_type(attributes.kind),
+            perm: attributes.permissions,
+            nlink,
+            uid: self.uid,
+            gid: self.gid,
+            rdev: 0,
+            // Tools size their I/O buffers from it: one `Read` request's worth.
+            blksize: READ_MAX_BYTES,
+            flags: 0,
+        }
+    }
+}
+
+fn file_type(kind: Kind) -> FileType {
+    match kind {
+        Kind::Directory => FileType::Directory,
+        Kind::File => FileType::RegularFile,
+    }
+}
+
+fn errno(errno: Errno) -> fuser::Errno {
+    fuser::Errno::from_i32(errno.0)
 }
 
 /**
@@ -58,28 +142,51 @@ impl Adapter {
 impl Filesystem for Adapter {
     /// Runs once when the mount starts, to agree with the kernel on the features and limits of the
     /// session. Asks for parallel directory operations, atomic `O_TRUNC` and 1 MiB writes.
-    fn init(&mut self, _req: &Request, _config: &mut KernelConfig) -> io::Result<()> {
-        todo!()
+    fn init(&mut self, _req: &Request, config: &mut KernelConfig) -> io::Result<()> {
+        // A kernel without one of these serves the mount without it.
+        let _ = config.add_capabilities(InitFlags::FUSE_PARALLEL_DIROPS);
+        let _ = config.add_capabilities(InitFlags::FUSE_ATOMIC_O_TRUNC);
+        let _ = config.set_max_write(MAX_WRITE_BYTES);
+        let _ = config.set_max_background(MAX_BACKGROUND);
+        Ok(())
     }
 
     /// Finds a name in a directory and returns its inode number and attributes: the kernel resolves
     /// a path one name at a time this way. Each success counts one lookup of the inode, which the
     /// kernel gives back later through `forget`. Fails with `ENOENT` for a name that is not UTF-8:
     /// no dfs object has one.
-    fn lookup(&self, _req: &Request, _parent: INodeNo, _name: &OsStr, _reply: ReplyEntry) {
-        todo!()
+    fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
+        let Some(name) = name.to_str().map(str::to_owned) else {
+            return reply.error(fuser::Errno::ENOENT);
+        };
+        let fs = self.fs.clone();
+        let owner = self.owner;
+        self.runtime.spawn(async move {
+            match fs.lookup(parent.0, &name).await {
+                // Inode numbers are never reused, so their generation never changes.
+                Ok(attributes) => reply.entry(&TTL, &owner.file_attr(&attributes), Generation(0)),
+                Err(e) => reply.error(errno(e)),
+            }
+        });
     }
 
     /// Tells the mount that the kernel dropped `nlookup` of its lookups of an inode. Once all of
     /// them are dropped, the kernel no longer uses that inode number and the mount can forget the
     /// object. It has no reply.
-    fn forget(&self, _req: &Request, _ino: INodeNo, _nlookup: u64) {
-        todo!()
+    fn forget(&self, _req: &Request, ino: INodeNo, nlookup: u64) {
+        self.fs.forget(ino.0, nlookup);
     }
 
     /// Returns an inode's attributes (type, size, permissions, times), for `stat`.
-    fn getattr(&self, _req: &Request, _ino: INodeNo, _fh: Option<FileHandle>, _reply: ReplyAttr) {
-        todo!()
+    fn getattr(&self, _req: &Request, ino: INodeNo, _fh: Option<FileHandle>, reply: ReplyAttr) {
+        let fs = self.fs.clone();
+        let owner = self.owner;
+        self.runtime.spawn(async move {
+            match fs.getattr(ino.0).await {
+                Ok(attributes) => reply.attr(&TTL, &owner.file_attr(&attributes)),
+                Err(e) => reply.error(errno(e)),
+            }
+        });
     }
 
     /// Changes an inode's attributes, for `truncate`, `utimensat`, `chmod` and `chown`. Changes the
@@ -327,5 +434,50 @@ impl Filesystem for Adapter {
         _reply: ReplyIoctl,
     ) {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::UNIX_EPOCH;
+
+    const UID: u32 = 1000;
+    const GID: u32 = 100;
+    const SIZE: u64 = 1025;
+
+    #[test]
+    fn the_mount_is_read_write_owner_only_and_single_threaded() {
+        let config = config();
+        assert!(config.mount_options.contains(&MountOption::RW));
+        assert!(!config.mount_options.contains(&MountOption::RO));
+        assert!(
+            !config
+                .mount_options
+                .contains(&MountOption::DefaultPermissions)
+        );
+        assert_eq!(config.acl, SessionACL::Owner);
+        assert_eq!(config.n_threads, Some(1));
+    }
+
+    #[test]
+    fn file_attributes_belong_to_the_owner() {
+        let owner = Owner { uid: UID, gid: GID };
+        let ctime = UNIX_EPOCH + Duration::from_secs(2);
+        let attr = owner.file_attr(&Attributes {
+            ino: 7,
+            kind: Kind::File,
+            size: SIZE,
+            permissions: 0o400,
+            atime: UNIX_EPOCH,
+            mtime: UNIX_EPOCH,
+            ctime,
+        });
+        assert_eq!(attr.ino, INodeNo(7));
+        assert_eq!(attr.kind, FileType::RegularFile);
+        assert_eq!((attr.size, attr.blocks), (SIZE, 3));
+        assert_eq!((attr.perm, attr.nlink), (0o400, 1));
+        assert_eq!((attr.uid, attr.gid), (UID, GID));
+        assert_eq!(attr.crtime, ctime);
     }
 }
