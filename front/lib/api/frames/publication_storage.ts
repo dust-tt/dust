@@ -41,6 +41,7 @@ import {
   isSafeFrameRelativePath,
 } from "@app/types/api/frame_manifest";
 import type {
+  FramePublicationAllowlist,
   FramePublicationDescriptor,
   FramePublicationStatus,
   FramePublishMode,
@@ -61,10 +62,7 @@ import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import type {
-  AllSupportedFileContentType,
-  ComputedAuthorizedFileAccess,
-} from "@app/types/files";
+import type { AllSupportedFileContentType } from "@app/types/files";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
@@ -823,7 +821,7 @@ async function computeFramePublicationAllowlist(
   auth: Authenticator,
   frame: FileResource,
   uiBundleCode: string
-): Promise<Result<ComputedAuthorizedFileAccess, FramePublicationError>> {
+): Promise<Result<FramePublicationAllowlist, FramePublicationError>> {
   const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
     frameContent: uiBundleCode,
   });
@@ -832,7 +830,10 @@ async function computeFramePublicationAllowlist(
       new FramePublicationError("allowlist_failed", allowlist.error.message)
     );
   }
-  return allowlist;
+  return new Ok({
+    shareScope: await frame.getShareScope(),
+    allowlist: allowlist.value,
+  });
 }
 
 /**
@@ -840,6 +841,10 @@ async function computeFramePublicationAllowlist(
  * Callers MUST have created the publication's function rows first
  * (`createFramePublicationFunctionRows`); activation only moves the live pointer, so activating an
  * unstaged publication with functions makes them uninvocable.
+ *
+ * @cc [owner:davidebbo,label:product;security] activation-installs-a-current-allowlist
+ * Activation MUST install an allowlist computed for the Frame's current share scope: the
+ * publication's stored list when its scope matches, otherwise a freshly computed one.
  */
 export async function activateFramePublication(
   auth: Authenticator,
@@ -849,6 +854,7 @@ export async function activateFramePublication(
     publishedByAgentConfigurationId,
     descriptor: providedDescriptor,
     uiBundleCode: providedUiBundleCode,
+    authorizedFileAccess: providedAllowlist,
   }: {
     frame: FileResource;
     publicationId: string;
@@ -857,6 +863,8 @@ export async function activateFramePublication(
     descriptor?: FramePublicationDescriptor;
     /** When set (publish path), skip re-fetching ui/bundle.js from GCS. */
     uiBundleCode?: string;
+    /** The allowlist stored on the publication when it was published. */
+    authorizedFileAccess?: FramePublicationAllowlist | null;
   }
 ): Promise<Result<void, FramePublicationError>> {
   let descriptor: FramePublicationDescriptor;
@@ -911,15 +919,16 @@ export async function activateFramePublication(
   }
 
   await frame.ensureShareableFrame(auth);
-  const allowlist = await computeFramePublicationAllowlist(
-    auth,
-    frame,
-    uiBundleCode
-  );
+  const currentShareScope = await frame.getShareScope();
+  // The stored list was checked when the publication was published; it only goes stale when the
+  // share scope changed since (rows are stamped with the scope they were computed for).
+  const allowlist =
+    providedAllowlist && providedAllowlist.shareScope === currentShareScope
+      ? new Ok(providedAllowlist)
+      : await computeFramePublicationAllowlist(auth, frame, uiBundleCode);
   if (allowlist.isErr()) {
     return allowlist;
   }
-  const shareScope = await frame.getShareScope();
 
   await withTransaction(async (transaction) => {
     // Updating the Frame first serializes concurrent activations. None of the
@@ -932,14 +941,16 @@ export async function activateFramePublication(
       },
       transaction
     );
-    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
+    await frame.persistAuthorizedFileAccess(allowlist.value.allowlist, {
+      transaction,
+    });
   });
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
     frame,
-    allowlist.value,
-    shareScope
+    allowlist.value.allowlist,
+    currentShareScope
   );
 
   void emitAuditLogEvent({
@@ -1032,21 +1043,26 @@ export async function publishFramePublication(
     // A Frame with nothing live has nothing to protect: its first publish always goes live.
     const publishesDraft = mode === "draft" && livePublicationId !== undefined;
 
-    if (publishesDraft) {
-      // The allowlist is only checked here, not persisted: the share link keeps serving the live
-      // one until activation computes and persists its own. It runs before the compare-to-live
-      // shortcut so a draft publish fails exactly when a live publish of the same content would,
-      // even when that content matches what is live. The shareable row already exists because a
-      // draft only exists on a Frame that went live.
-      const allowlist = await withFramePublishTimingResult(
-        "allowlist",
-        timingContext,
-        () => computeFramePublicationAllowlist(auth, freshFrame, uiBundleCode)
-      );
-      if (allowlist.isErr()) {
-        return allowlist;
-      }
+    // The allowlist is computed once, before the compare-to-live shortcut so a draft publish fails
+    // exactly when a live publish of the same content would, even when that content matches what
+    // is live. It is stored on the publication and installed at activation (the share link keeps
+    // serving the live list until then). A first publish has no shareable row yet.
+    await freshFrame.ensureShareableFrame(auth);
+    const allowlist = await withFramePublishTimingResult(
+      "allowlist",
+      timingContext,
+      () => computeFramePublicationAllowlist(auth, freshFrame, uiBundleCode)
+    );
+    if (allowlist.isErr()) {
+      return allowlist;
+    }
+    await FramePublicationResource.setAuthorizedFileAccess(auth, {
+      frame: freshFrame,
+      publicationId,
+      authorizedFileAccess: allowlist.value,
+    });
 
+    if (publishesDraft) {
       const live = await withFramePublishTimingResult(
         "compare",
         timingContext,
@@ -1132,6 +1148,7 @@ export async function publishFramePublication(
           publishedByAgentConfigurationId,
           descriptor,
           uiBundleCode,
+          authorizedFileAccess: allowlist.value,
         })
     );
     if (activation.isErr()) {

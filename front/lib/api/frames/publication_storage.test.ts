@@ -1682,6 +1682,154 @@ describe("publishFramePublication modes", () => {
       ),
     });
   });
+
+  describe("per-publication allowlist", () => {
+    it("stores the share allowlist on a draft publication", async () => {
+      const { auth, frame } = await setupFrame();
+      await publishBundle(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+
+      const draft = await publishBundle(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+
+      assert(draft.isOk(), "draft publish succeeds");
+      const row = await FramePublicationResource.fetchForFramePublication(
+        auth,
+        frame,
+        draft.value.publicationId
+      );
+      expect(row?.authorizedFileAccess).toEqual({
+        shareScope: await frame.getShareScope(),
+        allowlist: expect.objectContaining({
+          frameContentHash: computeFrameContentHash(
+            "export default function B() {}"
+          ),
+        }),
+      });
+    });
+
+    it("stores the share allowlist on a live publication", async () => {
+      const { auth, frame } = await setupFrame();
+
+      const live = await publishBundle(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+
+      assert(live.isOk(), "live publish succeeds");
+      const row = await FramePublicationResource.fetchForFramePublication(
+        auth,
+        frame,
+        live.value.publicationId
+      );
+      expect(row?.authorizedFileAccess?.allowlist.frameContentHash).toBe(
+        computeFrameContentHash("export default function A() {}")
+      );
+    });
+
+    // A ref is needed for the active allowlist to have any rows to read back.
+    function spyOnAllowlistComputation(auth: Authenticator) {
+      return vi
+        .spyOn(FileResource.prototype, "computeAuthorizedFileAccess")
+        .mockImplementation(
+          async (_auth, { frameContent }) =>
+            new Ok({
+              generatedByUserId: auth.getNonNullableUser().id,
+              frameContentHash: computeFrameContentHash(frameContent),
+              refs: [{ kind: "file_id", ref: "fil_ABCDEFGHIJ" }],
+            })
+        );
+    }
+
+    async function publishLiveThenDraft(
+      auth: Authenticator,
+      frame: FileResource
+    ) {
+      await publishBundle(
+        auth,
+        frame,
+        "export default function A() {}",
+        "live"
+      );
+      const draft = await publishBundle(
+        auth,
+        frame,
+        "export default function B() {}",
+        "draft"
+      );
+      assert(draft.isOk(), "draft publish succeeds");
+      const row = await FramePublicationResource.fetchForFramePublication(
+        auth,
+        frame,
+        draft.value.publicationId
+      );
+      assert(row?.authorizedFileAccess, "the draft stored its allowlist");
+      return {
+        publicationId: draft.value.publicationId,
+        authorizedFileAccess: row.authorizedFileAccess,
+      };
+    }
+
+    it("activates with the stored allowlist when the share scope is unchanged", async () => {
+      const { auth, frame } = await setupFrame();
+      const compute = spyOnAllowlistComputation(auth);
+      const { publicationId, authorizedFileAccess } =
+        await publishLiveThenDraft(auth, frame);
+      compute.mockClear();
+
+      const activated = await activateFramePublication(auth, {
+        frame,
+        publicationId,
+        authorizedFileAccess,
+      });
+
+      expect(activated.isOk()).toBe(true);
+      expect(compute).not.toHaveBeenCalled();
+      const reloaded = await FileResource.fetchById(auth, frame.sId);
+      expect(
+        (await reloaded?.getActiveAuthorizedFileAccessAllowlist())
+          ?.frameContentHash
+      ).toBe(computeFrameContentHash("export default function B() {}"));
+    });
+
+    it("recomputes the allowlist when the share scope changed since the draft", async () => {
+      const { auth, frame } = await setupFrame();
+      const compute = spyOnAllowlistComputation(auth);
+      const { publicationId, authorizedFileAccess } =
+        await publishLiveThenDraft(auth, frame);
+      const changedScope =
+        authorizedFileAccess.shareScope === "emails_only"
+          ? "workspace"
+          : "emails_only";
+      await frame.setShareScope(auth, changedScope);
+      compute.mockClear();
+
+      const activated = await activateFramePublication(auth, {
+        frame,
+        publicationId,
+        authorizedFileAccess,
+      });
+
+      expect(activated.isOk()).toBe(true);
+      expect(compute).toHaveBeenCalledTimes(1);
+      expect(await frame.getShareScope()).toBe(changedScope);
+      const reloaded = await FileResource.fetchById(auth, frame.sId);
+      expect(
+        (await reloaded?.getActiveAuthorizedFileAccessAllowlist())
+          ?.frameContentHash
+      ).toBe(computeFrameContentHash("export default function B() {}"));
+    });
+  });
 });
 
 describe("frame_publications rows", () => {
