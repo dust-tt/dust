@@ -56,26 +56,34 @@ impl Adapter {
  * attributes, `fallocate`).
  */
 impl Filesystem for Adapter {
-    /// Asks for parallel directory operations, atomic `O_TRUNC` and 1 MiB writes.
+    /// Runs once when the mount starts, to agree with the kernel on the features and limits of the
+    /// session. Asks for parallel directory operations, atomic `O_TRUNC` and 1 MiB writes.
     fn init(&mut self, _req: &Request, _config: &mut KernelConfig) -> io::Result<()> {
         todo!()
     }
 
-    /// Fails with `ENOENT` for a name that is not UTF-8: no dfs object has one.
+    /// Finds a name in a directory and returns its inode number and attributes: the kernel resolves
+    /// a path one name at a time this way. Each success counts one lookup of the inode, which the
+    /// kernel gives back later through `forget`. Fails with `ENOENT` for a name that is not UTF-8:
+    /// no dfs object has one.
     fn lookup(&self, _req: &Request, _parent: INodeNo, _name: &OsStr, _reply: ReplyEntry) {
         todo!()
     }
 
+    /// Tells the mount that the kernel dropped `nlookup` of its lookups of an inode. Once all of
+    /// them are dropped, the kernel no longer uses that inode number and the mount can forget the
+    /// object. It has no reply.
     fn forget(&self, _req: &Request, _ino: INodeNo, _nlookup: u64) {
         todo!()
     }
 
+    /// Returns an inode's attributes (type, size, permissions, times), for `stat`.
     fn getattr(&self, _req: &Request, _ino: INodeNo, _fh: Option<FileHandle>, _reply: ReplyAttr) {
         todo!()
     }
 
-    /// Changes the size or times. Fails with `EPERM` for a mode or owner change: dfs does not store
-    /// them.
+    /// Changes an inode's attributes, for `truncate`, `utimensat`, `chmod` and `chown`. Changes the
+    /// size or times. Fails with `EPERM` for a mode or owner change: dfs does not store them.
     fn setattr(
         &self,
         _req: &Request,
@@ -97,7 +105,9 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Creates regular files only. Fails with `EPERM` for other node types.
+    /// Creates a file in a directory, for `mknod` (the kernel uses `create` for `open` with
+    /// `O_CREAT`). Creates regular files only. Fails with `EPERM` for other node types (devices,
+    /// FIFOs, sockets).
     fn mknod(
         &self,
         _req: &Request,
@@ -111,6 +121,7 @@ impl Filesystem for Adapter {
         todo!()
     }
 
+    /// Creates a directory, for `mkdir`.
     fn mkdir(
         &self,
         _req: &Request,
@@ -123,14 +134,18 @@ impl Filesystem for Adapter {
         todo!()
     }
 
+    /// Removes a name that is not a directory, for `unlink`.
     fn unlink(&self, _req: &Request, _parent: INodeNo, _name: &OsStr, _reply: ReplyEmpty) {
         todo!()
     }
 
+    /// Removes an empty directory, for `rmdir`.
     fn rmdir(&self, _req: &Request, _parent: INodeNo, _name: &OsStr, _reply: ReplyEmpty) {
         todo!()
     }
 
+    /// Moves an entry to a new name, possibly in another directory, for `rename` and `renameat2`.
+    /// `flags` can ask not to replace an existing target.
     fn rename(
         &self,
         _req: &Request,
@@ -144,11 +159,13 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Opens with direct I/O, and truncates for `O_TRUNC`.
+    /// Opens a file and returns a handle, which the `read`, `write`, `flush` and `release` calls on
+    /// that open file carry. Opens with direct I/O, and truncates for `O_TRUNC`.
     fn open(&self, _req: &Request, _ino: INodeNo, _flags: OpenFlags, _reply: ReplyOpen) {
         todo!()
     }
 
+    /// Returns the bytes of a file from `offset`: `size` of them, or fewer at the end of the file.
     fn read(
         &self,
         _req: &Request,
@@ -163,6 +180,7 @@ impl Filesystem for Adapter {
         todo!()
     }
 
+    /// Writes `data` into a file at `offset`, and returns how many bytes it wrote.
     fn write(
         &self,
         _req: &Request,
@@ -178,7 +196,9 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Succeeds without waiting for the server: `fsync` is the durability barrier.
+    /// Runs on each `close` of a file descriptor. Several descriptors can share an open file (after
+    /// `dup` or `fork`), so this does not end it. Succeeds without waiting for the server: `fsync`
+    /// is the durability barrier.
     fn flush(
         &self,
         _req: &Request,
@@ -190,6 +210,7 @@ impl Filesystem for Adapter {
         todo!()
     }
 
+    /// Ends an open file once its last descriptor is closed, freeing the handle `open` returned.
     /// Hands the file's buffered writes to the write log, without waiting for the server.
     fn release(
         &self,
@@ -204,8 +225,9 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Waits until every change acknowledged before it is committed, and fails with the first
-    /// failure since the previous `fsync` or `fsyncdir`.
+    /// Makes changes durable, for `fsync` and `fdatasync`. Waits until every change acknowledged
+    /// before it is committed, and fails with the first failure since the previous `fsync` or
+    /// `fsyncdir`.
     fn fsync(
         &self,
         _req: &Request,
@@ -217,11 +239,14 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Takes the directory listing once, for `readdir` to page through.
+    /// Opens a directory and returns a handle, which the `readdir` and `releasedir` calls on that
+    /// open directory carry. Takes the directory listing once, for `readdir` to page through.
     fn opendir(&self, _req: &Request, _ino: INodeNo, _flags: OpenFlags, _reply: ReplyOpen) {
         todo!()
     }
 
+    /// Returns the entries of an open directory from `offset`, as many as fit in the reply. The
+    /// kernel calls it again from the last offset until it gets no entry, for `getdents`.
     /**
      * @cc [owner:fontanierh,label:product] readdir-offsets
      * `readdir` MUST list `.` and `..` first, and give each entry the offset of the next one, so a
@@ -238,7 +263,7 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Drops the listing `opendir` took.
+    /// Ends an open directory once its last descriptor is closed. Drops the listing `opendir` took.
     fn releasedir(
         &self,
         _req: &Request,
@@ -250,7 +275,7 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Same as `fsync`.
+    /// Makes changes durable, for `fsync` on a directory. Same as `fsync`.
     fn fsyncdir(
         &self,
         _req: &Request,
@@ -262,18 +287,19 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Reports plenty of free space, so tools that check it before writing go ahead: dfs has no
-    /// fixed capacity.
+    /// Returns the filesystem's size and free space, for `statfs` and `df`. Reports plenty of free
+    /// space, so tools that check it before writing go ahead: dfs has no fixed capacity.
     fn statfs(&self, _req: &Request, _ino: INodeNo, _reply: ReplyStatfs) {
         todo!()
     }
 
-    /// Checks the mode bits for the owner.
+    /// Says whether the caller may read, write or execute an inode, for `access`. Checks the mode
+    /// bits for the owner.
     fn access(&self, _req: &Request, _ino: INodeNo, _mask: AccessFlags, _reply: ReplyEmpty) {
         todo!()
     }
 
-    /// Creates a regular file and opens it as `open` does.
+    /// Creates a regular file and opens it as `open` does, in one call, for `open` with `O_CREAT`.
     fn create(
         &self,
         _req: &Request,
@@ -287,7 +313,8 @@ impl Filesystem for Adapter {
         todo!()
     }
 
-    /// Fails with `ENOTTY`, the answer of a file that takes no ioctl.
+    /// Runs a device-specific command on an open file, for `ioctl`. Fails with `ENOTTY`, the answer
+    /// of a file that takes no ioctl.
     fn ioctl(
         &self,
         _req: &Request,
