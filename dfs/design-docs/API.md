@@ -210,7 +210,7 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Search` | `r` on each hit and supplied scope directory. |
 | create | `w` on the parent. |
 | update, write | `w` on the target. |
-| move | `w` on the source, any replacement, and affected parents. |
+| move | `w` on the source and target directories. |
 | remove | `w` on the target and its parent. |
 
 Namespace permissions are checked on each participating object using its effective read/write
@@ -753,8 +753,8 @@ MoveOperation {
 
 **Successful result:** `mutation.object` contains the moved object's final attributes if it survives.
 The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
-The source object and affected parents must be accessible. Replacement requires the same kind;
-a destination directory must be empty. Moving a directory into itself or a descendant is rejected.
+Replacement requires the same kind; a destination directory must be empty. Moving a directory into
+itself or a descendant is rejected.
 
 ### remove operation
 
