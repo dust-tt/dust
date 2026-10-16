@@ -5,12 +5,16 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { mockFullAgentMessage } from "@app/tests/utils/conversation_test_factories";
+import {
+  mockFullAgentMessage,
+  mockUserMessage,
+} from "@app/tests/utils/conversation_test_factories";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { TextContent } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
@@ -140,6 +144,24 @@ Hello!`);
     expect(sentAtLine && sentAtLine.length).toBeGreaterThan(
       "- Sent at: ".length
     );
+  });
+
+  it("renders sent at metadata instead of throwing on an unknown timezone", async () => {
+    const { conversation } = await buildMessage();
+    const baseMessage = mockUserMessage("Ping");
+    const userMessage = {
+      ...baseMessage,
+      created: Date.UTC(2025, 0, 15, 12, 34, 56),
+      context: { ...baseMessage.context, timezone: "Not/AZone" },
+    };
+
+    const res = renderUserMessage(conversation, userMessage);
+    const [content] = res.content;
+    assert(isTextContent(content), "Expected a text content block.");
+
+    expect(
+      content.text.split("\n").some((l) => l.startsWith("- Sent at: "))
+    ).toBe(true);
   });
 
   it("adds trigger source metadata and previous run when origin is 'triggered'", async () => {
