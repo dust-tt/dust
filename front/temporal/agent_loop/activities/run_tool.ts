@@ -205,7 +205,7 @@ export async function runToolActivity(
     },
     "Tool activity starting execution"
   );
-  annotateInFlightActivity(Context.current(), {
+  annotateInFlightActivity(Context.current().info, {
     actionId,
     workspaceId: authType.workspaceId,
     toolName: action.toolConfiguration.name,

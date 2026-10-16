@@ -5,19 +5,31 @@ import {
   StallTrackingActivityInterceptor,
   startEventLoopStallWatchdog,
 } from "@app/temporal/agent_loop/lib/event_loop_stall_watchdog";
-import type { Context } from "@temporalio/activity";
+import type { Info } from "@temporalio/activity";
 import type { ActivityExecuteInput } from "@temporalio/worker";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-function makeContext(workflowId: string, activityId: string, attempt = 1) {
+const EXECUTE_INPUT: ActivityExecuteInput = { args: [], headers: {} };
+
+function makeInfo(workflowId: string, activityId: string, attempt = 1): Info {
   return {
-    info: {
-      activityType: "runToolActivity",
-      activityId,
-      attempt,
-      workflowExecution: { workflowId, runId: "run" },
-    },
-  } as unknown as Context;
+    taskToken: new Uint8Array(),
+    base64TaskToken: "",
+    activityId,
+    activityType: "runToolActivity",
+    activityNamespace: "default",
+    attempt,
+    isLocal: false,
+    workflowExecution: { workflowId, runId: "run" },
+    workflowNamespace: "default",
+    workflowType: "agentLoopWorkflow",
+    scheduledTimestampMs: 0,
+    scheduleToCloseTimeoutMs: 0,
+    startToCloseTimeoutMs: 0,
+    currentAttemptScheduledTimestampMs: 0,
+    heartbeatDetails: undefined,
+    taskQueue: "agent-loop",
+  };
 }
 
 function makeDeferred() {
@@ -47,14 +59,14 @@ describe("startEventLoopStallWatchdog", () => {
   it("reports in-flight and completed activities after a stall", async () => {
     const running = makeDeferred();
     const finishing = makeDeferred();
-    const runningContext = makeContext("wf-running", "1");
+    const runningInfo = makeInfo("wf-running", "1");
     const runningPromise = new StallTrackingActivityInterceptor(
-      runningContext
-    ).execute({} as ActivityExecuteInput, () => running.promise);
+      runningInfo
+    ).execute(EXECUTE_INPUT, () => running.promise);
     const finishingPromise = new StallTrackingActivityInterceptor(
-      makeContext("wf-finishing", "2")
-    ).execute({} as ActivityExecuteInput, () => finishing.promise);
-    annotateInFlightActivity(runningContext, { toolName: "slow_tool" });
+      makeInfo("wf-finishing", "2")
+    ).execute(EXECUTE_INPUT, () => finishing.promise);
+    annotateInFlightActivity(runningInfo, { toolName: "slow_tool" });
 
     // Simulate a blocked event loop: wall time jumps without the interval firing.
     vi.setSystemTime(Date.now() + EVENT_LOOP_STALL_THRESHOLD_MS + 2_000);
@@ -82,11 +94,11 @@ describe("startEventLoopStallWatchdog", () => {
     const timedOut = makeDeferred();
     const retry = makeDeferred();
     const timedOutPromise = new StallTrackingActivityInterceptor(
-      makeContext("wf", "1", 1)
-    ).execute({} as ActivityExecuteInput, () => timedOut.promise);
+      makeInfo("wf", "1", 1)
+    ).execute(EXECUTE_INPUT, () => timedOut.promise);
     const retryPromise = new StallTrackingActivityInterceptor(
-      makeContext("wf", "1", 2)
-    ).execute({} as ActivityExecuteInput, () => retry.promise);
+      makeInfo("wf", "1", 2)
+    ).execute(EXECUTE_INPUT, () => retry.promise);
 
     timedOut.resolve();
     await timedOutPromise;

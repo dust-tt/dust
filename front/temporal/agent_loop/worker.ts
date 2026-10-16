@@ -164,7 +164,7 @@ async function runAgentLoopWorkerForQueue({
           outbound: new OpenTelemetryActivityOutboundInterceptor(ctx),
         }),
         (ctx: Context) => ({
-          inbound: new StallTrackingActivityInterceptor(ctx),
+          inbound: new StallTrackingActivityInterceptor(ctx.info),
         }),
       ],
     },
