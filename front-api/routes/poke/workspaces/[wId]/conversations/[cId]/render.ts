@@ -4,6 +4,14 @@ import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mc
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import {
+  globalAgentInjectsUserContext,
+  globalAgentInjectsWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/prompt_context";
+import {
+  buildUserContext,
+  buildWorkspaceContext,
+} from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
@@ -184,11 +192,14 @@ app.post(
       enabledSkills,
     });
 
-    const clientSideMCPActionConfigurations =
-      await createClientSideMCPServerConfigurations(
-        auth,
-        userMessage.context.clientSideMCPServerIds
-      );
+    // Client-side MCP servers are registered per user, and poke's superuser authenticator may have
+    // none: skip them rather than failing the whole render.
+    const clientSideMCPActionConfigurations = auth.user()
+      ? await createClientSideMCPServerConfigurations(
+          auth,
+          userMessage.context.clientSideMCPServerIds
+        )
+      : [];
 
     const placeholderAgentMessage: AgentMessageType = {
       type: "agent_message",
@@ -245,6 +256,18 @@ app.post(
       conversation,
     });
 
+    // Mirrors `runModel`. Rendered with poke's authenticator, so the workspace context lists what
+    // the superuser can see, not what the conversation's author could.
+    const userContext =
+      globalAgentInjectsUserContext(agentConfiguration.sId) && auth.user()
+        ? ((await buildUserContext(auth)) ?? undefined)
+        : undefined;
+    const workspaceContext = globalAgentInjectsWorkspaceContext(
+      agentConfiguration.sId
+    )
+      ? await buildWorkspaceContext(auth)
+      : undefined;
+
     const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
 
     const promptSections = constructPromptMultiActions(auth, {
@@ -257,6 +280,8 @@ app.post(
       serverToolsAndInstructions,
       systemSkills,
       projectContext,
+      userContext,
+      workspaceContext,
       isNewFileExplorer,
       hasSelectedSpacesOutsideAgentScope,
     });
