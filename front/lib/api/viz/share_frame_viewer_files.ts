@@ -260,7 +260,7 @@ async function getDraftShareFrameViewerFiles(
   auth: Authenticator,
   frame: FileResource
 ): Promise<ShareFrameViewerFile[] | null> {
-  const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
+  const draftPublicationId = frame.pendingDraftPublicationId;
   if (!draftPublicationId || !(await canWriteFrameV2Source(auth, frame))) {
     return null;
   }

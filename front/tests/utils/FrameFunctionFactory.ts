@@ -184,7 +184,7 @@ export async function storeTestDraftPublicationAllowlist(
     authorizedFileAccess,
   }: { frame: FileResource; authorizedFileAccess: FramePublicationAllowlist }
 ): Promise<void> {
-  const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
+  const draftPublicationId = frame.pendingDraftPublicationId;
   if (!draftPublicationId) {
     throw new Error("Expected the Frame to have a pending draft.");
   }

@@ -60,7 +60,7 @@ describe("GET /files/:fileId/share draftViewerFiles", () => {
     const { frame } = await createTestAuthorFrameWithDraft(auth, {
       messagesCreatedAt: [],
     });
-    const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
+    const draftPublicationId = frame.pendingDraftPublicationId;
     assert(draftPublicationId, "Expected the Frame to have a pending draft.");
     await FramePublicationResource.makeNew(auth, {
       frame,
@@ -96,7 +96,7 @@ describe("GET /files/:fileId/share draftViewerFiles", () => {
     // Everyone in the workspace can read the Pod, but only its members can write the source.
     const { globalGroup } = await GroupFactory.defaults(workspace);
     await SpaceFactory.attachGroup(space, globalGroup, "project_viewer");
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
     await storeTestDraftPublicationAllowlist(adminAuth, {
