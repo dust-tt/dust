@@ -1,4 +1,3 @@
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useUserLocale } from "@app/hooks/useUserLocale";
 import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types/user";
@@ -23,7 +22,7 @@ interface FrenchLanguageBannerProps {
 
 /**
  * @cc [owner:sfriquet,label:product;react] french-copy-whatever-the-ui-locale
- * The banner's text, labels, tooltip, `alt` and toast MUST be in French whatever the active UI
+ * The banner's text, labels, tooltip and `alt` MUST be in French whatever the active UI
  * locale, so this file MUST NOT import a Lingui macro.
  */
 /**
@@ -38,7 +37,6 @@ export function FrenchLanguageBanner({
   onShowBanner,
   onOpenSettings,
 }: FrenchLanguageBannerProps) {
-  const sendNotification = useSendNotification();
   const { isSaving, doUpdateUserLocale } = useUserLocale({ owner });
 
   useEffect(() => {
@@ -69,16 +67,9 @@ export function FrenchLanguageBanner({
 
   const onTryIt = async () => {
     const saved = await doUpdateUserLocale("fr-FR");
-    if (!saved) {
-      return;
+    if (saved) {
+      dismiss();
     }
-    dismiss();
-    sendNotification({
-      type: "success",
-      title: "Dust est maintenant en français",
-      description:
-        "Vous pouvez changer de langue à tout moment dans vos paramètres.",
-    });
   };
 
   if (!showBanner) {
