@@ -33,10 +33,14 @@ export function useFramePermissions({
     ? null
     : `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions`;
 
-  const { data, error } = useSWRWithDefaults(swrKey, permissionsFetcher, {
-    disabled,
-    revalidateOnFocus: false,
-  });
+  const { data, error, mutate } = useSWRWithDefaults(
+    swrKey,
+    permissionsFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+    }
+  );
 
   return {
     canWriteFrameSource: data?.canWriteFrameSource ?? false,
@@ -47,6 +51,7 @@ export function useFramePermissions({
     hasAuthorizedRequiredTools: data?.hasAuthorizedRequiredTools ?? true,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
+    mutateFramePermissions: mutate,
   };
 }
 

@@ -70,8 +70,12 @@ vi.mock("@app/lib/swr/frames", () => ({
   useFramePermissions: () => ({
     canWriteFrameSource: mocks.canWriteFrameSource,
     hasFrameFunctions: false,
+    requiredTools: [],
+    isLastPublisher: false,
+    hasAuthorizedRequiredTools: true,
     isFramePermissionsLoading: false,
     packageRoot: null,
+    mutateFramePermissions: vi.fn(),
   }),
 }));
 vi.mock("@app/lib/swr/useIsMobile", () => ({

@@ -189,6 +189,7 @@ const API_ERROR_TYPES = [
   "sandbox_function_not_found",
   "sandbox_function_invocation_not_found",
   "frame_runtime_unavailable",
+  "frame_tool_authorization_required",
   "frame_manifest_not_movable",
   "fast_function_called_tools",
   // Projects

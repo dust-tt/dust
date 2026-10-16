@@ -62,6 +62,7 @@ export function frameFunctionCallApiError(
   statusCode: 400 | 401 | 403 | 404 | 409 | 500;
   type:
     | "frame_runtime_unavailable"
+    | "frame_tool_authorization_required"
     | "internal_server_error"
     | "invalid_request_error"
     | "user_authentication_required";
@@ -71,7 +72,8 @@ export function frameFunctionCallApiError(
     const { callError } = error;
     if (
       callError.code === "user_authentication_required" ||
-      callError.code === "frame_runtime_unavailable"
+      callError.code === "frame_runtime_unavailable" ||
+      callError.code === "frame_tool_authorization_required"
     ) {
       return {
         statusCode: getSandboxFunctionInvocationErrorStatusCode(callError.code),

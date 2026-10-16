@@ -126,8 +126,12 @@ vi.mock("@app/lib/swr/frames", () => ({
     return {
       canWriteFrameSource: mocks.canWriteFrameSource,
       hasFrameFunctions: mocks.hasFrameFunctions,
+      requiredTools: [],
+      isLastPublisher: false,
+      hasAuthorizedRequiredTools: true,
       isFramePermissionsLoading: false,
       packageRoot: null,
+      mutateFramePermissions: vi.fn(),
     };
   },
 }));

@@ -1,4 +1,4 @@
-import { authorizedToolsCoverRequired } from "@app/lib/api/frames/tool_authorization";
+import { authorizedToolsCoverRequired } from "@app/lib/api/frames/tool_authorization_coverage";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";

@@ -1,6 +1,7 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
+import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useFileContent, useFileContentByUrl } from "@app/lib/swr/files";
 import { useFramePermissions } from "@app/lib/swr/frames";
@@ -84,12 +85,20 @@ export function PodHoverFrameViewer({
     config: { disabled: !isV2 },
   });
 
-  const { canWriteFrameSource, hasFrameFunctions, isFramePermissionsLoading } =
-    useFramePermissions({
-      owner,
-      frameId: frameId ?? "",
-      disabled: !isV2,
-    });
+  const {
+    canWriteFrameSource,
+    hasFrameFunctions,
+    requiredTools,
+    hasAuthorizedRequiredTools,
+    isFramePermissionsLoading,
+    mutateFramePermissions,
+  } = useFramePermissions({
+    owner,
+    frameId: frameId ?? "",
+    disabled: !isV2,
+  });
+  const needsToolConsent =
+    isV2 && !isFramePermissionsLoading && !hasAuthorizedRequiredTools;
 
   const frameSourceUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
@@ -173,6 +182,15 @@ export function PodHoverFrameViewer({
       <div className="flex h-full items-center justify-center">
         <Spinner />
       </div>
+    ) : needsToolConsent ? (
+      <FrameToolConsentGate
+        owner={owner}
+        frameId={fileId}
+        requiredTools={requiredTools}
+        onAuthorized={async () => {
+          await mutateFramePermissions();
+        }}
+      />
     ) : showCode ? (
       <FrameCodeView
         code={isV2 ? (frameSource ?? undefined) : fileContent}

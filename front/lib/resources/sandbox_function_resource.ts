@@ -1,3 +1,4 @@
+import { hasAuthorizedFrameRequiredTools } from "@app/lib/api/frames/tool_authorization";
 import type {
   PokeFrameFunction,
   PokeFrameFunctionDetails,
@@ -700,6 +701,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         new SandboxFunctionInvocationError(
           authorization.errorMessage,
           authorization.errorCode
+        )
+      );
+    }
+
+    if (!(await hasAuthorizedFrameRequiredTools(auth, this.frame))) {
+      return new Err(
+        new SandboxFunctionInvocationError(
+          "This Frame requires authorization before its tools can be used.",
+          "frame_tool_authorization_required"
         )
       );
     }
