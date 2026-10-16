@@ -3,7 +3,7 @@ import { useUserLocale } from "@app/hooks/useUserLocale";
 import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useEffect } from "react";
 
 const FRENCH_LANGUAGE_IMAGE_PATH = "/static/French_Language_Banner.svg";
@@ -86,7 +86,7 @@ export function FrenchLanguageBanner({
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 100, translateY: "0%" }}
       transition={{ duration: 0.1, ease: "easeIn" }}
       exit={{ opacity: 0, translateY: "120%" }}
@@ -159,6 +159,6 @@ export function FrenchLanguageBanner({
           />
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

@@ -13,7 +13,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const CONVERSATIONAL_BUILDING_IMAGE_PATH =
@@ -72,7 +72,7 @@ function ConversationalBuildingBanner({
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 100, translateY: "0%" }}
       transition={{ duration: 0.1, ease: "easeIn" }}
       exit={{ opacity: 0, translateY: "120%" }}
@@ -119,7 +119,7 @@ function ConversationalBuildingBanner({
           />
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -164,25 +164,27 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
         owner={owner}
         initialSection="customization"
       />
-      <AnimatePresence>
-        <FrenchLanguageBanner
-          key="french-language-banner"
-          owner={owner}
-          showBanner={isFrenchLanguageBannerVisible}
-          onShowBanner={setShowFrenchLanguageBanner}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-        />
-        <ConversationalBuildingBanner
-          key="conversational-building-banner"
-          owner={owner}
-          showBanner={
-            !isFrenchLanguageBannerVisible &&
-            canBuild &&
-            showConversationalBuildingBanner
-          }
-          onShowBanner={setShowConversationalBuildingBanner}
-        />
-      </AnimatePresence>
+      <LazyMotion features={domAnimation}>
+        <AnimatePresence>
+          <FrenchLanguageBanner
+            key="french-language-banner"
+            owner={owner}
+            showBanner={isFrenchLanguageBannerVisible}
+            onShowBanner={setShowFrenchLanguageBanner}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+          <ConversationalBuildingBanner
+            key="conversational-building-banner"
+            owner={owner}
+            showBanner={
+              !isFrenchLanguageBannerVisible &&
+              canBuild &&
+              showConversationalBuildingBanner
+            }
+            onShowBanner={setShowConversationalBuildingBanner}
+          />
+        </AnimatePresence>
+      </LazyMotion>
     </>
   );
 }
