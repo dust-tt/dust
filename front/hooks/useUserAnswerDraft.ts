@@ -57,6 +57,14 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
     return null;
   }
 
+  // Selects every option in the given order, which takes precedence over a typed custom response.
+  function rankOptions(ranking: number[]) {
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      selectedOptions: ranking,
+    }));
+  }
+
   function selectCustomResponse() {
     setDraft((currentDraft) => ({
       ...currentDraft,
@@ -82,6 +90,7 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
     answerToSubmit,
     appendCustomResponse,
     customResponse: draft.customResponse,
+    rankOptions,
     selectedOptions: draft.selectedOptions,
     selectCustomResponse,
     selectOption,

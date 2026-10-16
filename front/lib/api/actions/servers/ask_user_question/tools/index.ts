@@ -7,6 +7,7 @@ import {
 import {
   formatUserQuestionAnswer,
   getUserQuestionSelections,
+  isRankingAnswer,
   USER_QUESTION_DECLINED_MESSAGE,
 } from "@app/lib/actions/user_question";
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
@@ -24,10 +25,8 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     const resumeState = runContext.stepContext.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
-      const selections = getUserQuestionSelections(
-        { question, options, multiSelect, format },
-        answer
-      );
+      const userQuestion = { question, options, multiSelect, format };
+      const selections = getUserQuestionSelections(userQuestion, answer);
 
       if (selections.length === 0) {
         return new Ok([
@@ -41,7 +40,9 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text",
-          text: formatUserQuestionAnswer(question, selections),
+          text: formatUserQuestionAnswer(question, selections, {
+            isRanking: isRankingAnswer(userQuestion, answer),
+          }),
         },
       ]);
     }
