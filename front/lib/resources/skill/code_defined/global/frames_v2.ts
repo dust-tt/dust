@@ -700,7 +700,7 @@ Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: tho
 Frame build context and report unrelated or noisy failures. A successful publish adds the Frame
 card to the answer and opens it for the user; ${
   hasDrafts
-    ? "the card appears automatically, so the IDs are only needed for `make-live`."
+    ? "you only need the `frameId` and `publicationId` from the CLI output for `make-live`."
     : "do not parse the Frame ID from the CLI output for\nthat."
 }
 

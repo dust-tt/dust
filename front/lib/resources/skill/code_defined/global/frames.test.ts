@@ -212,7 +212,9 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).not.toContain(
       "do not parse the Frame ID from the CLI output"
     );
-    expect(instructions).toContain("the IDs are only needed for `make-live`");
+    expect(instructions).toContain(
+      "you only need the `frameId` and `publicationId` from the CLI output for `make-live`."
+    );
   });
 
   it("does not mention drafts without the drafts flag", async () => {
