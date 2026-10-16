@@ -42,6 +42,9 @@ export function useFramePermissions({
     canWriteFrameSource: data?.canWriteFrameSource ?? false,
     packageRoot: data?.packageRoot ?? null,
     hasFrameFunctions: data?.hasFunctions ?? false,
+    requiredTools: data?.requiredTools ?? [],
+    isLastPublisher: data?.isLastPublisher ?? false,
+    hasAuthorizedRequiredTools: data?.hasAuthorizedRequiredTools ?? true,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
   };

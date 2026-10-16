@@ -82,6 +82,27 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     return rows.map((row) => new this(this.model, row.get()));
   }
 
+  static async fetchActiveForFrame(
+    auth: Authenticator,
+    frame: FileResource
+  ): Promise<FramePublicationResource | null> {
+    this.assertFrameOfWorkspace(auth, frame);
+    const publicationId = frame.useCaseMetadata?.activePublicationId;
+    if (!publicationId) {
+      return null;
+    }
+
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: frame.id,
+        publicationId,
+      },
+    });
+
+    return row ? new this(this.model, row.get()) : null;
+  }
+
   static async deleteForFramePublications(
     auth: Authenticator,
     { frame, publicationIds }: { frame: FileResource; publicationIds: string[] }

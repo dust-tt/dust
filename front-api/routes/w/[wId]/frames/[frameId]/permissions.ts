@@ -1,5 +1,8 @@
 import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
+import { authorizedToolsCoverRequired } from "@app/lib/api/frames/tool_authorization";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
+import { FrameToolAuthorizationResource } from "@app/lib/resources/frame_tool_authorization_resource";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -26,10 +29,27 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const [canWriteFrameSource, hasFunctions] = await Promise.all([
-    canWriteFrameV2Source(auth, frame),
-    frame.hasActiveFrameFunctions(),
-  ]);
+  const [canWriteFrameSource, hasFunctions, activePublication, authorization] =
+    await Promise.all([
+      canWriteFrameV2Source(auth, frame),
+      frame.hasActiveFrameFunctions(),
+      FramePublicationResource.fetchActiveForFrame(auth, frame),
+      FrameToolAuthorizationResource.fetchForUserAndFrame(auth, frame),
+    ]);
+
+  const requiredTools = activePublication?.requiredTools ?? [];
+  const user = auth.user();
+  const isLastPublisher = Boolean(
+    user &&
+    activePublication?.publishedByUserId !== null &&
+    activePublication?.publishedByUserId === user.id
+  );
+  const hasAuthorizedRequiredTools =
+    requiredTools.length === 0 ||
+    isLastPublisher ||
+    (authorization
+      ? authorization.coversRequiredTools(requiredTools)
+      : authorizedToolsCoverRequired([], requiredTools));
 
   return ctx.json<GetFramePermissionsResponseBody>({
     canWriteFrameSource,
@@ -37,6 +57,9 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     isFrameAuthor: canWriteFrameSource,
     packageRoot: frame.getFrameV2SourceDirectoryPath(auth),
     hasFunctions,
+    requiredTools,
+    isLastPublisher,
+    hasAuthorizedRequiredTools,
   });
 });
 
