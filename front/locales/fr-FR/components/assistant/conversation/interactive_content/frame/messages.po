@@ -257,6 +257,14 @@ msgstr "Dernière consultation {timeAgo}"
 msgid "Last viewed {exactTime}"
 msgstr "Dernière consultation : {exactTime}"
 
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
+msgid "Switch to rendering"
+msgstr "Afficher le rendu"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
+msgid "Switch to code"
+msgstr "Afficher le code"
+
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
 msgid "Share"
 msgstr "Partager"

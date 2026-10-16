@@ -20,7 +20,7 @@ import type React from "react";
 import { useState } from "react";
 
 interface ExportContentDropdownProps {
-  iframeRef: React.RefObject<HTMLIFrameElement>;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
   owner: LightWorkspaceType;
   fileId: string;
   fileContent: string | null;

@@ -82,14 +82,6 @@ msgid "unknown Pod"
 msgstr "unknown Pod"
 
 #: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Switch to rendering"
-msgstr "Switch to rendering"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Switch to code"
-msgstr "Switch to code"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
 msgid "Saved"
 msgstr "Saved"
 
