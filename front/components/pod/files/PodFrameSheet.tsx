@@ -271,9 +271,7 @@ function PodFrameSheetWithFile({
             </div>
           ) : isFileMetadataError || !fileMetadata || !functionReferenceKind ? (
             <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              <Trans>
-                This frame is no longer available in the Pod files.
-              </Trans>
+              <Trans>This frame is no longer available in the Pod files.</Trans>
             </div>
           ) : !fileContent ? (
             <div className="flex h-full items-center justify-center">
