@@ -10,6 +10,7 @@ import type {
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isEditableTarget } from "@app/lib/utils/dom";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   ArrowUp,
@@ -38,25 +39,34 @@ type SubmissionState = {
   phase: "pending" | "exiting";
 } | null;
 
-type QuestionLayout = "list" | "columns" | "preview_pane";
+type QuestionLayout = "list" | "columns" | "preview_pane" | "yes_no";
 
 /**
  * @cc [owner:aubin-tchoi,label:product] compare-layout
- * A `compare` question MUST render as columns with exactly 2 options, and as an option list with
- * a preview pane with 3 or more. Any other question, including a `compare` one with `multiSelect`
- * or fewer than 2 options, or one without a `format` at all (stored before the field existed),
- * MUST render as the default list.
+ * A question MUST render with its `format`'s layout only when all of that format's constraints
+ * hold, and as the default list otherwise, including when it has no `format` at all (stored before
+ * the field existed) or one this client does not know:
+ * - `compare`: single select, as columns with exactly 2 options and as an option list with a
+ *   preview pane with 3 or more.
+ * - `yes_no`: single select with exactly 2 options, as two buttons.
  */
 function getQuestionLayout(question: UserQuestion): QuestionLayout {
-  if (
-    question.format !== "compare" ||
-    question.multiSelect ||
-    question.options.length < 2
-  ) {
-    return "list";
+  switch (question.format) {
+    case "list":
+      return "list";
+    case "compare":
+      if (question.multiSelect || question.options.length < 2) {
+        return "list";
+      }
+      return question.options.length === 2 ? "columns" : "preview_pane";
+    case "yes_no":
+      return !question.multiSelect && question.options.length === 2
+        ? "yes_no"
+        : "list";
+    default:
+      assertNeverAndIgnore(question.format);
+      return "list";
   }
-
-  return question.options.length === 2 ? "columns" : "preview_pane";
 }
 
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -65,11 +75,55 @@ function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   );
 }
 
-// Columns lay options out side by side, so left and right arrows also move between them.
+const RECOMMENDED_SUFFIX = "(Recommended)";
+
+// The recommended answer is shown by the button style, so its label drops the suffix.
+function getYesNoButton(option: UserQuestionOption) {
+  const isRecommended = option.label.endsWith(RECOMMENDED_SUFFIX);
+
+  return {
+    label: isRecommended
+      ? option.label.slice(0, -RECOMMENDED_SUFFIX.length).trimEnd()
+      : option.label,
+    isRecommended,
+  };
+}
+
+// Yes/no buttons answer with 1 and 2, and with Y and N when their labels are literally Yes and No.
+function getYesNoShortcutIndex(
+  key: string,
+  options: UserQuestionOption[]
+): number | null {
+  if (key === "1" || key === "2") {
+    return Number(key) - 1;
+  }
+
+  const labels = options.map((option) =>
+    getYesNoButton(option).label.toLowerCase()
+  );
+  if (!labels.includes("yes") || !labels.includes("no")) {
+    return null;
+  }
+
+  switch (key.toLowerCase()) {
+    case "y":
+      return labels.indexOf("yes");
+    case "n":
+      return labels.indexOf("no");
+    default:
+      return null;
+  }
+}
+
+// Columns lay options out side by side, so left and right arrows also move between them. Yes/no
+// buttons have no active option: they are reached with Tab or their shortcuts.
 function getArrowKeyDirection(
   key: string,
   layout: QuestionLayout
 ): 1 | -1 | null {
+  if (layout === "yes_no") {
+    return null;
+  }
   if (key === "ArrowDown" || (layout === "columns" && key === "ArrowRight")) {
     return 1;
   }
@@ -300,7 +354,15 @@ export function UserAnswerRequired({
     if (isPrintableKey(e)) {
       e.preventDefault();
       setIsKeyboardNavigating(true);
-      handleStartCustomResponse(e.key);
+      const yesNoShortcutIndex =
+        layout === "yes_no"
+          ? getYesNoShortcutIndex(e.key, question.options)
+          : null;
+      if (yesNoShortcutIndex !== null) {
+        handleOptionClick(yesNoShortcutIndex);
+      } else {
+        handleStartCustomResponse(e.key);
+      }
       return;
     }
 
@@ -317,7 +379,7 @@ export function UserAnswerRequired({
     switch (e.key) {
       case "Enter":
       case " ":
-        if (e.currentTarget === e.target) {
+        if (e.currentTarget === e.target && layout !== "yes_no") {
           e.preventDefault();
           setIsKeyboardNavigating(true);
           handleActiveOptionSelection();
@@ -423,6 +485,25 @@ export function UserAnswerRequired({
             <div className="grid grid-cols-1 gap-3 @lg:grid-cols-[2fr_3fr]">
               <div className="flex flex-col gap-2">{optionCards}</div>
               <OptionPreviewPane option={question.options[activeOptionIndex]} />
+            </div>
+          )}
+          {layout === "yes_no" && (
+            <div className="grid grid-cols-2 gap-2">
+              {question.options.map((option, index) => {
+                const { label, isRecommended } = getYesNoButton(option);
+
+                return (
+                  <Button
+                    key={index}
+                    label={label}
+                    variant={isRecommended ? "primary" : "outline"}
+                    size="md"
+                    className="w-full"
+                    onClick={() => handleOptionClick(index)}
+                    disabled={isSubmitting}
+                  />
+                );
+              })}
             </div>
           )}
           <OptionCard

@@ -80,7 +80,7 @@ const UserQuestionOptionSchema = z.object({
 
 export type UserQuestionOption = z.infer<typeof UserQuestionOptionSchema>;
 
-const USER_QUESTION_FORMATS = ["list", "compare"] as const;
+const USER_QUESTION_FORMATS = ["list", "compare", "yes_no"] as const;
 
 /**
  * @cc [owner:aubin-tchoi,label:product] fields-added-with-defaults
@@ -115,7 +115,10 @@ export const UserQuestionSchema = z.object({
         "differ in ways a label alone can't show (output shape, drafts, plans " +
         "with tradeoffs): give every option a description of its tradeoff and, " +
         "when a concrete sample makes the difference obvious, a preview. " +
-        "'compare' is single choice only, with 2 to 4 options."
+        "'compare' is single choice only, with 2 to 4 options. " +
+        "'yes_no' is for a yes/no or go/no-go decision (confirm an action, approve " +
+        "a plan): single choice with exactly 2 short options whose labels are the " +
+        "answers themselves ('Yes'/'No', 'Send'/'Cancel')."
     ),
 });
 
