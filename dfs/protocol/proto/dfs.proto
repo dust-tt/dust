@@ -356,9 +356,9 @@ message FileResult {
 }
 
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
-// Operations MUST be nonempty. The entire encoded request, including write data, metadata, and
-// encoding overhead, MUST NOT exceed 1 MiB. FDB transaction size MUST be checked separately;
-// exceeding the store's transaction budget MUST fail the request with CAPACITY before committing.
+// Operations MUST be nonempty. FDB transaction size MUST be checked separately from the RPC request
+// limit; exceeding the store's transaction budget MUST fail the request with CAPACITY before
+// committing.
 message ApplyRequest {
   repeated Operation operations = 1;
 }
@@ -426,7 +426,7 @@ message XattrChange {
 }
 
 // @cc [owner:spolu,label:api] dfs-write-data-limit
-// Write data MUST fit within ApplyRequest's 1 MiB budget together with every operation and all
+// Write data MUST fit within the 4 MiB RPC request budget together with every operation and all
 // encoding overhead.
 message WriteOperation {
   required ObjectId object_id = 1;

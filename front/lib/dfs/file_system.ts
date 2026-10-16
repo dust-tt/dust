@@ -37,8 +37,8 @@ export interface DfsListedEntry {
 
 // Server limit for one `Read`.
 const MAX_READ_CHUNK_BYTES = 1024 * 1024;
-// `Apply` requests are limited to 1 MiB encoded; keep headroom for the operation envelope.
-const MAX_WRITE_CHUNK_BYTES = 1024 * 1024 - 64 * 1024;
+// Keep headroom for operation metadata within the 4 MiB RPC request limit.
+const MAX_WRITE_CHUNK_BYTES = 4 * 1024 * 1024 - 64 * 1024;
 const LIST_PAGE_LIMIT = 4096;
 const MAX_REMOVALS_PER_APPLY = 512;
 

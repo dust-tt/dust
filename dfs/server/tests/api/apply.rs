@@ -44,7 +44,8 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
         }),
         Operation::Write(WriteOperation {
             object_id: file,
-            data: b"content".to_vec(),
+            // Apply uses the shared 4 MiB request limit, with no separate 1 MiB limit.
+            data: vec![0; 2 * 1024 * 1024],
             ..Default::default()
         }),
         Operation::Move(MoveOperation {
@@ -90,17 +91,6 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
     for (operations, expected) in [
         (vec![], ErrorCode::InvalidInput),
         (vec![rpc::Operation::default()], ErrorCode::InvalidInput),
-        (
-            vec![rpc::Operation {
-                operation: Some(Operation::Write(WriteOperation {
-                    object_id: file,
-                    // The payload alone fills the request budget, leaving no room for framing.
-                    data: vec![0; 1024 * 1024],
-                    ..Default::default()
-                })),
-            }],
-            ErrorCode::Capacity,
-        ),
     ] {
         let error = client
             .apply(with_authorization(
@@ -112,6 +102,25 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             .context("expected invalid Apply request to fail")?;
         assert_eq!(error_code(&error)?, expected);
     }
+
+    let error = client
+        .apply(with_authorization(
+            ApplyRequest {
+                operations: vec![rpc::Operation {
+                    operation: Some(Operation::Write(WriteOperation {
+                        object_id: file,
+                        // The data alone fills the RPC budget; protobuf overhead exceeds it.
+                        data: vec![0; 4 * 1024 * 1024],
+                        ..Default::default()
+                    })),
+                }],
+            },
+            &authorization,
+        )?)
+        .await
+        .err()
+        .context("expected oversized Apply request to fail")?;
+    assert_eq!(error.code(), tonic::Code::OutOfRange);
 
     let tx = fdb::database()?.create_trx()?;
     SessionResource::revoke(&tx, &tenant, &session.session_id).await?;

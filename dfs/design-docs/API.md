@@ -613,7 +613,7 @@ Requires a **session key**.
 
 ```text
 ApplyRequest {
-  operations: Operation[]        // Nonempty; encoded request is at most 1 MiB.
+  operations: Operation[]        // Nonempty; subject to the 4 MiB RPC request limit.
 }
 
 Operation = create(CreateOperation)

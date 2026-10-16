@@ -36,7 +36,6 @@ mod errors;
 const READ_FILES_RESULT_OVERHEAD_BYTES: usize = 512;
 
 const LOOKUP_MAX_TARGETS: usize = 256;
-const APPLY_MAX_REQUEST_BYTES: usize = 1024 * 1024;
 
 #[cfg(test)]
 #[path = "../tests/api/read_files_budget.rs"]
@@ -357,9 +356,6 @@ impl Dfs for API {
         let request = request.into_inner();
         if request.operations.is_empty() {
             return Err(status(ErrorCode::InvalidInput));
-        }
-        if request.encoded_len() > APPLY_MAX_REQUEST_BYTES {
-            return Err(status(ErrorCode::Capacity));
         }
         let operations = request
             .operations
