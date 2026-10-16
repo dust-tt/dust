@@ -61,8 +61,8 @@ export const isCreditPricedFreePlan = (planCode: string) =>
 export const isBusinessPlanPrefix = (planCode: string) =>
   planCode.startsWith("CP_BUSINESS_");
 
-// Plans on the current pricing: credit-priced plans plus Dust's own workspace.
-export const isCurrentPricingPlan = (plan: PlanType) =>
+// Credit-based plans: the credit-priced plans plus Dust's own workspace, billed the same way.
+export const isCreditBasedPlan = (plan: PlanType) =>
   isCreditPricedPlanPrefix(plan.code) || isDustCompanyPlan(plan.code);
 
 // Everything else is free

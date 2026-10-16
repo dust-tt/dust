@@ -8,7 +8,7 @@ import {
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { isCurrentPricingPlan } from "@app/lib/plans/plan_codes";
+import { isCreditBasedPlan } from "@app/lib/plans/plan_codes";
 
 export class DefaultRemoteMCPServerInMemoryResource {
   readonly id: string;
@@ -37,22 +37,22 @@ export class DefaultRemoteMCPServerInMemoryResource {
   }
 
   /**
-   * @cc [owner:smb2268,label:product] current-pricing-presets-hidden-from-other-plans
-   * A preset with `currentPricingPlansOnly` MUST be omitted unless the workspace's plan satisfies
-   * `isCurrentPricingPlan` (credit-priced or Dust company), in addition to its `featureFlag` gate.
+   * @cc [owner:smb2268,label:product] credit-based-presets-hidden-from-other-plans
+   * A preset with `creditBasedPlansOnly` MUST be omitted unless the workspace's plan satisfies
+   * `isCreditBasedPlan` (credit-priced or Dust company), in addition to its `featureFlag` gate.
    */
   static async listAvailableDefaultRemoteMCPServers(
     auth: Authenticator
   ): Promise<DefaultRemoteMCPServerInMemoryResource[]> {
     const resources: DefaultRemoteMCPServerInMemoryResource[] = [];
     const featureFlags = await getFeatureFlags(auth);
-    const isCurrentPricing = isCurrentPricingPlan(auth.getNonNullablePlan());
+    const isCreditBased = isCreditBasedPlan(auth.getNonNullablePlan());
 
     for (const config of DEFAULT_REMOTE_MCP_SERVERS) {
       if (config.featureFlag && !featureFlags.includes(config.featureFlag)) {
         continue;
       }
-      if (config.currentPricingPlansOnly && !isCurrentPricing) {
+      if (config.creditBasedPlansOnly && !isCreditBased) {
         continue;
       }
 
