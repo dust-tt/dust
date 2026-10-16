@@ -113,6 +113,9 @@ function getTriggerScheduleOptions(
       },
     },
     scheduleId,
+    searchAttributes: {
+      workspaceId: [workspaceId],
+    },
     policies: {
       overlap: ScheduleOverlapPolicy.SKIP,
     },
