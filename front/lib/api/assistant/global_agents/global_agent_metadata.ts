@@ -779,7 +779,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
     case GLOBAL_AGENTS_SID.DUST:
       return {
         sId: GLOBAL_AGENTS_SID.DUST,
-        name: "dust",
+        name: "Dust",
         description: "An agent with context on your company data.",
         pictureUrl: DUST_AVATAR_URL,
       };

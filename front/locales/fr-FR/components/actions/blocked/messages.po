@@ -187,8 +187,8 @@ msgid "Allow agent to set the Pod default agent?"
 msgstr "Autoriser l’agent à définir l’agent par défaut du Pod ?"
 
 #: front/components/actions/blocked/toolValidationLabels.ts
-msgid "Allow agent to reset the Pod default agent to @dust?"
-msgstr "Autoriser l’agent à rétablir @dust comme agent par défaut du Pod ?"
+msgid "Allow agent to reset the Pod default agent to @Dust?"
+msgstr "Autoriser l’agent à rétablir @Dust comme agent par défaut du Pod ?"
 
 #: front/components/actions/blocked/toolValidationLabels.ts
 msgid "Allow agent to set the Pod default agent to @{agentName}?"

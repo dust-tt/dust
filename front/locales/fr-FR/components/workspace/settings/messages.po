@@ -396,8 +396,8 @@ msgid "Warning"
 msgstr "Avertissement"
 
 #: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
-msgid "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?"
-msgstr "@dust est conçu pour offrir la meilleure expérience à vos utilisateurs par défaut. Un agent par défaut personnalisé risque de ne pas traiter toutes les demandes aussi bien. Voulez-vous quand même le définir comme agent par défaut du workspace ?"
+msgid "@Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the workspace default anyway?"
+msgstr "@Dust est conçu pour offrir la meilleure expérience à vos utilisateurs par défaut. Un agent par défaut personnalisé risque de ne pas traiter toutes les demandes aussi bien. Voulez-vous quand même le définir comme agent par défaut du workspace ?"
 
 #: front/components/workspace/settings/WorkspaceDefaultAgentPicker.tsx
 msgid "Yes"

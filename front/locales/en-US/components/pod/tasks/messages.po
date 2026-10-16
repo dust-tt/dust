@@ -124,8 +124,8 @@ msgid "Selected agent: {selectedAgentName}"
 msgstr "Selected agent: {selectedAgentName}"
 
 #: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
-msgid "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
-msgstr "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgid "This Pod's default agent isn't available to you, so @Dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgstr "This Pod's default agent isn't available to you, so @Dust is used instead. Discuss with your Pod editors if you think this is an error."
 
 #: front/components/pod/tasks/PodTaskStartWorkingDropdown.tsx
 msgid "Start working"
