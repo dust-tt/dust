@@ -173,7 +173,7 @@ failures fail the attempt. Retry definitely uncommitted transactions, recomputin
 decisions. Retrying an unknown commit result requires each resource write to recognize its own
 earlier commit, as tenant, object and session creation do.
 
-The 4 MiB RPC ceiling and 1 MiB `Apply` request budget are separate from FDB transaction accounting.
+The 4 MiB RPC ceiling is separate from FDB transaction accounting.
 Budget index maintenance, metadata, blocks, and required responses before commit. Scans use bounded
 batches; no operation requires loading the full tenant index.
 

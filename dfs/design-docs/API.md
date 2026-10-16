@@ -613,7 +613,7 @@ Requires a **session key**.
 
 ```text
 ApplyRequest {
-  operations: Operation[]        // Nonempty; encoded request is at most 1 MiB.
+  operations: Operation[]        // Nonempty; subject to the 4 MiB RPC request limit.
 }
 
 Operation = create(CreateOperation)
@@ -641,11 +641,11 @@ Mutation {
 }
 ```
 
-Operations run in order within one FDB transaction, including operations on different objects.
-Later operations see earlier successful changes, so a request may create a directory, create a file
-within it, and write that file. Transaction write budgets may reject the request with `CAPACITY`
-even when its input fits. All required results and final attributes must fit within the 4 MiB
-encoded response budget. If the transaction or response budget cannot be met, `Apply` fails with
+Operations with overlapping targets run in request order; disjoint batches run concurrently within
+one FDB transaction. Later operations in a batch see earlier successful changes, allowing a request
+to create a directory, create a file within it, and write that file. Transaction write budgets may
+reject the request with `CAPACITY` even when its input fits. All required results and final attributes
+must fit within the 4 MiB encoded response budget. If either budget cannot be met, `Apply` fails with
 `CAPACITY` before committing any changes.
 
 Each operation must finish filesystem validation before staging any writes. A validation failure

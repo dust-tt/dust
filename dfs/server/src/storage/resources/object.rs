@@ -16,13 +16,17 @@ use crate::{
     clock,
     storage::{
         self,
-        resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, page, tenant::TenantResource},
+        resources::{
+            SUBJECT_MAX_BYTES, directory, file, keys::tenant_subspace, page, tenant::TenantResource,
+        },
     },
 };
 
+mod apply;
 mod hints;
 mod modes;
 mod stat;
+pub use apply::ApplyGroup;
 pub use hints::TreeHints;
 pub use modes::Mode;
 
@@ -60,7 +64,11 @@ pub enum Error {
     InvalidStoredGrant,
     InvalidAncestry,
     UnsupportedKind,
+    UnsupportedOperation,
     VersionOverflow,
+    // Boxed because directory and file errors can themselves wrap object errors.
+    Directory(Box<directory::Error>),
+    File(Box<file::Error>),
 }
 
 impl fmt::Display for Error {
@@ -82,16 +90,51 @@ impl fmt::Display for Error {
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
+            Self::UnsupportedOperation => f.write_str("unsupported object operation"),
             Self::VersionOverflow => f.write_str("object version overflow"),
+            Self::Directory(error) => error.fmt(f),
+            Self::File(error) => error.fmt(f),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Directory(error) => Some(error.as_ref()),
+            Self::File(error) => Some(error.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 impl From<Error> for storage::Error<Error> {
     fn from(error: Error) -> Self {
         Self::Resource(error)
+    }
+}
+
+impl From<storage::Error<directory::Error>> for storage::Error<Error> {
+    fn from(error: storage::Error<directory::Error>) -> Self {
+        match error {
+            storage::Error::Open(error) => Self::Open(error),
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
+            storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Resource(error) => Self::Resource(Error::Directory(Box::new(error))),
+        }
+    }
+}
+
+impl From<storage::Error<file::Error>> for storage::Error<Error> {
+    fn from(error: storage::Error<file::Error>) -> Self {
+        match error {
+            storage::Error::Open(error) => Self::Open(error),
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
+            storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Resource(error) => Self::Resource(Error::File(Box::new(error))),
+        }
     }
 }
 
@@ -226,7 +269,7 @@ impl ObjectResource {
             parent_id: parent_id
                 .map(|bytes| ObjectId::try_from(bytes.as_slice()))
                 .transpose()
-                .map_err(storage::Error::InvalidObjectId)?,
+                .map_err(storage::Error::<Error>::InvalidObjectId)?,
             name,
             kind: ObjectKind::try_from(kind)
                 .map_err(|error| FdbBindingError::CustomError(Box::new(error)))?,

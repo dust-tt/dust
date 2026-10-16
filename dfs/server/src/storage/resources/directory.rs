@@ -18,6 +18,7 @@ use crate::{
     },
 };
 
+mod apply;
 mod lookup;
 
 const FAMILY: &str = "child";
@@ -30,6 +31,7 @@ pub enum Error {
     InvalidName,
     NameTooLong,
     UnsupportedKind,
+    UnsupportedOperation,
     AlreadyExists,
     TimestampGeneration,
     InvalidPageLimit,
@@ -45,6 +47,7 @@ impl fmt::Display for Error {
             Self::InvalidName => f.write_str("invalid child name"),
             Self::NameTooLong => f.write_str("child name too long"),
             Self::UnsupportedKind => f.write_str("unsupported child kind"),
+            Self::UnsupportedOperation => f.write_str("unsupported directory operation"),
             Self::AlreadyExists => f.write_str("child name already exists"),
             Self::TimestampGeneration => f.write_str("child timestamp generation failed"),
             Self::InvalidPageLimit => f.write_str("invalid child page limit"),
@@ -104,7 +107,8 @@ impl DirectoryResource {
     /**
      * @cc [owner:spolu,label:backend;error-handling] directory-create-input-id
      * An invalid child object ID MUST return Object(InvalidId) without staging writes.
-     *
+     */
+    /**
      * @cc [owner:pmilliotte,label:product] root-reserves-shared-name
      * Under the tenant root, a child named `shared` MUST fail with AlreadyExists without writing,
      * so it never collides with virtual `shared` at virtual root. Other directories MUST accept it.

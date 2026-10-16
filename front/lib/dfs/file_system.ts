@@ -37,8 +37,8 @@ export interface DfsListedEntry {
 
 // Server limit for one `Read`.
 const MAX_READ_CHUNK_BYTES = 1024 * 1024;
-// `Apply` requests are limited to 1 MiB encoded; keep headroom for the operation envelope.
-const MAX_WRITE_CHUNK_BYTES = 1024 * 1024 - 64 * 1024;
+// Keep headroom for operation metadata within the 4 MiB RPC request limit.
+const MAX_WRITE_CHUNK_BYTES = 4 * 1024 * 1024 - 64 * 1024;
 const LIST_PAGE_LIMIT = 4096;
 const MAX_REMOVALS_PER_APPLY = 512;
 
@@ -947,6 +947,7 @@ export class DfsFileSystem {
         new DfsError("invalid_input", "The destination requires a path.")
       );
     }
+
     const source = parseDfsUri(src);
     if (source.isErr()) {
       return source;
@@ -957,10 +958,12 @@ export class DfsFileSystem {
         new DfsError("invalid_input", "The source requires a path.")
       );
     }
+
     const parentId = await this.resolveParentId(source.value);
     if (parentId.isErr()) {
       return parentId;
     }
+
     const attr = await this.lookupChild(parentId.value, sourceName);
     if (attr.isErr()) {
       return attr;
@@ -972,10 +975,12 @@ export class DfsFileSystem {
     if (objectId.isErr()) {
       return objectId;
     }
+
     const targetId = await this.resolveParentId(destination.value);
     if (targetId.isErr()) {
       return targetId;
     }
+
     return this.applyForObject([
       {
         type: "move",

@@ -16,6 +16,8 @@ use crate::storage::{
     },
 };
 
+mod apply;
+
 const FAMILY: &str = "block";
 const CONCURRENT_FILE_READS: usize = 16;
 pub const BLOCK_SIZE_BYTES: usize = 64 * 1024;
@@ -24,6 +26,7 @@ pub const BLOCK_SIZE_BYTES: usize = 64 * 1024;
 pub enum Error {
     IsDirectory,
     UnsupportedKind,
+    UnsupportedOperation,
     InvalidLength,
     InvalidBlock,
     Capacity,
@@ -35,6 +38,7 @@ impl fmt::Display for Error {
         match self {
             Self::IsDirectory => f.write_str("object is a directory"),
             Self::UnsupportedKind => f.write_str("unsupported file kind"),
+            Self::UnsupportedOperation => f.write_str("unsupported file operation"),
             Self::InvalidLength => f.write_str("invalid read length"),
             Self::InvalidBlock => f.write_str("stored file block exceeds the size limit"),
             Self::Capacity => f.write_str("file exceeds the read budget"),
