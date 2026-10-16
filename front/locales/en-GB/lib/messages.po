@@ -1114,7 +1114,11 @@ msgid "The Frame text couldn't be updated."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
-msgid "This Frame's pending changes were replaced. Review the latest changes first."
+msgid "This Frame changed or is being updated. Refresh it and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "These changes couldn't be made live."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
