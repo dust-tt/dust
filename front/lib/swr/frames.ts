@@ -39,7 +39,7 @@ export function useFramePermissions({
   });
 
   return {
-    isFrameAuthor: data?.isFrameAuthor ?? false,
+    canWriteFrameSource: data?.canWriteFrameSource ?? false,
     packageRoot: data?.packageRoot ?? null,
     hasFrameFunctions: data?.hasFunctions ?? false,
     isFramePermissionsLoading: !disabled && !data && !error,

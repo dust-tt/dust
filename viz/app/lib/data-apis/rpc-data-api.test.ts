@@ -120,7 +120,7 @@ describe("sandbox function data APIs", () => {
     const api = new RPCDataAPI(sendMessage);
 
     await expect(api.getUserIdentity()).resolves.toMatchObject({
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
     });
   });
 
@@ -128,7 +128,7 @@ describe("sandbox function data APIs", () => {
     const sendMessage = vi.fn().mockResolvedValue({
       isAuthenticated: true,
       isWorkspaceMember: true,
-      isFrameAuthor: true,
+      canWriteFrameSource: true,
       user: {
         sId: "usr_123",
         firstName: "Ada",
@@ -140,7 +140,7 @@ describe("sandbox function data APIs", () => {
     const api = new RPCDataAPI(sendMessage);
 
     await expect(api.getUserIdentity()).resolves.toMatchObject({
-      isFrameAuthor: true,
+      canWriteFrameSource: true,
     });
   });
 
@@ -150,7 +150,7 @@ describe("sandbox function data APIs", () => {
     await expect(api.getUserIdentity()).resolves.toEqual({
       isAuthenticated: false,
       isWorkspaceMember: false,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
       isPodEditor: false,
       isPodMember: false,
       user: null,

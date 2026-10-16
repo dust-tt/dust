@@ -39,7 +39,7 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      isFrameAuthor: true,
+      canWriteFrameSource: true,
       packageRoot: `conversation-${conversation.sId}/Admin`,
       hasFunctions: false,
     });
@@ -64,7 +64,7 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
       packageRoot: null,
       hasFunctions: false,
     });

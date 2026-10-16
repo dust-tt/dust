@@ -26,13 +26,13 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const [isFrameAuthor, hasFunctions] = await Promise.all([
+  const [canWriteFrameSource, hasFunctions] = await Promise.all([
     canWriteFrameV2Source(auth, frame),
     frame.hasActiveFrameFunctions(),
   ]);
 
   return ctx.json<GetFramePermissionsResponseBody>({
-    isFrameAuthor,
+    canWriteFrameSource,
     packageRoot: frame.getFrameV2SourceDirectoryPath(auth),
     hasFunctions,
   });

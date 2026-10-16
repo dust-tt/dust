@@ -48,7 +48,7 @@ export type UserIdentityState =
       isPodMember: boolean;
       // Whether the viewer can modify the source files backing this Frame v2. Display-only: use
       // frame_author_required to enforce the same capability on a server-side function.
-      isFrameAuthor: boolean;
+      canWriteFrameSource: boolean;
       user: WorkspaceUserIdentity;
     }
   | {
@@ -56,7 +56,7 @@ export type UserIdentityState =
       isWorkspaceMember: false;
       isPodEditor: false;
       isPodMember: false;
-      isFrameAuthor: false;
+      canWriteFrameSource: false;
       user: null;
     };
 

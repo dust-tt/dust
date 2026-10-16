@@ -72,7 +72,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
-        isFrameAuthor: false,
+        canWriteFrameSource: false,
         isPodEditor: false,
         isPodMember: false,
         user,
@@ -91,7 +91,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
-        isFrameAuthor: false,
+        canWriteFrameSource: false,
         isPodEditor: true,
         isPodMember: false,
         user,
@@ -110,7 +110,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
-        isFrameAuthor: false,
+        canWriteFrameSource: false,
         isPodEditor: false,
         isPodMember: true,
         user,
@@ -129,7 +129,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: false,
         isWorkspaceMember: false,
-        isFrameAuthor: false,
+        canWriteFrameSource: false,
         isPodEditor: false,
         isPodMember: false,
         user: null,
@@ -145,7 +145,7 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
-        isFrameAuthor: false,
+        canWriteFrameSource: false,
         isPodEditor: false,
         isPodMember: false,
         user,
@@ -309,7 +309,7 @@ describe("VisualizationActionIframe", () => {
 
   it("resolves Frame author status only when the iframe requests identity", async () => {
     mocks.clientFetch.mockResolvedValue(
-      new Response(JSON.stringify({ isFrameAuthor: true }), {
+      new Response(JSON.stringify({ canWriteFrameSource: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
@@ -364,7 +364,7 @@ describe("VisualizationActionIframe", () => {
       );
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          result: expect.objectContaining({ isFrameAuthor: true }),
+          result: expect.objectContaining({ canWriteFrameSource: true }),
         }),
         { targetOrigin: "*" }
       );
@@ -414,7 +414,7 @@ describe("VisualizationActionIframe", () => {
     await waitFor(() => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          result: expect.objectContaining({ isFrameAuthor: false }),
+          result: expect.objectContaining({ canWriteFrameSource: false }),
         }),
         { targetOrigin: "*" }
       );

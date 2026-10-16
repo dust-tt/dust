@@ -1126,7 +1126,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const identity = JSON.parse(
       execSpy.mock.calls[0]?.[2]?.envVars?.DUST_POD_USER_IDENTITY ?? ""
     );
-    expect(identity.isFrameAuthor).toBe(true);
+    expect(identity.canWriteFrameSource).toBe(true);
   });
 
   it("tells the function that a caller who cannot write the Frame source is not its author", async () => {
@@ -1158,7 +1158,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const identity = JSON.parse(
       execSpy.mock.calls[0]?.[2]?.envVars?.DUST_POD_USER_IDENTITY ?? ""
     );
-    expect(identity.isFrameAuthor).toBe(false);
+    expect(identity.canWriteFrameSource).toBe(false);
   });
 
   it("fails closed when a newer application persisted an unknown policy", async () => {

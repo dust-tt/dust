@@ -100,7 +100,7 @@ export function getFrameRuntimeAccess(
       ? {
           isAuthenticated: true,
           isWorkspaceMember: true,
-          isFrameAuthor: false,
+          canWriteFrameSource: false,
           isPodEditor: scopedUserIdentity.isPodEditor ?? false,
           isPodMember: scopedUserIdentity.isPodMember ?? false,
           user: scopedUserIdentity.user,
@@ -108,7 +108,7 @@ export function getFrameRuntimeAccess(
       : {
           isAuthenticated: false,
           isWorkspaceMember: false,
-          isFrameAuthor: false,
+          canWriteFrameSource: false,
           isPodEditor: false,
           isPodMember: false,
           user: null,
@@ -164,7 +164,7 @@ async function resolveFrameUserIdentity({
     const permissions: GetFramePermissionsResponseBody = await response.json();
     return {
       ...userIdentity,
-      isFrameAuthor: permissions.isFrameAuthor === true,
+      canWriteFrameSource: permissions.canWriteFrameSource === true,
     };
   } catch {
     return userIdentity;

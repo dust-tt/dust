@@ -32,7 +32,7 @@ describe("currentUser", () => {
       ...identity.user,
       isPodEditor: false,
       isPodMember: false,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
     });
   });
 
@@ -47,7 +47,7 @@ describe("currentUser", () => {
       ...identity.user,
       isPodEditor: true,
       isPodMember: false,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
     });
   });
 
@@ -63,14 +63,14 @@ describe("currentUser", () => {
     process.env[POD_USER_IDENTITY_ENV] = JSON.stringify({
       ...identity,
       isPodMember: true,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
     });
 
     expect(currentUser()).toEqual({
       ...identity.user,
       isPodEditor: false,
       isPodMember: true,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
     });
   });
 
@@ -85,17 +85,17 @@ describe("currentUser", () => {
     process.env[POD_WORKSPACE_ID_ENV] = "w_current";
     process.env[POD_USER_IDENTITY_ENV] = JSON.stringify({
       ...identity,
-      isFrameAuthor: true,
+      canWriteFrameSource: true,
     });
 
-    expect(currentUser()?.isFrameAuthor).toBe(true);
+    expect(currentUser()?.canWriteFrameSource).toBe(true);
   });
 
   test("defaults the frame author bit to false when the envelope omits it", () => {
     process.env[POD_WORKSPACE_ID_ENV] = "w_current";
     process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
 
-    expect(currentUser()?.isFrameAuthor).toBe(false);
+    expect(currentUser()?.canWriteFrameSource).toBe(false);
   });
 
   test("returns null for a userless invocation", () => {
@@ -141,7 +141,7 @@ describe("currentUser inside an invocation context", () => {
       ...identity.user,
       isPodEditor: false,
       isPodMember: false,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
     });
   });
 

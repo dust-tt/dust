@@ -233,7 +233,7 @@ function getSandboxFunctionUserIdentity(
   user: UserResource | null,
   invocation: SandboxFunctionInvocationResource,
   pod: SpaceResource | null,
-  isFrameAuthor: boolean
+  canWriteFrameSource: boolean
 ) {
   const workspace = auth.getNonNullableWorkspace();
   if (
@@ -252,7 +252,7 @@ function getSandboxFunctionUserIdentity(
     // Same predicate as the pod UI's `isMember`: users in any of the pod's groups. Workspace
     // admins outside them are not members.
     isPodMember: pod?.isMember(auth) ?? false,
-    isFrameAuthor,
+    canWriteFrameSource,
     user: {
       sId: user.sId,
       firstName: user.firstName,
@@ -830,7 +830,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ? {}
           : { bundleSha256: persistedFunction.bundleSha256 }),
       };
-      const isFrameAuthor = authorization.user
+      const canWriteFrameSource = authorization.user
         ? await canWriteFrameV2Source(auth, frame)
         : false;
       const userIdentity = getSandboxFunctionUserIdentity(
@@ -838,7 +838,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         authorization.user,
         this,
         authorization.pod,
-        isFrameAuthor
+        canWriteFrameSource
       );
 
       if (!publicationId) {
