@@ -463,7 +463,7 @@ describe("FrameRenderer", () => {
     // Staging does not remount the iframe.
     expect(mocks.iframeMounts).toBe(1);
 
-    const saveButton = screen.getByRole("button", { name: "Save" });
+    const saveButton = screen.getByRole("button", { name: "Apply" });
     expect(saveButton).toBeEnabled();
 
     await act(async () => {
@@ -501,9 +501,7 @@ describe("FrameRenderer", () => {
       "aria-selected",
       "true"
     );
-    expect(
-      screen.queryByRole("button", { name: "Save" })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
   });
 
   it("blocks interaction and shows publishing tooltip while Save is in flight", async () => {
@@ -540,7 +538,7 @@ describe("FrameRenderer", () => {
       });
     });
 
-    const saveButton = screen.getByRole("button", { name: "Save" });
+    const saveButton = screen.getByRole("button", { name: "Apply" });
     await act(async () => {
       fireEvent.click(saveButton);
     });
@@ -595,7 +593,7 @@ describe("FrameRenderer", () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     });
 
     await waitFor(() => {
@@ -624,7 +622,7 @@ describe("FrameRenderer", () => {
 
     expect(screen.queryByRole("tab", { name: "Edit" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Save" })
+      screen.queryByRole("button", { name: "Apply" })
     ).not.toBeInTheDocument();
 
     expect(mocks.iframe).toHaveBeenCalledWith(
@@ -678,7 +676,7 @@ describe("FrameRenderer", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
-    const saveButton = screen.getByRole("button", { name: "Save" });
+    const saveButton = screen.getByRole("button", { name: "Apply" });
     expect(saveButton).toBeDisabled();
     // Icon-only on mobile: still an accessible name, and not an empty control.
     expect(saveButton.querySelector("svg")).not.toBeNull();

@@ -195,6 +195,9 @@ export function PodHoverFrameViewer({
 
   const showPreviewActions =
     !(isV2 && isFramePermissionsLoading) && !needsToolConsent && !isReloading;
+  // Consent occupies the viewport; pin/share/edit chrome would sit on top of it.
+  const showToolbar =
+    !(isV2 && isFramePermissionsLoading) && !needsToolConsent && !isReloading;
 
   const body =
     isV2 && isFramePermissionsLoading ? (
@@ -256,38 +259,42 @@ export function PodHoverFrameViewer({
 
   const chrome = (
     <>
-      <div
-        className={cn(
-          "pointer-events-none absolute right-2 top-2 z-10 transition-opacity",
-          overlayVisible
-            ? "opacity-100"
-            : "opacity-0 group-hover/frame:opacity-100 group-focus-within/frame:opacity-100"
-        )}
-      >
-        <div className="pointer-events-auto flex max-w-[min(100vw-2rem,40rem)] items-center gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
-          {overlayLeading}
-          {toolbar}
-          {controlsPinned && (
-            <Button
-              variant="ghost"
-              size="xs"
-              label={t`Done`}
-              onClick={() => setControlsPinned(false)}
-            />
+      {showToolbar && (
+        <>
+          <div
+            className={cn(
+              "pointer-events-none absolute right-2 top-2 z-10 transition-opacity",
+              overlayVisible
+                ? "opacity-100"
+                : "opacity-0 group-hover/frame:opacity-100 group-focus-within/frame:opacity-100"
+            )}
+          >
+            <div className="pointer-events-auto flex max-w-[min(100vw-2rem,40rem)] items-center gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
+              {overlayLeading}
+              {toolbar}
+              {controlsPinned && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  label={t`Done`}
+                  onClick={() => setControlsPinned(false)}
+                />
+              )}
+            </div>
+          </div>
+          {!overlayVisible && (
+            <div className="absolute right-2 top-2 z-10 opacity-100 group-hover/frame:opacity-0 group-focus-within/frame:opacity-0 sm:hidden">
+              <Button
+                icon={DotsHorizontal}
+                variant="ghost"
+                size="xs"
+                tooltip={t`Frame actions`}
+                className="rounded-lg border border-border/60 bg-background/95 shadow-sm backdrop-blur-sm"
+                onClick={() => setControlsPinned(true)}
+              />
+            </div>
           )}
-        </div>
-      </div>
-      {!overlayVisible && (
-        <div className="absolute right-2 top-2 z-10 opacity-100 group-hover/frame:opacity-0 group-focus-within/frame:opacity-0 sm:hidden">
-          <Button
-            icon={DotsHorizontal}
-            variant="ghost"
-            size="xs"
-            tooltip={t`Frame actions`}
-            className="rounded-lg border border-border/60 bg-background/95 shadow-sm backdrop-blur-sm"
-            onClick={() => setControlsPinned(true)}
-          />
-        </div>
+        </>
       )}
       {body}
       {showPreviewActions && (
