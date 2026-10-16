@@ -38,6 +38,7 @@ const publication = {
       userIdentity: "frame_author_required",
       inputSchema: { type: "object" },
       outputSchema: { type: "object" },
+      toolCalls: [["gmail", "get_messages"]] as [string, string][],
     },
   ],
   databases: [
@@ -54,6 +55,31 @@ describe("FramePublicationDescriptorSchema", () => {
     expect(FramePublicationDescriptorSchema.parse(publication)).toEqual(
       publication
     );
+  });
+
+  it("defaults missing toolCalls to an empty list for older publications", () => {
+    const { toolCalls: _omitted, ...functionWithoutToolCalls } =
+      publication.functions[0];
+    const parsed = FramePublicationDescriptorSchema.parse({
+      ...publication,
+      functions: [functionWithoutToolCalls],
+    });
+
+    expect(parsed.functions[0]?.toolCalls).toEqual([]);
+  });
+
+  it("rejects toolCalls that are not length-2 string pairs", () => {
+    const result = FramePublicationDescriptorSchema.safeParse({
+      ...publication,
+      functions: [
+        {
+          ...publication.functions[0],
+          toolCalls: [["gmail"]],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("requires function and database contracts to match the manifest", () => {

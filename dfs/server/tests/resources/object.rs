@@ -19,7 +19,7 @@ mod grants;
 mod modes;
 mod stat;
 pub(crate) use grants::{
-    grant_creation_and_update_validation_preserve_state,
+    allow, deny, grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
     grant_pagination_handles_full_pages_and_object_deletion,
     grant_update_retry_only_advances_grants_version,

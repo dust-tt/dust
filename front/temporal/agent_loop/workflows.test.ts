@@ -327,9 +327,6 @@ describe("never started tool activity rescheduling", () => {
     });
 
     expect(runToolActivity).toHaveBeenCalledTimes(2);
-    expect(deprecatePatch).toHaveBeenCalledWith(
-      "retry-never-started-tool-activity"
-    );
     expect(claimToolActivityNeverStartedActivity).toHaveBeenCalledWith({
       workflowId: "workflow-id",
       runId: "run-id",
@@ -404,9 +401,6 @@ describe("never started tool activity rescheduling", () => {
 
     expect(runToolActivity).toHaveBeenCalledOnce();
     expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
-    expect(deprecatePatch).not.toHaveBeenCalledWith(
-      "retry-never-started-tool-activity"
-    );
   });
 
   it("reschedules a no_retry tool activity of the agent loop that never started", async () => {

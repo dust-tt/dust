@@ -17,6 +17,7 @@ export interface PublicModelCredit {
   modelMaker: ModelMakerIdType;
   modelMakerDisplayName: string;
   inputCreditsPerMTokens: number;
+  cachedInputCreditsPerMTokens: number;
   outputCreditsPerMTokens: number;
 }
 
@@ -66,6 +67,13 @@ export function buildPublicModelCredits(): PublicModelCredit[] {
         completionTokens: 0,
         cachedTokens: null,
       }) * ONE_MILLION_TOKENS;
+    const cachedInputCostMicroUsd =
+      computeTokensCostForUsageInMicroUsd({
+        modelId: model.modelId,
+        promptTokens: SINGLE_TOKEN,
+        completionTokens: 0,
+        cachedTokens: SINGLE_TOKEN,
+      }) * ONE_MILLION_TOKENS;
     const outputCostMicroUsd =
       computeTokensCostForUsageInMicroUsd({
         modelId: model.modelId,
@@ -81,6 +89,7 @@ export function buildPublicModelCredits(): PublicModelCredit[] {
       modelMaker,
       modelMakerDisplayName: getModelMakerDisplayName(modelMaker),
       inputCreditsPerMTokens: awuFromMicroUsd(inputCostMicroUsd),
+      cachedInputCreditsPerMTokens: awuFromMicroUsd(cachedInputCostMicroUsd),
       outputCreditsPerMTokens: awuFromMicroUsd(outputCostMicroUsd),
     });
   }

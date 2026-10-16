@@ -171,6 +171,10 @@ msgstr ""
 msgid "All comments"
 msgstr ""
 
+#: front/components/editor/document/DocumentEditor.tsx
+msgid "Someone else changed this file while it was open here. Their version was saved as {conflictCopyName}."
+msgstr ""
+
 #: front/components/editor/document/DocumentFrameMenu.tsx
 msgctxt "toolbar over a hovered Frame embedded in a document"
 msgid "Frame"
@@ -264,6 +268,10 @@ msgstr ""
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "{name} is writing"
+msgstr ""
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Changes not saved"
 msgstr ""
 
 #: front/components/editor/document/DocumentSaveStatus.tsx

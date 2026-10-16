@@ -10,6 +10,7 @@ import {
   readCanonicalFileContent,
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
 } from "@app/lib/api/files/file_system_ops";
+import { ABSENT_FILE_REVISION } from "@app/lib/api/files/revisions";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -468,9 +469,6 @@ export async function readStoredText(
 const isMarkdownContentType = (contentType: string | undefined) =>
   contentType !== undefined &&
   stripMimeParameters(contentType) === "text/markdown";
-
-// GCS matches generation 0 only while the object does not exist.
-const ABSENT_FILE_REVISION = "0";
 
 export interface MarkdownCommentsCheck {
   revision: string | undefined;

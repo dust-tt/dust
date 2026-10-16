@@ -163,17 +163,25 @@ describe("editAgentDocument", () => {
   });
 
   it.each([
-    ["removes an anchor", ":comment-end{id=c1}", ""],
+    ["breaks an anchor pair", ":comment-end{id=c1}", "", "anchors_invalid"],
+    ["empties an anchor pair", "on Friday", "", "anchors_invalid"],
     [
       "adds an anchor",
       "Ship it",
       ":comment-start{id=c2}Ship it:comment-end{id=c2}",
+      "anchors_invalid",
     ],
-  ])("refuses an edit that %s", async (_, oldString, newString) => {
+    [
+      "removes an anchor pair",
+      ":comment-start{id=c1}on Friday:comment-end{id=c1}",
+      "on Monday",
+      "anchors_removed",
+    ],
+  ])("refuses an edit that %s", async (_, oldString, newString, code) => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
 
     const result = await edit(oldString, newString);
-    expect(result.isErr() && result.error.code).toBe("anchors_changed");
+    expect(result.isErr() && result.error.code).toBe(code);
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 

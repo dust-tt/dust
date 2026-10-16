@@ -286,6 +286,7 @@ describe("storeFramePublication", () => {
         userIdentity: functionArtifacts[0].userIdentity,
         inputSchema: functionArtifacts[0].inputSchema,
         outputSchema: functionArtifacts[0].outputSchema,
+        toolCalls: [],
       },
     ]);
   });
@@ -515,6 +516,82 @@ describe("storeFramePublication", () => {
     expect(result.isErr() && result.error.code).toBe(
       "invalid_function_artifact"
     );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("persists literal tools.call pairs on each function contract", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "functions/add_task.ts",
+          content: Buffer.from(`
+            import { tools } from "@dust/pod";
+            export default {
+              async fetch() {
+                await tools.call("gmail", "get_messages", {});
+                await tools.call("slack", "search", {});
+                return Response.json({});
+              },
+            };
+          `),
+          contentType: "text/typescript" as const,
+        },
+      ],
+      uiBundleCode,
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const descriptor = await loadFramePublicationDescriptor(auth, {
+      frame,
+      publicationId: result.value.publicationId,
+    });
+    expect(
+      descriptor.isOk() && descriptor.value.functions[0]?.toolCalls
+    ).toEqual([
+      ["gmail", "get_messages"],
+      ["slack", "search"],
+    ]);
+  });
+
+  it("rejects a fast function that calls tools", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFastFunction,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "functions/add_task.ts",
+          content: Buffer.from(`
+            import { tools } from "@dust/pod";
+            export default {
+              async fetch() {
+                await tools.call("gmail", "get_messages", {});
+                return Response.json({});
+              },
+            };
+          `),
+          contentType: "text/typescript" as const,
+        },
+      ],
+      uiBundleCode,
+    });
+
+    expect(result.isErr() && result.error.code).toBe(
+      "invalid_function_artifact"
+    );
+    expect(result.isErr() && result.error.message).toContain("durable");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
@@ -1218,7 +1295,48 @@ describe("frame_publications rows", () => {
     expect(rows[0]).toMatchObject({
       publicationId: stored.value.publicationId,
       publishedByUserId: auth.getNonNullableUser().id,
+      requiredTools: [],
     });
+  });
+
+  it("persists the frame-level requiredTools union on the publication row", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "functions/add_task.ts",
+          content: Buffer.from(`
+            import { tools } from "@dust/pod";
+            export default {
+              async fetch() {
+                await tools.call("slack", "search", {});
+                await tools.call("gmail", "get_messages", {});
+                await tools.call("slack", "search", {});
+                return Response.json({});
+              },
+            };
+          `),
+          contentType: "text/typescript" as const,
+        },
+      ],
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+
+    const rows = await listPublicationRows(frame);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.requiredTools).toEqual([
+      ["gmail", "get_messages"],
+      ["slack", "search"],
+    ]);
   });
 
   it("commits the row before writing any publication object", async () => {

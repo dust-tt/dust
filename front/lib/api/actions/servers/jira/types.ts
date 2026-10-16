@@ -189,162 +189,27 @@ const ADFMarkSchema = z.object({
   attrs: z.record(z.any()).optional(),
 });
 
-const ADFTextNodeSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-  marks: z.array(ADFMarkSchema).optional(),
-});
-
-const ADFHardBreakNodeSchema = z.object({
-  type: z.literal("hardBreak"),
-});
-
-const ADFRuleNodeSchema = z.object({
-  type: z.literal("rule"),
-});
-
-// Explicit schemas for inline nodes we actively render
-const ADFEmojiNodeSchema = z.object({
-  type: z.literal("emoji"),
-  attrs: z
-    .object({
-      shortName: z.string().optional(),
-      id: z.string().optional(),
-      text: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
-
-const ADFMentionNodeSchema = z.object({
-  type: z.literal("mention"),
-  attrs: z
-    .object({
-      id: z.string().optional(),
-      text: z.string().optional(),
-      accessLevel: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
-
-const ADFInlineCardNodeSchema = z.object({
-  type: z.literal("inlineCard"),
-  attrs: z
-    .object({
-      url: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
-
-const ADFBlockCardNodeSchema = z.object({
-  type: z.literal("blockCard"),
-  attrs: z
-    .object({
-      url: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
-
-const ADFStatusNodeSchema = z.object({
-  type: z.literal("status"),
-  attrs: z
-    .object({
-      text: z.string().optional(),
-      color: z.string().optional(),
-      localId: z.string().optional(),
-      style: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
-
-const ADFDateNodeSchema = z.object({
-  type: z.literal("date"),
-  attrs: z
-    .object({
-      timestamp: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
-});
-
+/**
+ * @cc [owner:tdraier,label:performance] linear-validation
+ * Validating an ADF tree MUST cost time linear in its number of nodes: each node's `content` MUST be
+ * validated at most once (e.g. no `z.union` whose branches each recurse into `content`).
+ */
 export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
-  z.union([
-    // Text and basic inline nodes
-    ADFTextNodeSchema,
-    ADFHardBreakNodeSchema,
-    ADFRuleNodeSchema,
-
-    // Inline nodes we explicitly handle in rendering
-    ADFEmojiNodeSchema,
-    ADFMentionNodeSchema,
-    ADFInlineCardNodeSchema,
-    ADFBlockCardNodeSchema,
-    ADFStatusNodeSchema,
-    ADFDateNodeSchema,
-
-    // Block nodes with content
-    z.object({
-      type: z.enum([
-        "paragraph",
-        "heading",
-        "blockquote",
-        "panel",
-        "bulletList",
-        "orderedList",
-        "listItem",
-        "expand",
-        "nestedExpand",
-        "mediaSingle",
-        "mediaGroup",
-      ]),
+  z
+    .object({
+      type: z
+        .string()
+        .describe(
+          "The node type, e.g. `paragraph`, `text`, `heading`, `bulletList`, `orderedList`, " +
+            "`listItem`, `codeBlock`, `blockquote`, `table`, `tableRow`, `tableCell`, " +
+            "`hardBreak`, `mention` or `emoji`."
+        ),
       attrs: z.record(z.any()).optional(),
       content: z.array(ADFContentNodeSchema).optional(),
-    }),
-
-    // Code block (special case - content is text nodes only)
-    z.object({
-      type: z.literal("codeBlock"),
-      attrs: z.record(z.any()).optional(),
-      content: z
-        .array(
-          z.object({
-            type: z.literal("text"),
-            text: z.string(),
-          })
-        )
-        .optional(),
-    }),
-
-    // Table nodes
-    z.object({
-      type: z.enum(["table", "tableRow", "tableCell", "tableHeader"]),
-      attrs: z.record(z.any()).optional(),
-      content: z.array(ADFContentNodeSchema).optional(),
-    }),
-
-    // Media nodes (no content, just attrs)
-    z.object({
-      type: z.enum(["media", "mediaInline"]),
-      attrs: z.record(z.any()).optional(),
-    }),
-
-    // Catch-all for any other ADF node types (future-proofing)
-    // This allows unknown ADF nodes to pass validation and be handled
-    // by the rendering layer's default case
-    z
-      .object({
-        type: z.string(),
-        attrs: z.record(z.any()).optional(),
-        content: z.array(ADFContentNodeSchema).optional(),
-        text: z.string().optional(),
-        marks: z.array(ADFMarkSchema).optional(),
-      })
-      .passthrough(),
-  ])
+      text: z.string().optional(),
+      marks: z.array(ADFMarkSchema).optional(),
+    })
+    .passthrough()
 );
 
 export type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;

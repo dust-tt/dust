@@ -7,6 +7,7 @@ pub mod rpc {
     tonic::include_proto!("dfs.v1");
 }
 
+mod attr_batch;
 pub mod error;
 mod id;
 mod reference;
@@ -19,6 +20,9 @@ pub const STAT_MAX_REFERENCES: usize = 4_096;
 
 /// Most bytes one `Read` request may ask for.
 pub const READ_MAX_BYTES: u32 = 1024 * 1024;
+
+/// Most object IDs one `ReadFiles` request may carry.
+pub const READ_FILES_MAX_OBJECTS: usize = 256;
 
 /// Most UTF-8 bytes in an object name. Not taken from `libc`, which does not define `NAME_MAX` on
 /// every platform.

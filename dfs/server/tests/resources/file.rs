@@ -4,7 +4,7 @@ use dfs_api::storage::{
     resources::{
         file::{self, BLOCK_SIZE_BYTES, FileResource},
         keys::tenant_subspace,
-        object::ObjectResource,
+        object::{self, ObjectResource},
         session::SessionResource,
         tenant::TenantResource,
     },
@@ -35,6 +35,141 @@ async fn fetch(tx: &Transaction, tenant: &TenantResource, id: ObjectId) -> Resul
             .await?
             .context("missing file")?,
     )?)
+}
+
+pub(crate) async fn batch_reads_reject_invalid_ids_and_preserve_transaction_errors() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    let tx = fdb::database()?.create_trx()?;
+    tx.set_read_version(1);
+    assert!(matches!(
+        FileResource::read_batch_for_session(
+            &tx,
+            &session,
+            &[ObjectId::new_v7(), ObjectId::default()],
+            READ_MAX_BYTES as usize,
+        )
+        .await,
+        Err(storage::Error::Resource(file::Error::Object(
+            object::Error::InvalidId
+        )))
+    ));
+    let Err(storage::Error::Transaction(error)) = FileResource::read_batch_for_session(
+        &tx,
+        &session,
+        &[ObjectId::new_v7()],
+        READ_MAX_BYTES as usize,
+    )
+    .await
+    else {
+        anyhow::bail!("expected a transaction failure, not a per-file error");
+    };
+    assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1007));
+    Ok(())
+}
+
+pub(crate) async fn batch_reads_budget_only_data_and_preserve_per_file_errors() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    let content = object(&tenant, 3)?;
+    let broken = object(&tenant, 4)?;
+    let empty = object(&tenant, 0)?;
+    let oversized = object(&tenant, u64::from(READ_MAX_BYTES) + 1)?;
+    let tx = fdb::database()?.create_trx()?;
+    ObjectResource::new_root(&tenant)?
+        .create(
+            &tx,
+            &[Grant {
+                kind: Some(grant::Kind::Allow(AllowGrant {
+                    subject: "reader".to_owned(),
+                    mode: 4,
+                })),
+            }],
+        )
+        .await?;
+    for object in [&content, &broken, &empty, &oversized] {
+        object.create(&tx, &[]).await?;
+    }
+    tx.set(&block_key(&tenant, content.object_id, 0), b"abc");
+    for object in [&broken, &oversized] {
+        tx.set(
+            &block_key(&tenant, object.object_id, 0),
+            &vec![0; BLOCK_SIZE_BYTES + 1],
+        );
+    }
+    tx.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    let results = FileResource::read_batch_for_session(
+        &tx,
+        &session,
+        &[
+            broken.object_id,
+            content.object_id,
+            content.object_id,
+            empty.object_id,
+            oversized.object_id,
+            ObjectId::new_v7(),
+            tenant.root_id,
+        ],
+        3,
+    )
+    .await?;
+    assert_eq!(results.len(), 7);
+    // The corrupt first file cannot fit, leaving the exact data budget for the next file.
+    for index in [0, 2, 4] {
+        assert!(matches!(results[index], Err(file::Error::Capacity)));
+    }
+    let Ok((attributes, data)) = &results[1] else {
+        anyhow::bail!("expected a file matching the exact data budget");
+    };
+    assert_eq!(attributes.id, content.object_id.into());
+    assert_eq!(attributes.store_version, tx.get_read_version().await?);
+    assert_eq!(data, b"abc");
+    let Ok((attributes, data)) = &results[3] else {
+        anyhow::bail!("expected an empty file after exhausting the budget");
+    };
+    assert_eq!(attributes.id, empty.object_id.into());
+    assert!(data.is_empty());
+    assert!(matches!(
+        results[5],
+        Err(file::Error::Object(object::Error::NotFound))
+    ));
+    assert!(matches!(results[6], Err(file::Error::IsDirectory)));
+
+    let results = FileResource::read_batch_for_session(
+        &tx,
+        &session,
+        &[content.object_id, empty.object_id],
+        0,
+    )
+    .await?;
+    assert!(matches!(results[0], Err(file::Error::Capacity)));
+    assert!(matches!(&results[1], Ok((_, data)) if data.is_empty()));
+
+    let results = FileResource::read_batch_for_session(
+        &tx,
+        &session,
+        &[broken.object_id, empty.object_id],
+        4,
+    )
+    .await?;
+    assert!(matches!(results[0], Err(file::Error::InvalidBlock)));
+    assert!(matches!(&results[1], Ok((_, data)) if data.is_empty()));
+
+    let results = FileResource::read_batch_for_session(
+        &tx,
+        &session,
+        &[oversized.object_id],
+        READ_MAX_BYTES as usize + 1,
+    )
+    .await?;
+    assert!(matches!(results[0], Err(file::Error::Capacity)));
+
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.commit().await?;
+    Ok(())
 }
 
 pub(crate) async fn reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks() -> Result<()> {

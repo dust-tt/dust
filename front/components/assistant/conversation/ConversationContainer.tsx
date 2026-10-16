@@ -9,6 +9,7 @@ import { DiscoverButton } from "@app/components/assistant/conversation/discover/
 import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
 import { DiscoveryHomepageOptInLine } from "@app/components/assistant/conversation/discover/DiscoveryHomepageOptInLine";
+import { HomepageAnnouncement } from "@app/components/assistant/conversation/discover/HomepageAnnouncement";
 import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
 import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
@@ -384,12 +385,18 @@ export function ConversationContainerVirtuoso({
       <div
         id="agent-input-header"
         className={classNames(
-          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
+          // Carries the Page.Header top padding so the announcement sits one gap above the title.
+          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-8 sm:pt-10 md:pt-12",
           isDiscoveryHomepage ? "md:basis-[36vh]" : "md:min-h-[36vh]"
         )}
         ref={startConversationRef}
       >
+        <HomepageAnnouncement
+          // Leads the greeting so the hero reads top-down.
+          style={shouldReduceMotion ? undefined : greetingWordStyle(0)}
+        />
         <Page.Header
+          noTopPadding
           title={
             <h3
               key={greeting}

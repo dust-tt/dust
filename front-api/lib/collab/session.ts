@@ -1,11 +1,18 @@
 import type { CollabAccess } from "@app/lib/api/collab/access";
 import type { CollabSave } from "@app/lib/api/collab/session_file";
+import {
+  CollabSaveError,
+  keepConflictingFile,
+  saveCollabSession,
+} from "@app/lib/api/collab/session_file";
 import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 import type {
+  SaveState,
+  SaveStateMessage,
   CollabAgent,
   AgentActivity,
   AgentEditMessage,
@@ -21,6 +28,7 @@ import type {
 import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Document, Hocuspocus } from "@hocuspocus/server";
 import type * as Y from "yjs";
@@ -30,6 +38,11 @@ export interface CollabSession {
   comments: DfmComment[];
   lastSave: CollabSave;
   saveFailed: boolean;
+  /** The save retried next while saves fail, and how many were retried since the last success. */
+  saveRetryTimer: ReturnType<typeof setTimeout> | undefined;
+  saveRetries: number;
+  /** Where the file's version was last kept after a save conflict, for editors joining later. */
+  conflictCopy: string | undefined;
   /** The connection that last changed the text. */
   lastChangedBy: CollabAccess | undefined;
   /** The connection that last changed the threads, which saves them when nobody changed the text. */
@@ -37,6 +50,24 @@ export interface CollabSession {
   graceTimer: ReturnType<typeof setTimeout> | undefined;
   pendingMutations: Promise<void>;
 }
+
+// A failed save is retried after this delay, doubled at each failure up to the maximum: longer
+// than a debounced store, short enough that a passing storage error clears before people notice,
+// and at most every few minutes for a failure that lasts.
+export const SAVE_RETRY_DELAY_MS = 30 * 1000;
+const SAVE_RETRY_MAX_DELAY_MS = 5 * 60 * 1000;
+
+/** How a save ended: `failed_until_edited` is not retried, since only an edit can fix it. */
+export type SaveOutcome = "saved" | "failed" | "failed_until_edited";
+
+/** The session's save state, as its editors show it. */
+export const toSaveState = (session: CollabSession): SaveState => ({
+  failed: session.saveFailed,
+  conflictCopy: session.conflictCopy ?? null,
+});
+
+export const saveStateMessage = (state: SaveState) =>
+  JSON.stringify({ type: "save_state", ...state } satisfies SaveStateMessage);
 
 export const serverMessage = (message: CommentServerMessage) =>
   JSON.stringify(message);
@@ -172,7 +203,8 @@ export function showAgentActivity(
  * take its turn among the document's comment commands, answering `closed` if the document unloaded
  * meanwhile, and a write that fails MUST NOT hold the later ones. A write whose turn has not come
  * within `COLLAB_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
- * retries a change that lands later; so MUST a write once `saveAllSessions` was called.
+ * retries a change that lands later; so MUST a write once `saveAllSessions` was called. While the
+ * session's last save failed, a write MUST answer `unsaved` and change nothing, at its turn.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
  * editing right before it is applied; it MUST be announced as reading again if the change is then
@@ -216,6 +248,9 @@ export async function writeSessionSource(
     // Unloaded while it waited for its turn: a reload reads the file into a new document.
     if (document.isDestroyed) {
       return new Ok("closed");
+    }
+    if (session.saveFailed) {
+      return new Ok("unsaved");
     }
     const current = yDocToDfm({ doc: document, comments: session.comments });
     if (current.isErr()) {
@@ -295,8 +330,6 @@ export async function writeSessionSource(
       lastContext: file,
       lastTransactionOrigin: undefined,
     });
-    // TODO(co-edition): refuse writes while `session.saveFailed`: an accepted write only lives
-    // in memory until a save succeeds, and is lost if none ever does.
     return new Ok("written");
   };
 
@@ -318,4 +351,147 @@ export async function writeSessionSource(
     return new Ok("busy");
   }
   return written;
+}
+
+/**
+ * Records how `document`'s last save ended, tells its connections when whether it failed
+ * changes, and schedules a retry after a failure a retry can fix.
+ */
+export function recordSaveResult(
+  hocuspocus: Hocuspocus<CollabAccess>,
+  document: Document,
+  outcome: SaveOutcome
+): void {
+  const session = getSession(document);
+  if (!session) {
+    return;
+  }
+  let failed: boolean;
+  switch (outcome) {
+    case "saved":
+      failed = false;
+      clearTimeout(session.saveRetryTimer);
+      session.saveRetryTimer = undefined;
+      session.saveRetries = 0;
+      break;
+    case "failed_until_edited":
+      failed = true;
+      clearTimeout(session.saveRetryTimer);
+      session.saveRetryTimer = undefined;
+      break;
+    case "failed":
+      failed = true;
+      // A failure while a retry is pending leaves it as scheduled: the delay doubles per retry.
+      if (session.saveRetryTimer === undefined) {
+        const delayMs = Math.min(
+          SAVE_RETRY_DELAY_MS * 2 ** session.saveRetries,
+          SAVE_RETRY_MAX_DELAY_MS
+        );
+        session.saveRetries++;
+        session.saveRetryTimer = setTimeout(() => {
+          session.saveRetryTimer = undefined;
+          // Unloaded, it has nothing left to save; shutting down, `saveAllSessions` saves it.
+          if (document.isDestroyed || isStoppingWrites(hocuspocus)) {
+            return;
+          }
+          // Not awaited: `onStoreDocument` logs a failure and schedules the next retry.
+          void hocuspocus.storeDocumentHooks(
+            document,
+            {
+              clientsCount: document.getConnectionsCount(),
+              document,
+              documentName: document.name,
+              instance: hocuspocus,
+              // The store hook saves through the last writer it recorded, not this context.
+              lastContext: undefined,
+              lastTransactionOrigin: undefined,
+            },
+            true
+          );
+        }, delayMs);
+      }
+      break;
+    default:
+      assertNever(outcome);
+  }
+  if (session.saveFailed !== failed) {
+    session.saveFailed = failed;
+    document.broadcastStateless(saveStateMessage(toSaveState(session)));
+  }
+}
+
+// A file written again while its conflict is kept starts another round, at most this many per save.
+const MAX_CONFLICT_ROUNDS = 3;
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] collab-session-save-conflict
+ * Each round MUST save with `saveCollabSession` through the connection that last changed the
+ * document by then, `writer` when none did, and fail without saving when it cannot write. When a
+ * save fails with `revision_conflict`, the file's version MUST be kept with `keepConflictingFile`
+ * before the session saves over it: the session's last save becomes the file as now stored, and
+ * when a copy was written, its path MUST be recorded in the session's save state and that state
+ * sent to every connection. It MUST then save again, at most `MAX_CONFLICT_ROUNDS` times, and
+ * return the first failure it cannot recover: any failure but a conflict, a conflict whose file
+ * cannot be kept, or a conflict past the last round.
+ */
+export async function saveSession(
+  document: Document,
+  writer: CollabAccess
+): Promise<Result<CollabSave, CollabSaveError>> {
+  const session = getSession(document);
+  if (!session) {
+    return new Err(
+      new CollabSaveError("failed", "The document has no session.")
+    );
+  }
+  for (let round = 0; ; round++) {
+    // Someone may have edited while the last round awaited: save through whoever changed it last.
+    const current = session.lastChangedBy ?? session.lastCommenter ?? writer;
+    if (current.canWrite !== true) {
+      return new Err(
+        new CollabSaveError(
+          "failed",
+          "The document was changed without a writer."
+        )
+      );
+    }
+    const saved = await saveCollabSession(
+      current,
+      { doc: document, comments: session.comments },
+      session.lastSave
+    );
+    if (
+      saved.isOk() ||
+      saved.error.code !== "revision_conflict" ||
+      round === MAX_CONFLICT_ROUNDS
+    ) {
+      return saved;
+    }
+    const kept = await keepConflictingFile(current, session.lastSave);
+    if (kept.isErr()) {
+      logger.warn(
+        {
+          documentName: document.name,
+          workspaceId: current.workspaceId,
+          reason: kept.error.message,
+        },
+        "Collab conflict not kept"
+      );
+      return saved;
+    }
+    session.lastSave = kept.value.lastSave;
+    const { copyPath } = kept.value;
+    if (copyPath) {
+      session.conflictCopy = copyPath;
+      logger.info(
+        {
+          documentName: document.name,
+          workspaceId: current.workspaceId,
+          copyPath,
+        },
+        "Collab conflict kept as a copy"
+      );
+      document.broadcastStateless(saveStateMessage(toSaveState(session)));
+    }
+  }
 }

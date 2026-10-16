@@ -40,6 +40,11 @@ import assert from "assert";
  * All errors within this function must be handled through `handleMCPActionError`
  * to ensure consistent error reporting and proper conversation flow control.
  */
+/**
+ * @cc [owner:tdraier,label:error-handling] pause-events-err-ends-action
+ * When `getExitOrPauseEvents` returns an `Err`, this MUST end the action through
+ * `handleMCPActionError` and MUST NOT throw.
+ */
 export async function* runToolWithStreaming(
   auth: Authenticator,
   {
@@ -157,13 +162,13 @@ export async function* runToolWithStreaming(
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
   const pauseEventsStarted = performance.now();
-  const agentPauseEvents = await getExitOrPauseEvents(auth, {
+  const agentPauseEventsRes = await getExitOrPauseEvents(auth, {
     outputItems,
     toolContext,
   });
   recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
 
-  if (agentPauseEvents.length > 0) {
+  if (agentPauseEventsRes.isErr() || agentPauseEventsRes.value.length > 0) {
     // Durable GCS may still be in flight from createOutputItems; finish before exiting.
     const persistResult = await awaitDurablePersist();
     if (persistResult.isErr()) {
@@ -172,7 +177,21 @@ export async function* runToolWithStreaming(
         "Failed to durably persist MCP tool output after pause event"
       );
     }
-    for (const event of agentPauseEvents) {
+
+    if (agentPauseEventsRes.isErr()) {
+      // Current status, not the pre-run one: a concurrently finalized action keeps its status.
+      yield await handleMCPActionError(auth, {
+        action,
+        status: action.status,
+        errorContent: [
+          { type: "text", text: agentPauseEventsRes.error.message },
+        ],
+        executionDurationMs: performance.now() - startDate,
+      });
+      return;
+    }
+
+    for (const event of agentPauseEventsRes.value) {
       yield event;
     }
     return;

@@ -341,6 +341,7 @@ message ReadFilesRequest {
 // All results MUST fit within the 4 MiB encoded reply budget, including errors and attributes.
 // Files larger than 1 MiB or unable to fit in the remaining budget MUST receive an individual
 // CAPACITY error without downloading that file. Every input MUST retain its result.
+// Servers MAY reserve conservative encoding overhead when determining the data budget.
 message FilesBatch {
   repeated FileResult results = 1;
 }

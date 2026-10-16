@@ -1,4 +1,5 @@
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -7,6 +8,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { Err } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it, vi } from "vitest";
 
@@ -18,6 +20,20 @@ vi.mock("@app/lib/actions/mcp_actions", async (importOriginal) => {
     tryCallMCPTool: vi.fn(),
   };
 });
+
+vi.mock(
+  "@app/lib/actions/mcp_internal_actions/exit_events",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/actions/mcp_internal_actions/exit_events")
+      >();
+    return {
+      ...actual,
+      getExitOrPauseEvents: vi.fn(actual.getExitOrPauseEvents),
+    };
+  }
+);
 
 function mockToolCallResult(result: CallToolResult) {
   vi.mocked(tryCallMCPTool).mockImplementation(async function* () {
@@ -127,5 +143,30 @@ describe("runToolWithStreaming (sandbox function run context)", () => {
     expect(JSON.parse(outputWrite?.content.toString() ?? "")).toEqual(
       errorContent
     );
+  });
+
+  it("should mark the action errored instead of throwing when pause events fail", async () => {
+    const { auth, action, runContext } = await setupSandboxFunctionRun();
+
+    mockToolCallResult({
+      isError: false,
+      content: [{ type: "text", text: "42" }],
+    });
+    vi.mocked(getExitOrPauseEvents).mockResolvedValueOnce(
+      new Err(new Error("parent is final"))
+    );
+
+    const eventTypes = await collectEvents(
+      runToolWithStreaming(auth, { toolContext: { runContext } })
+    );
+
+    expect(eventTypes).toEqual(["tool_success"]);
+
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        auth,
+        action.id
+      );
+    expect(refetched?.status).toBe("errored");
   });
 });

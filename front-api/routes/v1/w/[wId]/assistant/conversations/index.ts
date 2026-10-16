@@ -54,7 +54,10 @@ import {
   PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
+import {
+  apiErrorForModelSelection,
+  validatePublicModelSelection,
+} from "@front-api/lib/api/assistant/conversation/model_selection";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -441,7 +444,7 @@ app.post(
         message.modelSelection
       );
       if (modelSelectionRes.isErr()) {
-        return apiError(ctx, modelSelectionRes.error);
+        return apiErrorForModelSelection(ctx, modelSelectionRes.error);
       }
       const modelSelection = modelSelectionRes.value;
 

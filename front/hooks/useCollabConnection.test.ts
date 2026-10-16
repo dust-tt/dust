@@ -75,6 +75,57 @@ describe("useCollabConnection", () => {
     unmount();
   });
 
+  it("reports the server's save state, sent as soon as it connects", async () => {
+    await server.destroy();
+    server = newServer({
+      connected: async ({ connection }) => {
+        connection.sendStateless(
+          JSON.stringify({ type: "save_state", failed: true })
+        );
+      },
+    });
+    await server.listen();
+    const { result, unmount } = renderSession();
+    await waitFor(() => expect(result.current.status).toBe("live"));
+    expect(result.current.saveState.failed).toBe(true);
+
+    act(() => {
+      server.hocuspocus.documents
+        .get(DOCUMENT_NAME)
+        ?.broadcastStateless(
+          JSON.stringify({ type: "save_state", failed: false })
+        );
+    });
+    await waitFor(() => expect(result.current.saveState.failed).toBe(false));
+    unmount();
+  });
+
+  it("forgets a failed save told to a connection lost before it synced", async () => {
+    await server.destroy();
+    let connections = 0;
+    server = newServer({
+      // The first connection hears that saves fail, then drops before syncing; saves recovered
+      // by the next one, which hears nothing.
+      connected: async ({ connection }) => {
+        connections++;
+        if (connections === 1) {
+          connection.sendStateless(
+            JSON.stringify({ type: "save_state", failed: true })
+          );
+          connection.close();
+        }
+      },
+    });
+    await server.listen();
+    const { result, unmount } = renderSession();
+    await waitFor(() => expect(result.current.status).toBe("live"), {
+      timeout: 5000,
+    });
+    expect(connections).toBe(2);
+    expect(result.current.saveState.failed).toBe(false);
+    unmount();
+  });
+
   it("takes a fresh connection, with a fresh ticket, when the server closes the document", async () => {
     const tickets = vi.fn(async () => "ticket");
     const { result, unmount } = renderSession(tickets);

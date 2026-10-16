@@ -10,6 +10,8 @@ import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
@@ -33,14 +35,17 @@ export async function getExitOrPauseEvents(
     toolContext: ToolContext;
   }
 ): Promise<
-  (
-    | MCPApproveExecutionEvent
-    | ToolAskUserQuestionEvent
-    | ToolPersonalAuthRequiredEvent
-    | ToolFileAuthRequiredEvent
-    | ToolEarlyExitEvent
-    | ToolPausedEvent
-  )[]
+  Result<
+    (
+      | MCPApproveExecutionEvent
+      | ToolAskUserQuestionEvent
+      | ToolPersonalAuthRequiredEvent
+      | ToolFileAuthRequiredEvent
+      | ToolEarlyExitEvent
+      | ToolPausedEvent
+    )[],
+    Error
+  >
 > {
   const { runContext } = toolContext;
   assert(runContext, "getExitOrPauseEvents requires a tool run context.");
@@ -50,7 +55,7 @@ export async function getExitOrPauseEvents(
     .find(isAgentPauseOutputResourceType)?.resource;
 
   if (!exitOutputItem) {
-    return [];
+    return new Ok([]);
   }
 
   const { action, toolConfiguration } = runContext;
@@ -88,7 +93,7 @@ export async function getExitOrPauseEvents(
       const { isError, reason, text } = exitOutputItem;
       const eventIsError = reason === "user_cancellation" ? false : isError;
 
-      return [
+      return new Ok([
         {
           type: "tool_early_exit",
           created: Date.now(),
@@ -97,14 +102,17 @@ export async function getExitOrPauseEvents(
           isError: eventIsError,
           reason,
         },
-      ];
+      ]);
     }
     case "tool_blocked_awaiting_input": {
       const { blockingEvents, state } = exitOutputItem;
 
       if (isAgentLoopRunContext(runContext)) {
         // Break the agent loop without allowing a stale pause event to rewind a final action.
-        await runContext.action.blockForSandboxChild(auth);
+        const blockRes = await runContext.action.blockForSandboxChild(auth);
+        if (blockRes.isErr()) {
+          return new Err(blockRes.error);
+        }
 
         // Update the step context to save the resume state.
         await runContext.action.updateStepContext({
@@ -126,7 +134,7 @@ export async function getExitOrPauseEvents(
       // `runToolWithStreaming` would fall through to `markAsSucceeded` on an already-blocked
       // action.Appended LAST so the for-await in `executeToolStreaming` processes every blocking
       // event before the sentinel triggers the return.
-      return [
+      return new Ok([
         // Blocking events are parsed with the public client schemas where agentName is optional;
         // normalize to the placeholder constant expected internally.
         ...blockingEvents.map((event) => ({
@@ -139,7 +147,7 @@ export async function getExitOrPauseEvents(
           ...eventScope,
           actionId: action.sId,
         },
-      ];
+      ]);
     }
     case "tool_personal_auth_required": {
       const { provider, scope } = exitOutputItem;
@@ -153,11 +161,14 @@ export async function getExitOrPauseEvents(
           await runContext.action.updateStatus(
             "blocked_authentication_required"
           );
-          await pauseSandboxBashForBlockedChild(
+          const pauseRes = await pauseSandboxBashForBlockedChild(
             auth,
             runContext.action,
             runContext.conversation
           );
+          if (pauseRes.isErr()) {
+            return new Err(pauseRes.error);
+          }
           break;
         case "sandbox_function":
           await runContext.action.updateStatus(
@@ -168,7 +179,7 @@ export async function getExitOrPauseEvents(
           assertNever(runContext);
       }
 
-      return [
+      return new Ok([
         {
           type: "tool_personal_auth_required",
           created: Date.now(),
@@ -193,7 +204,7 @@ export async function getExitOrPauseEvents(
             }),
           },
         },
-      ];
+      ]);
     }
     case "tool_file_auth_required": {
       const { fileId, fileName, connectionId, mimeType_file } = exitOutputItem;
@@ -208,11 +219,14 @@ export async function getExitOrPauseEvents(
         await runContext.action.updateStatus(
           "blocked_file_authorization_required"
         );
-        await pauseSandboxBashForBlockedChild(
+        const pauseRes = await pauseSandboxBashForBlockedChild(
           auth,
           runContext.action,
           runContext.conversation
         );
+        if (pauseRes.isErr()) {
+          return new Err(pauseRes.error);
+        }
 
         // Persisted here so the blocked action can be reconstructed on page reload.
         await runContext.action.updateStepContext({
@@ -226,7 +240,7 @@ export async function getExitOrPauseEvents(
         });
       }
 
-      return [
+      return new Ok([
         {
           type: "tool_file_auth_required",
           created: Date.now(),
@@ -250,7 +264,7 @@ export async function getExitOrPauseEvents(
             message: fileAuthErrorMessage,
           },
         },
-      ];
+      ]);
     }
     case "tool_user_answer_required": {
       const { question } = exitOutputItem;
@@ -259,11 +273,14 @@ export async function getExitOrPauseEvents(
       // invocations observe the returned event instead.
       if (isAgentLoopRunContext(runContext)) {
         await runContext.action.updateStatus("blocked_user_answer_required");
-        await pauseSandboxBashForBlockedChild(
+        const pauseRes = await pauseSandboxBashForBlockedChild(
           auth,
           runContext.action,
           runContext.conversation
         );
+        if (pauseRes.isErr()) {
+          return new Err(pauseRes.error);
+        }
 
         await runContext.action.updateStepContext({
           ...runContext.action.stepContext,
@@ -271,7 +288,7 @@ export async function getExitOrPauseEvents(
         });
       }
 
-      return [
+      return new Ok([
         {
           type: "tool_ask_user_question",
           created: Date.now(),
@@ -286,7 +303,7 @@ export async function getExitOrPauseEvents(
           inputs,
           question,
         },
-      ];
+      ]);
     }
     default: {
       assertNever(exitOutputItem);

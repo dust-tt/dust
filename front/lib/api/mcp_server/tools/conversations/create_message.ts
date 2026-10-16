@@ -1,6 +1,8 @@
 import { resolveAgentIdByName } from "@app/lib/api/agents/search";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { validatePublicModelSelection } from "@app/lib/api/assistant/conversation/model_selection";
 import config from "@app/lib/api/config";
+import { mcpModelSelectionInputSchema } from "@app/lib/api/mcp_server/tools/conversations/model_selection";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -22,6 +24,7 @@ const inputSchema = {
     .describe(
       `Agent name to mention and trigger. Defaults to "${DEFAULT_AGENT_NAME}". Pass null explicitly to post a message without triggering any agent.`
     ),
+  modelSelection: mcpModelSelectionInputSchema,
 };
 
 export function registerConversationsCreateMessageTool(server: McpServer) {
@@ -29,10 +32,10 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
     server,
     "create_conversation_message",
     {
-      description: `Post a user message to an existing conversation. By default triggers the "${DEFAULT_AGENT_NAME}" agent. Pass agentName: null to post without triggering any agent.`,
+      description: `Post a user message to an existing conversation. By default triggers the "${DEFAULT_AGENT_NAME}" agent. Pass agentName: null to post without triggering any agent. Optionally pass modelSelection to override the agent's default model and reasoning effort for this message.`,
       inputSchema,
     },
-    async (auth, { conversationId, message, agentName }) => {
+    async (auth, { conversationId, message, agentName, modelSelection }) => {
       const user = auth.user();
 
       const conversationResource = await ConversationResource.fetchById(
@@ -41,6 +44,14 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
       );
       if (!conversationResource) {
         return mcpError("Conversation not found");
+      }
+
+      const modelSelectionRes = await validatePublicModelSelection(
+        auth,
+        modelSelection
+      );
+      if (modelSelectionRes.isErr()) {
+        return mcpError(modelSelectionRes.error.message);
       }
 
       let mentions: { configurationId: string }[] = [];
@@ -68,6 +79,7 @@ export function registerConversationsCreateMessageTool(server: McpServer) {
           lastTriggerRunAt: null,
         },
         skipToolsValidation: false,
+        modelSelection: modelSelectionRes.value,
       });
 
       if (messageRes.isErr()) {

@@ -140,19 +140,24 @@ function ModelCreditsTable({ providerSections }: ModelCreditsTableProps) {
 
   return (
     <section className="-mx-6 px-3 py-8 md:mx-0 md:px-0 md:py-12">
-      <table className="mx-auto w-full max-w-3xl border-separate border-spacing-0">
+      <table className="mx-auto w-full max-w-4xl border-separate border-spacing-0">
         {/* top-16 matches the ScrollingHeader scrolled height (h-16). */}
         <thead className="sticky top-16 z-10">
-          <tr className="grid grid-cols-2 bg-background md:table-row">
+          <tr className="grid grid-cols-3 bg-background md:table-row">
             <th className="hidden border-b border-border bg-background px-2 py-4 text-left align-bottom md:table-cell md:py-5">
               <span className="heading-lg text-foreground">Model</span>
             </th>
-            <th className="block border-b border-border bg-background px-3 py-4 text-center align-bottom md:table-cell md:w-[240px] md:px-5 md:py-5">
+            <th className="block border-b border-border bg-background px-3 py-4 text-center align-bottom md:table-cell md:w-[200px] md:px-5 md:py-5">
               <span className="heading-sm text-foreground">
                 Input credits / 1M tokens
               </span>
             </th>
-            <th className="block border-b border-border bg-background px-3 py-4 text-center align-bottom md:table-cell md:w-[240px] md:px-5 md:py-5">
+            <th className="block border-b border-border bg-background px-3 py-4 text-center align-bottom md:table-cell md:w-[200px] md:px-5 md:py-5">
+              <span className="heading-sm text-foreground">
+                Cached input credits / 1M tokens
+              </span>
+            </th>
+            <th className="block border-b border-border bg-background px-3 py-4 text-center align-bottom md:table-cell md:w-[200px] md:px-5 md:py-5">
               <span className="heading-sm text-foreground">
                 Output credits / 1M tokens
               </span>
@@ -171,7 +176,7 @@ function ModelCreditsTable({ providerSections }: ModelCreditsTableProps) {
             >
               <tr className="grid grid-cols-1 md:table-row">
                 <th
-                  colSpan={3}
+                  colSpan={4}
                   scope="colgroup"
                   className="block border-t border-border p-0 text-left md:table-cell"
                 >
@@ -203,7 +208,7 @@ function ModelCreditsTable({ providerSections }: ModelCreditsTableProps) {
                       key={`${section.provider}:${row.modelId}`}
                       data-row="model"
                       className={cn(
-                        "grid grid-cols-2 md:table-row",
+                        "grid grid-cols-3 md:table-row",
                         idx % 2 === 1 && "bg-muted/40"
                       )}
                       initial={{ y: -4 }}
@@ -213,17 +218,24 @@ function ModelCreditsTable({ providerSections }: ModelCreditsTableProps) {
                         ease: [0.215, 0.61, 0.355, 1],
                       }}
                     >
-                      <td className="col-span-2 block px-2 pb-1.5 pt-3.5 align-middle md:table-cell md:py-3.5 md:pb-3.5">
+                      <td className="col-span-3 block px-2 pb-1.5 pt-3.5 align-middle md:table-cell md:py-3.5 md:pb-3.5">
                         <span className="copy-sm block max-w-[560px] font-medium text-foreground">
                           {row.displayName}
                         </span>
                       </td>
-                      <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[240px] md:px-5 md:py-3.5 md:pt-3.5">
+                      <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[200px] md:px-5 md:py-3.5 md:pt-3.5">
                         <span className="copy-sm text-foreground">
                           {row.inputCreditsPerMTokens.toLocaleString("en-US")}
                         </span>
                       </td>
-                      <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[240px] md:px-5 md:py-3.5 md:pt-3.5">
+                      <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[200px] md:px-5 md:py-3.5 md:pt-3.5">
+                        <span className="copy-sm text-foreground">
+                          {row.cachedInputCreditsPerMTokens?.toLocaleString(
+                            "en-US"
+                          ) ?? "—"}
+                        </span>
+                      </td>
+                      <td className="block px-2 pb-3.5 pt-1.5 text-center align-middle tabular-nums md:table-cell md:w-[200px] md:px-5 md:py-3.5 md:pt-3.5">
                         <span className="copy-sm text-foreground">
                           {row.outputCreditsPerMTokens.toLocaleString("en-US")}
                         </span>
@@ -250,7 +262,7 @@ export default function Credits({ providerSections }: CreditsPageProps) {
       <MotionConfig reducedMotion="user">
         <PageMetadata
           title="Dust Token Credits: Model Credit Consumption"
-          description="Token credit consumption per model on Dust, in credits per million input and output tokens."
+          description="Token credit consumption per model on Dust, in credits per million input, cached input and output tokens."
           pathname={router.asPath}
         />
         <Hero />

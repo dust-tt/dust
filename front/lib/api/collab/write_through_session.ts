@@ -42,7 +42,8 @@ export type CollabSessionWrite<T> =
  * holds `filePath`, `dustFs` MUST be able to write it, else `read_only`; `change` MUST receive the
  * session's source and its result MUST be pushed conditional on that source, starting over from a
  * fresh read when the session changed or was busy, and failing with `conflict` after
- * `MAX_SESSION_WRITE_ATTEMPTS`. Without a session, or once it closed, it MUST write nothing and
+ * `MAX_SESSION_WRITE_ATTEMPTS`, or at once with `unavailable` when the session cannot save
+ * (`unsaved`). Without a session, or once it closed, it MUST write nothing and
  * answer `no_session`, so the caller writes the file. Failing to learn whether a session is open
  * MUST be an error, never `no_session`, since the caller would then write the file under an open
  * session. `filePath` MUST be the normalized path without a trailing slash, the only one a live
@@ -107,6 +108,13 @@ export async function writeThroughCollabSession<T, E extends Error>(
       case "changed":
       case "busy":
         continue;
+      case "unsaved":
+        return new Err(
+          new CollabSessionWriteError(
+            "unavailable",
+            "This file's live session cannot save it right now, so it takes no changes. Try again later."
+          )
+        );
       default:
         assertNever(pushed.value);
     }

@@ -160,6 +160,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   datadog: "development",
   "datadog europe": "development",
   canva: "productivity",
+  figma: "productivity",
   hex: "data",
   spendesk: "productivity",
   // StackOne is a multi-vertical gateway (HR, ATS, CRM, finance, IT) with no

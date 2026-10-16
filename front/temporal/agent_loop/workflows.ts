@@ -161,8 +161,6 @@ async function runNonRetryableToolActivity(
       throw err;
     }
 
-    deprecatePatch("retry-never-started-tool-activity");
-
     const { workflowId, runId } = workflowInfo();
     const logContext = {
       actionId: activityArgs.actionId,

@@ -9,6 +9,8 @@ import {
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsList";
 import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentEmbeds";
+import type { DocumentFrameMenuProps } from "@app/components/editor/document/DocumentFrameMenu";
+import { DocumentFrameMenu } from "@app/components/editor/document/DocumentFrameMenu";
 import { DocumentImageMenu } from "@app/components/editor/document/DocumentImageMenu";
 import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
@@ -29,7 +31,9 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import { EditorContent } from "@app/components/editor/EditorContent";
 import type { AgentEvent } from "@app/lib/client/collab/agents";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
+import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { cn } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
 import { lazy, Suspense, useId, useMemo, useRef } from "react";
@@ -49,6 +53,12 @@ const CollabEditor = lazy(
  * a hovered Frame (see `document-frame-menu`). Block commands MUST require an editable document,
  * and either a typed `/` or the selection toolbar's text style and list menus.
  * className MUST apply only to the outer container.
+ */
+/**
+ * @cc [owner:PopDaph,label:product] document-conflict-copy-note
+ * While a live document's save state, as its current connection was last told, has a conflict
+ * copy, a note above its content MUST say the file was changed elsewhere and name the copy by its
+ * file name. A lost connection forgets it; the next one is told again while the session keeps it.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only
@@ -112,6 +122,10 @@ interface DocumentViewProps extends DocumentProps {
     status: CollabStatus;
     /** Changes wait to be confirmed by the server, per `document-saving-delay`. */
     showSaving?: boolean;
+    /** The server fails to save the document. */
+    saveFailed?: boolean;
+    /** Where the file's version was kept after it changed outside the document, if it did. */
+    conflictCopy?: string | null;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: AgentEvent | null;
     participants?: CollabParticipant[];
@@ -120,6 +134,8 @@ interface DocumentViewProps extends DocumentProps {
       extensions: AnyExtension[];
       connected: boolean;
       comments: CommentChannel;
+      /** Places the caret at the document's start when it first turns editable. */
+      focusOnOpen?: boolean;
     } | null;
   };
 }
@@ -265,7 +281,13 @@ export const DocumentView = ({
     resolveImageSource,
   });
   const embeds = useMemo(
-    () => ({ renderFrame, renderFilePreview, editable }),
+    () => ({
+      renderFrame,
+      renderFilePreview,
+      renderFrameMenu: editable
+        ? (props: DocumentFrameMenuProps) => <DocumentFrameMenu {...props} />
+        : undefined,
+    }),
     [renderFrame, renderFilePreview, editable]
   );
   const blockMenu = useDocumentBlockMenu(editor, editable, embeddableFiles);
@@ -330,6 +352,10 @@ export const DocumentView = ({
     </div>
   );
 
+  const conflictCopyName = collabView?.conflictCopy
+    ? getFileNameFromScopedPath(collabView.conflictCopy)
+    : null;
+
   return (
     <article
       ref={articleRef}
@@ -350,6 +376,7 @@ export const DocumentView = ({
               collabView && {
                 status: collabView.status,
                 showSaving: collabView.showSaving ?? false,
+                saveFailed: collabView.saveFailed ?? false,
               }
             }
           />,
@@ -389,6 +416,14 @@ export const DocumentView = ({
           comments.unresolved.length > 0 && "pr-10"
         )}
       >
+        {conflictCopyName && (
+          <p role="status" className="mb-6 text-muted-foreground copy-sm">
+            <Trans>
+              Someone else changed this file while it was open here. Their
+              version was saved as {conflictCopyName}.
+            </Trans>
+          </p>
+        )}
         {editable && (
           <DocumentEditingControls
             editor={editor}

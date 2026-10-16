@@ -1640,8 +1640,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * child can block before the parent's own activity flips it to `running`. Only a final parent is
    * an invariant violation: a late sandbox child must never rewind it into a resumable state.
    */
-  async blockForSandboxChild(auth: Authenticator): Promise<void> {
-    await withTransaction(async (transaction) => {
+  /**
+   * @cc [owner:tdraier,label:error-handling] final-parent-err
+   * When the parent status is not `running`, `ready_allowed_explicitly`, `ready_allowed_implicitly`
+   * or `blocked_child_action_input_required`, this MUST return an `Err`, leave the parent status
+   * unchanged, and set this resource's `status` to that current status.
+   */
+  async blockForSandboxChild(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    const res = await withTransaction(async (transaction) => {
       const action = await AgentMCPActionModel.findOne({
         attributes: ["id", "status"],
         where: {
@@ -1654,22 +1662,33 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(action, `Sandbox parent action ${this.sId} no longer exists.`);
 
       if (action.status === "blocked_child_action_input_required") {
-        return;
+        return new Ok(undefined);
       }
-      assert(
-        action.status === "running" ||
-          action.status === "ready_allowed_explicitly" ||
-          action.status === "ready_allowed_implicitly",
-        `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
-      );
+      if (
+        action.status !== "running" &&
+        action.status !== "ready_allowed_explicitly" &&
+        action.status !== "ready_allowed_implicitly"
+      ) {
+        Object.assign(this, { status: action.status });
+        return new Err(
+          new Error(
+            `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
+          )
+        );
+      }
 
       await action.update(
         { status: "blocked_child_action_input_required" },
         { transaction }
       );
+      return new Ok(undefined);
     });
+    if (res.isErr()) {
+      return res;
+    }
 
     Object.assign(this, { status: "blocked_child_action_input_required" });
+    return new Ok(undefined);
   }
 
   /**

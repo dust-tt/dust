@@ -9,7 +9,10 @@ use super::{
     EMPTY_SIZE_BYTES, Error, GRANT_READ_MODE, GRANT_WRITE_MODE, INITIAL_VERSION, Mode,
     ObjectResource,
 };
-use crate::storage::{self, resources::session::SessionResource};
+use crate::storage::{
+    self,
+    resources::{directory::VIRTUAL_SHARED_NAME, session::SessionResource},
+};
 
 const OWNER_MODE_SHIFT_BITS: u32 = 6;
 const DIRECTORY_EXECUTE_MODE: u32 = 0o100;
@@ -141,7 +144,7 @@ impl ObjectResource {
     fn stat_shared(version: i64, include_metadata: bool) -> Attr {
         Attr {
             id: ObjectRef::Shared,
-            name: "shared".to_owned(),
+            name: VIRTUAL_SHARED_NAME.to_owned(),
             kind: ObjectKind::Directory.into(),
             size: EMPTY_SIZE_BYTES,
             mode: VIRTUAL_READ_MODE,

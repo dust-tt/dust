@@ -1,5 +1,4 @@
 import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentEmbeds";
-import { DocumentFrameMenu } from "@app/components/editor/document/DocumentFrameMenu";
 import { asOwnUndoStep } from "@app/components/editor/document/undoSteps";
 import {
   findFrameEmbedDirective,
@@ -63,7 +62,7 @@ const DocumentFrameView = ({
   updateAttributes,
   deleteNode,
 }: NodeViewProps) => {
-  const { editable } = useContext(DocumentEmbedsContext);
+  const { renderFrameMenu } = useContext(DocumentEmbedsContext);
   const [hovering, setHovering] = useState(false);
   const [draftHeight, setDraftHeight] = useState<number | null>(null);
   const path = isString(node.attrs.path) ? node.attrs.path : null;
@@ -82,18 +81,18 @@ const DocumentFrameView = ({
       onMouseLeave={() => setHovering(false)}
     >
       {path && <DocumentFrameDisplay path={path} height={height} />}
-      {editable && (hovering || draftHeight !== null) && (
-        <DocumentFrameMenu
-          height={height ?? DEFAULT_FRAME_HEIGHT_PX}
-          onPreviewHeight={setDraftHeight}
-          onEndPreview={() => setDraftHeight(null)}
-          onCommitHeight={commitHeight}
-          onRemove={() => {
+      {renderFrameMenu &&
+        (hovering || draftHeight !== null) &&
+        renderFrameMenu({
+          height: height ?? DEFAULT_FRAME_HEIGHT_PX,
+          onPreviewHeight: setDraftHeight,
+          onEndPreview: () => setDraftHeight(null),
+          onCommitHeight: commitHeight,
+          onRemove: () => {
             asOwnUndoStep(editor, deleteNode);
             editor.commands.focus();
-          }}
-        />
-      )}
+          },
+        })}
     </NodeViewWrapper>
   );
 };
