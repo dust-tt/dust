@@ -102,6 +102,7 @@ app.post(
         provider: new MCPOAuthProvider(),
         customHeaders: headers,
         extraScopes,
+        clientUri: defaultServerConfig?.dcrClientUri,
       }
     );
 

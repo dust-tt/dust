@@ -715,11 +715,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       serverUrl,
       provider,
       extraScopes,
+      clientUri,
       customHeaders,
     }: {
       serverUrl: string;
       provider: OAuthClientProvider;
       extraScopes?: string;
+      clientUri?: string;
       customHeaders?: Record<string, string>;
     }
   ): Promise<
@@ -809,6 +811,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
     // Dynamic client registration
     const clientMetadata = { ...provider.clientMetadata };
+    if (clientUri) {
+      clientMetadata.client_uri = clientUri;
+    }
 
     clientMetadata.scope = getMCPAuthorizationScope({
       extraScopes,
