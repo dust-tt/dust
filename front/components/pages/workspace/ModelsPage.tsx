@@ -134,12 +134,12 @@ export function ModelsPage() {
       : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
-  const { setUserAllowedModelTier, clearUserAllowedModelTiers } =
+  const { setUserAllowedModelTier, clearUserAllowedModelTier } =
     useUserAllowedModelTierMutations({ owner });
-  const handleSetUserModelTiers = useCallback(
+  const handleSetUserModelTier = useCallback(
     async (member: MemberUsageType, selection: UserModelTierSelection) => {
       if (selection === INHERIT_MODEL_TIER) {
-        await clearUserAllowedModelTiers({ userId: member.sId });
+        await clearUserAllowedModelTier({ userId: member.sId });
         return;
       }
 
@@ -148,7 +148,7 @@ export function ModelsPage() {
         tierName: selection,
       });
     },
-    [clearUserAllowedModelTiers, setUserAllowedModelTier]
+    [clearUserAllowedModelTier, setUserAllowedModelTier]
   );
 
   const {
@@ -321,7 +321,7 @@ export function ModelsPage() {
                     onChangeSeat={NOOP_MEMBER_ACTION}
                     onRemoveSeat={NOOP_MEMBER_ACTION}
                     onEditSpendLimit={NOOP_MEMBER_ACTION}
-                    onSetUserModelTiers={handleSetUserModelTiers}
+                    onSetUserModelTier={handleSetUserModelTier}
                     pagination={pagination}
                     setPagination={setPagination}
                     totalRowCount={totalMembersUsage}
