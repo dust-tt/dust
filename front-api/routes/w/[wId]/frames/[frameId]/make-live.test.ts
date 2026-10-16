@@ -192,7 +192,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     const metadata = (await FileResource.fetchById(auth, frame.sId))
       ?.useCaseMetadata;
     expect(metadata?.activePublicationId).toBe(draftId);
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("returns 409 when the draft id is stale", async () => {
@@ -238,7 +238,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     await expect(second.json()).resolves.toEqual({ publicationId: draftId });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(draftId);
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("returns 409 when the Frame has no pending draft", async () => {
@@ -260,7 +260,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(liveId);
   });
 
   it("returns 404 when the Frame is deleted before the locks are taken", async () => {
@@ -314,7 +314,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("returns 500 when the pending draft's publication is missing", async () => {
@@ -327,7 +327,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     );
     const fresh = await frame.fetchFreshFrameV2(auth);
     assert(fresh, "Frame exists");
-    await fresh.setDraftFramePublication({
+    await fresh.setLatestFramePublication({
       publicationId: "missing-draft-publication",
     });
     fileStorageMock.setFetchFileContentNotFound((path) =>
@@ -344,7 +344,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe("missing-draft-publication");
+    expect(metadata?.latestPublicationId).toBe("missing-draft-publication");
   });
 
   it("returns 400 frame_make_live_failed when Frame functions were turned off and keeps both pointers", async () => {
@@ -369,12 +369,12 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("returns 403 to a caller who cannot edit the Frame", async () => {
     const { auth, frame, workspace } = await makeTestFrameFunction();
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "draft-publication-1",
     });
 
@@ -388,7 +388,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe("publication-1");
-    expect(metadata?.draftPublicationId).toBe("draft-publication-1");
+    expect(metadata?.latestPublicationId).toBe("draft-publication-1");
   });
 
   it("returns 400 when draftPublicationId is missing", async () => {
@@ -441,7 +441,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("returns 400 frame_files_unverifiable when the share allowlist fails and keeps both pointers", async () => {
@@ -475,6 +475,6 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 });

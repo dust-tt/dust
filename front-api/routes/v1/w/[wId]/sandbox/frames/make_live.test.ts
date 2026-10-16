@@ -245,7 +245,9 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       draftPublicationId
     );
-    expect(frame?.useCaseMetadata?.draftPublicationId).toBeUndefined();
+    expect(frame?.useCaseMetadata?.latestPublicationId).toBe(
+      draftPublicationId
+    );
 
     const generatedFilesAfter = await listGeneratedFiles(context);
     expect(generatedFilesAfter).toHaveLength(generatedFilesBefore.length + 1);
@@ -286,7 +288,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
     });
     const frame = await FileResource.fetchById(context.auth, context.frame.sId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(livePublicationId);
-    expect(frame?.useCaseMetadata?.draftPublicationId).toBe(newerDraftId);
+    expect(frame?.useCaseMetadata?.latestPublicationId).toBe(newerDraftId);
   });
 
   it("returns 409 when the Frame has no pending draft", async () => {
@@ -313,7 +315,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
     });
     const frame = await FileResource.fetchById(context.auth, context.frame.sId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(livePublicationId);
-    expect(frame?.useCaseMetadata?.draftPublicationId).toBeUndefined();
+    expect(frame?.useCaseMetadata?.latestPublicationId).toBe(livePublicationId);
   });
 
   it("returns 403 for a Frame outside the token's conversation and attaches nothing", async () => {
@@ -361,7 +363,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
     });
     const frame = await FileResource.fetchById(context.auth, otherFrame.sId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(liveId);
-    expect(frame?.useCaseMetadata?.draftPublicationId).toBe(draftId);
+    expect(frame?.useCaseMetadata?.latestPublicationId).toBe(draftId);
     expect(await listGeneratedFiles(context)).toEqual(generatedFilesBefore);
   });
 

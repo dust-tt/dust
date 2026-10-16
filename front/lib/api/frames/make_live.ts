@@ -82,7 +82,7 @@ export async function makeFrameDraftLive(
       if (fresh.useCaseMetadata?.activePublicationId === draftPublicationId) {
         return new Ok({ publicationId: draftPublicationId });
       }
-      if (fresh.useCaseMetadata?.draftPublicationId !== draftPublicationId) {
+      if (fresh.pendingDraftPublicationId !== draftPublicationId) {
         return new Err(
           new FrameMakeLiveError(
             "draft_conflict",

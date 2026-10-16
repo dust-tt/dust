@@ -193,7 +193,7 @@ beforeEach(() => {
 });
 
 describe("makeFrameDraftLive", () => {
-  it("makes the draft live and clears it", async () => {
+  it("makes the draft live, pointing both pointers at it", async () => {
     const { auth, frame } = await setupFrame();
     await publishBundle(auth, frame, CODE_A, "live");
     const draftId = await publishBundle(auth, frame, CODE_B, "draft");
@@ -206,7 +206,7 @@ describe("makeFrameDraftLive", () => {
     expect(result.isOk() && result.value).toEqual({ publicationId: draftId });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(draftId);
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("refuses a draft id that is no longer the pending draft", async () => {
@@ -224,7 +224,7 @@ describe("makeFrameDraftLive", () => {
     expect(result.error).toMatchObject({ code: "draft_conflict" });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(pendingDraftId);
+    expect(metadata?.latestPublicationId).toBe(pendingDraftId);
   });
 
   it("succeeds when the draft is already live", async () => {
@@ -245,7 +245,7 @@ describe("makeFrameDraftLive", () => {
     expect(second.isOk() && second.value).toEqual({ publicationId: draftId });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(draftId);
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("refuses when there is no pending draft", async () => {
@@ -261,7 +261,7 @@ describe("makeFrameDraftLive", () => {
     expect(result.error).toMatchObject({ code: "draft_conflict" });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(liveId);
   });
 
   it("refuses when the Frame is deleted before the locks are taken", async () => {
@@ -284,7 +284,7 @@ describe("makeFrameDraftLive", () => {
   it("re-checks write access on the Frame read under the locks", async () => {
     const { auth, frame } = await makeTestFrameFunction();
     const draftId = "draft-publication-1";
-    await frame.setDraftFramePublication({ publicationId: draftId });
+    await frame.setLatestFramePublication({ publicationId: draftId });
     // The caller passes the early check, then loses write access before the locks are taken.
     vi.mocked(canWriteFrameV2Source).mockResolvedValueOnce(true);
 
@@ -297,13 +297,13 @@ describe("makeFrameDraftLive", () => {
     expect(result.error).toMatchObject({ code: "unauthorized" });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe("publication-1");
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("refuses a caller who cannot write the Frame", async () => {
     const { auth, frame } = await makeTestFrameFunction();
     const draftId = "draft-publication-1";
-    await frame.setDraftFramePublication({ publicationId: draftId });
+    await frame.setLatestFramePublication({ publicationId: draftId });
 
     const result = await makeFrameDraftLive(auth, {
       frame,
@@ -314,7 +314,7 @@ describe("makeFrameDraftLive", () => {
     expect(result.error).toMatchObject({ code: "unauthorized" });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe("publication-1");
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("fails on the function sharing check like a publish would", async () => {
@@ -343,7 +343,7 @@ describe("makeFrameDraftLive", () => {
     expect(result.error).toMatchObject({ code: "sharing_conflict" });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("fails on the function feature check like a publish would", async () => {
@@ -363,7 +363,7 @@ describe("makeFrameDraftLive", () => {
     expect(result.error).toMatchObject({ code: "invalid_manifest" });
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("fails on the public function check like a publish would", async () => {
@@ -390,7 +390,7 @@ describe("makeFrameDraftLive", () => {
     );
     const metadata = await metadataOf(auth, frame);
     expect(metadata?.activePublicationId).toBe(liveId);
-    expect(metadata?.draftPublicationId).toBe(draftId);
+    expect(metadata?.latestPublicationId).toBe(draftId);
   });
 
   it("makes a draft with a public function live while public functions are enabled", async () => {
