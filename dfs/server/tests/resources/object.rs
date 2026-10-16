@@ -22,7 +22,6 @@ pub(crate) use grants::{
     allow, deny, grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
     grant_pagination_handles_full_pages_and_object_deletion,
-    grant_update_retry_only_advances_grants_version,
     grant_versions_advance_for_no_ops_and_reject_overflow,
 };
 pub(crate) use modes::{
@@ -149,34 +148,6 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
     Ok(())
 }
 
-pub(crate) async fn object_creation_retry_succeeds_without_changes() -> Result<()> {
-    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
-    let mut root = ObjectResource::new_root(&tenant)?;
-    root.metadata.as_mut().context("missing metadata")?.xattrs =
-        HashMap::from([("user/tag".to_owned(), b"value".to_vec())]);
-    let root_grants = [grants::allow("u:retry", 0o6)];
-    let create = || {
-        fdb::with_transaction(|tx| {
-            let root = &root;
-            let root_grants = &root_grants;
-            async move { root.create(&tx, root_grants).await }
-        })
-    };
-    create().await?;
-    let tx = fdb::database()?.create_trx()?;
-    let committed = grants::records(&tx, &tenant.tenant_id).await?;
-
-    // A retry after an unknown commit result runs `create` again in a new transaction.
-    create().await?;
-
-    let tx = fdb::database()?.create_trx()?;
-    assert_eq!(grants::records(&tx, &tenant.tenant_id).await?, committed);
-    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
-    tx.clear_range(&begin, &end);
-    tx.commit().await?;
-    Ok(())
-}
-
 pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let mut root = ObjectResource::new_root(&tenant)?;
@@ -185,9 +156,11 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
         ("user/tag".to_owned(), vec![]),
     ]);
     root.metadata.as_mut().context("missing metadata")?.xattrs = original_xattrs.clone();
+    let root_grants = [grants::allow("u:owner", 0o6)];
     fdb::with_transaction(|tx| {
         let root = &root;
-        async move { root.create(&tx, &[]).await }
+        let root_grants = &root_grants;
+        async move { root.create(&tx, root_grants).await }
     })
     .await?;
     let subspace = tenant_subspace(&tenant.tenant_id);
@@ -195,14 +168,14 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
     let metadata_key = subspace.pack(&("metadata", tenant.root_id.as_bytes().as_slice()));
     let staged_key = subspace.pack(&"staged");
     let tx = fdb::database()?.create_trx()?;
+    let original_records = grants::records(&tx, &tenant.tenant_id).await?;
     let original = tx.get(&object_key, false).await?.context("missing root")?;
     let original_metadata = tx
         .get(&metadata_key, false)
         .await?
         .context("missing root metadata")?;
 
-    // Another object with the same ID: identical attributes would read as this test's own retry.
-    root.ctime_ms = root.ctime_ms.map(|ctime_ms| ctime_ms + 1);
+    // Matching attributes still collide; different metadata must not replace the stored object.
     root.metadata.as_mut().context("missing metadata")?.xattrs =
         HashMap::from([("new".to_owned(), b"must not commit".to_vec())]);
     let result = fdb::with_transaction(|tx| {
@@ -220,6 +193,10 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
     ));
 
     let tx = fdb::database()?.create_trx()?;
+    assert_eq!(
+        grants::records(&tx, &tenant.tenant_id).await?,
+        original_records
+    );
     assert_eq!(
         tx.get(&object_key, false).await?.as_deref(),
         Some(original.as_ref())

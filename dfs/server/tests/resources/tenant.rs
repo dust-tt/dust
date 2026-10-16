@@ -14,7 +14,7 @@ use foundationdb::{
     tuple::{pack, unpack},
 };
 
-pub(crate) async fn tenant_creation_retry_succeeds_without_changes() -> Result<()> {
+pub(crate) async fn duplicate_tenant_creation_preserves_records() -> Result<()> {
     let (tenant, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;
     let record_key = tenant_subspace(&tenant.tenant_id).pack(&"tenant");
     let lookup_key = namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice()));
@@ -35,8 +35,10 @@ pub(crate) async fn tenant_creation_retry_succeeds_without_changes() -> Result<(
         .await?
         .context("missing lookup")?;
 
-    // A retry after an unknown commit result runs `create` again in a new transaction.
-    create().await?;
+    assert!(matches!(
+        create().await,
+        Err(storage::Error::Resource(tenant::Error::AlreadyExists))
+    ));
 
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(

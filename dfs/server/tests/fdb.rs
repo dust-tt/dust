@@ -79,13 +79,6 @@ async fn resource_errors_abort_staged_writes() -> Result<()> {
     })
     .await;
 
-    // Reusing the original identity succeeds, as on a retry after an unknown commit result.
-    fdb::with_transaction(|tx| {
-        let tenant = &tenant;
-        async move { tenant.create(&tx).await }
-    })
-    .await?;
-
     let lookup_key = namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice()));
     let duplicate_lookup_key =
         namespace_subspace().pack(&("tenant-key", duplicate.key_hash.as_slice()));

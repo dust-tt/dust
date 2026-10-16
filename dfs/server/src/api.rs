@@ -66,8 +66,6 @@ impl Dfs for API {
             tenant_id,
             root_grants,
         } = request.into_inner();
-        // Call `new` before the transaction because FDB may retry its body. Keeping the same key
-        // and root across attempts lets us recognize our own commit if its outcome was unknown.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
         let root = ObjectResource::new_root(&tenant)?;
         fdb::with_idempotent_transaction(|tx| {
@@ -99,7 +97,6 @@ impl Dfs for API {
     ) -> Result<Response<Session>, Status> {
         let tenant = self.require_tenant(&request).await?;
         let CreateSessionRequest { subjects } = request.into_inner();
-        // Construct before the transaction so retries retain the session's ID, key, and expiry.
         let (session, session_key) = SessionResource::new(&tenant, subjects)?;
         fdb::with_idempotent_transaction(|tx| {
             let session = &session;

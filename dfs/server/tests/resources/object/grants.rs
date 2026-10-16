@@ -203,63 +203,6 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
     Ok(())
 }
 
-pub(crate) async fn grant_update_retry_only_advances_grants_version() -> Result<()> {
-    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
-    let root = ObjectResource::new_root(&tenant)?;
-    let root_grants = [allow("kept", 4), allow("removed", 6)];
-    fdb::with_transaction(|tx| {
-        let root = &root;
-        let root_grants = &root_grants;
-        async move { root.create(&tx, root_grants).await }
-    })
-    .await?;
-    let changes = [
-        GrantUpdate {
-            grant: allow("added", 2),
-            remove: false,
-        },
-        GrantUpdate {
-            grant: allow("removed", 6),
-            remove: true,
-        },
-    ];
-    let update = || {
-        fdb::with_transaction(|tx| {
-            let tenant = &tenant;
-            let changes = &changes;
-            async move {
-                let mut root = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
-                    .await?
-                    .ok_or(object::Error::NotFound)?;
-                root.update_grants(&tx, changes)
-            }
-        })
-    };
-    update().await?;
-    let tx = fdb::database()?.create_trx()?;
-    let mut committed = records(&tx, &tenant.tenant_id).await?;
-
-    // A retry after an unknown commit result runs `update_grants` again in a new transaction.
-    update().await?;
-
-    let tx = fdb::database()?.create_trx()?;
-    let object_key =
-        tenant_subspace(&tenant.tenant_id).pack(&("object", root.object_id.as_bytes().as_slice()));
-    let (_, value) = committed
-        .iter_mut()
-        .find(|(key, _)| key == &object_key)
-        .context("missing root attributes")?;
-    let mut attributes: StoredObject = unpack(value)?;
-    assert_eq!(attributes.9, 2);
-    attributes.9 = 3;
-    *value = pack(&attributes);
-    assert_eq!(records(&tx, &tenant.tenant_id).await?, committed);
-    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
-    tx.clear_range(&begin, &end);
-    tx.commit().await?;
-    Ok(())
-}
-
 pub(crate) async fn grant_creation_and_update_validation_preserve_state() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let mut root = ObjectResource::new_root(&tenant)?;

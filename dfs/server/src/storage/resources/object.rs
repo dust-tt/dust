@@ -341,9 +341,8 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;error-handling] object-create-atomicity
      * Creation MUST write attributes, metadata, xattrs, and grants in the caller's transaction. An
-     * object ID in the same tenant already holding exactly this object's attributes MUST succeed
-     * without writes so a retry can recognize its own commit; any other occupant MUST return
-     * AlreadyExists before staging any writes, preserving the existing object and metadata. Missing
+     * occupied object ID in the same tenant MUST return AlreadyExists before staging any writes,
+     * even when attributes match, preserving the existing object, metadata, and grants. Missing
      * metadata or invalid xattrs MUST fail before staging any writes. Initial grants MUST be
      * validated and deduplicated, with at most 512 distinct values, before staging writes.
      */
@@ -365,14 +364,13 @@ impl ObjectResource {
     ) -> Result<(), storage::Error<Error>> {
         let attributes = self.packed_attributes();
         let key = Self::object_key(&self.tenant.tenant_id, &self.object_id);
-        let existing = tx.get(&key, false).await.map_err(FdbBindingError::from)?;
-        if let Some(existing) = existing {
-            // A retry after an unknown commit result finds our own record.
-            return if existing.as_ref() == attributes.as_slice() {
-                Ok(())
-            } else {
-                Err(Error::AlreadyExists.into())
-            };
+        if tx
+            .get(&key, false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .is_some()
+        {
+            return Err(Error::AlreadyExists.into());
         }
 
         let metadata = self.metadata.as_ref().ok_or(Error::MissingMetadata)?;
@@ -503,8 +501,7 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend] object-grants-version
      * Each successful update MUST increment only this object's grants_version once, atomically
      * with the grants, including empty or no-op updates. Initial grants MUST NOT advance it.
-     * Overflow MUST fail before staging writes. A retry after an unknown commit result MAY
-     * increment it again; versions MUST NOT wrap or reset.
+     * Overflow MUST fail before staging writes; versions MUST NOT wrap or reset.
      */
     pub fn update_grants(
         &mut self,
