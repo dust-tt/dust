@@ -17,6 +17,9 @@ export type DefaultRemoteMCPServerConfig = {
   authMethod: "bearer" | "oauth-dynamic" | "oauth-static" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
+  // Overrides the `client_uri` sent at Dynamic Client Registration, for servers that allowlist
+  // a fixed value.
+  dcrClientUri?: string;
   hostDerivedOAuth?: HostDerivedOAuthConfig;
   toolStakes?: Record<string, "high" | "low" | "medium" | "never_ask">;
   toolDisplayLabels?: Record<string, ToolDisplayLabels>;
@@ -4973,6 +4976,9 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     authMethod: "oauth-dynamic",
     supportedOAuthUseCases: ["platform_actions", "personal_actions"],
     scope: "mcp:connect",
+    // Figma's DCR only registers Dust with this exact `client_uri` and rejects regional hosts
+    // such as https://eu.dust.tt.
+    dcrClientUri: "https://dust.tt",
     toolStakes: {
       whoami: "never_ask",
       get_design_context: "never_ask",
