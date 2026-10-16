@@ -223,6 +223,22 @@ export function scanAnchors(
   return new Ok({ text, anchors, markers });
 }
 
+/** The body without its anchor directives, and its anchors as offsets into that text. */
+export interface ExtractedAnchors {
+  text: string;
+  anchors: DfmAnchor[];
+}
+
+export function toExtractedAnchors({
+  text,
+  anchors,
+}: AnchorScan): ExtractedAnchors {
+  return {
+    text,
+    anchors: anchors.map(({ id, start, end }) => ({ id, start, end })),
+  };
+}
+
 /**
  * @cc [owner:PopDaph,label:product] dfm-anchor-integrity
  * Every anchor id MUST have exactly one start and one end directive, the start before the end,
@@ -233,7 +249,7 @@ export function scanAnchors(
  */
 export function extractAnchors(
   body: string
-): Result<{ text: string; anchors: DfmAnchor[] }, DfmError> {
+): Result<ExtractedAnchors, DfmError> {
   const bounds = checkInputBounds(body);
   if (bounds) {
     return new Err(bounds);
@@ -242,12 +258,5 @@ export function extractAnchors(
   if (scanned.isErr()) {
     return scanned;
   }
-  return new Ok({
-    text: scanned.value.text,
-    anchors: scanned.value.anchors.map(({ id, start, end }) => ({
-      id,
-      start,
-      end,
-    })),
-  });
+  return new Ok(toExtractedAnchors(scanned.value));
 }

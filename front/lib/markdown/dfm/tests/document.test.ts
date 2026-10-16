@@ -1,5 +1,10 @@
 import type { DfmDocument } from "@app/lib/markdown/dfm";
-import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import {
+  extractAnchors,
+  parseDfm,
+  parseDfmWithAnchors,
+  serializeDfm,
+} from "@app/lib/markdown/dfm";
 import {
   AT,
   DAPH,
@@ -160,6 +165,24 @@ describe("parseDfm", () => {
     const source = `Body\n\n:::annotations  \n::comment{id=c1 status=open} \n${MESSAGE}\t\nHi\n::: \n`;
 
     expect(unwrap(parseDfm(source)).comments).toHaveLength(1);
+  });
+});
+
+describe("parseDfmWithAnchors", () => {
+  it.each(FIXTURES)(
+    "reads $name as parseDfm does, with the anchors extractAnchors reads",
+    ({ source }) => {
+      const { document, anchors } = unwrap(parseDfmWithAnchors(source));
+
+      expect(document).toEqual(unwrap(parseDfm(source)));
+      expect(anchors).toEqual(unwrap(extractAnchors(document.body)));
+    }
+  );
+
+  it("fails as parseDfm does", () => {
+    const source = "Text :comment-start{id=c1}here:comment-end{id=c1}.\n";
+
+    expect(parseDfmWithAnchors(source)).toEqual(parseDfm(source));
   });
 });
 

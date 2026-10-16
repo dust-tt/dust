@@ -19,7 +19,14 @@ import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { Lexer } from "marked";
+import { fromMarkdown } from "mdast-util-from-markdown";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("mdast-util-from-markdown", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("mdast-util-from-markdown")>();
+  return { ...original, fromMarkdown: vi.fn(original.fromMarkdown) };
+});
 
 const AT = "2026-09-25T14:16:32.380Z";
 const THREAD = `:::annotations\n::comment{id=c1 status=resolved}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nKept as is.\n:::\n`;
@@ -133,6 +140,16 @@ describe("loadDfm", () => {
 
     expect(envelope.frontMatter).toBe("title: x");
     expect(getDocumentJSONComments(content).map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("parses the body once with the DFM parser, anchors included", () => {
+    const body = "Some :comment-start{id=c1}**bold**:comment-end{id=c1} text.";
+    const parser = vi.mocked(fromMarkdown);
+    parser.mockClear();
+
+    load(`${body}\n\n${OPEN_THREAD}`);
+
+    expect(parser.mock.calls.filter(([text]) => text === body)).toHaveLength(1);
   });
 
   it("turns anchors into comment marks, overlapping and across paragraphs", () => {

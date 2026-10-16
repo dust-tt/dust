@@ -9,7 +9,7 @@ import {
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment, DfmError } from "@app/lib/markdown/dfm";
-import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import { parseDfmWithAnchors, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
@@ -75,16 +75,14 @@ const sameIds = (a: Set<string>, b: Set<string>) =>
  * a reason, so the editor shows it read-only instead of risking the content.
  */
 export function loadDfm(source: string): Result<LoadedDfm, string> {
-  const parsed = parseDfm(source);
+  const parsed = parseDfmWithAnchors(source);
   if (parsed.isErr()) {
     return new Err(describe(parsed.error));
   }
-  const { frontMatter, body, comments } = parsed.value;
-
-  const anchors = extractAnchors(body);
-  if (anchors.isErr()) {
-    return new Err(describe(anchors.error));
-  }
+  const {
+    document: { frontMatter, body, comments },
+    anchors,
+  } = parsed.value;
 
   const content = parseDocumentContent(body);
   if (content.isErr()) {
@@ -96,7 +94,7 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
   // destination, would be dropped on save.
   if (
     !sameIds(
-      new Set(anchors.value.anchors.map((anchor) => anchor.id)),
+      new Set(anchors.anchors.map((anchor) => anchor.id)),
       getMarkedCommentIds(document)
     )
   ) {

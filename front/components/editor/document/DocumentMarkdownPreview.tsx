@@ -6,11 +6,7 @@ import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFr
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
-import {
-  checkInputBounds,
-  extractAnchors,
-  parseDfm,
-} from "@app/lib/markdown/dfm";
+import { checkInputBounds, parseDfmWithAnchors } from "@app/lib/markdown/dfm";
 import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
 import {
   FRAME_EMBED_COMPONENT_NAME,
@@ -136,12 +132,8 @@ const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
  * exact syntax is what needs fixing, and the renderer would drop malformed directives.
  */
 function readableBody(source: string): string | null {
-  const parsed = parseDfm(source);
-  if (parsed.isErr()) {
-    return null;
-  }
-  const anchors = extractAnchors(parsed.value.body);
-  return anchors.isOk() ? anchors.value.text : parsed.value.body;
+  const parsed = parseDfmWithAnchors(source);
+  return parsed.isOk() ? parsed.value.anchors.text : null;
 }
 
 /**

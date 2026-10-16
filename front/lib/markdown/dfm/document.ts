@@ -1,4 +1,5 @@
-import { scanAnchors } from "@app/lib/markdown/dfm/anchors";
+import type { ExtractedAnchors } from "@app/lib/markdown/dfm/anchors";
+import { scanAnchors, toExtractedAnchors } from "@app/lib/markdown/dfm/anchors";
 import {
   parseAnnotationsBlock,
   serializeAnnotationsBlock,
@@ -86,6 +87,17 @@ function frontMatterClose(lines: string[]): number {
  * comment thread without an anchor is valid. An anchor without a comment thread is not.
  */
 export function parseDfm(source: string): Result<DfmDocument, DfmError> {
+  const parsed = parseDfmWithAnchors(source);
+  return parsed.isOk() ? new Ok(parsed.value.document) : parsed;
+}
+
+/**
+ * `parseDfm`, with the body's anchors as `extractAnchors` reads them, for a caller that needs
+ * both: parsing already scans them.
+ */
+export function parseDfmWithAnchors(
+  source: string
+): Result<{ document: DfmDocument; anchors: ExtractedAnchors }, DfmError> {
   const lines = source
     .replace(/^\uFEFF/, "")
     .replace(/\r\n/g, "\n")
@@ -203,7 +215,10 @@ export function parseDfm(source: string): Result<DfmDocument, DfmError> {
     });
   }
 
-  return new Ok({ frontMatter, body, comments: comments.value });
+  return new Ok({
+    document: { frontMatter, body, comments: comments.value },
+    anchors: toExtractedAnchors(anchors.value),
+  });
 }
 
 function validateForSerialization(document: DfmDocument): DfmError | null {
