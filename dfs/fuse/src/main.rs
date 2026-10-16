@@ -8,16 +8,16 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use dfs_mount::{Folder, Fs, Remote};
 use std::{
-    fs::File,
+    fs::OpenOptions,
     io::{IsTerminal, Read},
-    os::unix::fs::PermissionsExt,
+    os::unix::fs::{OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
 use tokio::{
     signal::unix::{SignalKind, signal},
-    time::{Instant, interval, interval_at},
+    time::{Instant, interval, interval_at, timeout},
 };
 use tonic::transport::{Channel, ClientTlsConfig, Endpoint};
 
@@ -25,6 +25,10 @@ use tonic::transport::{Channel, ClientTlsConfig, Endpoint};
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long a request to the dfs server may take before it fails, and the kernel request with it.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+/// How often to ping the dfs server while requests are in flight, to find a dead connection.
+const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(10);
+/// How long a ping may go unanswered before the connection, and its requests, fail.
+const KEEP_ALIVE_TIMEOUT: Duration = Duration::from_secs(10);
 /// How often to refresh the session. It expires one hour after its last refresh, so a few refreshes
 /// in a row can fail before it does.
 const SESSION_REFRESH_INTERVAL: Duration = Duration::from_secs(15 * 60);
@@ -77,7 +81,7 @@ fn main() -> Result<()> {
         .context("connect to the dfs server")?;
     let remote = Remote::new(channel, &session_key).context("invalid session key")?;
     runtime
-        .block_on(remote.refresh_session())
+        .block_on(refresh_session(&remote))
         .context("refresh the session")?;
     let fs = Arc::new(Fs::new(remote.clone(), cli.folders).context("invalid folders")?);
     let adapter = Adapter::new(fs.clone(), runtime.handle().clone());
@@ -116,7 +120,11 @@ fn parse_folder(value: &str) -> Result<Folder, String> {
  * needs, that group and other users cannot access. Its errors MUST NOT include the file's content.
  */
 fn read_session_key(path: &Path) -> Result<String> {
-    let file = File::open(path)?;
+    // Without `O_NONBLOCK`, opening a FIFO waits for a writer before it can be rejected.
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(nix::fcntl::OFlag::O_NONBLOCK.bits())
+        .open(path)?;
     let metadata = file.metadata()?;
     if !metadata.is_file() || metadata.len() > SESSION_KEY_FILE_MAX_BYTES {
         bail!("not a session key file");
@@ -133,17 +141,27 @@ fn read_session_key(path: &Path) -> Result<String> {
 /// A channel to `endpoint`, over TLS with the system's root certificates for an `https` origin.
 /**
  * @cc [owner:fontanierh,label:performance] requests-time-out
- * Connecting and each request on the channel MUST time out, so a server that stops answering fails
+ * Connecting MUST time out, each request MUST time out waiting for its response, and a connection
+ * whose peer stops answering pings MUST fail its requests, so a server that stops answering fails
  * kernel requests instead of holding them.
  */
 async fn connect(endpoint: &str) -> Result<Channel> {
     let mut endpoint = Endpoint::from_shared(endpoint.to_owned())?
         .connect_timeout(CONNECT_TIMEOUT)
-        .timeout(REQUEST_TIMEOUT);
+        .timeout(REQUEST_TIMEOUT)
+        .http2_keep_alive_interval(KEEP_ALIVE_INTERVAL)
+        .keep_alive_timeout(KEEP_ALIVE_TIMEOUT);
     if endpoint.uri().scheme_str() == Some("https") {
         endpoint = endpoint.tls_config(ClientTlsConfig::new().with_native_roots())?;
     }
     Ok(endpoint.connect().await?)
+}
+
+/// Refreshes the session. Fails after `REQUEST_TIMEOUT`, even if the server stalls after the
+/// response headers, which the channel's own timeout does not cover.
+async fn refresh_session(remote: &Remote) -> Result<()> {
+    timeout(REQUEST_TIMEOUT, remote.refresh_session()).await??;
+    Ok(())
 }
 
 /// Waits until every change the mount acknowledged is committed, so none is lost on exit. Fails
@@ -180,8 +198,8 @@ async fn serve(remote: &Remote, session: &fuser::BackgroundSession) -> Result<()
                 }
             }
             _ = refresh.tick() => {
-                if let Err(errno) = remote.refresh_session().await {
-                    tracing::warn!(%errno, "session refresh failed");
+                if let Err(error) = refresh_session(remote).await {
+                    tracing::warn!(%error, "session refresh failed");
                 }
             }
         }
@@ -257,6 +275,20 @@ mod tests {
             assert!(!format!("{error:#}").contains(SESSION_KEY));
         }
         assert!(read_session_key(&std::env::temp_dir()).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_a_fifo_without_waiting_for_a_writer() -> Result<()> {
+        let path = std::env::temp_dir().join(format!("dfs-fuse-{}-fifo", std::process::id()));
+        let _ = fs::remove_file(&path);
+        nix::unistd::mkfifo(
+            &path,
+            nix::sys::stat::Mode::S_IRUSR | nix::sys::stat::Mode::S_IWUSR,
+        )?;
+        let result = read_session_key(&path);
+        fs::remove_file(&path)?;
+        assert!(result.is_err());
         Ok(())
     }
 }
