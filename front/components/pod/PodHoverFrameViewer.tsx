@@ -7,7 +7,7 @@ import { useFramePermissions } from "@app/lib/swr/frames";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, cn, DotsHorizontal } from "@dust-tt/sparkle";
+import { Button, cn, DotsHorizontal, Spinner } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -170,7 +170,9 @@ export function PodHoverFrameViewer({
 
   const body =
     isV2 && isFramePermissionsLoading ? (
-      <div className="flex h-full items-center justify-center" />
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+      </div>
     ) : showCode ? (
       <FrameCodeView
         code={isV2 ? (frameSource ?? undefined) : fileContent}
