@@ -1,3 +1,4 @@
+import { serializeDfm } from "@app/lib/markdown/dfm";
 import {
   checkInputBounds,
   endsInsideFence,
@@ -5,7 +6,20 @@ import {
   isEscaped,
   structure,
 } from "@app/lib/markdown/dfm/parser";
-import { describe, expect, it } from "vitest";
+import {
+  SIMPLE_DOCUMENT,
+  unwrap,
+} from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("mdast-util-from-markdown", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("mdast-util-from-markdown")>();
+  return { ...original, fromMarkdown: vi.fn(original.fromMarkdown) };
+});
+
+const parser = vi.mocked(fromMarkdown);
 
 describe("isEscaped", () => {
   it.each([
@@ -163,5 +177,17 @@ describe("structure", () => {
 
     expect(structure("[ab](b)")).toContain(link);
     expect(structure("[a](bb)")).not.toContain(link);
+  });
+});
+
+describe("serializeDfm", () => {
+  it("parses the body once to check it and once to read the written file back", () => {
+    parser.mockClear();
+
+    unwrap(serializeDfm(SIMPLE_DOCUMENT));
+
+    expect(
+      parser.mock.calls.filter(([text]) => text === SIMPLE_DOCUMENT.body)
+    ).toHaveLength(2);
   });
 });

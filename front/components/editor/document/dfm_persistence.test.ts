@@ -14,9 +14,19 @@ import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { FILE_PREVIEW_NODE_TYPE } from "@app/lib/markdown/file_preview";
+import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
-import { describe, expect, it } from "vitest";
+import { MarkdownManager } from "@tiptap/markdown";
+import { Lexer } from "marked";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("mdast-util-from-markdown", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("mdast-util-from-markdown")>();
+  return { ...original, fromMarkdown: vi.fn(original.fromMarkdown) };
+});
 
 const AT = "2026-09-25T14:16:32.380Z";
 const THREAD = `:::annotations\n::comment{id=c1 status=resolved}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nKept as is.\n:::\n`;
@@ -130,6 +140,16 @@ describe("loadDfm", () => {
 
     expect(envelope.frontMatter).toBe("title: x");
     expect(getDocumentJSONComments(content).map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("parses the body once with the DFM parser, anchors included", () => {
+    const body = "Some :comment-start{id=c1}**bold**:comment-end{id=c1} text.";
+    const parser = vi.mocked(fromMarkdown);
+    parser.mockClear();
+
+    load(`${body}\n\n${OPEN_THREAD}`);
+
+    expect(parser.mock.calls.filter(([text]) => text === body)).toHaveLength(1);
   });
 
   it("turns anchors into comment marks, overlapping and across paragraphs", () => {
@@ -348,6 +368,23 @@ describe("saveDfm", () => {
     "- a\n- b\n\n1. c\n",
   ])("round-trips ordered lists: %j", (source) => {
     expect(roundTrip(source)).toBe(source);
+  });
+
+  it("parses the tokens it checked instead of lexing the Markdown again", () => {
+    const parse = vi.spyOn(MarkdownManager.prototype, "parse");
+    const lex = vi.spyOn(Lexer.prototype, "lex");
+
+    const { envelope, content } = load(
+      `# Title\n\nSome **bold** text.\n\n${THREAD}`
+    );
+    // Loading reads the body, then checks the Markdown a save would write reads back the same.
+    expect(lex).toHaveBeenCalledTimes(2);
+    lex.mockClear();
+    expect(saveDfm(envelope, content).isOk()).toBe(true);
+    expect(lex).toHaveBeenCalledTimes(1);
+    expect(parse).not.toHaveBeenCalled();
+    lex.mockRestore();
+    parse.mockRestore();
   });
 
   it("saves underlined text and opens it underlined again", () => {
@@ -792,5 +829,84 @@ describe("isWritableThread", () => {
     };
 
     expect(isWritableThread(thread)).toBe(false);
+  });
+});
+
+type DfmPersistence =
+  typeof import("@app/components/editor/document/dfm_persistence");
+
+/** This module again, over a TipTap without its token parsing step, so it parses through `parse`. */
+async function importWithPublicParse(
+  onParse: () => void
+): Promise<DfmPersistence> {
+  vi.resetModules();
+  vi.doMock("@tiptap/markdown", async (importOriginal) => {
+    const original = await importOriginal<typeof import("@tiptap/markdown")>();
+    class PublicMarkdownManager extends original.MarkdownManager {
+      constructor(
+        ...args: ConstructorParameters<typeof original.MarkdownManager>
+      ) {
+        super(...args);
+        Reflect.deleteProperty(this, "activeParseLexer");
+      }
+
+      override parse(markdown: string): JSONContent {
+        onParse();
+        return super.parse(markdown);
+      }
+    }
+    return { ...original, MarkdownManager: PublicMarkdownManager };
+  });
+  try {
+    return await import("@app/components/editor/document/dfm_persistence");
+  } finally {
+    vi.doUnmock("@tiptap/markdown");
+  }
+}
+
+function loadAndSave(
+  { loadDfm, saveDfm }: Pick<DfmPersistence, "loadDfm" | "saveDfm">,
+  source: string
+) {
+  const outcome = <T>(result: Result<T, string>) =>
+    result.isOk() ? { value: result.value } : { error: result.error };
+  const loaded = loadDfm(source);
+  return {
+    loaded: outcome(loaded),
+    saved: loaded.isOk()
+      ? outcome(saveDfm(loaded.value.envelope, loaded.value.content))
+      : null,
+  };
+}
+
+describe("TipTap's token parsing step", () => {
+  const publicParse = vi.fn();
+  let withPublicParse: DfmPersistence;
+
+  beforeAll(async () => {
+    withPublicParse = await importWithPublicParse(publicParse);
+  });
+
+  it.each([
+    ...FIXTURES.map(({ source }) => source),
+    "# Title\n\nSome **bold**, *italic*, ~~struck~~ and ++underlined++ text.\n",
+    "One.\n\n\n\nTwo, after blank lines.\n",
+    "Line one  \nline two\\\nline three.\n",
+    "- a\n  - nested **b**\n- c\n\n3. three\n4. four\n",
+    '> Quoted [link](https://example.com "Title").\n>\n> - in a list\n',
+    "```ts\nconst a = 1;\n```\n\nText with `code`.\n\n---\n\nAfter a rule.\n",
+    "Before ![x](pod-abc/x.png) after.\n\n![Chart](pod-abc/chart.png)\n",
+    "| Left | Center | Right |\n| :--- | :---: | ---: |\n| **a** | `b` | c |\n",
+    'Intro\n\n::embed_frame{path="pod-abc/x.tsx"}\n\n- ::embed_frame{path="pod-abc/y.tsx"}\n',
+    'See :preview_file{path="pod-abc/report.pdf" title="Q3 report" contentType="application/pdf"} for details.\n',
+    `Hi :comment-start{id=c1}there:comment-end{id=c1} now.\n\n${OPEN_THREAD}`,
+  ])("loads and saves as TipTap's public parse does: %j", (source) => {
+    publicParse.mockClear();
+
+    const expected = loadAndSave(withPublicParse, source);
+
+    expect(publicParse).toHaveBeenCalled();
+    expect(expected.loaded).toHaveProperty("value");
+    expect(loadAndSave({ loadDfm, saveDfm }, source)).toEqual(expected);
   });
 });

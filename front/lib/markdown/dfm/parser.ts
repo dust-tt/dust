@@ -190,9 +190,14 @@ export function structure(text: string): string[] {
   return entries;
 }
 
-/** Flags the lines whose first character lies inside code, so a directive there is text. */
-export function codeLines(lines: string[]): boolean[] {
-  const ranges = codeRanges(lines.join("\n"));
+/**
+ * Flags the lines whose first character lies inside code, so a directive there is text. `ranges`
+ * are the code ranges of the lines joined, for a caller that already has them.
+ */
+export function codeLines(
+  lines: string[],
+  ranges: Range[] = codeRanges(lines.join("\n"))
+): boolean[] {
   const inCode: boolean[] = [];
   let offset = 0;
   let rangeIndex = 0;

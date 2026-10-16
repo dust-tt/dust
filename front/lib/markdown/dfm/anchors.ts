@@ -97,10 +97,10 @@ interface AnchorMatch {
 }
 
 /** The regions of the body outside code, in order. */
-function textRegions(body: string): Range[] {
+function textRegions(body: string, bodyCodeRanges: Range[]): Range[] {
   const regions: Range[] = [];
   let cursor = 0;
-  for (const range of codeRanges(body)) {
+  for (const range of bodyCodeRanges) {
     if (range.start > cursor) {
       regions.push({ start: cursor, end: range.start });
     }
@@ -117,8 +117,11 @@ function textRegions(body: string): Range[] {
  * cannot start inside code and swallow text past it, nor start in text and reach into code. A
  * directive behind a backslash is escaped text, as any Markdown parser reads it.
  */
-function* anchorMatches(body: string): Generator<AnchorMatch> {
-  for (const region of textRegions(body)) {
+function* anchorMatches(
+  body: string,
+  bodyCodeRanges: Range[]
+): Generator<AnchorMatch> {
+  for (const region of textRegions(body, bodyCodeRanges)) {
     const slice = body.slice(region.start, region.end);
     for (const match of slice.matchAll(ANCHOR_PATTERN)) {
       const index = region.start + match.index;
@@ -138,10 +141,12 @@ function* anchorMatches(body: string): Generator<AnchorMatch> {
 /**
  * Walks the body once, stripping anchor directives outside code and pairing them. `lineOffset`
  * is the number of source lines before the body, so reported lines are source lines.
+ * `bodyCodeRanges` are the body's code ranges, for a caller that already has them.
  */
 export function scanAnchors(
   body: string,
-  lineOffset: number
+  lineOffset: number,
+  bodyCodeRanges: Range[] = codeRanges(body)
 ): Result<AnchorScan, DfmError> {
   const anchors: ScannedAnchor[] = [];
   const markers: AnchorMarker[] = [];
@@ -151,7 +156,10 @@ export function scanAnchors(
   let last = 0;
   let line = lineOffset + 1;
 
-  for (const { index, attributes: raw, kind, length } of anchorMatches(body)) {
+  for (const { index, attributes: raw, kind, length } of anchorMatches(
+    body,
+    bodyCodeRanges
+  )) {
     const gap = body.slice(last, index);
     for (const character of gap) {
       if (character === "\n") {
@@ -215,6 +223,22 @@ export function scanAnchors(
   return new Ok({ text, anchors, markers });
 }
 
+/** The body without its anchor directives, and its anchors as offsets into that text. */
+export interface ExtractedAnchors {
+  text: string;
+  anchors: DfmAnchor[];
+}
+
+export function toExtractedAnchors({
+  text,
+  anchors,
+}: AnchorScan): ExtractedAnchors {
+  return {
+    text,
+    anchors: anchors.map(({ id, start, end }) => ({ id, start, end })),
+  };
+}
+
 /**
  * @cc [owner:PopDaph,label:product] dfm-anchor-integrity
  * Every anchor id MUST have exactly one start and one end directive, the start before the end,
@@ -225,7 +249,7 @@ export function scanAnchors(
  */
 export function extractAnchors(
   body: string
-): Result<{ text: string; anchors: DfmAnchor[] }, DfmError> {
+): Result<ExtractedAnchors, DfmError> {
   const bounds = checkInputBounds(body);
   if (bounds) {
     return new Err(bounds);
@@ -234,12 +258,5 @@ export function extractAnchors(
   if (scanned.isErr()) {
     return scanned;
   }
-  return new Ok({
-    text: scanned.value.text,
-    anchors: scanned.value.anchors.map(({ id, start, end }) => ({
-      id,
-      start,
-      end,
-    })),
-  });
+  return new Ok(toExtractedAnchors(scanned.value));
 }

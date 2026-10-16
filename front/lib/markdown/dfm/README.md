@@ -130,6 +130,7 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 | Function | Purpose |
 | --- | --- |
 | `parseDfm(source)` | Source to `DfmDocument`, or a located error. |
+| `parseDfmWithAnchors(source)` | `parseDfm` with the body's anchors as `extractAnchors` returns them, without parsing the body again. |
 | `serializeDfm(document)` | Document to canonical source, or the reason it cannot be written. |
 | `extractAnchors(body)` | The body without anchor directives plus `{ id, start, end }` offsets into it in document order, for the editor and search. |
 | `anchorComment({ body, id, quote, nth })` | Wraps the nth occurrence of `quote` in a new anchor pair, for agents that quote words instead of computing offsets. |

@@ -14,7 +14,12 @@ export {
   dfmCommentSchema,
   dfmCommentsSchema,
 } from "@app/lib/markdown/dfm/annotations";
-export { parseDfm, serializeDfm } from "@app/lib/markdown/dfm/document";
+export type { ExtractedAnchors } from "@app/lib/markdown/dfm/anchors";
+export {
+  parseDfm,
+  parseDfmWithAnchors,
+  serializeDfm,
+} from "@app/lib/markdown/dfm/document";
 export { anchorComment } from "@app/lib/markdown/dfm/operations";
 export { checkInputBounds } from "@app/lib/markdown/dfm/parser";
 export { messageSignaturePayload } from "@app/lib/markdown/dfm/signatures";
