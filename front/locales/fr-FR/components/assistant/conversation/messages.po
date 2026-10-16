@@ -1074,6 +1074,19 @@ msgid "Waiting for <0>another user</0>  to answer."
 msgstr "En attente de la réponse d’<0>un autre utilisateur</0>."
 
 #: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgctxt "Options removed from a ranking"
+msgid "Removed"
+msgstr "Retirées"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
+msgid "Restore"
+msgstr "Restaurer"
+
+#: front/components/assistant/conversation/UserAnswerRequired.tsx
 msgid "Tell the agent what to do differently"
 msgstr "Dites à l’agent ce qu’il doit faire autrement"
 

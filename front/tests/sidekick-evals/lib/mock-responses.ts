@@ -42,7 +42,8 @@ export function getMockToolResponse(
         typeof toolArguments?.question === "string"
           ? toolArguments.question
           : "",
-        ["Other: do whatever is the most intuitive for you"]
+        ["Other: do whatever is the most intuitive for you"],
+        { isRanking: false }
       ),
 
     get_agent_info: () => agentState,

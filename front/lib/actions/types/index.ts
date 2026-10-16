@@ -80,7 +80,13 @@ const UserQuestionOptionSchema = z.object({
 
 export type UserQuestionOption = z.infer<typeof UserQuestionOptionSchema>;
 
-const USER_QUESTION_FORMATS = ["list", "compare", "yes_no", "chips"] as const;
+const USER_QUESTION_FORMATS = [
+  "list",
+  "compare",
+  "yes_no",
+  "chips",
+  "ranking",
+] as const;
 
 /**
  * @cc [owner:aubin-tchoi,label:product] fields-added-with-defaults
@@ -122,7 +128,11 @@ export const UserQuestionSchema = z.object({
         "answers themselves ('Yes'/'No', 'Send'/'Cancel'). " +
         "'chips' is for picking among many short values (a time zone, a channel, " +
         "a language, a period): 5 to 12 options with labels of 1 to 3 words and " +
-        "no descriptions, single or multiple choice."
+        "no descriptions, single or multiple choice. " +
+        "'ranking' is for ordering options by priority (which tasks to do first, " +
+        "which criteria matter most): 3 to 7 options. The user orders them and " +
+        "can remove the ones they don't want: the answer lists the kept options " +
+        "from highest to lowest priority, then names the removed ones."
     ),
 });
 
