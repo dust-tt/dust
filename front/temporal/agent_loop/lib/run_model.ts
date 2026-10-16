@@ -43,6 +43,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
 import { isFreeUsageBlocked } from "@app/lib/api/llm/free_usage";
+import { supportsPerMessageReasoningEffort } from "@app/lib/api/llm/per_message_reasoning_effort";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -539,9 +540,17 @@ export async function runModel(
     !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
     conversation.depth === 0;
 
-  const filteredMcpActions = supportsInteractiveQuestions
-    ? mcpActions
-    : mcpActions.filter((s) => s.serverName !== "ask_user_question");
+  // Filter out self_configuration when the run's model cannot change its reasoning effort per
+  // message: its tool would always refuse. A model change already resets the prompt cache.
+  const supportsEffortChanges = supportsPerMessageReasoningEffort(
+    modelInfo.endpoint.modelConfig
+  );
+
+  const filteredMcpActions = mcpActions.filter(
+    (s) =>
+      (supportsInteractiveQuestions || s.serverName !== "ask_user_question") &&
+      (supportsEffortChanges || s.serverName !== "self_configuration")
+  );
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
