@@ -39,7 +39,7 @@ type SubmissionState = {
   phase: "pending" | "exiting";
 } | null;
 
-type QuestionLayout = "list" | "columns" | "preview_pane" | "yes_no";
+type QuestionLayout = "list" | "columns" | "preview_pane" | "yes_no" | "chips";
 
 /**
  * @cc [owner:aubin-tchoi,label:product] compare-layout
@@ -49,6 +49,7 @@ type QuestionLayout = "list" | "columns" | "preview_pane" | "yes_no";
  * - `compare`: single select, as columns with exactly 2 options and as an option list with a
  *   preview pane with 3 or more.
  * - `yes_no`: single select with exactly 2 options, as two buttons.
+ * - `chips`: no option has a description, as wrapping pills.
  */
 function getQuestionLayout(question: UserQuestion): QuestionLayout {
   switch (question.format) {
@@ -62,6 +63,10 @@ function getQuestionLayout(question: UserQuestion): QuestionLayout {
     case "yes_no":
       return !question.multiSelect && question.options.length === 2
         ? "yes_no"
+        : "list";
+    case "chips":
+      return question.options.every((option) => !option.description)
+        ? "chips"
         : "list";
     default:
       assertNeverAndIgnore(question.format);
@@ -129,8 +134,8 @@ function getYesNoShortcutIndex(
   }
 }
 
-// Columns lay options out side by side, so left and right arrows also move between them. Yes/no
-// buttons have no active option: they are reached with Tab or their shortcuts.
+// Columns and chips lay options out side by side, so left and right arrows also move between
+// them. Yes/no buttons have no active option: they are reached with Tab or their shortcuts.
 function getArrowKeyDirection(
   key: string,
   layout: QuestionLayout
@@ -138,10 +143,11 @@ function getArrowKeyDirection(
   if (layout === "yes_no") {
     return null;
   }
-  if (key === "ArrowDown" || (layout === "columns" && key === "ArrowRight")) {
+  const isHorizontal = layout === "columns" || layout === "chips";
+  if (key === "ArrowDown" || (isHorizontal && key === "ArrowRight")) {
     return 1;
   }
-  if (key === "ArrowUp" || (layout === "columns" && key === "ArrowLeft")) {
+  if (key === "ArrowUp" || (isHorizontal && key === "ArrowLeft")) {
     return -1;
   }
   return null;
@@ -522,6 +528,36 @@ export function UserAnswerRequired({
                   />
                 )
               )}
+            </div>
+          )}
+          {layout === "chips" && (
+            <div className="flex flex-wrap gap-2">
+              {question.options.map((option, index) => {
+                const isSelected = answerDraft.selectedOptions.includes(index);
+
+                return (
+                  <Button
+                    key={index}
+                    label={option.label}
+                    variant={isSelected ? "primary" : "outline"}
+                    size="sm"
+                    isRounded
+                    aria-pressed={isSelected}
+                    onFocus={() => activateOption(index)}
+                    onMouseEnter={() => activateOption(index)}
+                    // The list's active background does not show on outline buttons, so the
+                    // keyboard cursor shows as a ring.
+                    className={cn(
+                      isKeyboardNavigating &&
+                        activeOptionIndex === index &&
+                        !isCustomResponseActive &&
+                        "ring-2 ring-inset ring-ring"
+                    )}
+                    onClick={() => handleOptionClick(index)}
+                    disabled={isSubmitting}
+                  />
+                );
+              })}
             </div>
           )}
           <OptionCard

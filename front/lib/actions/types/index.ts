@@ -80,7 +80,7 @@ const UserQuestionOptionSchema = z.object({
 
 export type UserQuestionOption = z.infer<typeof UserQuestionOptionSchema>;
 
-const USER_QUESTION_FORMATS = ["list", "compare", "yes_no"] as const;
+const USER_QUESTION_FORMATS = ["list", "compare", "yes_no", "chips"] as const;
 
 /**
  * @cc [owner:aubin-tchoi,label:product] fields-added-with-defaults
@@ -97,7 +97,8 @@ export const UserQuestionSchema = z.object({
     .array(UserQuestionOptionSchema)
     .describe(
       "The available choices (typically 2 to 4 options, too many options to " +
-        "choose from can be overwhelming for the user). " +
+        "choose from can be overwhelming for the user, except with the 'chips' " +
+        "format). " +
         "Prefer omitting descriptions for all options, except with the 'compare' " +
         "format. If descriptions are needed, include them for every option."
     ),
@@ -118,7 +119,10 @@ export const UserQuestionSchema = z.object({
         "'compare' is single choice only, with 2 to 4 options. " +
         "'yes_no' is for a yes/no or go/no-go decision (confirm an action, approve " +
         "a plan): single choice with exactly 2 short options whose labels are the " +
-        "answers themselves ('Yes'/'No', 'Send'/'Cancel')."
+        "answers themselves ('Yes'/'No', 'Send'/'Cancel'). " +
+        "'chips' is for picking among many short values (a time zone, a channel, " +
+        "a language, a period): 5 to 12 options with labels of 1 to 3 words and " +
+        "no descriptions, single or multiple choice."
     ),
 });
 
