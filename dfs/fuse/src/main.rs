@@ -32,6 +32,12 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .with_writer(std::io::stderr)
+        .init();
     let session_key = read_session_key(&cli.session_key_file)
         .with_context(|| format!("session key file {}", cli.session_key_file.display()))?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -49,7 +55,7 @@ fn main() -> Result<()> {
     let session = fuser::Session::new(adapter, &cli.mountpoint, &adapter::config())
         .with_context(|| format!("mount {}", cli.mountpoint.display()))?
         .spawn()?;
-    eprintln!("dfs-fuse: mounted {}", cli.mountpoint.display());
+    tracing::info!(mountpoint = %cli.mountpoint.display(), "mounted");
 
     runtime.block_on(serve(&remote, &session))?;
     let drained = runtime.block_on(drain(&fs));
@@ -58,7 +64,7 @@ fn main() -> Result<()> {
     } else {
         session.umount_and_join()?;
     }
-    eprintln!("dfs-fuse: unmounted {}", cli.mountpoint.display());
+    tracing::info!(mountpoint = %cli.mountpoint.display(), "unmounted");
     drained.context("commit the last changes")
 }
 
