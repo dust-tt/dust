@@ -27,9 +27,9 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.124";
+const DUST_BASE_IMAGE_VERSION = "0.8.125";
 // The sandbox image registry workflow reads this line with sed.
-export const DSBX_CLI_VERSION = "0.1.68";
+export const DSBX_CLI_VERSION = "0.1.69";
 // SHA-256 of dsbx-linux-x86_64 at DSBX_CLI_VERSION. The sandbox image registry
 // workflow sets it after verifying the release's build attestation (signed by
 // release-dsbx-cli.yml on main), so it is not pinned here. Only image builds
