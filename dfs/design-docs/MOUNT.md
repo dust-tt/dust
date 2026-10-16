@@ -23,9 +23,11 @@ by answering most requests from memory and by acknowledging writes before they r
    outlives a lost read access by at most the cache TTL.
 2. **Read your writes.** A mount sees its own changes at once, until they commit. A newer state
    from the server does not hide them before then.
-3. **Progress.** Once a mount has shown a state of an object, it never shows an older one: the
-   server reads at a version taken after each request arrives, a cached reply is only replaced by
-   one at the same or a later version, and replies older than the mount's own commits are ignored.
+3. **Progress.** Once a mount has shown a committed state of an object, it never shows an older
+   one: the server reads at a version taken after each request arrives, a cached reply is only
+   replaced by one at the same or a later version, and replies older than the mount's own commits
+   are ignored. The mount's own pending changes show over any server state (guarantee 2); one
+   that fails disappears, the server's state shows again, and the next `fsync` reports it.
 4. **Durable `fsync`.** Writes and metadata changes are acknowledged before they reach the server.
    `fsync` of any file or directory waits until every change the mount acknowledged before it is
    committed, and reports the first failure since the previous `fsync`.
@@ -93,9 +95,10 @@ Tools such as `rg`, `cat` or a build read many small files from the same directo
 on a small file from its start fetches that file whole with one `ReadFiles`, and the same call
 brings its small siblings:
 
-- Siblings are the files of up to 256 KiB that follow it in the cached listing, wrapping around
-  to the start, since parallel walkers do not read in listing order. Files already cached, being
-  fetched or changed locally are skipped.
+- The mount picks the siblings itself, from its cached listing, and sends their IDs in the same
+  `ReadFiles`. They are the files of up to 256 KiB that follow the file in that listing, wrapping
+  around to the start, since parallel walkers do not read in listing order. Files already cached,
+  being fetched or changed locally are skipped.
 - The first miss in a directory brings up to 16 siblings; later misses there fill the call (256
   files).
 - The file and its siblings fit in one `ReadFiles` reply, so a miss still costs one round trip.
