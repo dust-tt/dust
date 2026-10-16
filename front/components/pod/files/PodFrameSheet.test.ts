@@ -321,10 +321,11 @@ describe("PodFrameSheet", () => {
     });
   });
 
-  it("serves the live publication: no latest bundle, no function target", () => {
+  it("serves the live publication: no latest bundle, functions or function target", () => {
     render(createElement(PodFrameSheet, openSheetProps));
 
     expect(mocks.contentCalls.at(-1)).not.toHaveProperty("publication");
+    expect(mocks.permissionsCalls.at(-1)).not.toHaveProperty("publication");
     expect(mocks.iframeProps).not.toHaveProperty("functionTarget");
   });
 });

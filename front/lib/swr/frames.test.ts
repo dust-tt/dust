@@ -1,4 +1,4 @@
-import { useEditFrameText } from "@app/lib/swr/frames";
+import { getFramePermissionsKey, useEditFrameText } from "@app/lib/swr/frames";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,20 @@ const owner = LightWorkspaceFactory.build({ sId: "workspace_1", role: "user" });
 beforeEach(() => {
   clientFetch.mockReset();
   clientFetch.mockResolvedValue(new Response(null, { status: 200 }));
+});
+
+describe("getFramePermissionsKey", () => {
+  it("asks for no publication by default, so functions are reported for live", () => {
+    expect(getFramePermissionsKey({ owner, frameId: "fil_1" })).toBe(
+      "/api/w/workspace_1/frames/fil_1/permissions"
+    );
+  });
+
+  it("asks for the latest publication when requested", () => {
+    expect(
+      getFramePermissionsKey({ owner, frameId: "fil_1", publication: "latest" })
+    ).toBe("/api/w/workspace_1/frames/fil_1/permissions?publication=latest");
+  });
 });
 
 describe("useEditFrameText", () => {

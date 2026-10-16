@@ -178,6 +178,7 @@ export function FrameRenderer({
   } = useFramePermissions({
     owner,
     frameId: fileId,
+    publication: "latest",
     disabled: renderMode !== "v2",
   });
   const framePackageRoot =

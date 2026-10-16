@@ -7,7 +7,10 @@ export type GetFramePermissionsResponseBody = {
   isFrameAuthor: boolean;
   /** Scoped path of the Frame package root (`conversation-…/MyFrame`), when known. */
   packageRoot: string | null;
-  /** Whether the publication this caller is served declares at least one function. */
+  /**
+   * Whether the publication this request is served declares at least one function: the latest
+   * one for a writer asking with `publication=latest` (the conversation panel), live otherwise.
+   */
   hasFunctions: boolean;
   /** Publication the share link, and anyone who cannot edit, is served. */
   livePublicationId: string | null;

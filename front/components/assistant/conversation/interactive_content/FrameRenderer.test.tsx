@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   iframeMounts: 0,
   mutateFileContent: vi.fn(),
   useFileContent: vi.fn(),
+  useFramePermissions: vi.fn(),
 }));
 
 vi.mock(
@@ -150,13 +151,16 @@ vi.mock("@app/components/Confirm", async () => {
 vi.mock("@app/lib/swr/frames", () => ({
   useBatchEditFrameText: () => mocks.batchEditFrameText,
   useEditFrameText: () => mocks.editFrameText,
-  useFramePermissions: () => ({
-    canWriteFrameSource: mocks.canWriteFrameSource,
-    packageRoot: null,
-    hasFrameFunctions: mocks.hasFrameFunctions,
-    isFramePermissionsLoading: false,
-    isFramePermissionsError: null,
-  }),
+  useFramePermissions: (args: unknown) => {
+    mocks.useFramePermissions(args);
+    return {
+      canWriteFrameSource: mocks.canWriteFrameSource,
+      packageRoot: null,
+      hasFrameFunctions: mocks.hasFrameFunctions,
+      isFramePermissionsLoading: false,
+      isFramePermissionsError: null,
+    };
+  },
 }));
 vi.mock("@app/lib/swr/pods", () => ({
   usePodFiles: () => ({ files: [] }),
@@ -199,7 +203,7 @@ afterEach(() => {
 });
 
 describe("FrameRenderer", () => {
-  it("asks for the latest publication for both the bundle and its functions", () => {
+  it("asks for the latest publication for the bundle, its functions and their presence", () => {
     render(
       <FrameRenderer
         conversation={conversation}
@@ -212,6 +216,9 @@ describe("FrameRenderer", () => {
 
     expect(mocks.useFileContent).toHaveBeenCalledWith(
       expect.objectContaining({ fileId: "frame_1", publication: "latest" })
+    );
+    expect(mocks.useFramePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({ frameId: "frame_1", publication: "latest" })
     );
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({ functionTarget: "latest" })
