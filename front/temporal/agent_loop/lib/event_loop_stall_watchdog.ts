@@ -27,7 +27,7 @@ const inFlightActivities = new Map<Info, TrackedActivity>();
 // Activities completed since the last check: a culprit can finish in the same tick that unblocks
 // the event loop, before the check runs.
 let activitiesCompletedSinceLastCheck: TrackedActivity[] = [];
-let stopRunningWatchdog: (() => void) | null = null;
+let watchdogStarted = false;
 
 export class StallTrackingActivityInterceptor implements ActivityInboundCallsInterceptor {
   constructor(private readonly info: Info) {}
@@ -42,7 +42,7 @@ export class StallTrackingActivityInterceptor implements ActivityInboundCallsInt
       workflowId: workflowExecution.workflowId,
       activityId,
       attempt,
-      startedAtMs: Date.now(),
+      startedAtMs: performance.now(),
       endedAtMs: null,
       details: {},
     };
@@ -52,7 +52,7 @@ export class StallTrackingActivityInterceptor implements ActivityInboundCallsInt
       return await next(input);
     } finally {
       inFlightActivities.delete(this.info);
-      activity.endedAtMs = Date.now();
+      activity.endedAtMs = performance.now();
       activitiesCompletedSinceLastCheck.push(activity);
     }
   }
@@ -86,15 +86,16 @@ function describeActivity(activity: TrackedActivity, nowMs: number) {
  * completed while it was blocked. At most one watchdog runs per process, as they share the tracked
  * activities.
  */
-export function startEventLoopStallWatchdog(): () => void {
-  if (stopRunningWatchdog) {
-    return stopRunningWatchdog;
+export function startEventLoopStallWatchdog(): void {
+  if (watchdogStarted) {
+    return;
   }
+  watchdogStarted = true;
 
-  let lastCheckMs = Date.now();
+  let lastCheckMs = performance.now();
 
   const interval = setInterval(() => {
-    const nowMs = Date.now();
+    const nowMs = performance.now();
     const lagMs = nowMs - lastCheckMs - CHECK_INTERVAL_MS;
 
     if (lagMs >= EVENT_LOOP_STALL_THRESHOLD_MS) {
@@ -116,10 +117,4 @@ export function startEventLoopStallWatchdog(): () => void {
     lastCheckMs = nowMs;
   }, CHECK_INTERVAL_MS);
   interval.unref();
-
-  stopRunningWatchdog = () => {
-    clearInterval(interval);
-    stopRunningWatchdog = null;
-  };
-  return stopRunningWatchdog;
 }

@@ -1,10 +1,3 @@
-import logger from "@app/logger/logger";
-import {
-  annotateInFlightActivity,
-  EVENT_LOOP_STALL_THRESHOLD_MS,
-  StallTrackingActivityInterceptor,
-  startEventLoopStallWatchdog,
-} from "@app/temporal/agent_loop/lib/event_loop_stall_watchdog";
 import type { Info } from "@temporalio/activity";
 import type { ActivityExecuteInput } from "@temporalio/worker";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,18 +34,34 @@ function makeDeferred() {
 }
 
 describe("startEventLoopStallWatchdog", () => {
-  let stopWatchdog: () => void;
+  let watchdog: typeof import("@app/temporal/agent_loop/lib/event_loop_stall_watchdog");
   let warn: ReturnType<typeof vi.spyOn>;
+  let performanceOffsetMs: number;
 
-  beforeEach(() => {
+  // Simulates a blocked event loop: monotonic time jumps without the interval firing.
+  const simulateStall = () => {
+    performanceOffsetMs += watchdog.EVENT_LOOP_STALL_THRESHOLD_MS + 2_000;
+  };
+
+  beforeEach(async () => {
     vi.useFakeTimers();
+    performanceOffsetMs = 0;
+    const now = performance.now.bind(performance);
+    vi.spyOn(performance, "now").mockImplementation(
+      () => now() + performanceOffsetMs
+    );
+    // The watchdog is a process-wide singleton: load a fresh module for each test.
+    vi.resetModules();
+    const { default: logger } = await import("@app/logger/logger");
     warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
-    stopWatchdog = startEventLoopStallWatchdog();
+    watchdog =
+      await import("@app/temporal/agent_loop/lib/event_loop_stall_watchdog");
+    watchdog.startEventLoopStallWatchdog();
   });
 
   afterEach(() => {
-    stopWatchdog();
-    warn.mockRestore();
+    vi.clearAllTimers();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -60,16 +69,15 @@ describe("startEventLoopStallWatchdog", () => {
     const running = makeDeferred();
     const finishing = makeDeferred();
     const runningInfo = makeInfo("wf-running", "1");
-    const runningPromise = new StallTrackingActivityInterceptor(
+    const runningPromise = new watchdog.StallTrackingActivityInterceptor(
       runningInfo
     ).execute(EXECUTE_INPUT, () => running.promise);
-    const finishingPromise = new StallTrackingActivityInterceptor(
+    const finishingPromise = new watchdog.StallTrackingActivityInterceptor(
       makeInfo("wf-finishing", "2")
     ).execute(EXECUTE_INPUT, () => finishing.promise);
-    annotateInFlightActivity(runningInfo, { toolName: "slow_tool" });
+    watchdog.annotateInFlightActivity(runningInfo, { toolName: "slow_tool" });
 
-    // Simulate a blocked event loop: wall time jumps without the interval firing.
-    vi.setSystemTime(Date.now() + EVENT_LOOP_STALL_THRESHOLD_MS + 2_000);
+    simulateStall();
     finishing.resolve();
     await finishingPromise;
     await vi.advanceTimersByTimeAsync(1_000);
@@ -93,17 +101,17 @@ describe("startEventLoopStallWatchdog", () => {
   it("keeps tracking a retry after its timed-out attempt completes", async () => {
     const timedOut = makeDeferred();
     const retry = makeDeferred();
-    const timedOutPromise = new StallTrackingActivityInterceptor(
+    const timedOutPromise = new watchdog.StallTrackingActivityInterceptor(
       makeInfo("wf", "1", 1)
     ).execute(EXECUTE_INPUT, () => timedOut.promise);
-    const retryPromise = new StallTrackingActivityInterceptor(
+    const retryPromise = new watchdog.StallTrackingActivityInterceptor(
       makeInfo("wf", "1", 2)
     ).execute(EXECUTE_INPUT, () => retry.promise);
 
     timedOut.resolve();
     await timedOutPromise;
     await vi.advanceTimersByTimeAsync(1_000);
-    vi.setSystemTime(Date.now() + EVENT_LOOP_STALL_THRESHOLD_MS + 2_000);
+    simulateStall();
     await vi.advanceTimersByTimeAsync(1_000);
 
     expect(warn).toHaveBeenCalledTimes(1);
@@ -117,12 +125,11 @@ describe("startEventLoopStallWatchdog", () => {
   });
 
   it("runs a single watchdog per process", async () => {
-    const stopSecondWatchdog = startEventLoopStallWatchdog();
+    watchdog.startEventLoopStallWatchdog();
 
-    vi.setSystemTime(Date.now() + EVENT_LOOP_STALL_THRESHOLD_MS + 2_000);
+    simulateStall();
     await vi.advanceTimersByTimeAsync(1_000);
 
-    expect(stopSecondWatchdog).toBe(stopWatchdog);
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
