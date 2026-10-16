@@ -38,7 +38,7 @@ app.post(
       draftPublicationId,
     });
     if (result.isErr()) {
-      return apiError(ctx, frameMakeLiveApiError(result.error));
+      return apiError(ctx, frameMakeLiveApiError(result.error), result.error);
     }
 
     return ctx.json<PostMakeFrameDraftLiveResponseBody>(result.value);

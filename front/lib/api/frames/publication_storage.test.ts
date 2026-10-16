@@ -1375,6 +1375,33 @@ describe("publishFramePublication modes", () => {
     );
   });
 
+  it("replaces a pending draft whose publication is missing", async () => {
+    const { auth, frame } = await setupFrame();
+    await publishBundle(auth, frame, "export default function A() {}", "live");
+    const fresh = await frame.fetchFreshFrameV2(auth);
+    assert(fresh, "Frame exists");
+    await fresh.setLatestFramePublication({
+      publicationId: "missing-draft-publication",
+    });
+    fileStorageMock.setFetchFileContentNotFound((path) =>
+      path.includes("missing-draft-publication")
+    );
+
+    const draft = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+
+    assert(draft.isOk(), "draft publish succeeds");
+    expect(draft.value.status).toBe("draft");
+    expect(draft.value.publicationId).not.toBe("missing-draft-publication");
+    expect((await metadataOf(auth, frame))?.latestPublicationId).toBe(
+      draft.value.publicationId
+    );
+  });
+
   it("points both pointers at a live publish, resolving a pending draft", async () => {
     const { auth, frame } = await setupFrame();
     await publishBundle(auth, frame, "export default function A() {}", "live");

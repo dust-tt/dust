@@ -3,6 +3,10 @@ import { publishFramePublication } from "@app/lib/api/frames/publication_storage
 import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import {
+  executeWithLockResult,
+  LockAcquisitionTimeoutError,
+} from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -24,6 +28,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
   seedFramePublicationFunctionsArchive: vi.fn().mockResolvedValue(undefined),
 }));
+
+vi.mock("@app/lib/lock", async (importActual) => {
+  const actual = await importActual<typeof import("@app/lib/lock")>();
+  return {
+    ...actual,
+    executeWithLockResult: vi.fn(actual.executeWithLockResult),
+  };
+});
 
 const manifest = FrameManifestSchema.parse({
   version: 1,
@@ -88,6 +100,30 @@ async function publishBundle(
     mode,
   });
   assert(published.isOk(), "publish succeeds");
+  return published.value.publicationId;
+}
+
+async function publishFunctionDraft(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<string> {
+  const published = await publishFramePublication(auth, {
+    frame,
+    functionArtifacts,
+    manifest: manifestWithFunction,
+    sourceFiles: [
+      ...sourceFiles,
+      {
+        relativePath: "functions/add_task.ts",
+        content: Buffer.from("export async function run() {}"),
+        contentType: "text/typescript" as const,
+      },
+    ],
+    uiBundleCode: "export default function B() {}",
+    mode: "draft",
+  });
+  assert(published.isOk(), "draft publish succeeds");
+  expect(published.value.status).toBe("draft");
   return published.value.publicationId;
 }
 
@@ -180,18 +216,160 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
     });
   });
 
-  it("returns 404 when the Frame has no pending draft", async () => {
+  it("returns 200 again when the draft is already live", async () => {
     const { auth, workspace, frame } = await setupAuthoredFrame();
     await publishBundle(auth, frame, "export default function A() {}", "live");
+    const draftId = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+
+    const first = await postMakeLive(workspace.sId, frame.sId, {
+      draftPublicationId: draftId,
+    });
+    const second = await postMakeLive(workspace.sId, frame.sId, {
+      draftPublicationId: draftId,
+    });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    await expect(second.json()).resolves.toEqual({ publicationId: draftId });
+    const metadata = await metadataOf(auth, frame);
+    expect(metadata?.activePublicationId).toBe(draftId);
+    expect(metadata?.draftPublicationId).toBeUndefined();
+  });
+
+  it("returns 409 when the Frame has no pending draft", async () => {
+    const { auth, workspace, frame } = await setupAuthoredFrame();
+    const liveId = await publishBundle(
+      auth,
+      frame,
+      "export default function A() {}",
+      "live"
+    );
 
     const response = await postMakeLive(workspace.sId, frame.sId, {
       draftPublicationId: "anything",
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "frame_draft_conflict" },
+    });
+    const metadata = await metadataOf(auth, frame);
+    expect(metadata?.activePublicationId).toBe(liveId);
+    expect(metadata?.draftPublicationId).toBeUndefined();
+  });
+
+  it("returns 404 when the Frame is deleted before the locks are taken", async () => {
+    const { auth, workspace, frame } = await setupAuthoredFrame();
+    await publishBundle(auth, frame, "export default function A() {}", "live");
+    const draftId = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+    vi.spyOn(FileResource.prototype, "fetchFreshFrameV2").mockResolvedValue(
+      null
+    );
+
+    const response = await postMakeLive(workspace.sId, frame.sId, {
+      draftPublicationId: draftId,
     });
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
       error: { type: "file_not_found" },
     });
+  });
+
+  it("returns 409 frame_draft_conflict when the Frame lock times out and keeps both pointers", async () => {
+    const { auth, workspace, frame } = await setupAuthoredFrame();
+    const liveId = await publishBundle(
+      auth,
+      frame,
+      "export default function A() {}",
+      "live"
+    );
+    const draftId = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+    vi.mocked(executeWithLockResult).mockImplementationOnce(
+      async (lockName) => new Err(new LockAcquisitionTimeoutError(lockName))
+    );
+
+    const response = await postMakeLive(workspace.sId, frame.sId, {
+      draftPublicationId: draftId,
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "frame_draft_conflict" },
+    });
+    const metadata = await metadataOf(auth, frame);
+    expect(metadata?.activePublicationId).toBe(liveId);
+    expect(metadata?.draftPublicationId).toBe(draftId);
+  });
+
+  it("returns 500 when the pending draft's publication is missing", async () => {
+    const { auth, workspace, frame } = await setupAuthoredFrame();
+    const liveId = await publishBundle(
+      auth,
+      frame,
+      "export default function A() {}",
+      "live"
+    );
+    const fresh = await frame.fetchFreshFrameV2(auth);
+    assert(fresh, "Frame exists");
+    await fresh.setDraftFramePublication({
+      publicationId: "missing-draft-publication",
+    });
+    fileStorageMock.setFetchFileContentNotFound((path) =>
+      path.includes("missing-draft-publication")
+    );
+
+    const response = await postMakeLive(workspace.sId, frame.sId, {
+      draftPublicationId: "missing-draft-publication",
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "internal_server_error" },
+    });
+    const metadata = await metadataOf(auth, frame);
+    expect(metadata?.activePublicationId).toBe(liveId);
+    expect(metadata?.draftPublicationId).toBe("missing-draft-publication");
+  });
+
+  it("returns 400 frame_make_live_failed when Frame functions were turned off and keeps both pointers", async () => {
+    const { auth, workspace, frame } = await setupAuthoredFrame();
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
+    const liveId = await publishBundle(
+      auth,
+      frame,
+      "export default function A() {}",
+      "live"
+    );
+    const draftId = await publishFunctionDraft(auth, frame);
+    await FeatureFlagFactory.disable(auth, "frames_v2_functions");
+
+    const response = await postMakeLive(workspace.sId, frame.sId, {
+      draftPublicationId: draftId,
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "frame_make_live_failed" },
+    });
+    const metadata = await metadataOf(auth, frame);
+    expect(metadata?.activePublicationId).toBe(liveId);
+    expect(metadata?.draftPublicationId).toBe(draftId);
   });
 
   it("returns 403 to a caller who cannot edit the Frame", async () => {
@@ -250,23 +428,7 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
       "export default function A() {}",
       "live"
     );
-    const published = await publishFramePublication(auth, {
-      frame,
-      functionArtifacts,
-      manifest: manifestWithFunction,
-      sourceFiles: [
-        ...sourceFiles,
-        {
-          relativePath: "functions/add_task.ts",
-          content: Buffer.from("export async function run() {}"),
-          contentType: "text/typescript" as const,
-        },
-      ],
-      uiBundleCode: "export default function B() {}",
-      mode: "draft",
-    });
-    assert(published.isOk(), "draft publish succeeds");
-    const draftId = published.value.publicationId;
+    const draftId = await publishFunctionDraft(auth, frame);
     await frame.setShareScope(auth, "public");
 
     const response = await postMakeLive(workspace.sId, frame.sId, {
