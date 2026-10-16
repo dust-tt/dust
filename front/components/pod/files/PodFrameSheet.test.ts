@@ -70,6 +70,13 @@ vi.mock(
   })
 );
 
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate",
+  () => ({
+    FrameToolConsentGate: () => createElement("div", null, "tool-consent-gate"),
+  })
+);
+
 vi.mock("@app/components/pod/files/PinPodBannerButton", () => ({
   PinPodBannerButton: () => null,
 }));
