@@ -1,6 +1,9 @@
 import { createPrivateKey } from "node:crypto";
 import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
-import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
+import {
+  escapeSnowflakeIdentifier,
+  SNOWFLAKE_CSID,
+} from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -98,6 +101,7 @@ export class SnowflakeClient {
         // Replace any `_` with `-` in the account name for nginx proxy
         account: this.account.replace(/_/g, "-"),
         warehouse: this.warehouse,
+        application: SNOWFLAKE_CSID,
 
         // Use proxy if defined to have all requests coming from the same IP.
         proxyHost: EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST"),
