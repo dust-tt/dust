@@ -5,7 +5,7 @@ use dfs_protocol::rpc::{
 use super::*;
 
 #[test]
-fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
+fn operation_targets_include_all_affected_objects_once() {
     let parent = ObjectId::new_v7();
     let file = ObjectId::new_v7();
     let other = ObjectId::new_v7();
@@ -70,13 +70,85 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
         }),
     ];
 
+    let expected_targets = [
+        vec![parent, file],
+        vec![file],
+        vec![parent],
+        vec![file, parent, destination],
+        vec![file, destination],
+        vec![destination, other],
+        vec![file],
+        vec![destination, parent],
+        vec![parent],
+        vec![other, destination],
+    ];
+    for (operation, mut expected) in operations.iter().zip(expected_targets) {
+        expected.sort_unstable();
+        assert_eq!(ObjectResource::targets_for_operation(operation), expected);
+    }
+}
+
+#[test]
+fn grouping_merges_overlaps_preserves_order_and_keeps_unrelated_operations_separate() {
+    let first = ObjectId::new_v7();
+    let second = ObjectId::new_v7();
+    let child = ObjectId::new_v7();
+    let third = ObjectId::new_v7();
+    let unrelated = ObjectId::new_v7();
+    let operations = vec![
+        Operation::Write(WriteOperation {
+            object_id: first,
+            ..Default::default()
+        }),
+        Operation::Write(WriteOperation {
+            object_id: second,
+            ..Default::default()
+        }),
+        Operation::Update(UpdateOperation {
+            object_id: unrelated,
+            ..Default::default()
+        }),
+        Operation::Create(CreateOperation {
+            parent_id: second,
+            object_id: child,
+            name: "child".to_owned(),
+            ..Default::default()
+        }),
+        Operation::Write(WriteOperation {
+            object_id: third,
+            ..Default::default()
+        }),
+        Operation::Move(MoveOperation {
+            object_id: first,
+            parent_id: child,
+            target_id: Some(third),
+            name: "moved".to_owned(),
+            ..Default::default()
+        }),
+        Operation::Write(WriteOperation {
+            object_id: second,
+            ..Default::default()
+        }),
+    ];
+    let mut merged_targets = vec![first, second, child, third];
+    merged_targets.sort_unstable();
+
     assert_eq!(
         ObjectResource::group_by_targets(&operations),
-        HashMap::from([
-            (parent, vec![0, 2, 3, 7, 8]),
-            (file, vec![0, 1, 3, 4, 6]),
-            (other, vec![5, 9]),
-            (destination, vec![3, 4, 5, 7, 9]),
-        ])
+        vec![
+            ApplyBatch {
+                operation_indexes: vec![0, 1, 3, 4, 5, 6],
+                targets: merged_targets,
+            },
+            ApplyBatch {
+                operation_indexes: vec![2],
+                targets: vec![unrelated],
+            },
+        ]
     );
+}
+
+#[test]
+fn grouping_empty_operations_returns_no_batches() {
+    assert!(ObjectResource::group_by_targets(&[]).is_empty());
 }

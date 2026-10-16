@@ -24,6 +24,7 @@ mod apply;
 mod hints;
 mod modes;
 mod stat;
+pub use apply::ApplyBatch;
 pub use hints::TreeHints;
 pub use modes::Mode;
 
