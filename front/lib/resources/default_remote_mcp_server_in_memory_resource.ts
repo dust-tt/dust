@@ -37,9 +37,11 @@ export class DefaultRemoteMCPServerInMemoryResource {
   }
 
   /**
-   * @cc [owner:smb2268,label:product] credit-based-presets-hidden-from-other-plans
-   * A preset with `creditBasedPlansOnly` MUST be omitted unless the workspace's plan satisfies
-   * `isCreditBasedPlan` (credit-priced or Dust company), in addition to its `featureFlag` gate.
+   * @cc [owner:smb2268,label:product] feature-flag-overrides-plan-gate
+   * A preset with `creditBasedPlansOnly` MUST be offered when the workspace's plan satisfies
+   * `isCreditBasedPlan` or the workspace has the preset's `featureFlag`, and omitted otherwise.
+   * A preset without `creditBasedPlansOnly` MUST be omitted when it has a `featureFlag` the
+   * workspace lacks.
    */
   static async listAvailableDefaultRemoteMCPServers(
     auth: Authenticator
@@ -49,10 +51,14 @@ export class DefaultRemoteMCPServerInMemoryResource {
     const isCreditBased = isCreditBasedPlan(auth.getNonNullablePlan());
 
     for (const config of DEFAULT_REMOTE_MCP_SERVERS) {
-      if (config.featureFlag && !featureFlags.includes(config.featureFlag)) {
-        continue;
-      }
-      if (config.creditBasedPlansOnly && !isCreditBased) {
+      const hasFlag =
+        config.featureFlag !== undefined &&
+        featureFlags.includes(config.featureFlag);
+      // On a plan-gated preset the flag is an override; otherwise it is a requirement.
+      const isAvailable = config.creditBasedPlansOnly
+        ? isCreditBased || hasFlag
+        : config.featureFlag === undefined || hasFlag;
+      if (!isAvailable) {
         continue;
       }
 
