@@ -204,6 +204,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "platform_actions") {
+      const keys = Object.keys(extraConfig);
+      return (
+        keys.length === 0 ||
+        (keys.length === 1 && "mcp_server_id" in extraConfig)
+      );
+    }
     if (useCase === "connection") {
       // Accept either empty config or config with all required Slack app credentials
       const keys = Object.keys(extraConfig);
