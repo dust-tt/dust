@@ -74,7 +74,7 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
         conversationId: conversation.sId,
       })}Admin/${FRAME_MANIFEST_FILE}`,
     });
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 
@@ -124,7 +124,7 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
     await FeatureFlagFactory.basic(auth, "frames_v2");
     const space = await SpaceFactory.project(workspace);
     const { frame } = await createTestFrameFunction(auth, { space });
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 

@@ -1290,7 +1290,9 @@ describe("publishFramePublication modes", () => {
     expect(metadata?.activePublicationId).toBe(
       published.isOk() && published.value.publicationId
     );
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(
+      published.isOk() && published.value.publicationId
+    );
   });
 
   it("stages a later draft publish without touching live", async () => {
@@ -1314,12 +1316,12 @@ describe("publishFramePublication modes", () => {
     expect(metadata?.activePublicationId).toBe(
       live.isOk() && live.value.publicationId
     );
-    expect(metadata?.draftPublicationId).toBe(
+    expect(metadata?.latestPublicationId).toBe(
       draft.isOk() && draft.value.publicationId
     );
   });
 
-  it("does not stage a draft that matches live, and clears the pending one", async () => {
+  it("does not stage a draft that matches live, and points latest back at live", async () => {
     const { auth, frame } = await setupFrame();
     const live = await publishBundle(
       auth,
@@ -1340,10 +1342,12 @@ describe("publishFramePublication modes", () => {
       publicationId: live.isOk() && live.value.publicationId,
       status: "live",
     });
-    expect((await metadataOf(auth, frame))?.draftPublicationId).toBeUndefined();
+    expect((await metadataOf(auth, frame))?.latestPublicationId).toBe(
+      live.isOk() && live.value.publicationId
+    );
   });
 
-  it("clears a pending draft on a live publish", async () => {
+  it("points both pointers at a live publish, resolving a pending draft", async () => {
     const { auth, frame } = await setupFrame();
     await publishBundle(auth, frame, "export default function A() {}", "live");
     await publishBundle(auth, frame, "export default function B() {}", "draft");
@@ -1360,7 +1364,9 @@ describe("publishFramePublication modes", () => {
     expect(metadata?.activePublicationId).toBe(
       published.isOk() && published.value.publicationId
     );
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    expect(metadata?.latestPublicationId).toBe(
+      published.isOk() && published.value.publicationId
+    );
   });
 
   function failAllowlistComputation() {
@@ -1403,7 +1409,7 @@ describe("publishFramePublication modes", () => {
       expect(metadata?.activePublicationId).toBe(
         live.isOk() && live.value.publicationId
       );
-      expect(metadata?.draftPublicationId).toBe(
+      expect(metadata?.latestPublicationId).toBe(
         draft.isOk() && draft.value.publicationId
       );
     });
@@ -1424,7 +1430,7 @@ describe("publishFramePublication modes", () => {
       );
       const metadata = await metadataOf(auth, frame);
       expect(metadata?.activePublicationId).toBeUndefined();
-      expect(metadata?.draftPublicationId).toBeUndefined();
+      expect(metadata?.latestPublicationId).toBeUndefined();
     });
   });
 
@@ -1484,7 +1490,7 @@ describe("publishFramePublication modes", () => {
       expect(draft.isErr() && draft.error.code).toBe("allowlist_failed");
       const metadata = await metadataOf(auth, frame);
       expect(metadata?.activePublicationId).toBe(live.value.publicationId);
-      expect(metadata?.draftPublicationId).toBeUndefined();
+      expect(metadata?.latestPublicationId).toBe(live.value.publicationId);
       const rows = await countFunctionRows(auth, frame);
       expect(rows.get(live.value.publicationId)).toBe(1);
       for (const [publicationId, count] of rows) {
@@ -1522,7 +1528,7 @@ describe("publishFramePublication modes", () => {
       expect(metadata?.activePublicationId).toBe(
         live.isOk() && live.value.publicationId
       );
-      expect(metadata?.draftPublicationId).toBe(
+      expect(metadata?.latestPublicationId).toBe(
         pending.isOk() && pending.value.publicationId
       );
     });
@@ -1546,7 +1552,7 @@ describe("publishFramePublication modes", () => {
       expect(metadata?.activePublicationId).toBe(
         live.isOk() && live.value.publicationId
       );
-      expect(metadata?.draftPublicationId).toBe(
+      expect(metadata?.latestPublicationId).toBe(
         pending.isOk() && pending.value.publicationId
       );
     });

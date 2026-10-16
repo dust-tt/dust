@@ -51,7 +51,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     livePublicationId,
     livePublishedAt: livePublication?.createdAt.getTime() ?? null,
     draftPublicationId: canWriteFrameSource
-      ? (frame.useCaseMetadata?.draftPublicationId ?? null)
+      ? (frame.pendingDraftPublicationId ?? null)
       : null,
   });
 });

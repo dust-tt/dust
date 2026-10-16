@@ -257,7 +257,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
         conversationId: conversation.sId,
       },
     });
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
     for (const publicationId of ["publication-live", "publication-draft"]) {
@@ -283,7 +283,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     const { frame, space, workspace } = await makeTestFrameFunction();
     const { globalGroup } = await GroupFactory.defaults(workspace);
     await SpaceFactory.attachGroup(space, globalGroup, "project_viewer");
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
     for (const publicationId of ["publication-1", "publication-draft"]) {

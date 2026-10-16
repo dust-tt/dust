@@ -13,6 +13,9 @@ export type GetFramePermissionsResponseBody = {
   livePublicationId: string | null;
   /** When the live publication was published, in ms since epoch. */
   livePublishedAt: number | null;
-  /** Pending draft, reported only to callers who can edit the Frame. */
+  /**
+   * Latest publication when it differs from the live one (a draft is pending), reported only to
+   * callers who can edit the Frame.
+   */
   draftPublicationId: string | null;
 };

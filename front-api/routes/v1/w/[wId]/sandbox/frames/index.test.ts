@@ -303,7 +303,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       live.publicationId
     );
-    expect(frame?.useCaseMetadata?.draftPublicationId).toBe(
+    expect(frame?.useCaseMetadata?.latestPublicationId).toBe(
       draft.publicationId
     );
   });

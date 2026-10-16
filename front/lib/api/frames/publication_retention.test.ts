@@ -214,12 +214,12 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, active)).toBe(1);
   });
 
-  it("keeps the draft publication whatever its age", async () => {
+  it("keeps the latest publication whatever its age", async () => {
     const { active, auth, frame } = await setupFrame();
     const draft = await storeTestFramePublication(auth, frame, {
       publishedDaysAgo: 30,
     });
-    await frame.setDraftFramePublication({ publicationId: draft });
+    await frame.setLatestFramePublication({ publicationId: draft });
 
     const result = await purgeStaleFramePublications(auth, {
       frame,

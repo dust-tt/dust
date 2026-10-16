@@ -215,7 +215,7 @@ export async function createTestAuthorFrameWithDraft(
       slug: "run-function",
     });
   }
-  await frame.setDraftFramePublication({
+  await frame.setLatestFramePublication({
     publicationId: TEST_DRAFT_FRAME_DRAFT_PUBLICATION_ID,
   });
 

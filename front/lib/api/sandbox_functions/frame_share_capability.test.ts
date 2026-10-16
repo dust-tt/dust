@@ -95,7 +95,7 @@ describe("resolveActiveFrameFunctionForUse", () => {
       publicationId: "publication-draft",
       slug: "run-function",
     });
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 

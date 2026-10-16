@@ -1132,15 +1132,18 @@ export class FileResource extends BaseResource<FileModel> {
    * MUST be set to it. The conversation UI reads this field to enable "Ask agent to fix" on a
    * Frame runtime error; if a publication path omits it, the retry affordance stays silently
    * unavailable for every publication of that Frame, not just the failing one. Drafts record it
-   * through `setDraftFramePublication`.
+   * through `setLatestFramePublication`.
    *
    * The Frame's name is not part of a publication: it is the source folder's basename. See the
    * `frame-name-is-the-source-folder` contract in `types/api/frame_manifest.ts`.
    */
   /**
    * @cc [owner:davidebbo,label:product] activation-resolves-the-draft
-   * Activating a publication MUST clear `draftPublicationId`: whatever was pending is either the
-   * publication being activated or superseded by it, since both are built from the same source.
+   * Activating a publication MUST set both `activePublicationId` and `latestPublicationId` to it:
+   * it is the newest publication, and whatever draft was pending is either it or superseded by it,
+   * since both are built from the same source. A future rollback of live to an older publication
+   * MUST use a separate setter that moves only `activePublicationId`, so editors keep their latest
+   * work.
    */
   async setActiveFramePublication(
     {
@@ -1154,44 +1157,13 @@ export class FileResource extends BaseResource<FileModel> {
     },
     transaction?: Transaction
   ) {
-    const useCaseMetadata: FileUseCaseMetadata = {
-      ...this.useCaseMetadata,
-      activePublicationId: publicationId,
-      frameDescription: description,
-      ...(publishedByAgentConfigurationId
-        ? { lastEditedByAgentConfigurationId: publishedByAgentConfigurationId }
-        : {}),
-    };
-    delete useCaseMetadata.draftPublicationId;
-    return this.update({ useCaseMetadata }, transaction);
-  }
-
-  get latestFramePublicationId(): string | undefined {
-    return (
-      this.useCaseMetadata?.draftPublicationId ??
-      this.useCaseMetadata?.activePublicationId
-    );
-  }
-
-  /** The publication a target serves: the live one, or the latest (draft ?? live). */
-  framePublicationIdFor(target: FramePublicationTarget): string | undefined {
-    return target === "latest"
-      ? this.latestFramePublicationId
-      : this.useCaseMetadata?.activePublicationId;
-  }
-
-  async setDraftFramePublication(
-    {
-      publicationId,
-      publishedByAgentConfigurationId,
-    }: { publicationId: string; publishedByAgentConfigurationId?: string },
-    transaction?: Transaction
-  ) {
     return this.update(
       {
         useCaseMetadata: {
           ...this.useCaseMetadata,
-          draftPublicationId: publicationId,
+          activePublicationId: publicationId,
+          latestPublicationId: publicationId,
+          frameDescription: description,
           ...(publishedByAgentConfigurationId
             ? {
                 lastEditedByAgentConfigurationId:
@@ -1204,10 +1176,69 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  async clearDraftFramePublication(transaction?: Transaction) {
-    const useCaseMetadata = { ...this.useCaseMetadata };
-    delete useCaseMetadata.draftPublicationId;
-    return this.update({ useCaseMetadata }, transaction);
+  /**
+   * @cc [owner:davidebbo,label:product] latest-defaults-to-live
+   * The latest publication MUST read as `activePublicationId` when `latestPublicationId` is
+   * absent: Frames published before drafts have only the live pointer.
+   */
+  get latestFramePublicationId(): string | undefined {
+    return (
+      this.useCaseMetadata?.latestPublicationId ??
+      this.useCaseMetadata?.activePublicationId
+    );
+  }
+
+  /** The latest publication when it differs from the live one: a draft is pending. */
+  get pendingDraftPublicationId(): string | undefined {
+    const latest = this.latestFramePublicationId;
+    return latest !== this.useCaseMetadata?.activePublicationId
+      ? latest
+      : undefined;
+  }
+
+  /** The publication a target serves: the live one, or the latest one. */
+  framePublicationIdFor(target: FramePublicationTarget): string | undefined {
+    return target === "latest"
+      ? this.latestFramePublicationId
+      : this.useCaseMetadata?.activePublicationId;
+  }
+
+  /** Points `latestPublicationId` at a new draft publication, leaving the live one untouched. */
+  async setLatestFramePublication(
+    {
+      publicationId,
+      publishedByAgentConfigurationId,
+    }: { publicationId: string; publishedByAgentConfigurationId?: string },
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        useCaseMetadata: {
+          ...this.useCaseMetadata,
+          latestPublicationId: publicationId,
+          ...(publishedByAgentConfigurationId
+            ? {
+                lastEditedByAgentConfigurationId:
+                  publishedByAgentConfigurationId,
+              }
+            : {}),
+        },
+      },
+      transaction
+    );
+  }
+
+  /** Points `latestPublicationId` back at the live publication. */
+  async dropPendingDraft(transaction?: Transaction) {
+    return this.update(
+      {
+        useCaseMetadata: {
+          ...this.useCaseMetadata,
+          latestPublicationId: this.useCaseMetadata?.activePublicationId,
+        },
+      },
+      transaction
+    );
   }
 
   // Content access logic.
@@ -1262,7 +1293,7 @@ export class FileResource extends BaseResource<FileModel> {
    * @cc [owner:davidebbo,label:product;security] frame-share-serves-live-publication
    * Share-link paths (share token lookup, the share allowlist, `/api/v1/viz/content`) MUST pass
    * `publication: "live"`. Only in-app callers that checked `canWriteFrameV2Source` MAY pass
-   * `"latest"`, which serves the pending draft.
+   * `"latest"`, which serves the latest publication (the pending draft, if any).
    */
   async getRenderableContent(
     owner: LightWorkspaceType,

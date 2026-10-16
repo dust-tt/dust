@@ -1307,9 +1307,7 @@ export async function editFrameV2TextsAtSource(
           sourceFiles: patchedSourceFiles,
           // A Save while a draft is pending must not push the draft's unreviewed changes live: the
           // source folder already holds them.
-          mode: freshFrame.useCaseMetadata?.draftPublicationId
-            ? "draft"
-            : "live",
+          mode: freshFrame.pendingDraftPublicationId ? "draft" : "live",
         });
       logEditStep("publish", stepStartedAt);
       if (publishResult.isErr()) {

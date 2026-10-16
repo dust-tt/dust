@@ -121,7 +121,9 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
     const activePublicationId = reloaded.useCaseMetadata?.activePublicationId;
     assert(activePublicationId);
     expect(activePublicationId).not.toBe(firstPublication.value.publicationId);
-    expect(reloaded.useCaseMetadata?.draftPublicationId).toBeUndefined();
+    expect(reloaded.useCaseMetadata?.latestPublicationId).toBe(
+      activePublicationId
+    );
 
     const uiBundle = fileStorageMock.getObject(
       getFramePublicationUiBundlePath({
@@ -259,7 +261,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
     expect(reloaded.useCaseMetadata?.activePublicationId).toBe(
       livePublication.value.publicationId
     );
-    const draftPublicationId = reloaded.useCaseMetadata?.draftPublicationId;
+    const draftPublicationId = reloaded.pendingDraftPublicationId;
     assert(draftPublicationId);
     expect(draftPublicationId).not.toBe(draftPublication.value.publicationId);
   });

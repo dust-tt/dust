@@ -17,8 +17,9 @@ export type StaleFramePublicationPurgeResult = {
 
 /**
  * @cc [owner:davidebbo,label:product] retention-keeps-the-served-publications
- * The publications named by `activePublicationId` and `draftPublicationId` MUST never be purged,
- * whatever their age: they are the ones the Frame serves.
+ * The publications named by `activePublicationId` and `latestPublicationId` MUST never be purged,
+ * whatever their age: they are the ones the Frame serves (live, and latest to editors in the
+ * conversation panel).
  */
 /**
  * @cc [owner:davidebbo,label:product] retention-keeps-every-publication-of-an-inactive-frame
@@ -68,7 +69,7 @@ export async function purgeStaleFramePublications(
   if (!activePublicationId) {
     return { deletedFunctionCount: 0, deletedPublicationCount: 0 };
   }
-  const draftPublicationId = frame.useCaseMetadata?.draftPublicationId;
+  const latestPublicationId = frame.latestFramePublicationId;
 
   const [publications, publicationIdsWithInvocations] = await Promise.all([
     FramePublicationResource.listForFrame(auth, frame),
@@ -79,7 +80,7 @@ export async function purgeStaleFramePublications(
   const stalePublications = publications.filter(
     ({ createdAt, publicationId }) =>
       publicationId !== activePublicationId &&
-      publicationId !== draftPublicationId &&
+      publicationId !== latestPublicationId &&
       createdAt < cutoffDate &&
       !publicationIdsWithInvocations.has(publicationId)
   );

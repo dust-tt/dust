@@ -187,7 +187,7 @@ describe("sandbox Frame calls", () => {
       publicationId: "publication-draft",
       slug: "draft-only",
     });
-    await context.frame.setDraftFramePublication({
+    await context.frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 
@@ -234,7 +234,7 @@ describe("sandbox Frame calls", () => {
         slug: "get-status",
       });
     }
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 

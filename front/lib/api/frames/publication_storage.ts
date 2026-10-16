@@ -1006,8 +1006,8 @@ export async function publishFramePublication(
         return live;
       }
       if (isSameFramePublicationContent(live.value, descriptor)) {
-        if (freshFrame.useCaseMetadata?.draftPublicationId) {
-          await freshFrame.clearDraftFramePublication();
+        if (freshFrame.pendingDraftPublicationId) {
+          await freshFrame.dropPendingDraft();
         }
         return new Ok({
           publicationId: livePublicationId,
@@ -1033,7 +1033,7 @@ export async function publishFramePublication(
 
     if (publishesDraft) {
       // Editors are served the draft in the app; the share link keeps serving the live publication.
-      await freshFrame.setDraftFramePublication({
+      await freshFrame.setLatestFramePublication({
         publicationId,
         publishedByAgentConfigurationId,
       });

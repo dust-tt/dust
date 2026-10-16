@@ -28,37 +28,65 @@ async function reloadMetadata(
 }
 
 describe("Frame publication pointers", () => {
-  it("serves the draft as latest while one is pending", async () => {
-    const { auth, frame } = await setupLiveFrame();
-    expect(frame.latestFramePublicationId).toBe("publication-live");
+  it("reads latest as live, with no pending draft, when latestPublicationId is absent", async () => {
+    const { frame } = await setupLiveFrame();
 
-    await frame.setDraftFramePublication({
+    expect(frame.useCaseMetadata?.latestPublicationId).toBeUndefined();
+    expect(frame.latestFramePublicationId).toBe("publication-live");
+    expect(frame.pendingDraftPublicationId).toBeUndefined();
+  });
+
+  it("points both live and latest at an activated publication", async () => {
+    const { auth, frame } = await setupLiveFrame();
+
+    await frame.setActiveFramePublication({
+      publicationId: "publication-next",
+      description: "Track tasks.",
+    });
+
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      "publication-next"
+    );
+    expect(reloaded?.useCaseMetadata?.latestPublicationId).toBe(
+      "publication-next"
+    );
+    expect(reloaded?.pendingDraftPublicationId).toBeUndefined();
+  });
+
+  it("moves only latest on a draft", async () => {
+    const { auth, frame } = await setupLiveFrame();
+
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.latestFramePublicationId).toBe("publication-draft");
+    expect(reloaded?.pendingDraftPublicationId).toBe("publication-draft");
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       "publication-live"
     );
   });
 
-  it("clears the draft", async () => {
+  it("drops the pending draft by pointing latest back at live", async () => {
     const { auth, frame } = await setupLiveFrame();
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 
-    await frame.clearDraftFramePublication();
+    await frame.dropPendingDraft();
 
-    expect(
-      (await reloadMetadata(auth, frame.sId))?.draftPublicationId
-    ).toBeUndefined();
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.latestPublicationId).toBe(
+      "publication-live"
+    );
+    expect(reloaded?.pendingDraftPublicationId).toBeUndefined();
   });
 
-  it("clears the draft when a publication is activated", async () => {
+  it("resolves the pending draft when a publication is activated", async () => {
     const { auth, frame } = await setupLiveFrame();
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
     });
 
@@ -67,15 +95,18 @@ describe("Frame publication pointers", () => {
       description: "Track tasks.",
     });
 
-    const metadata = await reloadMetadata(auth, frame.sId);
-    expect(metadata?.activePublicationId).toBe("publication-next");
-    expect(metadata?.draftPublicationId).toBeUndefined();
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      "publication-next"
+    );
+    expect(reloaded?.latestFramePublicationId).toBe("publication-next");
+    expect(reloaded?.pendingDraftPublicationId).toBeUndefined();
   });
 
   it("records the agent on a draft", async () => {
     const { auth, frame } = await setupLiveFrame();
 
-    await frame.setDraftFramePublication({
+    await frame.setLatestFramePublication({
       publicationId: "publication-draft",
       publishedByAgentConfigurationId: "agent-1",
     });
@@ -95,7 +126,7 @@ async function setupFrameWithDraftBundles() {
     space,
     activePublicationId: "publication-live",
   });
-  await frame.setDraftFramePublication({ publicationId: "publication-draft" });
+  await frame.setLatestFramePublication({ publicationId: "publication-draft" });
   for (const publicationId of ["publication-live", "publication-draft"]) {
     fileStorageMock.setObject(
       getFramePublicationUiBundlePath({

@@ -75,9 +75,10 @@ export type FileUseCaseMetadata = {
   frameEntryRelPath?: string;
   // Live Frames v2 publication: the one the share link, and anyone who cannot edit, is served.
   activePublicationId?: string;
-  // Newer publication published as a draft, served only to editors in the app until it is made
-  // live. Absent when nothing is pending.
-  draftPublicationId?: string;
+  // Newest publication of the Frame, served to editors in the conversation panel. Equals
+  // `activePublicationId` when no draft is pending. Absent on Frames published before drafts:
+  // read as `activePublicationId`.
+  latestPublicationId?: string;
   // Description from the manifest of the active publication, refreshed on every activation, so
   // it describes what is served rather than what the source folder currently says. The Frame's
   // name is not stored: it is derived from the folder holding the manifest.
