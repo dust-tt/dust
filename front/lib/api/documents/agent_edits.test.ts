@@ -149,6 +149,27 @@ describe("editAgentDocument", () => {
     );
   });
 
+  it("deletes commented text with its anchors and keeps its open thread", async () => {
+    vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));
+    vi.mocked(writeCanonicalFileContent).mockResolvedValue(
+      new Ok({ created: false, revision: "8" })
+    );
+
+    const result = await edit(
+      "Ship it :comment-start{id=c1}on Friday:comment-end{id=c1}.",
+      "Ship it."
+    );
+    expect(result.isOk() && result.value.replacements).toBe(1);
+
+    const before = parseDfm(SOURCE);
+    const after = parseDfm(written(0).content);
+    if (before.isErr() || after.isErr()) {
+      throw new Error("Unparsable document.");
+    }
+    expect(after.value.body).toBe("# Spec\n\nShip it.");
+    expect(after.value.comments).toEqual(before.value.comments);
+  });
+
   it("matches a passage quoted from a source stored with CRLF line endings", async () => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(
       stored("# Spec\r\n\r\nalpha\r\nbeta\r\n", "7")
@@ -170,12 +191,6 @@ describe("editAgentDocument", () => {
       "Ship it",
       ":comment-start{id=c2}Ship it:comment-end{id=c2}",
       "anchors_invalid",
-    ],
-    [
-      "removes an anchor pair",
-      ":comment-start{id=c1}on Friday:comment-end{id=c1}",
-      "on Monday",
-      "anchors_removed",
     ],
   ])("refuses an edit that %s", async (_, oldString, newString, code) => {
     vi.mocked(readCanonicalFileContent).mockResolvedValue(stored(SOURCE, "7"));

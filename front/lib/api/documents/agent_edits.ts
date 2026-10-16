@@ -14,8 +14,7 @@ export type DfmAgentDocumentErrorCode =
   | "string_not_found"
   | "outside_body"
   | "unexpected_count"
-  | "anchors_invalid"
-  | "anchors_removed";
+  | "anchors_invalid";
 
 export class DfmAgentDocumentError extends Error {
   constructor(
@@ -136,10 +135,9 @@ export async function readAgentDocument(
  * or with `expectedReplacements` other than 1.
  * Line breaks in the source and `oldString` MUST be matched normalized to `\n`, so a passage
  * quoted from a CRLF source still matches; they MAY be normalized to `\n` and trailing ones
- * dropped from the edited body. It MUST leave the front matter, the comment threads and the set
- * of comment anchors unchanged, refusing an edit that adds or breaks anchors with
- * `anchors_invalid`, and otherwise one that removes anchors with `anchors_removed`. It MUST be
- * written through `writeDocumentChange`.
+ * dropped from the edited body. It MUST leave the front matter and the comment threads unchanged,
+ * and refuse with `anchors_invalid` an edit that adds anchors or breaks a pair. It MAY remove
+ * whole anchor pairs, keeping their threads. It MUST be written through `writeDocumentChange`.
  */
 export async function editAgentDocument(
   auth: Authenticator,
@@ -188,6 +186,8 @@ export async function editAgentDocument(
         .replaceAll("\r\n", "\n")
         .replace(/\n+$/, "");
 
+      // Removing a whole pair is allowed, as when people delete commented text in the editor:
+      // its thread stays in the annotations block, without an anchor.
       const anchorsBefore = anchorIds(document.body);
       const anchorsAfter = anchorIds(editedBody);
       if (
@@ -199,16 +199,8 @@ export async function editAgentDocument(
           new DfmAgentDocumentError(
             "anchors_invalid",
             "The edit would add or break `:comment-start{…}` / `:comment-end{…}` anchors. " +
-              "Keep every existing anchor pair intact and do not write new ones."
-          )
-        );
-      }
-      if (!anchorsBefore.isSubsetOf(anchorsAfter)) {
-        return new Err(
-          new DfmAgentDocumentError(
-            "anchors_removed",
-            "The edit would remove `:comment-start{…}` / `:comment-end{…}` anchors. " +
-              "Keep every existing anchor pair intact."
+              "Edit the text inside an anchor pair, or delete it together with both anchors. " +
+              "Never leave one anchor without the other, and never write new ones."
           )
         );
       }
