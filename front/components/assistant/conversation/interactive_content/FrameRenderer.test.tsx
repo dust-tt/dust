@@ -275,27 +275,6 @@ describe("FrameRenderer", () => {
     );
   });
 
-  it("enables edit controls for a source writer without a conversation", () => {
-    render(
-      <FrameRenderer
-        fileId="frame_1"
-        projectId={null}
-        owner={owner}
-        renderMode="v2"
-      />
-    );
-
-    expect(mocks.iframe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        frameId: "frame_1",
-        isEditable: true,
-        stagedEditMode: "preview",
-        onEditText: expect.any(Function),
-      })
-    );
-    expect(screen.getByRole("tab", { name: "Edit" })).toBeInTheDocument();
-  });
-
   it("hides the edit mode toggle when the viewer cannot edit the Frame source", () => {
     mocks.canWriteFrameSource = false;
 

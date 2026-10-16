@@ -2,8 +2,13 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
+import { PreviewActionButtons } from "@app/components/assistant/conversation/interactive_content/frame/PreviewActionButtons";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
-import { useFileContent, useFileContentByUrl } from "@app/lib/swr/files";
+import {
+  useFileContent,
+  useFileContentByUrl,
+  useShareInteractiveContentFile,
+} from "@app/lib/swr/files";
 import { useFramePermissions } from "@app/lib/swr/frames";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { PodFileTab } from "@app/types/pod_file_tab";
@@ -11,7 +16,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, DotsHorizontal, Spinner } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface PodHoverFrameViewerProps {
@@ -100,6 +105,11 @@ export function PodHoverFrameViewer({
   const needsToolConsent =
     isV2 && !isFramePermissionsLoading && !hasAuthorizedRequiredTools;
 
+  const { fileShare } = useShareInteractiveContentFile({
+    fileId,
+    owner,
+  });
+
   const frameSourceUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
     fileContent: frameSource,
@@ -127,6 +137,16 @@ export function PodHoverFrameViewer({
   const vizInstanceKey = `${identifier}${
     isV2 ? `-${editSession.contentRevision}` : ""
   }`;
+
+  const [isReloading, setIsReloading] = useState(false);
+  const reloadFile = useCallback(async () => {
+    setIsReloading(true);
+    await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
+    if (isV2) {
+      editSession.remount();
+    }
+    setIsReloading(false);
+  }, [editSession, fileId, isV2, mutateFileContent, owner.sId]);
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -170,15 +190,18 @@ export function PodHoverFrameViewer({
         tabsOrder,
         hidden: isArchived,
       }}
-      fullscreen={{
-        isFullscreen,
-        onToggle: () => setIsFullscreen((prev) => !prev),
-      }}
     />
   );
 
+  const showPreviewActions =
+    !(isV2 && isFramePermissionsLoading) && !needsToolConsent && !isReloading;
+
   const body =
     isV2 && isFramePermissionsLoading ? (
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+      </div>
+    ) : isReloading ? (
       <div className="flex h-full items-center justify-center">
         <Spinner />
       </div>
@@ -267,6 +290,29 @@ export function PodHoverFrameViewer({
         </div>
       )}
       {body}
+      {showPreviewActions && (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 z-10 transition-opacity",
+            overlayVisible
+              ? "opacity-100"
+              : "opacity-0 group-hover/frame:opacity-100 group-focus-within/frame:opacity-100"
+          )}
+        >
+          <div className="pointer-events-auto">
+            <PreviewActionButtons
+              position="absolute"
+              isFullScreen={isFullscreen}
+              enterFullScreen={() => setIsFullscreen(true)}
+              exitFullScreen={() => setIsFullscreen(false)}
+              shareUrl={fileShare?.shareUrl}
+              reloadFile={() => {
+                void reloadFile();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 

@@ -26,8 +26,8 @@ msgid "Error loading the Frame source."
 msgstr "Error loading the Frame source."
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
-msgid "Save"
-msgstr "Save"
+msgid "Apply"
+msgstr "Apply"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
 msgid "Publishing your changes..."
@@ -301,13 +301,29 @@ msgstr "Switch to rendering"
 msgid "Switch to code"
 msgstr "Switch to code"
 
-#: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
-msgid "Exit full screen"
-msgstr "Exit full screen"
+#: front/components/assistant/conversation/interactive_content/frame/PreviewActionButtons.tsx
+msgid "Exit full screen mode"
+msgstr "Exit full screen mode"
 
-#: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
-msgid "Open in full screen"
-msgstr "Open in full screen"
+#: front/components/assistant/conversation/interactive_content/frame/PreviewActionButtons.tsx
+msgid "Go to full screen mode"
+msgstr "Go to full screen mode"
+
+#: front/components/assistant/conversation/interactive_content/frame/PreviewActionButtons.tsx
+msgid "Open in a new tab"
+msgstr "Open in a new tab"
+
+#: front/components/assistant/conversation/interactive_content/frame/PreviewActionButtons.tsx
+msgid "Revert the last change"
+msgstr "Revert the last change"
+
+#: front/components/assistant/conversation/interactive_content/frame/PreviewActionButtons.tsx
+msgid "No previous version"
+msgstr "No previous version"
+
+#: front/components/assistant/conversation/interactive_content/frame/PreviewActionButtons.tsx
+msgid "Reload the file"
+msgstr "Reload the file"
 
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
 msgid "Share"

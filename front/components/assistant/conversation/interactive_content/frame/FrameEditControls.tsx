@@ -25,29 +25,28 @@ export function FrameEditControls({
           void setMode(next);
         }}
       />
-      {mode === "edit" && (
-        <Button
-          // Keep an icon so the control stays visible when the label is hidden on narrow
-          // headers (same pattern as Preview|Edit).
-          label={hideLabels ? undefined : t`Save`}
-          icon={Check}
-          size="xs"
-          variant="ghost"
-          isLoading={isSaving}
-          disabled={!hasPendingEdits || isSaving}
-          onClick={() => {
-            void save();
-          }}
-          aria-label={t`Save`}
-          tooltip={
-            isSaving
-              ? t`Publishing your changes...`
-              : hasPendingEdits
-                ? t`Save text edits`
-                : t`No unsaved edits`
-          }
-        />
-      )}
+
+      <Button
+        // Keep an icon so the control stays visible when the label is hidden on narrow
+        // headers (same pattern as Preview|Edit).
+        label={hideLabels ? undefined : t`Apply`}
+        icon={Check}
+        size="xs"
+        variant="ghost"
+        isLoading={isSaving}
+        disabled={!hasPendingEdits || isSaving}
+        onClick={() => {
+          void save();
+        }}
+        aria-label={t`Apply`}
+        tooltip={
+          isSaving
+            ? t`Publishing your changes...`
+            : hasPendingEdits
+              ? t`Save text edits`
+              : t`No unsaved edits`
+        }
+      />
     </>
   );
 }

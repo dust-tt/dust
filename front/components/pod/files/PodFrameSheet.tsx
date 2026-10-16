@@ -2,12 +2,14 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
+import { PreviewActionButtons } from "@app/components/assistant/conversation/interactive_content/frame/PreviewActionButtons";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   useFileContent,
   useFileContentByUrl,
   useFileMetadata,
+  useShareInteractiveContentFile,
 } from "@app/lib/swr/files";
 import { useFramePermissions } from "@app/lib/swr/frames";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -28,7 +30,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface PodFrameSheetProps {
   fileId: string | null;
@@ -140,6 +142,12 @@ function PodFrameSheetWithFile({
   const needsToolConsent =
     isV2 && !isFramePermissionsLoading && !hasAuthorizedRequiredTools;
 
+  const { fileShare } = useShareInteractiveContentFile({
+    fileId,
+    owner,
+    disabled: !isOpen,
+  });
+
   const frameSourceBaseUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
     fileContent: frameSource,
@@ -171,12 +179,30 @@ function PodFrameSheetWithFile({
     isV2 ? `-${editSession.contentRevision}` : ""
   }`;
 
+  const [isReloading, setIsReloading] = useState(false);
+  const reloadFile = useCallback(async () => {
+    setIsReloading(true);
+    try {
+      await mutateFileContent(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      if (isV2) {
+        editSession.remount();
+      }
+    } finally {
+      setIsReloading(false);
+    }
+  }, [editSession, fileId, isV2, mutateFileContent, owner.sId]);
+
   useEffect(() => {
     if (!isOpen) {
       setIsFullscreen(false);
       setShowCode(false);
     }
   }, [isOpen]);
+
+  const showPreviewActions =
+    !(isV2 && isFramePermissionsLoading) && !needsToolConsent && !isReloading;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -195,7 +221,7 @@ function PodFrameSheetWithFile({
             <SheetTitle className="min-w-0 flex-1 truncate">
               {fileMetadata && (frameName ?? getFileDisplayName(fileMetadata))}
             </SheetTitle>
-            <div className="flex max-w-[70%] shrink-0 items-center justify-end overflow-x-auto">
+            <div className="flex w-full max-w-[70%] shrink-0 items-center justify-end overflow-x-auto">
               <FrameToolbar
                 layout="end"
                 owner={owner}
@@ -224,10 +250,6 @@ function PodFrameSheetWithFile({
                   tabsOrder,
                   hidden: isArchived,
                 }}
-                fullscreen={{
-                  isFullscreen,
-                  onToggle: () => setIsFullscreen((prev) => !prev),
-                }}
               />
             </div>
             <SheetClose asChild>
@@ -240,20 +262,24 @@ function PodFrameSheetWithFile({
             </SheetClose>
           </div>
         </SheetHeader>
-        <div className="flex-1 overflow-hidden">
-          {isFileMetadataLoading || (isV2 && isFramePermissionsLoading) ? (
+        <div className="relative flex-1 overflow-hidden">
+          {isFileMetadataLoading ||
+          isReloading ||
+          (isV2 && isFramePermissionsLoading) ? (
             <div className="flex h-full items-center justify-center">
               <Spinner />
             </div>
           ) : isFileMetadataError || !fileMetadata || !functionReferenceKind ? (
             <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              <Trans>This frame is no longer available in the Pod files.</Trans>
+              <Trans>
+                This frame is no longer available in the Pod files.
+              </Trans>
             </div>
           ) : !fileContent ? (
             <div className="flex h-full items-center justify-center">
               <Spinner />
             </div>
-          ) : needsToolConsent && fileId ? (
+          ) : needsToolConsent ? (
             <FrameToolConsentGate
               owner={owner}
               frameId={fileId}
@@ -262,57 +288,72 @@ function PodFrameSheetWithFile({
                 await mutateFramePermissions();
               }}
             />
-          ) : showCode ? (
-            <FrameCodeView
-              code={isV2 ? (frameSource ?? undefined) : fileContent}
-              isLoading={isV2 && isFrameSourceLoading}
-              hasError={
-                isV2 && (isFrameSourceNotFound || Boolean(frameSourceError))
-              }
-            />
           ) : (
-            vizUrl && (
-              <div className="relative h-full">
-                <AuthenticatedVisualizationActionIframe
-                  agentConfigurationId={
-                    fileMetadata?.useCaseMetadata
-                      .lastEditedByAgentConfigurationId ?? null
+            <>
+              {showCode ? (
+                <FrameCodeView
+                  code={isV2 ? (frameSource ?? undefined) : fileContent}
+                  isLoading={isV2 && isFrameSourceLoading}
+                  hasError={
+                    isV2 && (isFrameSourceNotFound || Boolean(frameSourceError))
                   }
-                  workspaceId={owner.sId}
-                  vizUrl={vizUrl}
-                  visualization={{
-                    code: fileContent,
-                    complete: true,
-                    identifier: `viz-${fileId}`,
-                  }}
-                  key={vizInstanceKey}
-                  conversationId={null}
-                  spaceId={fileMetadata?.useCaseMetadata.spaceId}
-                  framePackageRoot={framePackageRoot}
-                  frameId={isV2 ? fileId : undefined}
-                  isInDrawer={true}
-                  isEditable={isEditable}
-                  stagedEditMode={canEditV2 ? editSession.mode : undefined}
-                  onEditText={
-                    !isEditable
-                      ? undefined
-                      : canEditV2
-                        ? editSession.stageEdit
-                        : undefined
-                  }
-                  isPodEditor={isEditor}
-                  isPodMember={isMember}
-                  ref={iframeRef}
                 />
-                {editSession.isSaving && (
-                  <div
-                    className="absolute inset-0 z-10 cursor-wait"
-                    aria-busy="true"
-                    aria-label={t`Publishing your changes...`}
-                  />
-                )}
-              </div>
-            )
+              ) : (
+                vizUrl && (
+                  <div className="relative h-full">
+                    <AuthenticatedVisualizationActionIframe
+                      agentConfigurationId={
+                        fileMetadata?.useCaseMetadata
+                          .lastEditedByAgentConfigurationId ?? null
+                      }
+                      workspaceId={owner.sId}
+                      vizUrl={vizUrl}
+                      visualization={{
+                        code: fileContent,
+                        complete: true,
+                        identifier: `viz-${fileId}`,
+                      }}
+                      key={vizInstanceKey}
+                      conversationId={null}
+                      spaceId={fileMetadata?.useCaseMetadata.spaceId}
+                      framePackageRoot={framePackageRoot}
+                      frameId={isV2 ? fileId : undefined}
+                      isInDrawer={true}
+                      isEditable={isEditable}
+                      stagedEditMode={canEditV2 ? editSession.mode : undefined}
+                      onEditText={
+                        !isEditable
+                          ? undefined
+                          : canEditV2
+                            ? editSession.stageEdit
+                            : undefined
+                      }
+                      isPodEditor={isEditor}
+                      isPodMember={isMember}
+                      ref={iframeRef}
+                    />
+                    {editSession.isSaving && (
+                      <div
+                        className="absolute inset-0 z-10 cursor-wait"
+                        aria-busy="true"
+                        aria-label={t`Publishing your changes...`}
+                      />
+                    )}
+                  </div>
+                )
+              )}
+              {showPreviewActions && (
+                <PreviewActionButtons
+                  isFullScreen={isFullscreen}
+                  enterFullScreen={() => setIsFullscreen(true)}
+                  exitFullScreen={() => setIsFullscreen(false)}
+                  shareUrl={fileShare?.shareUrl}
+                  reloadFile={() => {
+                    void reloadFile();
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       </SheetContent>

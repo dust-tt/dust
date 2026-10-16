@@ -57,6 +57,9 @@ vi.mock(
     }),
   })
 );
+vi.mock("@app/lib/context/clientType", () => ({
+  useClientType: () => "web",
+}));
 vi.mock("@app/lib/swr/files", () => ({
   useFileContent: () => ({ mutateFileContent: vi.fn() }),
   useFileContentByUrl: () => ({
@@ -64,6 +67,9 @@ vi.mock("@app/lib/swr/files", () => ({
     isNotFound: false,
     isFileContentLoading: false,
     fileContentError: null,
+  }),
+  useShareInteractiveContentFile: () => ({
+    fileShare: { shareUrl: "https://dust.tt/share/frame/token" },
   }),
 }));
 vi.mock("@app/lib/swr/frames", () => ({
