@@ -320,6 +320,7 @@ const API_ERROR_TYPES = [
   "frame_text_edit_failed",
   "frame_draft_conflict",
   "frame_make_live_failed",
+  "frame_not_in_conversation",
   "file_referenced_by_skill",
   "file_deletion_failed",
   "file_not_in_conversation",

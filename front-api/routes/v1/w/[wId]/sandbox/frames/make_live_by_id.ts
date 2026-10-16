@@ -37,7 +37,7 @@ const app = sandboxApp();
  */
 /**
  * @cc [owner:davidebbo,label:security;api] make-live-scoped-to-token-conversation
- * The route MUST refuse with 403 `file_not_in_conversation`, before making anything live or
+ * The route MUST refuse with 403 `frame_not_in_conversation`, before making anything live or
  * attaching anything to the parent action, a Frame the exec token's conversation file system
  * (its conversation plus its Pod) cannot write, even when the user can write that Frame elsewhere.
  */
@@ -113,7 +113,7 @@ app.post(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "file_not_in_conversation",
+          type: "frame_not_in_conversation",
           message: "This Frame is not in this conversation's files.",
         },
       });

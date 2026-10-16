@@ -294,6 +294,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   frame_text_edit_failed: msg`The Frame text couldn't be updated.`,
   frame_draft_conflict: msg`This Frame changed or is being updated. Refresh it and try again.`,
   frame_make_live_failed: msg`These changes couldn't be made live.`,
+  frame_not_in_conversation: msg`This Frame isn't in this conversation's files.`,
   file_referenced_by_skill: msg`This file is used by a skill and can't be deleted.`,
   file_deletion_failed: msg`The file couldn't be deleted.`,
   file_not_in_conversation: msg`Only files from a conversation can be saved to a Pod.`,
