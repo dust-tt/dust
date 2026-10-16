@@ -33,6 +33,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   return ctx.json<GetFramePermissionsResponseBody>({
     canWriteFrameSource,
+    // Temporary alias for mobile / open clients still decoding the old field name.
+    isFrameAuthor: canWriteFrameSource,
     packageRoot: frame.getFrameV2SourceDirectoryPath(auth),
     hasFunctions,
   });

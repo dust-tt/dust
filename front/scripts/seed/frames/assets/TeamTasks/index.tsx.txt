@@ -55,7 +55,7 @@ export default function App() {
       <p className="mb-6 text-sm text-muted-foreground">
         Anyone in the workspace can list and tick tasks. Adding needs a live
         session. Deleting is for the Frame author only (you are
-        {identity.isFrameAuthor ? "" : " not"} the author).
+        {identity.canWriteFrameSource ? "" : " not"} the author).
       </p>
       <div className="mb-6 flex gap-2">
         <input
