@@ -1,6 +1,12 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { FrameToolAuthorizationResource } from "@app/lib/resources/frame_tool_authorization_resource";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import type { PostFrameToolAuthorizationResponseBody } from "@app/types/api/frame_permissions";
 import { FrameToolCallPairSchema } from "@app/types/api/frame_publication";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -86,6 +92,29 @@ app.post(
         frame,
         authorizedTools: activePublication.requiredTools,
       });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.tool_authorization_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: frame.sId,
+          name:
+            (frame.mountFilePath
+              ? getFrameV2NameFromManifestPath(frame.mountFilePath)
+              : null) ?? frame.sId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        frame_id: frame.sId,
+        authorized_tool_count: String(authorization.authorizedTools.length),
+        authorized_tools: authorization.authorizedTools
+          .map(([server, tool]) => `${server}.${tool}`)
+          .join(", "),
+      },
+    });
 
     return ctx.json<PostFrameToolAuthorizationResponseBody>({
       authorizedTools: authorization.authorizedTools,

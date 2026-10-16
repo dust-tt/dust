@@ -110,11 +110,19 @@ export class FrameToolAuthorizationResource extends BaseResource<FrameToolAuthor
   }
 
   async delete(
-    _auth: Authenticator,
+    auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
+    assert(
+      this.workspaceId === auth.getNonNullableWorkspace().id,
+      "Can only delete tool authorizations for the current workspace"
+    );
+
     await this.model.destroy({
-      where: { id: this.id },
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
       transaction,
     });
     return new Ok(undefined);
