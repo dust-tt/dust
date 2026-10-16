@@ -8,10 +8,12 @@ use super::*;
 fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
     let parent = ObjectId::new_v7();
     let file = ObjectId::new_v7();
+    let other = ObjectId::new_v7();
     let destination = ObjectId::new_v7();
     let operations = vec![
         Operation::Create(CreateOperation {
             parent_id: parent,
+            object_id: file,
             name: "file".to_owned(),
             ..Default::default()
         }),
@@ -36,6 +38,7 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
         }),
         Operation::Create(CreateOperation {
             parent_id: destination,
+            object_id: other,
             name: "other".to_owned(),
             ..Default::default()
         }),
@@ -50,13 +53,20 @@ fn grouping_preserves_order_and_indexes_each_operation_once_per_target() {
             name: "invalid-self-move".to_owned(),
             ..Default::default()
         }),
+        Operation::Create(CreateOperation {
+            parent_id: parent,
+            object_id: parent,
+            name: "invalid-self-create".to_owned(),
+            ..Default::default()
+        }),
     ];
 
     assert_eq!(
         ObjectResource::group_by_targets(&operations),
         HashMap::from([
-            (parent, vec![0, 2]),
-            (file, vec![1, 3, 4, 6]),
+            (parent, vec![0, 2, 8]),
+            (file, vec![0, 1, 3, 4, 6]),
+            (other, vec![5]),
             (destination, vec![3, 5, 7]),
         ])
     );
