@@ -15,7 +15,6 @@ export function isFrenchBrowser(): boolean {
 
 interface FrenchLanguageBannerProps {
   owner: WorkspaceType;
-  showBanner: boolean;
   onShowBanner: (open: boolean) => void;
   onOpenSettings: () => void;
 }
@@ -33,21 +32,18 @@ interface FrenchLanguageBannerProps {
  */
 export function FrenchLanguageBanner({
   owner,
-  showBanner,
   onShowBanner,
   onOpenSettings,
 }: FrenchLanguageBannerProps) {
   const { isSaving, doUpdateUserLocale } = useUserLocale({ owner });
 
   useEffect(() => {
-    if (showBanner) {
-      trackEvent({
-        area: TRACKING_AREAS.CONVERSATION,
-        object: "french_language_banner",
-        action: "view",
-      });
-    }
-  }, [showBanner]);
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "french_language_banner",
+      action: "view",
+    });
+  }, []);
 
   const dismiss = () => {
     localStorage.setItem(FRENCH_LANGUAGE_BANNER_LOCAL_STORAGE_KEY, "true");
@@ -71,10 +67,6 @@ export function FrenchLanguageBanner({
       dismiss();
     }
   };
-
-  if (!showBanner) {
-    return null;
-  }
 
   return (
     <m.div

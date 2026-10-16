@@ -252,7 +252,6 @@ msgid "Compact now"
 msgstr ""
 
 #: front/components/assistant/conversation/ConversationContainer.tsx
-#: front/components/assistant/conversation/InAppBanner.tsx
 #: front/components/assistant/conversation/MentionInvalid.tsx
 msgid "Dismiss"
 msgstr ""
@@ -804,18 +803,6 @@ msgstr ""
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
 msgid "Waiting for them to continue..."
-msgstr ""
-
-#: front/components/assistant/conversation/InAppBanner.tsx
-msgid "A message asking Dust to improve an agent, next to the modified agent"
-msgstr ""
-
-#: front/components/assistant/conversation/InAppBanner.tsx
-msgid "You can now build and edit skills and agents directly in conversations."
-msgstr ""
-
-#: front/components/assistant/conversation/InAppBanner.tsx
-msgid "Try it"
 msgstr ""
 
 #: front/components/assistant/conversation/LeaveConversationDialog.tsx
