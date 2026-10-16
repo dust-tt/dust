@@ -24,10 +24,11 @@ async function launchAgentTriggerWorkflow({
   webhookRequestId?: number;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForAgentNamespace();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const workflowId = makeAgentTriggerWorkflowId(
     auth.getNonNullableUser().sId,
-    auth.getNonNullableWorkspace().sId,
+    workspaceId,
     trigger
   );
 
@@ -36,13 +37,16 @@ async function launchAgentTriggerWorkflow({
       args: [
         {
           userId: auth.getNonNullableUser().sId,
-          workspaceId: auth.getNonNullableWorkspace().sId,
+          workspaceId,
           triggerId: trigger.sId,
           webhookRequestId,
         },
       ],
       taskQueue: QUEUE_NAME,
       workflowId,
+      searchAttributes: {
+        workspaceId: [workspaceId],
+      },
     });
   } catch (error) {
     return new Err(
