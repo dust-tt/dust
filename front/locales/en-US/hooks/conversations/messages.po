@@ -22,8 +22,8 @@ msgid "Unexpected response from server."
 msgstr "Unexpected response from server."
 
 #: front/hooks/conversations/useBranchConversation.ts
-msgid "Branched from '{parentConversationTitle}'"
-msgstr "Branched from '{parentConversationTitle}'"
+msgid "Branched from “{parentConversationTitle}”"
+msgstr "Branched from “{parentConversationTitle}”"
 
 #: front/hooks/conversations/useBranchConversation.ts
 msgid "Branched conversation"

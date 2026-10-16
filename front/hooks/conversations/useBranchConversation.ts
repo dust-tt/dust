@@ -100,7 +100,7 @@ export function useBranchConversation({
           // item until the next natural SWR revalidation, by which time ES has caught up.
           const parentConversationTitle = responseBody.parentConversationTitle;
           const displayTitle = parentConversationTitle
-            ? t`Branched from '${parentConversationTitle}'`
+            ? t`Branched from “${parentConversationTitle}”`
             : t`Branched conversation`;
 
           const nowMs = Date.now();
