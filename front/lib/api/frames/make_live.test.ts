@@ -3,7 +3,8 @@ import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import { publishFramePublication } from "@app/lib/api/frames/publication_storage";
 import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
-import type { Authenticator } from "@app/lib/auth";
+import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -13,7 +14,9 @@ import {
   makeTestFrameFunction,
 } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import {
   FRAME_MANIFEST_FILE,
   FrameManifestSchema,
@@ -21,6 +24,7 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -410,5 +414,73 @@ describe("makeFrameDraftLive", () => {
     });
 
     expect(result.isOk() && result.value).toEqual({ publicationId: draftId });
+  });
+
+  describe("share allowlist", () => {
+    // A ref is needed for the active allowlist to have any rows to read back.
+    function spyOnAllowlistComputation() {
+      return vi
+        .spyOn(FileResource.prototype, "computeAuthorizedFileAccess")
+        .mockImplementation(
+          async (callerAuth, { frameContent }) =>
+            new Ok({
+              generatedByUserId: callerAuth.getNonNullableUser().id,
+              frameContentHash: computeFrameContentHash(frameContent),
+              refs: [{ kind: "file_id", ref: "fil_ABCDEFGHIJ" }],
+            })
+        );
+    }
+
+    async function activeAllowlistOf(auth: Authenticator, frame: FileResource) {
+      const reloaded = await FileResource.fetchById(auth, frame.sId);
+      return reloaded?.getActiveAuthorizedFileAccessAllowlist();
+    }
+
+    it("reuses the draft's stored allowlist when its publisher makes it live", async () => {
+      const { auth, frame } = await setupFrame();
+      const compute = spyOnAllowlistComputation();
+      await publishBundle(auth, frame, CODE_A, "live");
+      const draftId = await publishBundle(auth, frame, CODE_B, "draft");
+      compute.mockClear();
+
+      const result = await makeFrameDraftLive(auth, {
+        frame,
+        draftPublicationId: draftId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(compute).not.toHaveBeenCalled();
+      expect((await activeAllowlistOf(auth, frame))?.frameContentHash).toBe(
+        computeFrameContentHash(CODE_B)
+      );
+    });
+
+    it("recomputes the allowlist when another editor makes the draft live", async () => {
+      const { auth, frame } = await setupFrame();
+      const compute = spyOnAllowlistComputation();
+      await publishBundle(auth, frame, CODE_A, "live");
+      const draftId = await publishBundle(auth, frame, CODE_B, "draft");
+      const workspace = auth.getNonNullableWorkspace();
+      const otherEditor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherEditor, {
+        role: "user",
+      });
+      const otherEditorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherEditor.sId,
+        workspace.sId
+      );
+      compute.mockClear();
+
+      const result = await makeFrameDraftLive(otherEditorAuth, {
+        frame,
+        draftPublicationId: draftId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(compute).toHaveBeenCalledTimes(1);
+      const active = await activeAllowlistOf(auth, frame);
+      expect(active?.generatedByUserId).toBe(otherEditor.id);
+      expect(active?.frameContentHash).toBe(computeFrameContentHash(CODE_B));
+    });
   });
 });

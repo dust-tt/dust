@@ -458,6 +458,13 @@ describe("POST /api/w/:wId/frames/:frameId/make-live", () => {
       "export default function B() {}",
       "draft"
     );
+    // A scope change since the draft makes activation recompute its stored allowlist.
+    await frame.setShareScope(
+      auth,
+      (await frame.getShareScope()) === "emails_only"
+        ? "workspace"
+        : "emails_only"
+    );
     vi.spyOn(
       FileResource.prototype,
       "computeAuthorizedFileAccess"
