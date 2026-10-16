@@ -102,10 +102,6 @@ msgid "Publishing your changes..."
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Error loading the Frame source."
-msgstr ""
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
 msgid "Exit full screen mode"
 msgstr ""
 

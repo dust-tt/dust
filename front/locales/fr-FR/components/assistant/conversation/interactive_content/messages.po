@@ -102,10 +102,6 @@ msgid "Publishing your changes..."
 msgstr "Publication de vos modifications…"
 
 #: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Error loading the Frame source."
-msgstr "Erreur lors du chargement de la source du Frame."
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
 msgid "Exit full screen mode"
 msgstr "Quitter le mode plein écran"
 

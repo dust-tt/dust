@@ -21,6 +21,10 @@ msgstr ""
 msgid "Beta"
 msgstr ""
 
+#: front/components/assistant/conversation/interactive_content/frame/FrameCodeView.tsx
+msgid "Error loading the Frame source."
+msgstr ""
+
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
 msgid "Save"
 msgstr ""
@@ -263,6 +267,14 @@ msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
 msgid "Switch to code"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
+msgid "Exit full screen"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
+msgid "Open in full screen"
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx

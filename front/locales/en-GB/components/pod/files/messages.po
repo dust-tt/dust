@@ -179,13 +179,9 @@ msgid "Add data from Company Data"
 msgstr ""
 
 #: front/components/pod/files/PodFrameSheet.tsx
-msgid "Exit full screen"
-msgstr ""
-
-#: front/components/pod/files/PodFrameSheet.tsx
-msgid "Open in full screen"
-msgstr ""
-
-#: front/components/pod/files/PodFrameSheet.tsx
 msgid "This frame is no longer available in the Pod files."
+msgstr ""
+
+#: front/components/pod/files/PodFrameSheet.tsx
+msgid "Publishing your changes..."
 msgstr ""
