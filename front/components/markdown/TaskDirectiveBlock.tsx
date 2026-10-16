@@ -303,9 +303,7 @@ function TaskDirectivePopoverBodyLoaded({
                     size="xxs"
                     isRounded
                     name={assignee.fullName}
-                    visual={
-                      assignee.image ?? "/static/humanavatar/anonymous.png"
-                    }
+                    visual={assignee.image}
                     className="ring-1 ring-border/40"
                   />
                 </span>

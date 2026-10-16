@@ -101,8 +101,6 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
-const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
-
 type SettingsSection =
   | "personal"
   | "customization"
@@ -205,7 +203,6 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     name: "profilePictureUrl",
     control: form.control,
   });
-  const currentImageUrl = profilePictureField.value ?? ANONYMOUS_USER_IMAGE_URL;
   const { field: jobTypeField } = useController({
     name: "jobType",
     control: form.control,
@@ -302,7 +299,12 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
             }
             action={
               <div className="group relative w-fit">
-                <Avatar size="md" visual={currentImageUrl} isRounded />
+                <Avatar
+                  size="md"
+                  name={user?.fullName}
+                  visual={profilePictureField.value}
+                  isRounded
+                />
                 <Button
                   tooltip={t`Change profile picture`}
                   variant="outline"

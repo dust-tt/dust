@@ -152,10 +152,8 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                             <Avatar
                               size="xxs"
                               isRounded
-                              visual={
-                                member.image ??
-                                "/static/humanavatar/anonymous.png"
-                              }
+                              name={member.fullName}
+                              visual={member.image}
                             />
                           )}
                           onClick={() => {

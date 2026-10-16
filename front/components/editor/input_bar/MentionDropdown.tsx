@@ -201,6 +201,7 @@ export const MentionDropdown = forwardRef<
                     <div className="flex min-w-0 flex-1 items-center gap-x-2">
                       <Avatar
                         size="xs"
+                        name={suggestion.label}
                         visual={suggestion.pictureUrl}
                         isRounded={suggestion.type === "user"}
                       />

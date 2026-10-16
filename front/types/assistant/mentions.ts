@@ -159,7 +159,7 @@ export function toRichUserMentionType(user: UserType): RichUserMention {
     id: user.sId,
     type: "user",
     label: user.fullName,
-    pictureUrl: user.image ?? "/static/humanavatar/anonymous.png",
+    pictureUrl: user.image ?? "",
     description: user.email,
   };
 }

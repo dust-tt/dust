@@ -90,8 +90,7 @@ describe("createAgentMessages", () => {
       id: mentionedUser.sId,
       type: "user",
       label: mentionedUserJson.fullName,
-      pictureUrl:
-        mentionedUserJson.image ?? "/static/humanavatar/anonymous.png",
+      pictureUrl: mentionedUserJson.image ?? "",
       description: mentionedUserJson.email,
       status: "pending_conversation_access",
     });
