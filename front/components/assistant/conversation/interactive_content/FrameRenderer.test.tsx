@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
     }) => null
   ),
   hasFrameFunctions: false,
-  isFrameAuthor: true,
+  canWriteFrameSource: true,
   isMobile: false,
   /** Incremented on every iframe mount (React key change). */
   iframeMounts: 0,
@@ -146,7 +146,7 @@ vi.mock("@app/lib/swr/frames", () => ({
   useBatchEditFrameText: () => mocks.batchEditFrameText,
   useEditFrameText: () => mocks.editFrameText,
   useFramePermissions: () => ({
-    isFrameAuthor: mocks.isFrameAuthor,
+    canWriteFrameSource: mocks.canWriteFrameSource,
     packageRoot: null,
     hasFrameFunctions: mocks.hasFrameFunctions,
     isFramePermissionsLoading: false,
@@ -188,7 +188,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   mocks.hasFrameFunctions = false;
-  mocks.isFrameAuthor = true;
+  mocks.canWriteFrameSource = true;
   mocks.isMobile = false;
   mocks.iframeMounts = 0;
 });
@@ -272,7 +272,7 @@ describe("FrameRenderer", () => {
   });
 
   it("hides the edit mode toggle when the viewer cannot edit the Frame source", () => {
-    mocks.isFrameAuthor = false;
+    mocks.canWriteFrameSource = false;
 
     render(
       <FrameRenderer

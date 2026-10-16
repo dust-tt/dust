@@ -17,8 +17,8 @@ export interface WorkspaceUserIdentity {
   // Whether the caller belongs to one of the Pod's groups (member or editor). Workspace admins
   // outside them are not members.
   readonly isPodMember: boolean;
-  // Whether the caller can modify the Frame's source files. Gate author-only data on it.
-  readonly isFrameAuthor: boolean;
+  // Whether the caller can modify the Frame's source files. Gate source-write-only data on it.
+  readonly canWriteFrameSource: boolean;
 }
 
 const workspaceUserIdentityEnvelopeSchema = z.object({
@@ -27,7 +27,7 @@ const workspaceUserIdentityEnvelopeSchema = z.object({
   // the restrictive reading.
   isPodEditor: z.boolean().optional(),
   isPodMember: z.boolean().optional(),
-  isFrameAuthor: z.boolean().optional(),
+  canWriteFrameSource: z.boolean().optional(),
   user: z.object({
     sId: z.string(),
     firstName: z.string(),
@@ -89,6 +89,6 @@ export function currentUser(): WorkspaceUserIdentity | null {
     image: value.user.image,
     isPodEditor: value.isPodEditor ?? false,
     isPodMember: value.isPodMember ?? false,
-    isFrameAuthor: value.isFrameAuthor ?? false,
+    canWriteFrameSource: value.canWriteFrameSource ?? false,
   });
 }

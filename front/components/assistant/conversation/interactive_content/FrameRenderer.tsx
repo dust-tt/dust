@@ -175,7 +175,7 @@ export function FrameRenderer({
   });
 
   const {
-    isFrameAuthor,
+    canWriteFrameSource,
     packageRoot,
     hasFrameFunctions,
     isFramePermissionsLoading,
@@ -198,9 +198,9 @@ export function FrameRenderer({
     conversationId: conversation?.sId,
   });
   const isEditable =
-    renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
-  // Frames v2 authors edit in a Preview|Edit session with batch Save. Legacy Frames keep the
-  // always-on double-click + blur-save path.
+    renderMode === "legacy" || Boolean(conversation && canWriteFrameSource);
+  // Frames v2 source writers edit in a Preview|Edit session with batch Save. Legacy Frames keep
+  // the always-on double-click + blur-save path.
   const canEditV2 = renderMode === "v2" && isEditable;
   const editSession = useFrameEditSession({
     owner,

@@ -50,7 +50,7 @@ describe("useUserIdentity", () => {
     dataAPI.getUserIdentity = vi.fn().mockResolvedValue({
       isAuthenticated: true,
       isWorkspaceMember: true,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
       isPodEditor: false,
       isPodMember: false,
       user: {
@@ -69,7 +69,7 @@ describe("useUserIdentity", () => {
     expect(result.current).toMatchObject({
       isAuthenticated: false,
       isWorkspaceMember: false,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
       isLoading: true,
       user: null,
     });
@@ -78,7 +78,7 @@ describe("useUserIdentity", () => {
     expect(result.current).toMatchObject({
       isAuthenticated: true,
       isWorkspaceMember: true,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
       user: { sId: "usr_123", fullName: "Ada Lovelace" },
     });
   });
@@ -97,7 +97,7 @@ describe("useUserIdentity", () => {
     expect(result.current).toMatchObject({
       isAuthenticated: false,
       isWorkspaceMember: false,
-      isFrameAuthor: false,
+      canWriteFrameSource: false,
       user: null,
       error: new Error("Frame host unavailable"),
     });
