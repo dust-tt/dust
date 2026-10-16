@@ -67,8 +67,28 @@ const UserQuestionOptionSchema = z.object({
     .describe(
       "Optional explanation, only useful when the label alone is not clear enough."
     ),
+  preview: z
+    .string()
+    .nullable()
+    .default(null)
+    .describe(
+      "Only used with the 'compare' format: a short Markdown sample of what this " +
+        "option would produce (an excerpt of a draft, the shape of a table, a " +
+        "snippet), at most 10 lines. Include a preview for every option or for none."
+    ),
 });
 
+export type UserQuestionOption = z.infer<typeof UserQuestionOptionSchema>;
+
+const USER_QUESTION_FORMATS = ["list", "compare"] as const;
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] fields-added-with-defaults
+ * Fields added to `UserQuestionSchema` or its options after release MUST parse when absent (e.g.
+ * `format` defaults to `"list"`, `preview` to `null`): questions stored in blocked actions and
+ * resume states before a field existed MUST still parse, otherwise answered questions are asked
+ * again.
+ */
 export const UserQuestionSchema = z.object({
   question: z
     .string()
@@ -78,13 +98,24 @@ export const UserQuestionSchema = z.object({
     .describe(
       "The available choices (typically 2 to 4 options, too many options to " +
         "choose from can be overwhelming for the user). " +
-        "Prefer omitting descriptions for all options. If descriptions are needed, " +
-        "include them for every option."
+        "Prefer omitting descriptions for all options, except with the 'compare' " +
+        "format. If descriptions are needed, include them for every option."
     ),
   multiSelect: z
     .boolean()
     .describe(
       "Whether the user can select multiple options for this question."
+    ),
+  format: z
+    .enum(USER_QUESTION_FORMATS)
+    .default("list")
+    .describe(
+      "How the question is displayed. 'list' (default) fits most questions. " +
+        "'compare' is for choosing between alternative approaches whose results " +
+        "differ in ways a label alone can't show (output shape, drafts, plans " +
+        "with tradeoffs): give every option a description of its tradeoff and, " +
+        "when a concrete sample makes the difference obvious, a preview. " +
+        "'compare' is single choice only, with 2 to 4 options."
     ),
 });
 

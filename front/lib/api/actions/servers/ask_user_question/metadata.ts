@@ -24,6 +24,8 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = [
       "Important notes:\n" +
       "- The user always gets an automatic option for free-text input\n" +
       "- Use multiSelect: true to allow multiple answers to be selected for a question\n" +
+      "- Use format: 'compare' when the options are alternative approaches the user should " +
+      "weigh side by side, with a description and a preview of the result for each option\n" +
       '- If a specific option is recommended, it should be the first option in the list and have "(Recommended)" ' +
       "at the end of its label",
     schema: {
