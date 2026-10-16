@@ -70,8 +70,8 @@ vi.mock("@app/lib/swr/model_tiers", () => ({
   useGroupAllowedModelTiers: () => ({ groups: [] }),
   useWorkspaceAllowedModelTiers: () => ({ maxTierName: null }),
   useUserAllowedModelTierMutations: () => ({
-    setUserAllowedModelTier: vi.fn(),
-    clearUserAllowedModelTier: vi.fn(),
+    setUserAllowedModelTiers: vi.fn(),
+    clearUserAllowedModelTiers: vi.fn(),
   }),
 }));
 
@@ -107,12 +107,12 @@ describe("isModelTierAdministrationEnabled", () => {
     ).toBe(true);
   });
 
-  it("is disabled for non-credit-priced plans", () => {
+  it("is enabled for non-credit-priced (legacy) plans", () => {
     expect(
       isModelTierAdministrationEnabled(
         LightPlanFactory.build({ code: "PRO_PLAN_SEAT_29" })
       )
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -131,15 +131,14 @@ describe("ModelsPage", () => {
     expect(screen.getByText("Providers content")).toBeInTheDocument();
   });
 
-  it("hides model-tier admin tabs on non-credit-priced plans and keeps providers", () => {
+  it("shows model-tier admin tabs on non-credit-priced (legacy) plans", () => {
     subscription = legacySubscription;
     render(<ModelsPage />);
 
     expect(screen.getByText("Providers")).toBeInTheDocument();
+    expect(screen.getByText("Members")).toBeInTheDocument();
+    expect(screen.getByText("Groups")).toBeInTheDocument();
+    expect(screen.getByText("Settings")).toBeInTheDocument();
     expect(screen.getByText("Providers content")).toBeInTheDocument();
-    expect(screen.queryByText("Members")).not.toBeInTheDocument();
-    expect(screen.queryByText("Groups")).not.toBeInTheDocument();
-    expect(screen.queryByText("Settings")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model tiers settings")).not.toBeInTheDocument();
   });
 });

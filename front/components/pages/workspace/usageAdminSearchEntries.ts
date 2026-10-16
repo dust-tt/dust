@@ -8,11 +8,11 @@ const PAGE = "credits" as const;
 const SETTINGS_TAB = "settings";
 
 /**
- * Search entries for Credits (formerly Usage). Per-member and per-group model
- * tiers are edited on the Members / Groups tabs here (credit-priced plans only;
- * the Credits route itself is plan-gated). Workspace defaults and the Published
- * agents override live under Models › Settings. Self-improving spend caps sit
- * in programmatic settings.
+ * Search entries for Credits (formerly Usage). Member/group model-tier
+ * controls are indexed under Models (available on every plan); do not
+ * duplicate them here — Credits › Members/Groups is credit-priced-only and
+ * would deep-link legacy workspaces to a page without those editors.
+ * Self-improving spend caps sit in programmatic settings.
  */
 export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
@@ -20,10 +20,6 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     U.members,
     [
       [msg`Members usage`, msg`seats spend limit upgrade requests`],
-      [
-        msg`Members model tiers`,
-        msg`model tiers member access tier per user standard advanced frontier`,
-      ],
       [msg`Upgrade requests`, msg`review member requests deny`],
       [msg`Change seat type`, msg`upgrade seat assign seat remove seat`],
       [msg`Edit spend limit`, msg`override member limit`],
@@ -35,10 +31,6 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     U.groups,
     [
       [msg`Groups usage`, msg`group spend limit seat`],
-      [
-        msg`Group model tiers`,
-        msg`model tiers group access tier per group standard advanced frontier`,
-      ],
       [msg`Group monthly spend limit`, msg`per group limit`],
     ],
     "groups"

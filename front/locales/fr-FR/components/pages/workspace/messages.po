@@ -576,22 +576,18 @@ msgid "model tiers run above member tier published agents"
 msgstr "niveaux de modèles exécuter au-dessus du niveau du membre agents publiés"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Members model tiers"
 msgstr "Niveaux de modèles des membres"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "model tiers member access tier per user standard advanced frontier"
 msgstr "niveaux de modèles membre niveau d’accès par utilisateur standard avancé frontier"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Group model tiers"
 msgstr "Niveaux de modèles des groupes"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "model tiers group access tier per group standard advanced frontier"
 msgstr "niveaux de modèles groupe niveau d’accès par groupe standard avancé frontier"
 

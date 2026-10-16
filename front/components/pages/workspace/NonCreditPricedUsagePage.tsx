@@ -27,9 +27,9 @@ type UsageTab = "programmatic-usage" | "settings";
 
 /**
  * Credits admin page for workspaces that are not on a credit-priced plan.
- * No credit pool, seats, spend limits, upgrade requests, or model-tier
- * administration — programmatic usage (legacy credits + limits) remains
- * editable. Model-tier administration is only available on credit-priced plans.
+ * No credit pool, seats, spend limits, or upgrade requests — programmatic
+ * usage (legacy credits + limits) remains editable. Model-tier administration
+ * (workspace / group / member ceilings) lives on Models, not here.
  */
 export function NonCreditPricedUsagePage() {
   const { t } = useLingui();

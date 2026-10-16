@@ -44,4 +44,20 @@ describe("ADMIN_SEARCH_INDEX drift", () => {
       seen.add(key);
     }
   });
+
+  // Member/group model-tier editors live on Models for every plan. Credits
+  // only mounts those tabs on credit-priced workspaces, so indexing them under
+  // Credits would deep-link legacy workspaces to a page without the editors.
+  it("indexes member and group model-tier entries under Models only", () => {
+    const modelTierEntries = ADMIN_SEARCH_INDEX.filter((entry) => {
+      const label = entry.label.message ?? "";
+      return label === "Members model tiers" || label === "Group model tiers";
+    });
+
+    expect(modelTierEntries.map((e) => e.pageId)).toEqual(["models", "models"]);
+    expect(modelTierEntries.map((e) => e.tab).sort()).toEqual([
+      "groups",
+      "members",
+    ]);
+  });
 });
