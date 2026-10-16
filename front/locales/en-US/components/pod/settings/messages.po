@@ -261,8 +261,8 @@ msgid "Warning"
 msgstr "Warning"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
-msgid "@Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?"
-msgstr "@Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?"
+msgid "Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?"
+msgstr "Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
 msgid "Yes"
@@ -285,8 +285,8 @@ msgid "Workspace default"
 msgstr "Workspace default"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
-msgid "This Pod's default agent isn't available to you, so @Dust is used instead. Contact the editor of the Pod for more information."
-msgstr "This Pod's default agent isn't available to you, so @Dust is used instead. Contact the editor of the Pod for more information."
+msgid "This Pod's default agent isn't available to you, so Dust is used instead. Contact the editor of the Pod for more information."
+msgstr "This Pod's default agent isn't available to you, so Dust is used instead. Contact the editor of the Pod for more information."
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
 msgid "Pod instructions for agents"

@@ -39,7 +39,7 @@ export const GOVERNANCE_SETTING_METADATA: Partial<
   },
   "make_discoverable:skill": {
     label: msg`Make skills discoverable to agents`,
-    description: msg`Who can make skills discoverable to @Dust and agents with Discover Skills`,
+    description: msg`Who can make skills discoverable to Dust and agents with Discover Skills`,
     searchKeywords: msg`@dust discover skills`,
   },
   "invite:frame": {

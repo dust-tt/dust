@@ -37,8 +37,8 @@ msgid "Analytics"
 msgstr "Statistiques"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-msgid "Ask @analyst"
-msgstr "Demander à @analyst"
+msgid "Ask analyst"
+msgstr "Demander à analyst"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Consumption"

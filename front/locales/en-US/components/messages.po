@@ -265,8 +265,8 @@ msgid "Ask questions"
 msgstr "Ask questions"
 
 #: front/components/UserMenu.tsx
-msgid "Ask @help"
-msgstr "Ask @help"
+msgid "Ask help"
+msgstr "Ask help"
 
 #: front/components/UserMenu.tsx
 msgid "How do I invite new users?"

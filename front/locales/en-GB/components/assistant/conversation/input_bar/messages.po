@@ -38,7 +38,7 @@ msgid "Wait for current active agent to finish before calling another agent."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBar.tsx
-msgid "Resolve the pending action from @{name} before switching agents"
+msgid "Resolve the pending action from {name} before switching agents"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBar.tsx
@@ -75,11 +75,11 @@ msgid "No results found"
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This Pod's default agent isn't available to you, so @Dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgid "This Pod's default agent isn't available to you, so Dust is used instead. Discuss with your Pod editors if you think this is an error."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This conversation's default agent isn't available to you, so @Dust is used instead. Discuss with your workspace admin if you think this is an error."
+msgid "This conversation's default agent isn't available to you, so Dust is used instead. Discuss with your workspace admin if you think this is an error."
 msgstr ""
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx

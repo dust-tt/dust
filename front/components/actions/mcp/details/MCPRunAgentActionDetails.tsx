@@ -317,8 +317,8 @@ function MCPRunAgentActionDetailsDisplay({
       displayContext={displayContext}
       actionName={
         displayContext === "conversation"
-          ? t`Running @${agentName}`
-          : t`Run @${agentName}`
+          ? t`Running ${agentName}`
+          : t`Run ${agentName}`
       }
       visual={
         childAgent?.pictureUrl

@@ -418,7 +418,7 @@ function AddedSubAgentItem({ owner, subAgentId }: AddedSubAgentItemProps) {
       trigger={
         <div className="flex flex-row items-center gap-2">
           <Avatar size="xs" visual={subAgent.pictureUrl} />
-          <div className="truncate">@{subAgent.name}</div>
+          <div className="truncate">{subAgent.name}</div>
         </div>
       }
       tooltipTriggerAsChild

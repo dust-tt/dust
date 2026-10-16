@@ -38,8 +38,8 @@ msgid "Wait for current active agent to finish before calling another agent."
 msgstr "Attendez que l’agent actif ait terminé avant d’appeler un autre agent."
 
 #: front/components/assistant/conversation/input_bar/InputBar.tsx
-msgid "Resolve the pending action from @{name} before switching agents"
-msgstr "Traitez l’action en attente de @{name} avant de changer d’agent"
+msgid "Resolve the pending action from {name} before switching agents"
+msgstr "Traitez l’action en attente de {name} avant de changer d’agent"
 
 #: front/components/assistant/conversation/input_bar/InputBar.tsx
 msgid "Resolve the pending action from another agent before switching agents"
@@ -75,12 +75,12 @@ msgid "No results found"
 msgstr "Aucun résultat trouvé"
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This Pod's default agent isn't available to you, so @Dust is used instead. Discuss with your Pod editors if you think this is an error."
-msgstr "L’agent par défaut de ce Pod ne vous est pas accessible, @Dust est donc utilisé à la place. Contactez les éditeurs de votre Pod si vous pensez qu’il s’agit d’une erreur."
+msgid "This Pod's default agent isn't available to you, so Dust is used instead. Discuss with your Pod editors if you think this is an error."
+msgstr "L’agent par défaut de ce Pod ne vous est pas accessible, Dust est donc utilisé à la place. Contactez les éditeurs de votre Pod si vous pensez qu’il s’agit d’une erreur."
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
-msgid "This conversation's default agent isn't available to you, so @Dust is used instead. Discuss with your workspace admin if you think this is an error."
-msgstr "L’agent par défaut de cette conversation ne vous est pas accessible, @Dust est donc utilisé à la place. Contactez l’administrateur de votre workspace si vous pensez qu’il s’agit d’une erreur."
+msgid "This conversation's default agent isn't available to you, so Dust is used instead. Discuss with your workspace admin if you think this is an error."
+msgstr "L’agent par défaut de cette conversation ne vous est pas accessible, Dust est donc utilisé à la place. Contactez l’administrateur de votre workspace si vous pensez qu’il s’agit d’une erreur."
 
 #: front/components/assistant/conversation/input_bar/InputBarButtons.tsx
 msgid "Selected agent: {selectedAgentName}"

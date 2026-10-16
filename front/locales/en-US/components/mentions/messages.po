@@ -14,9 +14,9 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/mentions/MentionDropdown.tsx
-msgid "New conversation with @{agentName}"
-msgstr "New conversation with @{agentName}"
+msgid "New conversation with {agentName}"
+msgstr "New conversation with {agentName}"
 
 #: front/components/mentions/MentionDropdown.tsx
-msgid "About @{agentName}"
-msgstr "About @{agentName}"
+msgid "About {agentName}"
+msgstr "About {agentName}"
