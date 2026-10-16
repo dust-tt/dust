@@ -375,10 +375,13 @@ describe("DfsFileSystem", () => {
 
   it("removes directories recursively, children first", async () => {
     const { dfs, fs, at } = setup();
-    await fs.write(at("a/b/one.txt"), "1");
-    await fs.write(at("a/b/c/two.txt"), "2");
-    await fs.write(at("a/three.txt"), "3");
-    await fs.write(at("keep.txt"), "k");
+    const a = dfs.createDirectory(dfs.rootId, "a");
+    const b = dfs.createDirectory(a, "b");
+    const c = dfs.createDirectory(b, "c");
+    const one = dfs.createFile(b, "one.txt", "1");
+    const two = dfs.createFile(c, "two.txt", "2");
+    const three = dfs.createFile(a, "three.txt", "3");
+    dfs.createFile(dfs.rootId, "keep.txt", "k");
 
     const notRecursive = await fs.remove(at("a"));
     expect(notRecursive.isErr() && notRecursive.error.code).toBe("not_empty");
@@ -387,20 +390,45 @@ describe("DfsFileSystem", () => {
 
     expect(res.isOk()).toBe(true);
     expect(dfs.paths()).toEqual(["/keep.txt"]);
+    expect(
+      dfs.applyCalls
+        .at(-1)
+        ?.map((op) =>
+          op.type === "remove" ? [op.objectId, op.parentId] : null
+        )
+    ).toEqual([
+      [two, c],
+      [one, b],
+      [c, b],
+      [three, a],
+      [b, a],
+      [a, dfs.rootId],
+    ]);
   });
 
-  it("removes the anchor itself through a URI without a path", async () => {
+  it("removes a file with its resolved parent id", async () => {
     const { dfs, fs, at } = setup();
-    const file = await fs.write(at("tmp.txt"), "t");
-    expect(file.isOk()).toBe(true);
-    if (!file.isOk()) {
-      return;
-    }
+    const parentId = dfs.createDirectory(dfs.rootId, "dir");
+    const objectId = dfs.createFile(parentId, "tmp.txt", "t");
 
-    const res = await fs.remove(file.value.uri);
+    const res = await fs.remove(at("dir/tmp.txt"));
 
     expect(res.isOk()).toBe(true);
-    expect(dfs.paths()).toEqual([]);
+    expect(dfs.paths()).toEqual(["/dir"]);
+    expect(dfs.applyCalls).toEqual([
+      [{ type: "remove", objectId, parentId, kind: "file" }],
+    ]);
+  });
+
+  it("rejects removal without a path before sending a mutation", async () => {
+    const { dfs, fs } = setup();
+    const objectId = dfs.createFile(dfs.rootId, "tmp.txt", "t");
+
+    const res = await fs.remove(formatDfsUri(objectId));
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+    expect(dfs.applyCalls).toEqual([]);
+    expect(dfs.paths()).toEqual(["/tmp.txt"]);
   });
 
   it("copies a file with its MIME type, leaving the source untouched", async () => {

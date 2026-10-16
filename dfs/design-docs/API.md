@@ -765,6 +765,7 @@ Removes an authorized file or empty directory from its accessible parent.
 ```text
 RemoveOperation {
   object_id: ObjectId
+  parent_id: ObjectId             // Current parent directory.
   kind: ObjectKind               // Must match the object's kind.
 }
 ```
@@ -773,6 +774,7 @@ RemoveOperation {
 includes the parent's final attributes and `store_version`, unless that parent is also removed later
 in the batch. Nonempty directories fail with `NOT_EMPTY`; recursive deletion requires explicitly
 removing descendants first.
+The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
 
 ## Search
 

@@ -88,7 +88,7 @@ Multi-chunk reads compare each chunk's `content_version` and fail instead of mix
 `Attr` does not expose an object's parent, so the usual atomic replacement (upload to a temporary
 sibling, then rename it over the target) is not possible for a URI without a path.
 `move` requires source and destination paths to resolve both parent IDs; canonical URIs alone are
-insufficient.
+insufficient. `remove` likewise requires a path to resolve the object's parent.
 
 ## Example: front and a pod
 

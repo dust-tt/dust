@@ -456,6 +456,9 @@ export class InMemoryDfs implements DfsFileSystemClient {
       }
       case "remove": {
         const node = this.node(op.objectId);
+        if (node.parentId !== op.parentId) {
+          throw new OperationError("not_found");
+        }
         if (node.kind !== op.kind) {
           throw new OperationError(
             node.kind === "directory" ? "is_directory" : "not_directory"

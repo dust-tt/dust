@@ -302,7 +302,7 @@ describe("DfsClient", () => {
           name: "new.txt",
           replace: false,
         },
-        { type: "remove", objectId: FILE_ID, kind: "file" },
+        { type: "remove", objectId: FILE_ID, parentId: ROOT_ID, kind: "file" },
       ],
     });
 
@@ -334,7 +334,11 @@ describe("DfsClient", () => {
           },
         },
         {
-          remove: { objectId: wireId(FILE_ID), kind: "FILE" },
+          remove: {
+            objectId: wireId(FILE_ID),
+            parentId: wireId(ROOT_ID),
+            kind: "FILE",
+          },
         },
       ],
     });
@@ -613,8 +617,13 @@ describe("DfsClient", () => {
 
     const res = await client.apply({
       operations: [
-        { type: "remove", objectId: FILE_ID, kind: "file" },
-        { type: "remove", objectId: ROOT_ID, kind: "directory" },
+        { type: "remove", objectId: FILE_ID, parentId: ROOT_ID, kind: "file" },
+        {
+          type: "remove",
+          objectId: ROOT_ID,
+          parentId: ROOT_ID,
+          kind: "directory",
+        },
       ],
     });
 
