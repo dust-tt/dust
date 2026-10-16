@@ -153,7 +153,10 @@ export async function bulkUpdateEgressDomain(
   > {
     switch (operation.operation) {
       case "add": {
-        const r = await addWorkspacePolicyDomain(auth, { domain });
+        const r = await addWorkspacePolicyDomain(auth, {
+          domain,
+          allowWildcard: true,
+        });
         if (r.isErr()) {
           return r;
         }
@@ -182,7 +185,11 @@ export async function bulkUpdateEgressDomain(
   ): Promise<Result<{ policy: EgressPolicy; changed: boolean }, Error>> {
     switch (operation.operation) {
       case "add": {
-        const r = await addOwnerPolicyDomain(auth, { ownerId, domain });
+        const r = await addOwnerPolicyDomain(auth, {
+          ownerId,
+          domain,
+          allowWildcard: true,
+        });
         if (r.isErr()) {
           return r;
         }
