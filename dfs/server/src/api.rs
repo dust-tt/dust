@@ -51,7 +51,8 @@ pub struct API {
 
 /**
  * @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources
- * Handlers MUST reach FDB only by calling resource methods inside `fdb::with_transaction`. They
+ * Handlers MUST reach FDB only through resource methods in storage transaction runners. Writes
+ * MUST use `fdb::with_idempotent_transaction`; reads MUST use `fdb::with_transaction`. Handlers
  * MUST NOT use `foundationdb` APIs or `fdb::database()` directly.
  */
 #[tonic::async_trait]
@@ -69,7 +70,7 @@ impl Dfs for API {
         // and root across attempts lets us recognize our own commit if its outcome was unknown.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
         let root = ObjectResource::new_root(&tenant)?;
-        fdb::with_transaction(|tx| {
+        fdb::with_idempotent_transaction(|tx| {
             let tenant = &tenant;
             let root = &root;
             let root_grants = &root_grants;
@@ -100,7 +101,7 @@ impl Dfs for API {
         let CreateSessionRequest { subjects } = request.into_inner();
         // Construct before the transaction so retries retain the session's ID, key, and expiry.
         let (session, session_key) = SessionResource::new(&tenant, subjects)?;
-        fdb::with_transaction(|tx| {
+        fdb::with_idempotent_transaction(|tx| {
             let session = &session;
             async move { session.create(&tx).await }
         })
@@ -130,7 +131,7 @@ impl Dfs for API {
     ) -> Result<Response<Empty>, Status> {
         let tenant = self.require_tenant(&request).await?;
         let session_id = request.into_inner().session_id;
-        let key_hash = fdb::with_transaction(|tx| {
+        let (key_hash, _) = fdb::with_idempotent_transaction(|tx| {
             let tenant = tenant.as_ref();
             let session_id = &session_id;
             async move { SessionResource::revoke(&tx, tenant, session_id).await }
@@ -147,13 +148,14 @@ impl Dfs for API {
      */
     async fn refresh_session(&self, request: Request<Empty>) -> Result<Response<Session>, Status> {
         let key_hash = auth::credentials(&request)?;
-        let session =
-            fdb::with_transaction(
-                |tx| async move { SessionResource::refresh(&tx, &key_hash).await },
-            )
-            .await?;
+        let (session, _) = fdb::with_idempotent_transaction(|tx| async move {
+            SessionResource::refresh(&tx, &key_hash)
+                .await
+                .map(|session| Session::from(&session))
+        })
+        .await?;
         self.session_key_cache.write().await.remove(&key_hash);
-        Ok(Response::new(Session::from(&session)))
+        Ok(Response::new(session))
     }
 
     async fn list_grants(
@@ -186,7 +188,7 @@ impl Dfs for API {
     ) -> Result<Response<Empty>, Status> {
         let tenant = self.require_tenant(&request).await?;
         let UpdateGrantsRequest { object_id, changes } = request.into_inner();
-        fdb::with_transaction(|tx| {
+        fdb::with_idempotent_transaction(|tx| {
             let tenant = tenant.as_ref();
             let changes = &changes;
             async move {
@@ -366,13 +368,13 @@ impl Dfs for API {
                     .ok_or_else(|| status(ErrorCode::InvalidInput))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let response = fdb::with_transaction(|tx| {
+        let (mut response, commit_version) = fdb::with_idempotent_transaction(|tx| {
             let session = session.as_ref();
             // Grouping consumes the operations, so every FDB attempt needs its own copy.
             let operations = operations.clone();
             async move {
                 let results = ObjectResource::apply(&tx, session, operations).await?;
-                let response = OperationBatch {
+                let mut response = OperationBatch {
                     results: results
                         .into_iter()
                         .map(|result| match result {
@@ -387,10 +389,13 @@ impl Dfs for API {
                         })
                         .collect(),
                 };
+                // Reserve the largest version encoding before committing.
+                set_mutation_store_version(&mut response, i64::MAX);
                 within_message_budget(response).map_err(storage::Error::Resource)
             }
         })
         .await?;
+        set_mutation_store_version(&mut response, commit_version);
         Ok(Response::new(response))
     }
 
@@ -400,6 +405,18 @@ impl Dfs for API {
     ) -> Result<Response<SearchResults>, Status> {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
+    }
+}
+
+fn set_mutation_store_version(response: &mut OperationBatch, version: i64) {
+    for mutation in response
+        .results
+        .iter_mut()
+        .filter_map(|result| result.mutation.as_mut())
+    {
+        for attr in mutation.object.iter_mut().chain(&mut mutation.related) {
+            attr.store_version = version;
+        }
     }
 }
 

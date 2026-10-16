@@ -1,3 +1,10 @@
+@cc [owner:pmilliotte,label:backend;error-handling;testing] retry-safe-resource-writes
+Production transactions that mutate resource state MUST use `fdb::with_idempotent_transaction`,
+covering the whole transaction and its returned result with one receipt. Bodies MUST still tolerate
+retries after aborted attempts; mutable resource state MUST be rebuilt inside each attempt.
+Receipt maintenance MUST use ordinary transactions to avoid creating receipts recursively.
+Tests MAY use raw transactions to exercise conflicts, rollback, and resource validation directly.
+
 @cc [owner:spolu,notify:spolu,label:backend;error-handling] preserve-fdb-retry-errors
 Within retrying transactions, FDB transaction failures MUST reach `Database::run` unchanged through
 every resource and API conversion so the runner can decide whether to retry. They MUST NOT be
