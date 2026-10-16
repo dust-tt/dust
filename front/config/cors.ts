@@ -2,6 +2,7 @@ const STATIC_ALLOWED_ORIGINS = [
   // Front edge.
   "https://front-edge.dust.tt",
   "https://eu.front-edge.dust.tt",
+  "https://eu2.front-edge.dust.tt",
   // Marketing edge.
   "https://marketing-edge.dust.tt",
   // Front extension.
@@ -21,6 +22,7 @@ const STATIC_ALLOWED_ORIGINS = [
   // Next.js server (landing page, OAuth, API routes).
   "https://dust.tt",
   "https://eu.dust.tt",
+  "https://eu2.dust.tt",
   // Marketing edge (standalone marketing Next.js app).
   "https://marketing-edge.dust.tt",
 ] as const;
