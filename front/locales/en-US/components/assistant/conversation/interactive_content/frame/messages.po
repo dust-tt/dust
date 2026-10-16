@@ -262,10 +262,6 @@ msgid "Last viewed {exactTime}"
 msgstr "Last viewed {exactTime}"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
-msgid "Something went wrong."
-msgstr "Something went wrong."
-
-#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
 msgid "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
 msgstr "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
 
