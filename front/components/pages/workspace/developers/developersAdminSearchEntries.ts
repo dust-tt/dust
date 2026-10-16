@@ -15,12 +15,12 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     K.keys,
     [
-      [msg`Dust API Keys`, msg`keys active credits used programmatic`],
-      [msg`Create API Key`, msg`new key scope spaces monthly cap`],
+      [msg`Dust API keys`, msg`keys active credits used programmatic`],
+      [msg`Create API key`, msg`new key scope spaces monthly cap`],
       [msg`API key list`, msg`name scope key spaces credits last used status`],
       [msg`Revoke API key`, msg`revoke`],
       [msg`Edit monthly cap`, msg`per key credits cap`],
-      [msg`API Reference`, msg`docs documentation api reference`],
+      [msg`API reference`, msg`docs documentation api reference`],
     ],
     "keys"
   ),
@@ -28,9 +28,9 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     S.secrets,
     [
-      [msg`Developer Secrets`, msg`env.secrets dust apps mcp servers`],
-      [msg`Create Secret`, msg`secret name value`],
-      [msg`API Reference`, msg`docs documentation secrets api reference`],
+      [msg`Developer secrets`, msg`env.secrets dust apps mcp servers`],
+      [msg`Create secret`, msg`secret name value`],
+      [msg`API reference`, msg`docs documentation secrets api reference`],
     ],
     "secrets"
   ),

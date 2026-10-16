@@ -138,7 +138,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.confluence,
     hide: false,
     limitations: msg`Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.`,
-    mismatchError: msg`You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
+    mismatchError: msg`You cannot select another Confluence domain.\nPlease contact us at support@dust.tt if you initially selected the wrong domain.`,
     selectLabel: msg`Select pages`,
     getLogoComponent: () => {
       return ConfluenceLogo;
@@ -153,7 +153,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.notion,
     hide: false,
     limitations: msg`External files and content behind links are not indexed.`,
-    mismatchError: msg`You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
+    mismatchError: msg`You cannot select another Notion workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong workspace.`,
     selectLabel: msg`Synchronized content`,
     getLogoComponent: () => {
       return NotionLogo;
@@ -168,7 +168,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.google_drive,
     hide: false,
     limitations: msg`Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.`,
-    mismatchError: msg`You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
+    mismatchError: msg`You cannot select another Google Drive domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.`,
     selectLabel: msg`Select folders and files`,
     getLogoComponent: () => {
       return DriveLogo;
@@ -187,7 +187,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
     hide: true,
     limitations: msg`External files and content behind links are not indexed.`,
-    mismatchError: msg`You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
+    mismatchError: msg`You cannot select another Slack team.\nPlease contact us at support@dust.tt if you initially selected the wrong team.`,
     selectLabel: msg`Select channels`,
     getLogoComponent: () => {
       return SlackLogo;
@@ -208,7 +208,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     permissionsDisabledPlaceholder: msg`N/A`,
     description: "N/A",
     limitations: msg`N/A`,
-    mismatchError: msg`You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
+    mismatchError: msg`You cannot select another Slack team.\nPlease contact us at support@dust.tt if you initially selected the wrong team.`,
     guideLink: "https://docs.dust.tt/docs/slack-connection",
     selectLabel: msg`N/A`,
     getLogoComponent: () => {
@@ -226,7 +226,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.github,
     hide: false,
     limitations: msg`Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories.`,
-    mismatchError: msg`You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
+    mismatchError: msg`You cannot select another GitHub organization.\nPlease contact us at support@dust.tt if you initially selected a wrong organization or if you completely uninstalled the GitHub app.`,
     selectLabel: msg`Authorized content`,
     getLogoComponent: () => {
       return GithubLogo;
@@ -242,7 +242,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.intercom,
     hide: false,
     limitations: msg`Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.`,
-    mismatchError: msg`You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
+    mismatchError: msg`You cannot select another Intercom workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong workspace.`,
     selectLabel: msg`Select pages`,
     getLogoComponent: () => {
       return IntercomLogo;
@@ -299,7 +299,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.webcrawler,
     hide: false,
     limitations: null,
-    mismatchError: msg`You cannot change the URL. Please add a new Public URL instead.`,
+    mismatchError: msg`You cannot change the URL. Please add a new public URL instead.`,
     getLogoComponent: () => {
       return Globe01;
     },
@@ -328,7 +328,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     ...CONNECTOR_METADATA.zendesk,
     hide: false,
     limitations: msg`Dust will index the content accessible to the authorized account only. Attachments are not indexed.`,
-    mismatchError: msg`You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.`,
+    mismatchError: msg`You cannot select another Zendesk workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong workspace.`,
     getLogoComponent: () => {
       return ZendeskLogo;
     },

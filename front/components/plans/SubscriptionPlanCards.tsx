@@ -17,7 +17,7 @@ const PRO_FEATURES: MessageDescriptor[] = [
   msg`From 1 user`,
   msg`Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more`,
   msg`Data connections: Slack, Notion, Google Drive, GitHub, and more`,
-  msg`Native integrations (Zendesk, Slack, Chrome Extension)`,
+  msg`Native integrations (Zendesk, Slack, Chrome extension)`,
   msg`Email support: Get help when you need it`,
   msg`Free credits for programmatic usage (API, GSheet, Zapier)`,
 ];
@@ -35,7 +35,7 @@ const ENTERPRISE_FEATURES: MessageDescriptor[] = [
   msg`Access to programmatic usage`,
   msg`Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)`,
   msg`User provisioning (SCIM)`,
-  msg`Flexible billing options (SEPA, Credit Card)`,
+  msg`Flexible billing options (SEPA, credit card)`,
   msg`Advanced connections (Salesforce, etc)`,
   msg`Priority access to new features`,
   msg`US / EU data hosting`,
@@ -71,7 +71,7 @@ export function SubscriptionPlanCards({
       <div className="flex flex-col rounded-2xl border border-border p-5">
         <div className="mb-4">
           <h3 className="text-lg font-medium text-foreground">
-            {isBusiness ? t`Enterprise (Seat-based)` : "Pro"}
+            {isBusiness ? t`Enterprise (seat-based)` : "Pro"}
           </h3>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-nums text-foreground">
@@ -104,7 +104,7 @@ export function SubscriptionPlanCards({
             size="md"
             label={
               isBusiness
-                ? t`Subscribe to Enterprise (Seat-based)`
+                ? t`Subscribe to Enterprise (seat-based)`
                 : t`Subscribe to Pro`
             }
             onClick={onSubscribe}

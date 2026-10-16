@@ -83,7 +83,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
 
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.governance.workspaceName}>
-      <SettingsList title={<Trans>Workspace Name</Trans>}>
+      <SettingsList title={<Trans>Workspace name</Trans>}>
         <SettingsList.Row
           title={owner.name}
           action={
@@ -100,7 +100,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
         <SheetContent>
           <SheetHeader>
             <SheetTitle>
-              <Trans>Edit Workspace Name</Trans>
+              <Trans>Edit workspace name</Trans>
             </SheetTitle>
           </SheetHeader>
           <SheetContainer>

@@ -82,7 +82,7 @@ export function EditKeyCapDialog({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>
-            <Trans>Edit Monthly Cap - {keyName}</Trans>
+            <Trans>Edit monthly cap - {keyName}</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>

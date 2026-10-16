@@ -78,6 +78,7 @@ msgid "Consumption share"
 msgstr "Consumption share"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
 msgid "Total credits"
 msgstr "Total credits"
 
@@ -183,6 +184,7 @@ msgid "{creditCount, plural, one {{total} credit so far this month} other {{tota
 msgstr "{creditCount, plural, one {{total} credit so far this month} other {{total} credits so far this month}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
+#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Active users"
 msgstr "Active users"
 
@@ -205,10 +207,6 @@ msgstr "Conversation"
 #: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
 msgid "Untitled conversation"
 msgstr "Untitled conversation"
-
-#: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
-msgid "Total Credits"
-msgstr "Total Credits"
 
 #: front/components/workspace/analytics/consumption/ConsumptionConversationAttribution.tsx
 msgid "Open conversation"
@@ -309,10 +307,6 @@ msgstr "Top agent"
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "{topAgentShare}% of total consumption"
 msgstr "{topAgentShare}% of total consumption"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "Active Users"
-msgstr "Active Users"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Messages / active user"

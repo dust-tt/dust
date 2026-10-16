@@ -99,8 +99,8 @@ msgid "Email"
 msgstr "Email"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
-msgid "Clients & Tools"
-msgstr "Clients & Tools"
+msgid "Clients & tools"
+msgstr "Clients & tools"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
 msgid "Messaging apps"
@@ -129,8 +129,8 @@ msgstr "Providers"
 
 #: front/components/pages/workspace/ModelsPage.tsx
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-msgid "App Credentials"
-msgstr "App Credentials"
+msgid "App credentials"
+msgstr "App credentials"
 
 #: front/components/pages/workspace/ModelsPage.tsx
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
@@ -150,6 +150,7 @@ msgid "Control credit consumption across your workspace."
 msgstr "Control credit consumption across your workspace."
 
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Programmatic usage"
 msgstr "Programmatic usage"
 
@@ -170,8 +171,9 @@ msgid "Network"
 msgstr "Network"
 
 #: front/components/pages/workspace/SecurityPage.tsx
-msgid "Audit Logs"
-msgstr "Audit Logs"
+#: front/components/pages/workspace/identityAdminSearchEntries.ts
+msgid "Audit logs"
+msgstr "Audit logs"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Workspace credit usage"
@@ -206,20 +208,20 @@ msgid "Change my seat"
 msgstr "Change my seat"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Credit Pool"
-msgstr "Credit Pool"
+msgid "Credit pool"
+msgstr "Credit pool"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Loading Credit Pool"
-msgstr "Loading Credit Pool"
+msgid "Loading credit pool"
+msgstr "Loading credit pool"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "Failed to load Workspace Credit Pool"
-msgstr "Failed to load Workspace Credit Pool"
+msgid "Failed to load workspace credit pool"
+msgstr "Failed to load workspace credit pool"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
-msgstr "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+msgid "An error occurred while loading your workspace credit pool data. Please refresh the page or contact support if the issue persists."
+msgstr "An error occurred while loading your workspace credit pool data. Please refresh the page or contact support if the issue persists."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "{initialTotalCreditCount, plural, one {/{initialTotalCreditsFormatted} credit} other {/{initialTotalCreditsFormatted} credits}}"
@@ -384,16 +386,16 @@ msgid "favicon square upload"
 msgstr "favicon square upload"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
-msgid "Domain Verification"
-msgstr "Domain Verification"
+msgid "Domain verification"
+msgstr "Domain verification"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
 msgid "verified domains domain status"
 msgstr "verified domains domain status"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
-msgid "Add Domain"
-msgstr "Add Domain"
+msgid "Add domain"
+msgstr "Add domain"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
 msgid "verify company domain"
@@ -432,40 +434,36 @@ msgid "network allowlist wildcard exact domain workspace pod egress computer"
 msgstr "network allowlist wildcard exact domain workspace pod egress computer"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
-msgid "View Logs"
-msgstr "View Logs"
+msgid "View logs"
+msgstr "View logs"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
 msgid "workspace activity logs audit"
 msgstr "workspace activity logs audit"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
-msgid "Configure Export"
-msgstr "Configure Export"
+msgid "Configure export"
+msgstr "Configure export"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
 msgid "siem export audit"
 msgstr "siem export audit"
 
 #: front/components/pages/workspace/identityAdminSearchEntries.ts
-msgid "Audit logs"
-msgstr "Audit logs"
-
-#: front/components/pages/workspace/identityAdminSearchEntries.ts
 msgid "emit audit events workos"
 msgstr "emit audit events workos"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Slack Bot"
-msgstr "Slack Bot"
+msgid "Slack bot"
+msgstr "Slack bot"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "slack reconnect"
 msgstr "slack reconnect"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Microsoft Teams Bot"
-msgstr "Microsoft Teams Bot"
+msgid "Microsoft Teams bot"
+msgstr "Microsoft Teams bot"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "teams"
@@ -496,16 +494,16 @@ msgid "external mcp clients connect manage"
 msgstr "external mcp clients connect manage"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
-msgid "Browser Extension Tools"
-msgstr "Browser Extension Tools"
+msgid "Browser extension tools"
+msgstr "Browser extension tools"
 
 #: front/components/pages/workspace/integrationsAdminSearchEntries.ts
 msgid "list read browser tabs extension"
 msgstr "list read browser tabs extension"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-msgid "Model Providers"
-msgstr "Model Providers"
+msgid "Model providers"
+msgstr "Model providers"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "ai models llm openai anthropic google"
@@ -596,24 +594,24 @@ msgid "dust apps providers api keys openai azure anthropic"
 msgstr "dust apps providers api keys openai azure anthropic"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-msgid "Model Providers for Dust Apps"
-msgstr "Model Providers for Dust Apps"
+msgid "Model providers for Dust Apps"
+msgstr "Model providers for Dust Apps"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "api key openai azure anthropic"
 msgstr "api key openai azure anthropic"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-msgid "Service Providers"
-msgstr "Service Providers"
+msgid "Service providers"
+msgstr "Service providers"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "serpapi serper browserless google search web scrape"
 msgstr "serpapi serper browserless google search web scrape"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
-msgid "App Credentials tab"
-msgstr "App Credentials tab"
+msgid "App credentials tab"
+msgstr "App credentials tab"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "legacy dust apps credentials"
@@ -652,8 +650,8 @@ msgid "admin manager user role"
 msgstr "admin manager user role"
 
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
-msgid "Auto-join Workspace"
-msgstr "Auto-join Workspace"
+msgid "Auto-join workspace"
+msgstr "Auto-join workspace"
 
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "verified domain auto join enrollment"
@@ -854,10 +852,6 @@ msgstr "Credit spend checkpoint"
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "pause agent message threshold"
 msgstr "pause agent message threshold"
-
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "Programmatic Usage"
-msgstr "Programmatic Usage"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "credits usage api keys triggers"

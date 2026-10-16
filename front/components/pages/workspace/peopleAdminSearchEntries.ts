@@ -45,7 +45,7 @@ export const PEOPLE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     P.joining,
-    [[msg`Auto-join Workspace`, msg`verified domain auto join enrollment`]],
+    [[msg`Auto-join workspace`, msg`verified domain auto join enrollment`]],
     "members"
   ),
   ...adminSearchEntries(

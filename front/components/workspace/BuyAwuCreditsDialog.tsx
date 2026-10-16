@@ -308,7 +308,7 @@ function UseCouponTab({
               <p className="text-sm text-muted-foreground">
                 <Trans>
                   Have a coupon code? Enter it below to add free credits to your
-                  Workspace Credits Pool.
+                  workspace credits pool.
                 </Trans>
               </p>
               <div className="flex flex-col gap-2">
@@ -359,20 +359,20 @@ function UseCouponTab({
                   />
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label={t`Current Credits Pool`}
+                      label={t`Current credits pool`}
                       value={<CreditValue credits={currentTotalPoolCredits} />}
                       dimmed
                     />
                   )}
                   <SummaryRow
-                    label={t`Bonus Credits`}
+                    label={t`Bonus credits`}
                     value={<CreditValue credits={bonusCredits} />}
                     dimmed
                   />
                   <div className="py-1" />
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label={t`New Credits Pool`}
+                      label={t`New credits pool`}
                       value={
                         <CreditValue
                           credits={currentTotalPoolCredits + bonusCredits}
@@ -689,20 +689,20 @@ export function BuyAwuCreditsDialog({
                   </p>
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label={t`Current Credits Pool`}
+                      label={t`Current credits pool`}
                       value={<CreditValue credits={currentTotalPoolCredits} />}
                       dimmed
                     />
                   )}
                   <SummaryRow
-                    label={t`Added Credits`}
+                    label={t`Added credits`}
                     value={<CreditValue credits={addedCredits} />}
                     dimmed
                   />
                   <div className="py-1" />
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label={t`New Credits Pool`}
+                      label={t`New credits pool`}
                       value={
                         <CreditValue
                           credits={currentTotalPoolCredits + addedCredits}

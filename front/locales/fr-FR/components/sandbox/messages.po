@@ -66,7 +66,7 @@ msgstr "Demander le domaine"
 #: front/components/sandbox/EgressDomainListEditor.tsx
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Add domain"
-msgstr "Ajouter le domaine"
+msgstr "Ajouter un domaine"
 
 #: front/components/sandbox/EgressDomainListEditor.tsx
 msgid "This domain is already allowed."

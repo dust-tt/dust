@@ -51,7 +51,7 @@ export function ReplySection({
         {mentionCount > 0 ? (
           <>
             <span className="heading-xs text-highlight">
-              {t`${plural(mentionCount, { one: `${mentions} Mention`, other: `${mentions} Mentions` })}`}
+              {t`${plural(mentionCount, { one: `${mentions} mention`, other: `${mentions} mentions` })}`}
             </span>
             {unreadCount !== mentionCount && (
               <span className="heading-xs  text-highlight">
@@ -75,16 +75,16 @@ export function ReplySection({
           </>
         ) : unreadCount === 0 ? (
           <span className="heading-xs">
-            {t`${plural(replyCount, { one: `${replies} Reply`, other: `${replies} Replies` })}`}
+            {t`${plural(replyCount, { one: `${replies} reply`, other: `${replies} replies` })}`}
           </span>
         ) : unreadCount === replyCount ? (
           <span className="heading-xs text-highlight">
-            {t`${plural(unreadCount, { one: `${unreads} Unread`, other: `${unreads} Unread` })}`}
+            {t`${plural(unreadCount, { one: `${unreads} unread`, other: `${unreads} unread` })}`}
           </span>
         ) : (
           <>
             <span className="heading-xs text-highlight">
-              {t`${plural(unreadCount, { one: `${unreads} Unread`, other: `${unreads} Unread` })}`}
+              {t`${plural(unreadCount, { one: `${unreads} unread`, other: `${unreads} unread` })}`}
             </span>
             {replyCount > 0 && (
               <span className="heading-xs">

@@ -48,7 +48,7 @@ export const APIKeyCreationSheet = ({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>
-            <Trans>API Key Created</Trans>
+            <Trans>API key created</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -118,7 +118,7 @@ export const APIKeyCreationSheet = ({
             </div>
             <div className="mt-4">
               <Page.H variant="h5">
-                <Trans>API Key</Trans>
+                <Trans>API key</Trans>
               </Page.H>
               <Page.Horizontal align="center">
                 <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">

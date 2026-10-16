@@ -21,8 +21,8 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.domain,
     [
-      [msg`Domain Verification`, msg`verified domains domain status`],
-      [msg`Add Domain`, msg`verify company domain`],
+      [msg`Domain verification`, msg`verified domains domain status`],
+      [msg`Add domain`, msg`verify company domain`],
     ],
     "identity"
   ),
@@ -68,8 +68,8 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     I.auditLogs,
     [
-      [msg`View Logs`, msg`workspace activity logs audit`],
-      [msg`Configure Export`, msg`siem export audit`],
+      [msg`View logs`, msg`workspace activity logs audit`],
+      [msg`Configure export`, msg`siem export audit`],
     ],
     "audit"
   ),

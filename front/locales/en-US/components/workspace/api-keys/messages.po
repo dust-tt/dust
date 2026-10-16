@@ -14,8 +14,8 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
-msgid "API Key Created"
-msgstr "API Key Created"
+msgid "API key created"
+msgstr "API key created"
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
 msgid "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API."
@@ -39,8 +39,8 @@ msgid "Workspace ID"
 msgstr "Workspace ID"
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
-msgid "API Key"
-msgstr "API Key"
+msgid "API key"
+msgstr "API key"
 
 #: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 msgid "Close"
@@ -180,8 +180,8 @@ msgid "Revoke API key"
 msgstr "Revoke API key"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Search API Key"
-msgstr "Search API Key"
+msgid "Search API key"
+msgstr "Search API key"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Filters"
@@ -216,8 +216,8 @@ msgid "Next page"
 msgstr "Next page"
 
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
-msgid "Edit Monthly Cap - {keyName}"
-msgstr "Edit Monthly Cap - {keyName}"
+msgid "Edit monthly cap - {keyName}"
+msgstr "Edit monthly cap - {keyName}"
 
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
@@ -255,16 +255,16 @@ msgid "API key name is required"
 msgstr "API key name is required"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Create API Key"
-msgstr "Create API Key"
+msgid "Create API key"
+msgstr "Create API key"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "New API Key"
-msgstr "New API Key"
+msgid "New API key"
+msgstr "New API key"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "API Key Name"
-msgstr "API Key Name"
+msgid "API key name"
+msgstr "API key name"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Type an API key name"
@@ -287,8 +287,8 @@ msgid "No spaces found"
 msgstr "No spaces found"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Add Groups"
-msgstr "Add Groups"
+msgid "Add groups"
+msgstr "Add groups"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Search groups"

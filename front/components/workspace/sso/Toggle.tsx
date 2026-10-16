@@ -26,14 +26,14 @@ export function ToggleEnforceEnterpriseConnectionModal({
 
   const titleAndContent = {
     enforce: {
-      title: t`Enable Single Sign On Enforcement`,
+      title: t`Enable Single Sign-On enforcement`,
       content: t`By enforcing SSO, access through social media logins will be discontinued. Instead, you'll be directed to sign in via the SSO portal. Please note, this change will require all users to sign out and reconnect using SSO.`,
-      validateLabel: t`Enforce Single Sign On`,
+      validateLabel: t`Enforce Single Sign-On`,
     },
     remove: {
-      title: t`Disable Single Sign On Enforcement`,
+      title: t`Disable Single Sign-On enforcement`,
       content: t`By disabling SSO enforcement, users will have the flexibility to login with social media.`,
-      validateLabel: t`Disable Single Sign-On Enforcement`,
+      validateLabel: t`Disable Single Sign-On enforcement`,
     },
   };
 

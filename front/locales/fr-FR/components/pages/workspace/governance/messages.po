@@ -235,7 +235,7 @@ msgid "trigger workspace credit pool instead of their own"
 msgstr "déclencheur réserve de crédits du workspace au lieu de la sienne"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
-msgid "Workspace Name"
+msgid "Workspace name"
 msgstr "Nom du workspace"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts

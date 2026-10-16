@@ -1128,7 +1128,7 @@ function buildFairUseCreditsColumn(
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
           <Icon visual={CoinsStacked03} size="xs" />
-          <Trans>Fair Usage Credits</Trans>
+          <Trans>Fair usage credits</Trans>
         </span>
         <span className="text-xs font-normal text-muted-foreground">
           <Trans>Resets on a rolling {windowDays}-day basis</Trans>

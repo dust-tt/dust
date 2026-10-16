@@ -46,7 +46,7 @@ msgid "Use descriptions"
 msgstr ""
 
 #: front/components/data_source/BigQueryOptionsView.tsx
-msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to Agents."
+msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to agents."
 msgstr ""
 
 #: front/components/data_source/BigQueryOptionsView.tsx
@@ -151,7 +151,7 @@ msgid "Important"
 msgstr ""
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "<0>Editing</0> can break the existing data structure in Dust and Agents using them."
+msgid "<0>Editing</0> can break the existing data structure in Dust and agents using them."
 msgstr ""
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
@@ -175,7 +175,7 @@ msgid "You are not the owner of this connection."
 msgstr ""
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and Agents using them."
+msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and agents using them."
 msgstr ""
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
@@ -230,7 +230,7 @@ msgid "Deleting {connectorName} connection"
 msgstr ""
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "<0>Deleting</0> will break Agents using this data."
+msgid "<0>Deleting</0> will break agents using this data."
 msgstr ""
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx

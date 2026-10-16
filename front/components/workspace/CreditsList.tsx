@@ -133,7 +133,7 @@ export function getCreditColumns(t: Translate): ColumnDef<RowData, string>[] {
     {
       id: "initialAmount" as const,
       accessorKey: "initialAmount",
-      header: t(msg`Initial Amount`),
+      header: t(msg`Initial amount`),
       cell: (info: Info) => Cell(info, info.row.original.initialAmount),
     },
     {
@@ -151,7 +151,7 @@ export function getCreditColumns(t: Translate): ColumnDef<RowData, string>[] {
     {
       id: "expirationDate" as const,
       accessorKey: "expirationDate",
-      header: t(msg`Expiration Date`),
+      header: t(msg`Expiration date`),
       meta: {
         className: "text-right",
       },

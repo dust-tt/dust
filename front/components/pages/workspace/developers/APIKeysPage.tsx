@@ -197,7 +197,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
         if (response.status >= 200 && response.status < 300) {
           setIsNewApiKeyCreatedOpen(true);
           sendNotification({
-            title: t`API Key Created`,
+            title: t`API key created`,
             description: t`Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API.`,
             type: "success",
           });
@@ -302,7 +302,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
       <Page.Vertical align="stretch" gap="xl">
         <Page.Horizontal align="right">
           <Button
-            label={t`API Reference`}
+            label={t`API reference`}
             size="sm"
             variant="outline"
             icon={BookOpen01}
@@ -386,7 +386,7 @@ export function APIKeysPage() {
             <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div className="flex max-w-2xl flex-col gap-1">
                 <Page.H variant="h3">
-                  <Trans>Dust API Keys</Trans>
+                  <Trans>Dust API keys</Trans>
                 </Page.H>
                 <Page.P variant="secondary">
                   <Trans>

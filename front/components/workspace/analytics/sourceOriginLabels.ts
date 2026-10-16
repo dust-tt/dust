@@ -16,7 +16,7 @@ const SOURCE_ORIGIN_MESSAGES: Partial<
   wakeup: msg`Wake-up`,
   onboarding_conversation: msg`Onboarding`,
   analytics_panel: msg`Analytics panel`,
-  project_kickoff: msg`Pod Kickoff`,
+  project_kickoff: msg`Pod kickoff`,
 };
 
 export function getSourceOriginLabel(

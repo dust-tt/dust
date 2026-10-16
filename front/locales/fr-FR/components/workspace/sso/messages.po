@@ -30,11 +30,11 @@ msgid "Activate"
 msgstr "Activer"
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
-msgid "New members will need to be invited in order to gain access to your Dust Workspace."
+msgid "New members will need to be invited in order to gain access to your Dust workspace."
 msgstr "Les nouveaux membres devront être invités pour accéder à votre workspace Dust."
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
-msgid "Anyone with a <0>{domainList}</0> email will have access to your Dust Workspace."
+msgid "Anyone with a <0>{domainList}</0> email will have access to your Dust workspace."
 msgstr "Toute personne disposant d’une adresse e-mail <0>{domainList}</0> aura accès à votre workspace Dust."
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
@@ -68,7 +68,7 @@ msgid "Joining the workspace"
 msgstr "Rejoindre le workspace"
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
-msgid "Auto-join Workspace"
+msgid "Auto-join workspace"
 msgstr "Adhésion automatique au workspace"
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
@@ -120,7 +120,7 @@ msgid "Save"
 msgstr "Enregistrer"
 
 #: front/components/workspace/sso/Toggle.tsx
-msgid "Enable Single Sign On Enforcement"
+msgid "Enable Single Sign-On enforcement"
 msgstr "Activer l’obligation d’authentification unique"
 
 #: front/components/workspace/sso/Toggle.tsx
@@ -128,20 +128,16 @@ msgid "By enforcing SSO, access through social media logins will be discontinued
 msgstr "En imposant le SSO, la connexion via les réseaux sociaux ne sera plus possible. Vous serez redirigé vers le portail SSO pour vous connecter. Notez que ce changement obligera tous les utilisateurs à se déconnecter puis à se reconnecter via le SSO."
 
 #: front/components/workspace/sso/Toggle.tsx
-msgid "Enforce Single Sign On"
+msgid "Enforce Single Sign-On"
 msgstr "Imposer l’authentification unique"
 
 #: front/components/workspace/sso/Toggle.tsx
-msgid "Disable Single Sign On Enforcement"
+msgid "Disable Single Sign-On enforcement"
 msgstr "Désactiver l’obligation d’authentification unique"
 
 #: front/components/workspace/sso/Toggle.tsx
 msgid "By disabling SSO enforcement, users will have the flexibility to login with social media."
 msgstr "En désactivant l’obligation SSO, les utilisateurs pourront se connecter via les réseaux sociaux."
-
-#: front/components/workspace/sso/Toggle.tsx
-msgid "Disable Single Sign-On Enforcement"
-msgstr "Désactiver l’obligation d’authentification unique"
 
 #: front/components/workspace/sso/Toggle.tsx
 msgid "Failed to enforce sso on workspace."
@@ -160,7 +156,7 @@ msgid "Enabled"
 msgstr "Activée"
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Manage your enterprise Identity Provider (IdP) settings and user provisioning via WorkOS."
+msgid "Manage your enterprise identity provider (IdP) settings and user provisioning via WorkOS."
 msgstr "Gérez les paramètres de votre fournisseur d’identité (IdP) d’entreprise et le provisionnement des utilisateurs via WorkOS."
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
@@ -192,7 +188,7 @@ msgid "You cannot enable SSO with the free plan. Upgrade your plan to access SSO
 msgstr "Vous ne pouvez pas activer le SSO avec le forfait gratuit. Passez à un forfait supérieur pour accéder aux fonctionnalités SSO."
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx
-msgid "Disable {connectionType} Single Sign On"
+msgid "Disable {connectionType} Single Sign-On"
 msgstr "Désactiver l’authentification unique {connectionType}"
 
 #: front/components/workspace/sso/WorkOSSSOConnection.tsx

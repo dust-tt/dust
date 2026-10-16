@@ -23,7 +23,7 @@ msgid "Multiple private spaces"
 msgstr "Plusieurs espaces privés"
 
 #: front/components/plans/PlansTables.tsx
-msgid "Flexible payment options (SEPA, Credit Card)"
+msgid "Flexible payment options (SEPA, credit card)"
 msgstr "Options de paiement flexibles (SEPA, carte bancaire)"
 
 #: front/components/plans/PlansTables.tsx
@@ -45,11 +45,11 @@ msgstr "Connexions (GitHub, Google Drive, Notion, Slack…)"
 
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgid "Native integrations (Zendesk, Slack, Chrome extension)"
 msgstr "Intégrations natives (Zendesk, Slack, extension Chrome)"
 
 #: front/components/plans/PlansTables.tsx
-msgid "Privacy and Data Security (SOC2, Zero Data Retention)"
+msgid "Privacy and data security (SOC2, Zero Data Retention)"
 msgstr "Confidentialité et sécurité des données (SOC2, Zero Data Retention)"
 
 #: front/components/plans/PlansTables.tsx
@@ -86,15 +86,15 @@ msgstr "Commencer"
 
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Enterprise (Seat-based)"
+msgid "Enterprise (seat-based)"
 msgstr "Enterprise (par siège)"
 
 #: front/components/plans/ProPlansTable.tsx
-msgid "Monthly Billing"
+msgid "Monthly billing"
 msgstr "Facturation mensuelle"
 
 #: front/components/plans/ProPlansTable.tsx
-msgid "Yearly Billing"
+msgid "Yearly billing"
 msgstr "Facturation annuelle"
 
 #: front/components/plans/SubscriptionPlanCards.tsx
@@ -142,7 +142,7 @@ msgid "User provisioning (SCIM)"
 msgstr "Provisionnement des utilisateurs (SCIM)"
 
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Flexible billing options (SEPA, Credit Card)"
+msgid "Flexible billing options (SEPA, credit card)"
 msgstr "Options de facturation flexibles (SEPA, carte bancaire)"
 
 #: front/components/plans/SubscriptionPlanCards.tsx
@@ -162,7 +162,7 @@ msgid "per user"
 msgstr "par utilisateur"
 
 #: front/components/plans/SubscriptionPlanCards.tsx
-msgid "Subscribe to Enterprise (Seat-based)"
+msgid "Subscribe to Enterprise (seat-based)"
 msgstr "S’abonner à Enterprise (par siège)"
 
 #: front/components/plans/SubscriptionPlanCards.tsx

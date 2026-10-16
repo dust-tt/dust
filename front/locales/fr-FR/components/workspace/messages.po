@@ -96,7 +96,7 @@ msgid "Archive them"
 msgstr "Les archiver"
 
 #: front/components/workspace/AuditLogsSection.tsx
-msgid "Audit Logs"
+msgid "Audit logs"
 msgstr "Journaux d’audit"
 
 #: front/components/workspace/AuditLogsSection.tsx
@@ -104,11 +104,11 @@ msgid "View workspace activity logs or configure export to your security informa
 msgstr "Consultez les journaux d’activité du workspace ou configurez leur export vers votre système de gestion des informations et des événements de sécurité (SIEM)."
 
 #: front/components/workspace/AuditLogsSection.tsx
-msgid "View Logs"
+msgid "View logs"
 msgstr "Voir les journaux"
 
 #: front/components/workspace/AuditLogsSection.tsx
-msgid "Configure Export"
+msgid "Configure export"
 msgstr "Configurer l’export"
 
 #: front/components/workspace/BulkChangeSeatModal.tsx
@@ -263,7 +263,7 @@ msgid "Try again"
 msgstr "Réessayer"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Have a coupon code? Enter it below to add free credits to your Workspace Credits Pool."
+msgid "Have a coupon code? Enter it below to add free credits to your workspace credits pool."
 msgstr "Vous avez un code de coupon ? Saisissez-le ci-dessous pour ajouter des crédits gratuits à la réserve de crédits de votre workspace."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -283,15 +283,15 @@ msgid "Coupon"
 msgstr "Coupon"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Current Credits Pool"
+msgid "Current credits pool"
 msgstr "Réserve de crédits actuelle"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Bonus Credits"
+msgid "Bonus credits"
 msgstr "Crédits bonus"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "New Credits Pool"
+msgid "New credits pool"
 msgstr "Nouvelle réserve de crédits"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -344,7 +344,7 @@ msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support<
 msgstr "Le montant dépasse la limite de {maxAmountFormatted}. <0>Contactez le support</0>."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Added Credits"
+msgid "Added credits"
 msgstr "Crédits ajoutés"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
@@ -713,7 +713,7 @@ msgid "Type"
 msgstr "Type"
 
 #: front/components/workspace/CreditsList.tsx
-msgid "Initial Amount"
+msgid "Initial amount"
 msgstr "Montant initial"
 
 #: front/components/workspace/CreditsList.tsx
@@ -725,7 +725,7 @@ msgid "Remaining"
 msgstr "Restant"
 
 #: front/components/workspace/CreditsList.tsx
-msgid "Expiration Date"
+msgid "Expiration date"
 msgstr "Date d’expiration"
 
 #: front/components/workspace/CreditsList.tsx
@@ -802,7 +802,7 @@ msgid "View groups"
 msgstr "Voir les groupes"
 
 #: front/components/workspace/DirectorySync.tsx
-msgid "Workspace Groups"
+msgid "Workspace groups"
 msgstr "Groupes du workspace"
 
 #: front/components/workspace/DirectorySync.tsx
@@ -974,7 +974,7 @@ msgid "Group limits"
 msgstr "Limites des groupes"
 
 #: front/components/workspace/ExtensionMcpToolsSection.tsx
-msgid "Browser Extension Tools"
+msgid "Browser extension tools"
 msgstr "Outils de l’extension de navigateur"
 
 #: front/components/workspace/ExtensionMcpToolsSection.tsx
@@ -1271,7 +1271,7 @@ msgid "Reset schedule:"
 msgstr "Calendrier de réinitialisation :"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "Fair Usage Credits"
+msgid "Fair usage credits"
 msgstr "Crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
@@ -1389,15 +1389,15 @@ msgid "Select a tier to see the models and reasoning efforts it includes."
 msgstr "Sélectionnez un niveau pour voir les modèles et les niveaux d’effort qu’il inclut."
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
-msgid "By Agent"
+msgid "By agent"
 msgstr "Par agent"
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
-msgid "By Source"
+msgid "By source"
 msgstr "Par source"
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
-msgid "By API Key"
+msgid "By API key"
 msgstr "Par clé API"
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
@@ -1707,7 +1707,7 @@ msgid "Requests"
 msgstr "Demandes"
 
 #: front/components/workspace/WorkspaceAccessPanel.tsx
-msgid "Domain Verification"
+msgid "Domain verification"
 msgstr "Vérification de domaine"
 
 #: front/components/workspace/WorkspaceAccessPanel.tsx
@@ -1715,11 +1715,11 @@ msgid "Verify your company domains to enable Single Sign-On (SSO), automatic wor
 msgstr "Vérifiez les domaines de votre entreprise pour activer l’authentification unique (SSO), l’inscription automatique des membres de votre équipe au workspace et les connexions sécurisées à vos serveurs MCP internes."
 
 #: front/components/workspace/WorkspaceAccessPanel.tsx
-msgid "Add Domain"
+msgid "Add domain"
 msgstr "Ajouter un domaine"
 
 #: front/components/workspace/WorkspaceAccessPanel.tsx
-msgid "Delete Domain"
+msgid "Delete domain"
 msgstr "Supprimer le domaine"
 
 #: front/components/workspace/WorkspaceAccessPanel.tsx
@@ -1753,10 +1753,6 @@ msgstr "Vérifié"
 #: front/components/workspace/WorkspaceAccessPanel.tsx
 msgid "Failed"
 msgstr "Échec"
-
-#: front/components/workspace/WorkspaceAccessPanel.tsx
-msgid "Delete domain"
-msgstr "Supprimer le domaine"
 
 #: front/components/workspace/WorkspaceCreditPoolCards.tsx
 msgid "Day {elapsedDays}/{totalDays}"
@@ -1799,7 +1795,7 @@ msgid "An error occurred while loading past-cycle consumption."
 msgstr "Une erreur s’est produite lors du chargement de la consommation des cycles précédents."
 
 #: front/components/workspace/WorkspaceCreditPoolCards.tsx
-msgid "Failed to load Workspace Credits Pool"
+msgid "Failed to load workspace credits pool"
 msgstr "Impossible de charger la réserve de crédits du workspace"
 
 #: front/components/workspace/WorkspaceCreditPoolCards.tsx

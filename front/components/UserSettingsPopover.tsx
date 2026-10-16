@@ -260,7 +260,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   if (isUserLoading || isMembersLoading) {
     return (
-      <SectionContent title={t`Personal Information`}>
+      <SectionContent title={t`Personal information`}>
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
@@ -270,7 +270,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   return (
     <SectionContent
-      title={t`Personal Information`}
+      title={t`Personal information`}
       description={t`How you appear to other members of the workspace`}
       footer={
         <Button
@@ -945,7 +945,7 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
           <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
             <div className="flex flex-col gap-1">
               <span className="heading-base text-foreground">
-                <Trans>Enable Memory</Trans>
+                <Trans>Enable memory</Trans>
               </span>
               <span className="copy-sm text-muted-foreground">
                 <Trans>
@@ -996,7 +996,7 @@ const NAV_ITEMS: Array<{
   icon: React.ComponentType;
   label: MessageDescriptor;
 }> = [
-  { section: "personal", icon: User01, label: msg`Personal Information` },
+  { section: "personal", icon: User01, label: msg`Personal information` },
   { section: "customization", icon: Settings01, label: msg`Customization` },
   { section: "memory", icon: Brain, label: msg`Memory` },
   { section: "notifications", icon: Bell01, label: msg`Notifications` },

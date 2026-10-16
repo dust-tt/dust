@@ -47,7 +47,7 @@ describe("ConsumptionConversationAttribution", () => {
       screen.getByRole("columnheader", { name: "Conversation" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Total Credits" })
+      screen.getByRole("columnheader", { name: "Total credits" })
     ).toBeInTheDocument();
     expect(screen.getByText("Quarterly report")).toHaveClass("text-sm");
 

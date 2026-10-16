@@ -46,8 +46,8 @@ msgid "Use descriptions"
 msgstr "Use descriptions"
 
 #: front/components/data_source/BigQueryOptionsView.tsx
-msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to Agents."
-msgstr "Your tables and columns description set in BigQuery will be used to describe the schemas to Agents."
+msgid "Your tables and columns description set in BigQuery will be used to describe the schemas to agents."
+msgstr "Your tables and columns description set in BigQuery will be used to describe the schemas to agents."
 
 #: front/components/data_source/BigQueryOptionsView.tsx
 msgid "Maximum bytes billed"
@@ -151,8 +151,8 @@ msgid "Important"
 msgstr "Important"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "<0>Editing</0> can break the existing data structure in Dust and Agents using them."
-msgstr "<0>Editing</0> can break the existing data structure in Dust and Agents using them."
+msgid "<0>Editing</0> can break the existing data structure in Dust and agents using them."
+msgstr "<0>Editing</0> can break the existing data structure in Dust and agents using them."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Read our <0>Playbook</0>."
@@ -175,8 +175,8 @@ msgid "You are not the owner of this connection."
 msgstr "You are not the owner of this connection."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and Agents using them."
-msgstr "Editing permission rights with a different account will likely break the existing data structure in Dust and Agents using them."
+msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and agents using them."
+msgstr "Editing permission rights with a different account will likely break the existing data structure in Dust and agents using them."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Edit permissions"
@@ -230,8 +230,8 @@ msgid "Deleting {connectorName} connection"
 msgstr "Deleting {connectorName} connection"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "<0>Deleting</0> will break Agents using this data."
-msgstr "<0>Deleting</0> will break Agents using this data."
+msgid "<0>Deleting</0> will break agents using this data."
+msgstr "<0>Deleting</0> will break agents using this data."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Connection removal requires support"

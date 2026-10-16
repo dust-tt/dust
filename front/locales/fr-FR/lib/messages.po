@@ -1514,8 +1514,8 @@ msgid "Dust indexes pages in selected global spaces without any view restriction
 msgstr "Dust indexe les pages des espaces globaux sélectionnés qui n’ont aucune restriction de lecture. Si une page, ou l’une de ses pages parentes, a des restrictions de lecture, elle ne sera pas indexée."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another Confluence Domain.\n"
-"Please contact us at support@dust.tt if you initially selected the wrong Domain."
+msgid "You cannot select another Confluence domain.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong domain."
 msgstr "Vous ne pouvez pas sélectionner un autre domaine Confluence.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné le mauvais domaine au départ."
 
@@ -1528,8 +1528,8 @@ msgid "External files and content behind links are not indexed."
 msgstr "Les fichiers externes et le contenu derrière les liens ne sont pas indexés."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another Notion Workspace.\n"
-"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgid "You cannot select another Notion workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong workspace."
 msgstr "Vous ne pouvez pas sélectionner un autre workspace Notion.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné le mauvais workspace au départ."
 
@@ -1542,7 +1542,7 @@ msgid "Files with empty text content or with more than 750KB of extracted text a
 msgstr "Les fichiers sans contenu texte ou avec plus de 750 Ko de texte extrait sont ignorés. Par défaut, les fichiers PDF ne sont pas indexés. Écrivez-nous à support@dust.tt pour activer l’indexation des PDF."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another Google Drive Domain.\n"
+msgid "You cannot select another Google Drive domain.\n"
 "Please contact us at support@dust.tt if you initially selected a wrong shared Drive."
 msgstr "Vous ne pouvez pas sélectionner un autre domaine Google Drive.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné le mauvais Drive partagé au départ."
@@ -1556,8 +1556,8 @@ msgid "When enabled, PDF documents from your Google Drive will be synced and pro
 msgstr "Une fois l’option activée, les documents PDF de votre Google Drive seront synchronisés et traités par Dust."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another Slack Team.\n"
-"Please contact us at support@dust.tt if you initially selected the wrong Team."
+msgid "You cannot select another Slack team.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong team."
 msgstr "Vous ne pouvez pas sélectionner une autre équipe Slack.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné la mauvaise équipe au départ."
 
@@ -1574,8 +1574,8 @@ msgid "Dust gathers data from issues, discussions, and pull-requests (top-level 
 msgstr "Dust collecte les données des issues, des discussions et des pull requests (discussion principale, mais pas les commentaires dans le code). Votre code n’est synchronisé que si l’option est activée. Pour l’instant, Dust ne peut pas synchroniser les dépôts de plus de 10 Go, ni les fichiers de plus de 4 Mo. Contactez support@dust.tt si vous devez synchroniser des dépôts plus volumineux."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another GitHub Organization.\n"
-"Please contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app."
+msgid "You cannot select another GitHub organization.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong organization or if you completely uninstalled the GitHub app."
 msgstr "Vous ne pouvez pas sélectionner une autre organisation GitHub.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné la mauvaise organisation au départ ou si vous avez complètement désinstallé l’application GitHub."
 
@@ -1588,8 +1588,8 @@ msgid "Dust will index only the conversations from the selected Teams that were 
 msgstr "Dust indexera uniquement les conversations des équipes sélectionnées qui ont été ouvertes au cours des 90 derniers jours et terminées (marquées comme fermées). Pour les données du centre d’aide, Dust indexera chaque article publié dans une collection sélectionnée."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another Intercom Workspace.\n"
-"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgid "You cannot select another Intercom workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong workspace."
 msgstr "Vous ne pouvez pas sélectionner un autre workspace Intercom.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné le mauvais workspace au départ."
 
@@ -1626,7 +1626,7 @@ msgid "Bot configuration"
 msgstr "Configuration du bot"
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot change the URL. Please add a new Public URL instead."
+msgid "You cannot change the URL. Please add a new public URL instead."
 msgstr "Vous ne pouvez pas modifier l’URL. Ajoutez plutôt une nouvelle URL publique."
 
 #: front/lib/connector_providers_ui.ts
@@ -1642,8 +1642,8 @@ msgid "Dust will index the content accessible to the authorized account only. At
 msgstr "Dust indexera uniquement le contenu accessible au compte autorisé. Les pièces jointes ne sont pas indexées."
 
 #: front/lib/connector_providers_ui.ts
-msgid "You cannot select another Zendesk Workspace.\n"
-"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgid "You cannot select another Zendesk workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong workspace."
 msgstr "Vous ne pouvez pas sélectionner un autre workspace Zendesk.\n"
 "Contactez-nous à support@dust.tt si vous avez sélectionné le mauvais workspace au départ."
 

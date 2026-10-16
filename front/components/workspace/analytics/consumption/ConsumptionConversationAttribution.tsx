@@ -50,7 +50,7 @@ export function ConsumptionConversationAttribution({
       },
       {
         id: "totalCredits",
-        header: t`Total Credits`,
+        header: t`Total credits`,
         cell: ({ row }) => <CreditsCell credits={row.original.totalCredits} />,
         enableSorting: false,
         meta: {

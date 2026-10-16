@@ -255,7 +255,7 @@ function AgentConsumptionSummaryView({
       >
         <SummaryCard
           className="h-20"
-          label={t`Active Users`}
+          label={t`Active users`}
           value={formatNumber(overview.members.active)}
           hint={null}
         />

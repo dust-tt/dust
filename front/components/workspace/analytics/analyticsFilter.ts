@@ -18,7 +18,7 @@ export const SCOPE_DIMENSION_LABEL: Record<AnalyticsScopeDimension, string> = {
   agent: "Agent",
   user: "User",
   origin: "Source",
-  api_key: "API Key",
+  api_key: "API key",
   tag: "Tag",
   model: "Model",
 };

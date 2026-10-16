@@ -24,7 +24,7 @@ export function TrialPage() {
     t`Advanced models (GPT-5, Claude..)`,
     t`Custom agents which can execute actions`,
     t`Connections (GitHub, Google Drive, Notion, Slack...)`,
-    t`Native integrations (Zendesk, Slack, Chrome Extension)`,
+    t`Native integrations (Zendesk, Slack, Chrome extension)`,
     t`100 free messages`,
   ];
 

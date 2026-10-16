@@ -47,8 +47,8 @@ msgid "Profile"
 msgstr "Profile"
 
 #: front/components/agent_builder/settings/avatar_picker/AgentBuilderEmojiPicker.tsx
-msgid "Pick an Emoji"
-msgstr "Pick an Emoji"
+msgid "Pick an emoji"
+msgstr "Pick an emoji"
 
 #: front/components/agent_builder/settings/avatar_picker/AgentBuilderEmojiPicker.tsx
 msgid "Pick a color"

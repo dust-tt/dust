@@ -253,7 +253,7 @@ msgid "Learn about Dust"
 msgstr "Découvrir Dust"
 
 #: front/components/UserMenu.tsx
-msgid "Guides & Documentation"
+msgid "Guides & documentation"
 msgstr "Guides et documentation"
 
 #: front/components/UserMenu.tsx
@@ -297,7 +297,7 @@ msgid "Account"
 msgstr "Compte"
 
 #: front/components/UserMenu.tsx
-msgid "Personal Settings"
+msgid "Personal settings"
 msgstr "Paramètres personnels"
 
 #: front/components/UserMenu.tsx
@@ -313,7 +313,7 @@ msgid "Sign out"
 msgstr "Se déconnecter"
 
 #: front/components/UserMenu.tsx
-msgid "Dev Tools"
+msgid "Dev tools"
 msgstr "Outils de dev"
 
 #: front/components/UserMenu.tsx
@@ -321,31 +321,31 @@ msgid "Debug conversation"
 msgstr "Déboguer la conversation"
 
 #: front/components/UserMenu.tsx
-msgid "Become Admin"
+msgid "Become admin"
 msgstr "Devenir administrateur"
 
 #: front/components/UserMenu.tsx
-msgid "Become Manager"
+msgid "Become manager"
 msgstr "Devenir manager"
 
 #: front/components/UserMenu.tsx
-msgid "Become User"
+msgid "Become user"
 msgstr "Devenir utilisateur"
 
 #: front/components/UserMenu.tsx
-msgid "Disable Privacy Mask"
+msgid "Disable privacy mask"
 msgstr "Désactiver le masque de confidentialité"
 
 #: front/components/UserMenu.tsx
-msgid "Enable Privacy Mask"
+msgid "Enable privacy mask"
 msgstr "Activer le masque de confidentialité"
 
 #: front/components/UserMenu.tsx
-msgid "Disable Dev Console"
+msgid "Disable dev console"
 msgstr "Désactiver la console de dev"
 
 #: front/components/UserMenu.tsx
-msgid "Enable Dev Console"
+msgid "Enable dev console"
 msgstr "Activer la console de dev"
 
 #: front/components/UserMenu.tsx
@@ -365,7 +365,7 @@ msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters."
 msgstr "Les pronoms ne doivent pas dépasser {MAX_USER_PRONOUNS_LENGTH} caractères."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Personal Information"
+msgid "Personal information"
 msgstr "Informations personnelles"
 
 #: front/components/UserSettingsPopover.tsx
@@ -579,7 +579,7 @@ msgid "Memory"
 msgstr "Mémoire"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Enable Memory"
+msgid "Enable memory"
 msgstr "Activer la mémoire"
 
 #: front/components/UserSettingsPopover.tsx

@@ -26,7 +26,7 @@ msgid "Version"
 msgstr ""
 
 #: front/components/agent_builder/observability/charts/FeedbackDistributionChart.tsx
-msgid "Feedback Trends"
+msgid "Feedback trends"
 msgstr ""
 
 #: front/components/agent_builder/observability/charts/FeedbackDistributionChart.tsx

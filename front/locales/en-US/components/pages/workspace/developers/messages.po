@@ -42,8 +42,8 @@ msgid "{revokedKeyCount, plural, one {{revokedKeyCountLabel} revoked} other {{re
 msgstr "{revokedKeyCount, plural, one {{revokedKeyCountLabel} revoked} other {{revokedKeyCountLabel} revoked}}"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
-msgid "API Key Created"
-msgstr "API Key Created"
+msgid "API key created"
+msgstr "API key created"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 msgid "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API."
@@ -72,14 +72,14 @@ msgstr "Error updating credit cap"
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "API Reference"
-msgstr "API Reference"
+msgid "API reference"
+msgstr "API reference"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Dust API Keys"
-msgstr "Dust API Keys"
+msgid "Dust API keys"
+msgstr "Dust API keys"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 msgid "Create and manage keys to access the Dust API, track their usage, and control their monthly spend."
@@ -138,8 +138,8 @@ msgid "Pay-as-you-go"
 msgstr "Pay-as-you-go"
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
-msgid "Programmatic Usage"
-msgstr "Programmatic Usage"
+msgid "Programmatic usage"
+msgstr "Programmatic usage"
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
 msgid "Monitor usage and credits for programmatic usage (API keys, automated workflows, etc.). Learn more in the <0>usage documentation</0>."
@@ -198,16 +198,16 @@ msgid "Active credits for programmatic usage. Credits invoices are sent by email
 msgstr "Active credits for programmatic usage. Credits invoices are sent by email at time of purchase."
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
-msgid "Model Providers"
-msgstr "Model Providers"
+msgid "Model providers"
+msgstr "Model providers"
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "Model providers available to your Dust apps."
 msgstr "Model providers available to your Dust apps."
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
-msgid "Service Providers"
-msgstr "Service Providers"
+msgid "Service providers"
+msgstr "Service providers"
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "Service providers enable your Dust Apps to query external data or write to external services."
@@ -222,8 +222,8 @@ msgid "disabled"
 msgstr "disabled"
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
-msgid "API Key:"
-msgstr "API Key:"
+msgid "API key:"
+msgstr "API key:"
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
@@ -236,8 +236,8 @@ msgstr "Set up"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Developer Secrets"
-msgstr "Developer Secrets"
+msgid "Developer secrets"
+msgstr "Developer secrets"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Secrets usable in Dust apps or MCP servers to safely store sensitive data."
@@ -280,12 +280,12 @@ msgid "Delete"
 msgstr "Delete"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
-msgid "Update Developer Secret"
-msgstr "Update Developer Secret"
+msgid "Update developer secret"
+msgstr "Update developer secret"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
-msgid "New Developer Secret"
-msgstr "New Developer Secret"
+msgid "New developer secret"
+msgstr "New developer secret"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Secret names must be alphanumeric and underscore characters only."
@@ -313,8 +313,8 @@ msgstr "Search secrets"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Create Secret"
-msgstr "Create Secret"
+msgid "Create secret"
+msgstr "Create secret"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Name"
@@ -345,8 +345,8 @@ msgid "keys active credits used programmatic"
 msgstr "keys active credits used programmatic"
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Create API Key"
-msgstr "Create API Key"
+msgid "Create API key"
+msgstr "Create API key"
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
 msgid "new key scope spaces monthly cap"

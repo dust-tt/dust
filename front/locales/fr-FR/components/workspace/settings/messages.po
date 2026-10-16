@@ -212,19 +212,19 @@ msgid "Restrict sharing"
 msgstr "Restreindre le partage"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Slack Bot"
+msgid "Slack bot"
 msgstr "Bot Slack"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Whether the Dust Bot can be used in Slack"
+msgid "Whether the Dust bot can be used in Slack"
 msgstr "Détermine si le bot Dust peut être utilisé dans Slack"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Microsoft Teams Bot"
+msgid "Microsoft Teams bot"
 msgstr "Bot Microsoft Teams"
 
 #: front/components/workspace/settings/MessagingAppToggles.tsx
-msgid "Whether the Dust Bot can be used in Microsoft Teams"
+msgid "Whether the Dust bot can be used in Microsoft Teams"
 msgstr "Détermine si le bot Dust peut être utilisé dans Microsoft Teams"
 
 #: front/components/workspace/settings/OpenPodsPolicy.tsx
@@ -316,11 +316,11 @@ msgid "Enabled"
 msgstr "Activée"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Current Spend (credits)"
+msgid "Current spend (credits)"
 msgstr "Dépenses actuelles (crédits)"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Current Spend ($)"
+msgid "Current spend ($)"
 msgstr "Dépenses actuelles ($)"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
@@ -328,7 +328,7 @@ msgid "Cap"
 msgstr "Plafond"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Lock State"
+msgid "Lock state"
 msgstr "Verrouillage"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
@@ -432,7 +432,7 @@ msgid "Failed to update workspace."
 msgstr "Impossible de mettre à jour le workspace."
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
-msgid "Workspace Name"
+msgid "Workspace name"
 msgstr "Nom du workspace"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
@@ -440,16 +440,12 @@ msgid "Edit"
 msgstr "Modifier"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
-msgid "Edit Workspace Name"
+msgid "Edit workspace name"
 msgstr "Modifier le nom du workspace"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Think GitHub repository names, short and memorable."
 msgstr "Pensez aux noms de dépôts GitHub : courts et faciles à retenir."
-
-#: front/components/workspace/settings/WorkspaceNameEditor.tsx
-msgid "Workspace name"
-msgstr "Nom du workspace"
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Saving..."

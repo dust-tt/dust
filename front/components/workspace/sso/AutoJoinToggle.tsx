@@ -48,12 +48,12 @@ function DomainAutoJoinModal({
     .map((d) => `"@${d.domain}"`)
     .join(", ");
   const description = domainAutoJoinEnabled ? (
-    t`New members will need to be invited in order to gain access to your Dust Workspace.`
+    t`New members will need to be invited in order to gain access to your Dust workspace.`
   ) : (
     <span>
       <Trans>
         Anyone with a <span className="font-bold">{domainList}</span> email will
-        have access to your Dust Workspace.
+        have access to your Dust workspace.
       </Trans>
     </span>
   );
@@ -175,7 +175,7 @@ export function AutoJoinToggle({
       <Page.Vertical gap="sm" align="stretch">
         <SettingsList title={<Trans>Joining the workspace</Trans>}>
           <SettingsList.Row
-            title={t`Auto-join Workspace`}
+            title={t`Auto-join workspace`}
             description={
               domainCount > 0
                 ? t`${plural(domainCount, {

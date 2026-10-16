@@ -795,7 +795,7 @@ msgid "Need help? Check out our <0>guide</0>."
 msgstr ""
 
 #: front/components/spaces/SpacePageHeaders.tsx
-msgid "Here you can add new trigger sources to your workspace. Once created, those sources can be used in the Agent Builder to trigger Agents."
+msgid "Here you can add new trigger sources to your workspace. Once created, those sources can be used in the Agent Builder to trigger agents."
 msgstr ""
 
 #: front/components/spaces/SpaceResourcesList.tsx

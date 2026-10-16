@@ -55,7 +55,7 @@ msgid "Update role"
 msgstr "Modifier le rôle"
 
 #: front/components/members/InvitationsList.tsx
-msgid "Invitation Email"
+msgid "Invitation email"
 msgstr "E-mail de l’invitation"
 
 #: front/components/members/InvitationsList.tsx
@@ -197,27 +197,27 @@ msgid "Unregistered"
 msgstr "Non inscrit"
 
 #: front/components/members/MembersList.tsx
-msgid "Active (Provisioned)"
+msgid "Active (provisioned)"
 msgstr "Actif (provisionné)"
 
 #: front/components/members/MembersList.tsx
-msgid "Unregistered (Provisioned)"
+msgid "Unregistered (provisioned)"
 msgstr "Non inscrit (provisionné)"
 
 #: front/components/members/MembersList.tsx
-msgid "Active (Invited)"
+msgid "Active (invited)"
 msgstr "Actif (invité)"
 
 #: front/components/members/MembersList.tsx
-msgid "Unregistered (Invited)"
+msgid "Unregistered (invited)"
 msgstr "Non inscrit (invité)"
 
 #: front/components/members/MembersList.tsx
-msgid "Active (Auto-joined)"
+msgid "Active (auto-joined)"
 msgstr "Actif (adhésion automatique)"
 
 #: front/components/members/MembersList.tsx
-msgid "Unregistered (Auto-joined)"
+msgid "Unregistered (auto-joined)"
 msgstr "Non inscrit (adhésion automatique)"
 
 #: front/components/members/MembersList.tsx

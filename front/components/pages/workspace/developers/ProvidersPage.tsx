@@ -99,7 +99,7 @@ export function Providers({ owner }: ProvidersProps) {
           >
             <div>
               <Page.SectionHeader
-                title={t`Model Providers`}
+                title={t`Model providers`}
                 description={t`Model providers available to your Dust apps.`}
               />
               <ul role="list" className="divide-y divide-separator pt-4">
@@ -124,7 +124,7 @@ export function Providers({ owner }: ProvidersProps) {
           >
             <div>
               <Page.SectionHeader
-                title={t`Service Providers`}
+                title={t`Service providers`}
                 description={t`Service providers enable your Dust Apps to query external data or write to external services.`}
               />
               <ul role="list" className="divide-y divide-separator pt-4">
@@ -185,7 +185,7 @@ function ProviderListItem({
           {apiKey && (
             <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <span className="shrink-0">
-                <Trans>API Key:</Trans>
+                <Trans>API key:</Trans>
               </span>
               <div className="dd-privacy-mask max-w-72 truncate">
                 {redactString(apiKey, 4)}

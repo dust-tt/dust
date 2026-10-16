@@ -1055,12 +1055,12 @@ export function UsagePage() {
           {showConsumptionAnalytics ? (
             <div className="flex flex-col gap-4">
               <h2 className="heading-sm text-foreground">
-                <Trans>Credit Pool</Trans>
+                <Trans>Credit pool</Trans>
               </h2>
               <div className="flex flex-col gap-2">
                 {isOverviewLoading ? (
                   <div
-                    aria-label={t`Loading Credit Pool`}
+                    aria-label={t`Loading credit pool`}
                     className="flex flex-col gap-2"
                     role="status"
                   >
@@ -1079,12 +1079,12 @@ export function UsagePage() {
                   </div>
                 ) : isOverviewError ? (
                   <ContentMessage
-                    title={t`Failed to load Workspace Credit Pool`}
+                    title={t`Failed to load workspace credit pool`}
                     icon={AlertCircle}
                     variant="warning"
                   >
                     <Trans>
-                      An error occurred while loading your Workspace Credit Pool
+                      An error occurred while loading your workspace credit pool
                       data. Please refresh the page or contact support if the
                       issue persists.
                     </Trans>

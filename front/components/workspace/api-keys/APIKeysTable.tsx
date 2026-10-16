@@ -816,7 +816,7 @@ export function APIKeysTable({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           name="api-keys-search"
-          placeholder={t`Search API Key`}
+          placeholder={t`Search API key`}
           value={search}
           onChange={(value) => {
             setSearch(value);

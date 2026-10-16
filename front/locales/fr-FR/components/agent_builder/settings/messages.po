@@ -30,7 +30,7 @@ msgid "{editorsCount, plural, one {# editor} other {# editors}}"
 msgstr "{editorsCount, plural, one {# éditeur} other {# éditeurs}}"
 
 #: front/components/agent_builder/settings/AccessSection.tsx
-msgid "Editors & Access"
+msgid "Editors & access"
 msgstr "Éditeurs et accès"
 
 #: front/components/agent_builder/settings/AccessSection.tsx
@@ -147,7 +147,7 @@ msgid "Settings"
 msgstr "Paramètres"
 
 #: front/components/agent_builder/settings/CostManagementSection.tsx
-msgid "Cost Management"
+msgid "Cost management"
 msgstr "Gestion des coûts"
 
 #: front/components/agent_builder/settings/CostManagementSection.tsx
@@ -179,7 +179,7 @@ msgid "Open in Slack"
 msgstr "Ouvrir dans Slack"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
-msgid "Slack Channel Settings"
+msgid "Slack channel settings"
 msgstr "Paramètres des canaux Slack"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
@@ -191,7 +191,7 @@ msgid "Set this agent as the default agent on one or several of your Slack chann
 msgstr "Définissez cet agent comme agent par défaut sur un ou plusieurs de vos canaux Slack. Il répondra par défaut lorsque le bot Slack <0>@Dust</0> sera mentionné dans ces canaux. Les canaux privés dont vous êtes membre apparaissent ici une fois que vous avez ajouté l’outil Slack, connecté votre compte Slack personnel et invité <1>@Dust</1> dans le canal."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
-msgid "Admin Access Required"
+msgid "Admin access required"
 msgstr "Accès administrateur requis"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx

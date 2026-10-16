@@ -63,8 +63,8 @@ msgid "Get work done"
 msgstr "Get work done"
 
 #: src/components/ConversationListItem.tsx
-msgid "{mentionCount, plural, one {{mentions} Mention} other {{mentions} Mentions}}"
-msgstr "{mentionCount, plural, one {{mentions} Mention} other {{mentions} Mentions}}"
+msgid "{mentionCount, plural, one {{mentions} mention} other {{mentions} mentions}}"
+msgstr "{mentionCount, plural, one {{mentions} mention} other {{mentions} mentions}}"
 
 #: src/components/ConversationListItem.tsx
 msgctxt "follows the mention count, e.g. 2 Mentions in 5 unreads"
@@ -76,12 +76,12 @@ msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})"
 msgstr "({replyCount, plural, one {{replies} reply} other {{replies} replies}})"
 
 #: src/components/ConversationListItem.tsx
-msgid "{replyCount, plural, one {{replies} Reply} other {{replies} Replies}}"
-msgstr "{replyCount, plural, one {{replies} Reply} other {{replies} Replies}}"
+msgid "{replyCount, plural, one {{replies} reply} other {{replies} replies}}"
+msgstr "{replyCount, plural, one {{replies} reply} other {{replies} replies}}"
 
 #: src/components/ConversationListItem.tsx
-msgid "{unreadCount, plural, one {{unreads} Unread} other {{unreads} Unread}}"
-msgstr "{unreadCount, plural, one {{unreads} Unread} other {{unreads} Unread}}"
+msgid "{unreadCount, plural, one {{unreads} unread} other {{unreads} unread}}"
+msgstr "{unreadCount, plural, one {{unreads} unread} other {{unreads} unread}}"
 
 #: src/components/ConversationListItem.tsx
 msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})."
