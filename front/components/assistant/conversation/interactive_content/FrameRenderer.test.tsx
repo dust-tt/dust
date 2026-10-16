@@ -244,7 +244,7 @@ describe("FrameRenderer", () => {
     expect(screen.getByRole("tab", { name: "Edit" })).toBeInTheDocument();
   });
 
-  it("enables inline editing after the author enters edit mode", () => {
+  it("enables inline editing after a source writer enters edit mode", () => {
     render(
       <FrameRenderer
         conversation={conversation}
@@ -269,6 +269,27 @@ describe("FrameRenderer", () => {
       "aria-selected",
       "true"
     );
+  });
+
+  it("enables edit controls for a source writer without a conversation", () => {
+    render(
+      <FrameRenderer
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    expect(mocks.iframe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameId: "frame_1",
+        isEditable: true,
+        stagedEditMode: "preview",
+        onEditText: expect.any(Function),
+      })
+    );
+    expect(screen.getByRole("tab", { name: "Edit" })).toBeInTheDocument();
   });
 
   it("hides the edit mode toggle when the viewer cannot edit the Frame source", () => {
