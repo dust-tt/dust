@@ -52,6 +52,12 @@ struct Cli {
     mountpoint: PathBuf,
 }
 
+/**
+ * @cc [owner:fontanierh,label:product] drain-before-unmount
+ * On exit, `main` MUST unmount only after `drain` returns, so the kernel keeps serving the mount
+ * while acknowledged changes commit. If `drain` failed, `main` MUST still unmount, then exit with
+ * an error.
+ */
 fn main() -> Result<()> {
     let cli = Cli::parse();
     tracing_subscriber::fmt()
@@ -80,7 +86,7 @@ fn main() -> Result<()> {
         .spawn()?;
     tracing::info!(mountpoint = %cli.mountpoint.display(), "mounted");
 
-    runtime.block_on(serve(&remote, &session))?;
+    let served = runtime.block_on(serve(&remote, &session));
     let drained = runtime.block_on(drain(&fs));
     if session.guard.is_finished() {
         session.join()?;
@@ -88,6 +94,7 @@ fn main() -> Result<()> {
         session.umount_and_join()?;
     }
     tracing::info!(mountpoint = %cli.mountpoint.display(), "unmounted");
+    served?;
     drained.context("commit the last changes")
 }
 
@@ -124,8 +131,11 @@ fn read_session_key(path: &Path) -> Result<String> {
 }
 
 /// A channel to `endpoint`, over TLS with the system's root certificates for an `https` origin.
-/// Connecting and each request time out, so a server that stops answering fails kernel requests
-/// instead of holding them.
+/**
+ * @cc [owner:fontanierh,label:performance] requests-time-out
+ * Connecting and each request on the channel MUST time out, so a server that stops answering fails
+ * kernel requests instead of holding them.
+ */
 async fn connect(endpoint: &str) -> Result<Channel> {
     let mut endpoint = Endpoint::from_shared(endpoint.to_owned())?
         .connect_timeout(CONNECT_TIMEOUT)
@@ -144,8 +154,13 @@ async fn drain(_fs: &Fs) -> Result<()> {
 }
 
 /// Refreshes the session periodically until a SIGINT or SIGTERM, or until the filesystem is
-/// unmounted from outside (`fusermount3 -u`). A failed refresh is logged: kernel requests fail with
-/// `EACCES` once the session expires.
+/// unmounted from outside (`fusermount3 -u`). Kernel requests fail with `EACCES` once the session
+/// expires.
+/**
+ * @cc [owner:fontanierh,label:error-handling] refresh-keeps-serving
+ * A failed session refresh MUST be logged and MUST NOT end `serve`. Refreshes MUST happen at an
+ * interval well under the session's one-hour expiry, so several in a row can fail before it does.
+ */
 async fn serve(remote: &Remote, session: &fuser::BackgroundSession) -> Result<()> {
     let mut interrupt = signal(SignalKind::interrupt())?;
     let mut terminate = signal(SignalKind::terminate())?;
