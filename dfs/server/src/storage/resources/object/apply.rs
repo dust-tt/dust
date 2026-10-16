@@ -14,6 +14,8 @@ use crate::storage::{self, resources::session::SessionResource};
 #[path = "../../../../tests/resources/object/apply.rs"]
 mod tests;
 
+pub type ApplyGroup = (Vec<(usize, Operation)>, Vec<ObjectId>);
+
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;concurrency] object-apply-batches
@@ -102,10 +104,7 @@ impl ObjectResource {
      * request order and the unique union of its targets. Batches MUST follow their first
      * operation's order.
      */
-    #[allow(clippy::type_complexity)]
-    pub fn group_by_targets(
-        operations: Vec<Operation>,
-    ) -> Vec<(Vec<(usize, Operation)>, Vec<ObjectId>)> {
+    pub fn group_by_targets(operations: Vec<Operation>) -> Vec<ApplyGroup> {
         // Index both directions of the operation/target graph. For n operations with at most three
         // targets each, indexing takes expected O(n) time; all grouping bookkeeping uses O(n) memory.
         let targets_by_operation: Vec<_> =
