@@ -77,39 +77,53 @@ function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
 
 const RECOMMENDED_SUFFIX = "(Recommended)";
 
-// The recommended answer is shown by the button style, so its label drops the suffix.
-function getYesNoButton(option: UserQuestionOption) {
-  const isRecommended = option.label.endsWith(RECOMMENDED_SUFFIX);
-
-  return {
-    label: isRecommended
-      ? option.label.slice(0, -RECOMMENDED_SUFFIX.length).trimEnd()
-      : option.label,
-    isRecommended,
-  };
+interface YesNoButton {
+  optionIndex: number;
+  label: string;
+  isRecommended: boolean;
 }
 
-// Yes/no buttons answer with 1 and 2, and with Y and N when their labels are literally Yes and No.
+// The recommended answer is shown by the button style, so its label drops the suffix. As in
+// dialogs, it goes on the right.
+function getYesNoButtons(options: UserQuestionOption[]): YesNoButton[] {
+  const buttons = options.map((option, optionIndex) => {
+    const isRecommended = option.label.endsWith(RECOMMENDED_SUFFIX);
+
+    return {
+      optionIndex,
+      label: isRecommended
+        ? option.label.slice(0, -RECOMMENDED_SUFFIX.length).trimEnd()
+        : option.label,
+      isRecommended,
+    };
+  });
+
+  return [
+    ...buttons.filter((button) => !button.isRecommended),
+    ...buttons.filter((button) => button.isRecommended),
+  ];
+}
+
+// Yes/no buttons answer with 1 and 2 from left to right, and with Y and N when their labels are
+// literally Yes and No.
 function getYesNoShortcutIndex(
   key: string,
-  options: UserQuestionOption[]
+  buttons: YesNoButton[]
 ): number | null {
   if (key === "1" || key === "2") {
-    return Number(key) - 1;
+    return buttons[Number(key) - 1].optionIndex;
   }
 
-  const labels = options.map((option) =>
-    getYesNoButton(option).label.toLowerCase()
-  );
+  const labels = buttons.map((button) => button.label.toLowerCase());
   if (!labels.includes("yes") || !labels.includes("no")) {
     return null;
   }
 
   switch (key.toLowerCase()) {
     case "y":
-      return labels.indexOf("yes");
+      return buttons[labels.indexOf("yes")].optionIndex;
     case "n":
-      return labels.indexOf("no");
+      return buttons[labels.indexOf("no")].optionIndex;
     default:
       return null;
   }
@@ -360,7 +374,7 @@ export function UserAnswerRequired({
       setIsKeyboardNavigating(true);
       const yesNoShortcutIndex =
         layout === "yes_no"
-          ? getYesNoShortcutIndex(e.key, question.options)
+          ? getYesNoShortcutIndex(e.key, getYesNoButtons(question.options))
           : null;
       if (yesNoShortcutIndex !== null) {
         handleOptionClick(yesNoShortcutIndex);
@@ -495,21 +509,19 @@ export function UserAnswerRequired({
           )}
           {layout === "yes_no" && (
             <div className="grid grid-cols-2 gap-2">
-              {question.options.map((option, index) => {
-                const { label, isRecommended } = getYesNoButton(option);
-
-                return (
+              {getYesNoButtons(question.options).map(
+                ({ optionIndex, label, isRecommended }) => (
                   <Button
-                    key={index}
+                    key={optionIndex}
                     label={label}
                     variant={isRecommended ? "primary" : "outline"}
                     size="md"
                     className="w-full"
-                    onClick={() => handleOptionClick(index)}
+                    onClick={() => handleOptionClick(optionIndex)}
                     disabled={isSubmitting}
                   />
-                );
-              })}
+                )
+              )}
             </div>
           )}
           <OptionCard
