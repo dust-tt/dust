@@ -9,7 +9,7 @@ import type { PostFrameToolAuthorizationResponseBody } from "@app/types/api/fram
 import type { FrameToolCallPair } from "@app/types/api/frame_publication";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { Button, Chip, Spinner } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -28,6 +28,11 @@ interface ConsentToolRow {
   toolDisplayName: string;
   toolDescription: string | null;
   serverAvatar: ReactNode;
+  isNew: boolean;
+}
+
+function toolPairKey([server, tool]: FrameToolCallPair): string {
+  return `${server}\0${tool}`;
 }
 
 /**
@@ -44,13 +49,24 @@ export function FrameToolConsentGate({
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { frameName, lastPublisherName } = useFramePermissions({
-    owner,
-    frameId,
-  });
+  const { frameName, lastPublisherName, authorizedTools } = useFramePermissions(
+    {
+      owner,
+      frameId,
+    }
+  );
 
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromMemberSpaces(owner);
+
+  const authorizedKeys = useMemo(
+    () => new Set(authorizedTools.map(toolPairKey)),
+    [authorizedTools]
+  );
+
+  // Only call out "New" when the viewer already approved some tools — otherwise
+  // every row would be new and the chip adds noise.
+  const showNewChips = authorizedTools.length > 0;
 
   const toolRows = useMemo((): ConsentToolRow[] => {
     return requiredTools.map(([serverRef, toolName]) => {
@@ -69,9 +85,12 @@ export function FrameToolConsentGate({
         serverAvatar: view
           ? getAvatar(view.server, "xs")
           : getAvatar({ icon: DEFAULT_MCP_SERVER_ICON }, "xs"),
+        isNew:
+          showNewChips &&
+          !authorizedKeys.has(toolPairKey([serverRef, toolName])),
       };
     });
-  }, [requiredTools, serverViews]);
+  }, [authorizedKeys, requiredTools, serverViews, showNewChips]);
 
   // Group tools under each server for a clearer consent scan.
   const toolsByServer = useMemo(() => {
@@ -141,10 +160,17 @@ export function FrameToolConsentGate({
       <div className="max-w-md space-y-2">
         <h2 className="heading-base text-foreground">{consentTitle}</h2>
         <p className="text-sm text-muted-foreground">
-          <Trans>
-            This Frame can call the tools below on your behalf. Review them
-            before continuing.
-          </Trans>
+          {showNewChips ? (
+            <Trans>
+              New tools were added since you last allowed access. Review the
+              list before continuing.
+            </Trans>
+          ) : (
+            <Trans>
+              This Frame can call the tools below on your behalf. Review them
+              before continuing.
+            </Trans>
+          )}
         </p>
       </div>
       {isServerViewsLoading ? (
@@ -164,9 +190,14 @@ export function FrameToolConsentGate({
               <ul className="space-y-2 border-l border-border/60 pl-3">
                 {group.tools.map((tool) => (
                   <li key={`${tool.serverRef}/${tool.toolName}`}>
-                    <p className="text-sm font-medium text-foreground">
-                      {tool.toolDisplayName}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">
+                        {tool.toolDisplayName}
+                      </p>
+                      {tool.isNew ? (
+                        <Chip size="mini" color="highlight" label={t`New`} />
+                      ) : null}
+                    </div>
                     {tool.toolDescription ? (
                       <p className="text-sm text-muted-foreground">
                         {tool.toolDescription}

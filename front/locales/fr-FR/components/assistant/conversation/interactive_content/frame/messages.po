@@ -282,8 +282,16 @@ msgid "Allow this Frame to use tools?"
 msgstr "Autoriser ce Frame à utiliser des outils ?"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New tools were added since you last allowed access. Review the list before continuing."
+msgstr "De nouveaux outils ont été ajoutés depuis votre dernier accès. Vérifiez la liste avant de continuer."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
 msgid "This Frame can call the tools below on your behalf. Review them before continuing."
 msgstr "Ce Frame peut appeler les outils ci-dessous en votre nom. Vérifiez-les avant de continuer."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New"
+msgstr "Nouveau"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
 msgid "Allow access"

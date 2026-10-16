@@ -48,6 +48,7 @@ export function useFramePermissions({
     frameName: data?.frameName ?? null,
     hasFrameFunctions: data?.hasFunctions ?? false,
     requiredTools: data?.requiredTools ?? [],
+    authorizedTools: data?.authorizedTools ?? [],
     isLastPublisher: data?.isLastPublisher ?? false,
     lastPublisherName: data?.lastPublisherName ?? null,
     hasAuthorizedRequiredTools: data?.hasAuthorizedRequiredTools ?? true,

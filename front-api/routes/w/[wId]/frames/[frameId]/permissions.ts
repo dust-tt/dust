@@ -54,6 +54,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const lastPublisherName = publisher?.fullName() || null;
 
   const requiredTools = activePublication?.requiredTools ?? [];
+  const authorizedTools = authorization?.authorizedTools ?? [];
   const user = auth.user();
   const isLastPublisher = Boolean(
     user && publisherUserId !== null && publisherUserId === user.id
@@ -61,9 +62,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const hasAuthorizedRequiredTools =
     requiredTools.length === 0 ||
     isLastPublisher ||
-    (authorization
-      ? authorization.coversRequiredTools(requiredTools)
-      : authorizedToolsCoverRequired([], requiredTools));
+    authorizedToolsCoverRequired(authorizedTools, requiredTools);
 
   return ctx.json<GetFramePermissionsResponseBody>({
     canWriteFrameSource,
@@ -73,6 +72,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     frameName,
     hasFunctions,
     requiredTools,
+    authorizedTools,
     isLastPublisher,
     lastPublisherName,
     hasAuthorizedRequiredTools,

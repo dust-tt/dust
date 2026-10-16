@@ -15,6 +15,11 @@ export type GetFramePermissionsResponseBody = {
   hasFunctions: boolean;
   /** Active publication's frame-level tools.call pairs; empty when none or no publication. */
   requiredTools: FrameToolCallPair[];
+  /**
+   * Tools the current user already authorized for this Frame.
+   * Used by the consent UI to mark newly required tools.
+   */
+  authorizedTools: FrameToolCallPair[];
   /** True when the current user published the active publication. */
   isLastPublisher: boolean;
   /** Full name of the user who published the active publication, when known. */
