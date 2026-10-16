@@ -1,5 +1,4 @@
 import {
-  deprecatePatch,
   ParentClosePolicy,
   patched,
   proxyActivities,
@@ -40,11 +39,6 @@ const { scrubWorkspaceData, pauseAllConnectors, pauseAllTriggers } =
     startToCloseTimeout: "60 minutes",
   });
 
-/**
- * @cc [owner:philipperolet,label:performance] scrub-jitter-patch-removal
- * Keep `deprecatePatch("workspace-scrub-jitter")` until no history that can still be replayed
- * contains its non-deprecated marker.
- */
 export async function scheduleWorkspaceScrubWorkflowV2({
   workspaceId,
 }: {
@@ -84,7 +78,6 @@ export async function scheduleWorkspaceScrubWorkflowV2({
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
   }
-  deprecatePatch("workspace-scrub-jitter");
   await sleep(`${getWorkspaceScrubJitterMinutes(workspaceId)} minutes`);
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
