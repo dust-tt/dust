@@ -7,8 +7,8 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
-const currentPricingOnlyNames = DEFAULT_REMOTE_MCP_SERVERS.filter(
-  (config) => config.currentPricingPlansOnly && !config.featureFlag
+const creditBasedOnlyNames = DEFAULT_REMOTE_MCP_SERVERS.filter(
+  (config) => config.creditBasedPlansOnly && !config.featureFlag
 ).map((config) => config.name);
 
 async function listAvailableNames(workspace: WorkspaceType): Promise<string[]> {
@@ -21,28 +21,28 @@ async function listAvailableNames(workspace: WorkspaceType): Promise<string[]> {
 }
 
 describe("DefaultRemoteMCPServerInMemoryResource.listAvailableDefaultRemoteMCPServers", () => {
-  it("offers current-pricing-only presets to credit-priced workspaces", async () => {
+  it("offers credit-based-only presets to credit-priced workspaces", async () => {
     const names = await listAvailableNames(
       await WorkspaceFactory.creditPriced()
     );
 
-    expect(names).toEqual(expect.arrayContaining(currentPricingOnlyNames));
+    expect(names).toEqual(expect.arrayContaining(creditBasedOnlyNames));
   });
 
-  it("offers current-pricing-only presets to the Dust company workspace", async () => {
+  it("offers credit-based-only presets to the Dust company workspace", async () => {
     const plan = await PlanFactory.enterprise(DUST_COMPANY_PLAN_CODE);
     const names = await listAvailableNames(
       await WorkspaceFactory.fromPlan(plan)
     );
 
-    expect(names).toEqual(expect.arrayContaining(currentPricingOnlyNames));
+    expect(names).toEqual(expect.arrayContaining(creditBasedOnlyNames));
   });
 
-  it("hides current-pricing-only presets from other plans", async () => {
+  it("hides credit-based-only presets from other plans", async () => {
     const names = await listAvailableNames(await WorkspaceFactory.basic());
 
-    expect(currentPricingOnlyNames.length).toBeGreaterThan(0);
-    for (const name of currentPricingOnlyNames) {
+    expect(creditBasedOnlyNames.length).toBeGreaterThan(0);
+    for (const name of creditBasedOnlyNames) {
       expect(names).not.toContain(name);
     }
   });
