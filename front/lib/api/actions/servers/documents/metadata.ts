@@ -129,9 +129,10 @@ export const DOCUMENTS_TOOLS_METADATA = [
       "Use this tool, not a file edit, for documents people may have open in the document editor. " +
       `Match \`old_string\` against the source returned by \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\`, ` +
       "character for character. Only the body can change: not the front matter, and not the " +
-      "`:::annotations` block, whose threads are changed with the comment tools. Keep every " +
-      "`:comment-start{…}` / `:comment-end{…}` anchor pair intact and never write new ones; " +
-      "to delete commented text, delete both of its anchors with it, and its thread stays. " +
+      "`:::annotations` block, whose threads are changed with the comment tools. Commented text " +
+      "is wrapped in a `:comment-start{…}` / `:comment-end{…}` anchor pair: edit the text inside, " +
+      "or delete it together with both anchors, and its thread stays. Never leave one anchor " +
+      "without the other, and never write new ones. " +
       "Fails if `old_string` is not found or if the number of occurrences does not match " +
       "`expected_replacements` (default 1); make `old_string` unique by including surrounding text. " +
       "To add text, include the neighboring text in `old_string` and repeat it in `new_string`. " +

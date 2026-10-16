@@ -199,8 +199,8 @@ export async function editAgentDocument(
           new DfmAgentDocumentError(
             "anchors_invalid",
             "The edit would add or break `:comment-start{…}` / `:comment-end{…}` anchors. " +
-              "Keep each anchor pair whole, or delete both of its anchors with the text they " +
-              "wrap, and do not write new ones."
+              "Edit the text inside an anchor pair, or delete it together with both anchors. " +
+              "Never leave one anchor without the other, and never write new ones."
           )
         );
       }
