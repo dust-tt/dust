@@ -138,9 +138,13 @@ fn grouping_merges_overlaps_preserves_order_and_keeps_unrelated_operations_separ
         .map(|index| operations[index].clone())
         .collect();
     let unrelated_operations = vec![operations[2].clone()];
+    let mut batches = ObjectResource::group_by_targets(operations);
+    for (_, targets) in &mut batches {
+        targets.sort_unstable();
+    }
 
     assert_eq!(
-        ObjectResource::group_by_targets(operations),
+        batches,
         vec![
             (merged_operations, merged_targets),
             (unrelated_operations, vec![unrelated]),

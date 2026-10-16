@@ -81,13 +81,11 @@ impl ObjectResource {
                     }
                 }
             }
-            // Sort each batch's targets: O(n log n) overall, the only superlinear step.
-            targets.sort_unstable();
             batches.push((Vec::new(), targets));
         }
 
         // Move operations in request order so each batch preserves it without cloning payloads.
-        // This final pass is O(n).
+        // This final pass is O(n), so grouping takes expected O(n) time overall.
         for (operation, batch_index) in operations.into_iter().zip(batch_indexes) {
             batches[batch_index].0.push(operation);
         }
