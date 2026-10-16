@@ -15,19 +15,19 @@ interface TrackedActivity {
   activityType: string;
   workflowId: string;
   activityId: string;
+  attempt: number;
   startedAtMs: number;
   endedAtMs: number | null;
   details: ActivityDetails;
 }
 
-const inFlightActivities = new Map<string, TrackedActivity>();
+// Keyed by activity context rather than activity id: a timed-out attempt can still be running
+// locally when its retry (same activity id) starts on this worker.
+const inFlightActivities = new Map<Context, TrackedActivity>();
 // Activities completed since the last check: a culprit can finish in the same tick that unblocks
 // the event loop, before the check runs.
 let activitiesCompletedSinceLastCheck: TrackedActivity[] = [];
-
-function makeActivityKey(workflowId: string, activityId: string): string {
-  return `${workflowId}:${activityId}`;
-}
+let stopRunningWatchdog: (() => void) | null = null;
 
 export class StallTrackingActivityInterceptor implements ActivityInboundCallsInterceptor {
   constructor(private readonly ctx: Context) {}
@@ -36,22 +36,23 @@ export class StallTrackingActivityInterceptor implements ActivityInboundCallsInt
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
-    const { activityType, activityId, workflowExecution } = this.ctx.info;
-    const key = makeActivityKey(workflowExecution.workflowId, activityId);
+    const { activityType, activityId, attempt, workflowExecution } =
+      this.ctx.info;
     const activity: TrackedActivity = {
       activityType,
       workflowId: workflowExecution.workflowId,
       activityId,
+      attempt,
       startedAtMs: Date.now(),
       endedAtMs: null,
       details: {},
     };
-    inFlightActivities.set(key, activity);
+    inFlightActivities.set(this.ctx, activity);
 
     try {
       return await next(input);
     } finally {
-      inFlightActivities.delete(key);
+      inFlightActivities.delete(this.ctx);
       activity.endedAtMs = Date.now();
       activitiesCompletedSinceLastCheck.push(activity);
     }
@@ -59,18 +60,10 @@ export class StallTrackingActivityInterceptor implements ActivityInboundCallsInt
 }
 
 export function annotateInFlightActivity(
-  {
-    workflowId,
-    activityId,
-  }: {
-    workflowId: string;
-    activityId: string;
-  },
+  ctx: Context,
   details: ActivityDetails
 ): void {
-  const activity = inFlightActivities.get(
-    makeActivityKey(workflowId, activityId)
-  );
+  const activity = inFlightActivities.get(ctx);
   if (activity) {
     Object.assign(activity.details, details);
   }
@@ -81,6 +74,7 @@ function describeActivity(activity: TrackedActivity, nowMs: number) {
     activityType: activity.activityType,
     workflowId: activity.workflowId,
     activityId: activity.activityId,
+    attempt: activity.attempt,
     elapsedMs: (activity.endedAtMs ?? nowMs) - activity.startedAtMs,
     ...activity.details,
   };
@@ -90,9 +84,14 @@ function describeActivity(activity: TrackedActivity, nowMs: number) {
  * @cc [owner:tdraier,label:logging;performance] stall-reports-activities
  * When the event loop is blocked for at least `EVENT_LOOP_STALL_THRESHOLD_MS`, the next check MUST
  * log one "Event loop stalled" warning listing the activities still in flight and those that
- * completed while it was blocked.
+ * completed while it was blocked. At most one watchdog runs per process, as they share the tracked
+ * activities.
  */
 export function startEventLoopStallWatchdog(): () => void {
+  if (stopRunningWatchdog) {
+    return stopRunningWatchdog;
+  }
+
   let lastCheckMs = Date.now();
 
   const interval = setInterval(() => {
@@ -119,5 +118,9 @@ export function startEventLoopStallWatchdog(): () => void {
   }, CHECK_INTERVAL_MS);
   interval.unref();
 
-  return () => clearInterval(interval);
+  stopRunningWatchdog = () => {
+    clearInterval(interval);
+    stopRunningWatchdog = null;
+  };
+  return stopRunningWatchdog;
 }

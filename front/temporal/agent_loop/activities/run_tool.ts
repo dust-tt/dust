@@ -205,15 +205,12 @@ export async function runToolActivity(
     },
     "Tool activity starting execution"
   );
-  annotateInFlightActivity(
-    { workflowId: workflowExecution.workflowId, activityId },
-    {
-      actionId,
-      workspaceId: authType.workspaceId,
-      toolName: action.toolConfiguration.name,
-      mcpServerName: action.toolConfiguration.mcpServerName,
-    }
-  );
+  annotateInFlightActivity(Context.current(), {
+    actionId,
+    workspaceId: authType.workspaceId,
+    toolName: action.toolConfiguration.name,
+    mcpServerName: action.toolConfiguration.mcpServerName,
+  });
 
   const {
     agentConfiguration,
