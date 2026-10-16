@@ -32,7 +32,7 @@ export interface FrameToolbarPodActions {
 interface FrameToolbarProps {
   owner: LightWorkspaceType;
   fileId: string;
-  iframeRef: RefObject<HTMLIFrameElement | null>;
+  iframeRef: RefObject<HTMLIFrameElement>;
   fileContent: string | null;
   fileName?: string;
   contentType?: string;

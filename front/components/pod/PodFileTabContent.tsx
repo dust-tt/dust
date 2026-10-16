@@ -1,6 +1,6 @@
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
 import { PodFileTabPreview } from "@app/components/pod/PodFileTabPreview";
-import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
+import { PodHoverFrameViewer } from "@app/components/pod/PodHoverFrameViewer";
 import { useRenderableFrameAtPath } from "@app/hooks/useRenderableFrameAtPath";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileMetadataFromPath } from "@app/lib/swr/files";
@@ -94,9 +94,10 @@ function PodFileTabVisualization({
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden p-2">
       <div className="h-full overflow-hidden rounded-xl ring-1 ring-border/60">
-        <PodFrameVisualization
+        <PodHoverFrameViewer
           owner={owner}
           spaceId={podInfo.sId}
+          fileId={frame.fileId}
           fileContent={frame.fileContent}
           vizUrl={vizUrl}
           identifier={`viz-frame-tab-${frame.fileId}`}
@@ -104,6 +105,11 @@ function PodFileTabVisualization({
           isPodMember={podInfo.isMember}
           frameId={frame.frameId}
           framePath={framePath}
+          fileName={framePath.split("/").pop()}
+          pinnedFramePath={podInfo.pinnedFramePath ?? null}
+          fileTabs={podInfo.frameTabs ?? []}
+          tabsOrder={podInfo.tabsOrder ?? []}
+          isArchived={Boolean(podInfo.archivedAt)}
         />
       </div>
     </div>
