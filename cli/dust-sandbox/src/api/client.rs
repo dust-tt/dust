@@ -11,7 +11,7 @@ use super::types::{
     interpret_call_tool_post_response, parse_action_poll_response, ActionPollResponse,
     CallToolPostOutcome, CallToolPostResponse, CallToolRequest, CallToolResponse, CallToolResult,
     FrameCallByIdRequest, FrameCallFromSourceRequest, FrameCallResponse, FrameDatabaseListResponse,
-    FrameDatabaseQueryRequest, FrameDatabaseQueryResponse, FramePublishRequest,
+    FrameDatabaseQueryRequest, FrameDatabaseQueryResponse, FramePublishMode, FramePublishRequest,
     FramePublishResponse, FrameShareLinkResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
@@ -164,12 +164,14 @@ impl DustApiClient {
         &self,
         source_path: &str,
         replaces_path: Option<&str>,
+        mode: Option<FramePublishMode>,
     ) -> anyhow::Result<FramePublishResponse> {
         self.post_with_timeout(
             "sandbox/frames/publish",
             &FramePublishRequest {
                 manifest_path: source_path,
                 replaces_path,
+                mode,
             },
             POLL_MAX_DURATION,
         )

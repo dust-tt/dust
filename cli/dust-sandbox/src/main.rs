@@ -204,9 +204,11 @@ async fn run() -> anyhow::Result<()> {
             commands::frame::FrameCommand::ShareLink { directory } => {
                 commands::cmd_frame_share_link(&directory).await?
             }
-            commands::frame::FrameCommand::Publish { source, replaces } => {
-                commands::cmd_frame_publish(&source, replaces.as_deref()).await?
-            }
+            commands::frame::FrameCommand::Publish {
+                source,
+                replaces,
+                draft,
+            } => commands::cmd_frame_publish(&source, replaces.as_deref(), draft).await?,
         },
         Commands::Filesystem { command } => commands::run_filesystem(command)?,
         Commands::Tools {
@@ -767,14 +769,39 @@ mod tests {
         .expect("parse");
         match cli.command {
             Commands::Frame {
-                command: commands::frame::FrameCommand::Publish { source, replaces },
+                command:
+                    commands::frame::FrameCommand::Publish {
+                        source,
+                        replaces,
+                        draft,
+                    },
             } => {
                 assert_eq!(
                     source,
                     std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
                 );
                 assert_eq!(replaces, None);
+                assert!(!draft);
             }
+            Commands::Frame { .. } => panic!("expected publish"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_publish_parses_draft() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "publish",
+            "/files/pod-vlt_123/Status/manifest.json",
+            "--draft",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Publish { draft, .. },
+            } => assert!(draft),
             Commands::Frame { .. } => panic!("expected publish"),
             _ => panic!("expected frame"),
         }

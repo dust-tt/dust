@@ -37,6 +37,10 @@ pub enum FrameCommand {
         /// Legacy Frame entry file this v2 manifest replaces, keeping its ID and share link
         #[arg(long, value_name = "LEGACY_ENTRY")]
         replaces: Option<PathBuf>,
+        /// Publish as a draft: visible in the conversation's Frame panel, not on the share link,
+        /// until made live with `dsbx frame make-live`. A Frame's first publish always goes live.
+        #[arg(long)]
+        draft: bool,
     },
 }
 

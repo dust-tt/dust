@@ -60,12 +60,21 @@ pub struct FrameCallResponse {
     pub result: serde_json::Value,
 }
 
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FramePublishMode {
+    Draft,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FramePublishRequest<'a> {
     pub manifest_path: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replaces_path: Option<&'a str>,
+    /// Absent unless publishing a draft: servers default to a live publish.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<FramePublishMode>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -75,6 +84,10 @@ pub struct FramePublishResponse {
     pub manifest_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub publication_id: Option<String>,
+    /// "live" or "draft". A draft shows in the conversation's Frame panel but not on the share
+    /// link until it is made live. Absent for legacy Frames and from older servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -623,5 +636,51 @@ mod tests {
         assert_eq!(value["isError"], true);
         assert_eq!(value["content"][0]["type"], "future_block");
         assert_eq!(value["content"][0]["payload"]["k"], 1);
+    }
+
+    #[test]
+    fn publish_request_without_draft_has_no_mode() {
+        let body = serde_json::to_value(FramePublishRequest {
+            manifest_path: "conversation-c/App/manifest.json",
+            replaces_path: None,
+            mode: None,
+        })
+        .unwrap();
+        assert_eq!(
+            body,
+            serde_json::json!({ "manifestPath": "conversation-c/App/manifest.json" })
+        );
+    }
+
+    #[test]
+    fn publish_request_with_draft_sends_mode() {
+        let body = serde_json::to_value(FramePublishRequest {
+            manifest_path: "conversation-c/App/manifest.json",
+            replaces_path: None,
+            mode: Some(FramePublishMode::Draft),
+        })
+        .unwrap();
+        assert_eq!(body["mode"], "draft");
+    }
+
+    #[test]
+    fn publish_response_keeps_status() {
+        let response: FramePublishResponse = serde_json::from_str(
+            r#"{"frameId":"fil_1","manifestPath":"conversation-c/App/manifest.json","publicationId":"p","status":"draft","created":false}"#,
+        )
+        .unwrap();
+        assert_eq!(serde_json::to_value(&response).unwrap()["status"], "draft");
+    }
+
+    #[test]
+    fn publish_response_without_status_still_parses() {
+        let response: FramePublishResponse = serde_json::from_str(
+            r#"{"frameId":"fil_1","manifestPath":"conversation-c/App/index.tsx","warnings":[]}"#,
+        )
+        .unwrap();
+        assert!(serde_json::to_value(&response)
+            .unwrap()
+            .get("status")
+            .is_none());
     }
 }
