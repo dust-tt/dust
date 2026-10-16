@@ -1048,7 +1048,6 @@ export async function editFrameV2TextsAtSource(
     frame,
     edits,
   }: {
-    conversation: ConversationWithoutContentType;
     frame: FileResource;
     edits: FrameV2TextEdit[];
   }

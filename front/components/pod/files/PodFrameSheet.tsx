@@ -45,7 +45,41 @@ interface PodFrameSheetProps {
   owner: WorkspaceType;
 }
 
+/**
+ * Sheet stays mounted across opens; when a Frame is selected the body is keyed by
+ * `fileId` so the Frames v2 edit session resets when switching Frames (same idea as
+ * the conversation side panel).
+ */
 export function PodFrameSheet({
+  fileId,
+  isOpen,
+  onClose,
+  ...bodyProps
+}: PodFrameSheetProps) {
+  if (!fileId) {
+    return (
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent size="xl" />
+      </Sheet>
+    );
+  }
+
+  return (
+    <PodFrameSheetWithFile
+      key={fileId}
+      fileId={fileId}
+      isOpen={isOpen}
+      onClose={onClose}
+      {...bodyProps}
+    />
+  );
+}
+
+type PodFrameSheetWithFileProps = Omit<PodFrameSheetProps, "fileId"> & {
+  fileId: string;
+};
+
+function PodFrameSheetWithFile({
   fileId,
   framePath,
   fileName,
@@ -59,7 +93,7 @@ export function PodFrameSheet({
   isOpen,
   onClose,
   owner,
-}: PodFrameSheetProps) {
+}: PodFrameSheetWithFileProps) {
   const { t } = useLingui();
   const { vizUrl } = useAuth();
   const isMobile = useIsMobile();
@@ -70,7 +104,7 @@ export function PodFrameSheet({
   const { fileContent, mutateFileContent } = useFileContent({
     fileId,
     owner,
-    config: { disabled: !isOpen || !fileId },
+    config: { disabled: !isOpen },
   });
 
   // A Frames v2 package is named by the folder holding its manifest, which is the path this
@@ -83,7 +117,7 @@ export function PodFrameSheet({
     useFileMetadata({
       fileId,
       owner,
-      disabled: !isOpen || !fileId,
+      disabled: !isOpen,
     });
   const functionReferenceKind = getFrameFunctionReferenceKind(
     fileMetadata?.contentType
@@ -93,29 +127,27 @@ export function PodFrameSheet({
   const { canWriteFrameSource, hasFrameFunctions, isFramePermissionsLoading } =
     useFramePermissions({
       owner,
-      frameId: fileId ?? "",
-      disabled: !isOpen || !fileId || !isV2,
+      frameId: fileId,
+      disabled: !isOpen || !isV2,
     });
 
-  const frameSourceBaseUrl = fileId
-    ? `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`
-    : null;
+  const frameSourceBaseUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
     fileContent: frameSource,
     isNotFound: isFrameSourceNotFound,
     isFileContentLoading: isFrameSourceLoading,
     fileContentError: frameSourceError,
   } = useFileContentByUrl({
-    url: frameSourceBaseUrl ?? "",
-    disabled: !isOpen || !isV2 || !showCode || !frameSourceBaseUrl,
+    url: frameSourceBaseUrl,
+    disabled: !isOpen || !isV2 || !showCode,
   });
 
   // Pod sheet only offers the Frames v2 Preview|Edit session; legacy Frames stay view-only here.
-  const canEditV2 = Boolean(fileId) && isV2 && canWriteFrameSource;
+  const canEditV2 = isV2 && canWriteFrameSource;
   const isEditable = canEditV2;
   const editSession = useFrameEditSession({
     owner,
-    fileId: fileId ?? "",
+    fileId,
     conversationId: undefined,
     iframeRef,
     mutateFileContent,
@@ -154,43 +186,41 @@ export function PodFrameSheet({
             <SheetTitle className="min-w-0 flex-1 truncate">
               {fileMetadata && (frameName ?? getFileDisplayName(fileMetadata))}
             </SheetTitle>
-            {fileId && (
-              <div className="flex max-w-[70%] shrink-0 items-center justify-end overflow-x-auto">
-                <FrameToolbar
-                  layout="end"
-                  owner={owner}
-                  fileId={fileId}
-                  iframeRef={iframeRef}
-                  fileContent={fileContent ?? null}
-                  fileName={fileMetadata?.fileName}
-                  contentType={fileMetadata?.contentType}
-                  showCode={showCode}
-                  onToggleCode={
-                    !isV2 || canWriteFrameSource
-                      ? () => setShowCode(!showCode)
-                      : undefined
-                  }
-                  hasFrameFunctions={hasFrameFunctions}
-                  editSession={editSession}
-                  canEditV2={canEditV2}
-                  hideEditLabels={isMobile}
-                  podActions={{
-                    spaceId: podId,
-                    pinnedFramePath,
-                    isEditor,
-                    framePath,
-                    fileName,
-                    fileTabs,
-                    tabsOrder,
-                    hidden: isArchived,
-                  }}
-                  fullscreen={{
-                    isFullscreen,
-                    onToggle: () => setIsFullscreen((prev) => !prev),
-                  }}
-                />
-              </div>
-            )}
+            <div className="flex max-w-[70%] shrink-0 items-center justify-end overflow-x-auto">
+              <FrameToolbar
+                layout="end"
+                owner={owner}
+                fileId={fileId}
+                iframeRef={iframeRef}
+                fileContent={fileContent ?? null}
+                fileName={fileMetadata?.fileName}
+                contentType={fileMetadata?.contentType}
+                showCode={showCode}
+                onToggleCode={
+                  !isV2 || canWriteFrameSource
+                    ? () => setShowCode(!showCode)
+                    : undefined
+                }
+                hasFrameFunctions={hasFrameFunctions}
+                editSession={editSession}
+                canEditV2={canEditV2}
+                hideEditLabels={isMobile}
+                podActions={{
+                  spaceId: podId,
+                  pinnedFramePath,
+                  isEditor,
+                  framePath,
+                  fileName,
+                  fileTabs,
+                  tabsOrder,
+                  hidden: isArchived,
+                }}
+                fullscreen={{
+                  isFullscreen,
+                  onToggle: () => setIsFullscreen((prev) => !prev),
+                }}
+              />
+            </div>
             <SheetClose asChild>
               <Button
                 aria-label={t`Close`}
@@ -223,7 +253,6 @@ export function PodFrameSheet({
               }
             />
           ) : (
-            fileId &&
             vizUrl && (
               <div className="relative h-full">
                 <AuthenticatedVisualizationActionIframe
