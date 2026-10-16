@@ -130,7 +130,7 @@ msgstr "maximal"
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "model tier"
 msgid "Basic"
-msgstr "Basic"
+msgstr "Basique"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "model tier"
