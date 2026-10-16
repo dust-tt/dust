@@ -1,10 +1,13 @@
 // Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
+import { publishFramePublication } from "@app/lib/api/frames/publication_storage";
 import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -12,10 +15,14 @@ import {
   createSandboxFunctionInvocationTokenTestContext,
   createSandboxTokenTestContext,
 } from "@app/tests/utils/SandboxTokenFactory";
-import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import {
+  FRAME_MANIFEST_FILE,
+  FrameManifestSchema,
+} from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/lock", async (importActual) => {
@@ -175,6 +182,32 @@ async function publishLiveThenDraft(
   };
 }
 
+// Publishes through the lib, for a Frame the token's conversation cannot reach.
+async function publishBundleDirectly(
+  auth: Authenticator,
+  frame: FileResource,
+  uiBundleCode: string,
+  mode: "live" | "draft"
+): Promise<string> {
+  const published = await publishFramePublication(auth, {
+    frame,
+    functionArtifacts: [],
+    manifest: FrameManifestSchema.parse(JSON.parse(manifest)),
+    sourceFiles: [
+      {
+        relativePath: "index.tsx",
+        content: Buffer.from(uiSource),
+        contentType: "text/typescript",
+      },
+    ],
+    uiBundleCode,
+    mode,
+  });
+  assert(published.isOk(), "publish succeeds");
+  expect(published.value.status).toBe(mode);
+  return published.value.publicationId;
+}
+
 async function listGeneratedFiles(context: Awaited<ReturnType<typeof setup>>) {
   const [enrichedParent] =
     await AgentMCPActionResource.enrichActionsWithOutputItems(context.auth, {
@@ -256,7 +289,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
     expect(frame?.useCaseMetadata?.draftPublicationId).toBe(newerDraftId);
   });
 
-  it("returns 404 when the Frame has no pending draft", async () => {
+  it("returns 409 when the Frame has no pending draft", async () => {
     const context = await setup();
     const liveResponse = await requestFramePublish(
       context.workspace.sId,
@@ -265,6 +298,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
       "live"
     );
     expect(liveResponse.status).toBe(200);
+    const { publicationId: livePublicationId } = await liveResponse.json();
 
     const response = await requestMakeLive(
       context.workspace.sId,
@@ -273,10 +307,62 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
       { publicationId: "anything" }
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({
-      error: { type: "file_not_found" },
+      error: { type: "frame_draft_conflict" },
     });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(livePublicationId);
+    expect(frame?.useCaseMetadata?.draftPublicationId).toBeUndefined();
+  });
+
+  it("returns 403 for a Frame outside the token's conversation and attaches nothing", async () => {
+    const context = await setup();
+    const otherConversation = await ConversationFactory.create(context.auth, {
+      agentConfigurationId: context.agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const otherFrame = await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: otherConversation.sId },
+      mountFilePath: `${getConversationFilesBasePath({
+        workspaceId: context.workspace.sId,
+        conversationId: otherConversation.sId,
+      })}Other/${FRAME_MANIFEST_FILE}`,
+    });
+    const liveId = await publishBundleDirectly(
+      context.auth,
+      otherFrame,
+      "export default function A() {}",
+      "live"
+    );
+    const draftId = await publishBundleDirectly(
+      context.auth,
+      otherFrame,
+      "export default function B() {}",
+      "draft"
+    );
+    const generatedFilesBefore = await listGeneratedFiles(context);
+
+    const response = await requestMakeLive(
+      context.workspace.sId,
+      context.token,
+      otherFrame.sId,
+      { publicationId: draftId }
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "file_not_in_conversation" },
+    });
+    const frame = await FileResource.fetchById(context.auth, otherFrame.sId);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(liveId);
+    expect(frame?.useCaseMetadata?.draftPublicationId).toBe(draftId);
+    expect(await listGeneratedFiles(context)).toEqual(generatedFilesBefore);
   });
 
   it("returns 404 for a Frame id that does not exist", async () => {
@@ -327,6 +413,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
       { publicationId: "anything" }
     );
 
+    // The frames sub-app's sandboxAuth rejects this token kind before the handler runs.
     expect(response.status).toBe(403);
   });
 
@@ -341,5 +428,8 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/[frameId]/make-live", () => {
     );
 
     expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "feature_not_enabled" },
+    });
   });
 });
