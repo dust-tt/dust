@@ -94,6 +94,20 @@ pub struct FramePublishResponse {
     pub warnings: Vec<serde_json::Value>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameMakeLiveRequest<'a> {
+    pub publication_id: &'a str,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameMakeLiveResponse {
+    pub frame_id: String,
+    pub publication_id: String,
+    pub status: String,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FrameShareLinkResponse {

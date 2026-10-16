@@ -209,6 +209,10 @@ async fn run() -> anyhow::Result<()> {
                 replaces,
                 draft,
             } => commands::cmd_frame_publish(&source, replaces.as_deref(), draft).await?,
+            commands::frame::FrameCommand::MakeLive {
+                frame_id,
+                publication_id,
+            } => commands::cmd_frame_make_live(&frame_id, &publication_id).await?,
         },
         Commands::Filesystem { command } => commands::run_filesystem(command)?,
         Commands::Tools {
@@ -784,6 +788,26 @@ mod tests {
                 assert!(!draft);
             }
             Commands::Frame { .. } => panic!("expected publish"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_make_live_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "frame", "make-live", "fil_abc123", "f0e1d2c3-pub"])
+            .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command:
+                    commands::frame::FrameCommand::MakeLive {
+                        frame_id,
+                        publication_id,
+                    },
+            } => {
+                assert_eq!(frame_id, "fil_abc123");
+                assert_eq!(publication_id, "f0e1d2c3-pub");
+            }
+            Commands::Frame { .. } => panic!("expected make-live"),
             _ => panic!("expected frame"),
         }
     }
