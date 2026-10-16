@@ -19,6 +19,7 @@ use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpa
 
 mod apply;
 mod apply_move;
+mod list;
 mod lookup;
 pub(crate) use apply::{
     apply_create_conflicts_with_grant_revocation,
@@ -36,6 +37,10 @@ pub(crate) use apply_move::{
     apply_moves_in_separate_transactions_conflict_on_ancestry,
     apply_moves_with_disjoint_targets_cannot_create_a_cycle,
     apply_remove_then_move_serializes_destination_operations,
+};
+pub(crate) use list::{
+    list_for_session_returns_readable_children_only,
+    virtual_root_pages_keep_shared_within_the_limit,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
 
