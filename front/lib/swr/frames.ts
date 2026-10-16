@@ -77,6 +77,8 @@ export function useFramePermissions({
     {
       disabled,
       revalidateOnFocus: false,
+      // A new cacheKey (agent publish) must not swap the panel to its loading state or drop edit rights.
+      keepPreviousData: true,
     }
   );
 
