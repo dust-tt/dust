@@ -1,53 +1,16 @@
 import { resolveActiveFrameFunctionForUse } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { FileFactory } from "@app/tests/utils/FileFactory";
 import {
+  createTestAuthorFrameWithDraft,
   createTestFramePublicationFunctions,
   makeTestFrameFunction,
 } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { frameV2ContentType } from "@app/types/files";
-import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { describe, expect, it, vi } from "vitest";
 
 async function setupAuthorFrameWithDraft() {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  await FeatureFlagFactory.basic(auth, "frames_v2");
-  await FeatureFlagFactory.basic(auth, "frames_v2_functions");
-  const conversation = await ConversationFactory.create(auth, {
-    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    messagesCreatedAt: [new Date()],
-  });
-  const frame = await FileFactory.create(auth, null, {
-    contentType: frameV2ContentType,
-    fileName: FRAME_MANIFEST_FILE,
-    fileSize: 10,
-    status: "ready",
-    useCase: "conversation",
-    useCaseMetadata: {
-      conversationId: conversation.sId,
-      activePublicationId: "publication-live",
-    },
-    mountFilePath: `${getConversationFilesBasePath({
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-    })}Draft App/${FRAME_MANIFEST_FILE}`,
-  });
-  await frame.setShareScope(auth, "workspace_and_emails");
-  for (const publicationId of ["publication-live", "publication-draft"]) {
-    await createTestFramePublicationFunctions(auth, {
-      frame,
-      publicationId,
-      slug: "run-function",
-    });
-  }
-  await frame.setDraftFramePublication({ publicationId: "publication-draft" });
+  const { authenticator: auth } = await createResourceTest({ role: "admin" });
+  const { frame } = await createTestAuthorFrameWithDraft(auth);
   return { auth, frame };
 }
 

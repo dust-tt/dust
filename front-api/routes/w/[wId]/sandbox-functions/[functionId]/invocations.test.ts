@@ -11,7 +11,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createTestFramePublicationFunctions } from "@app/tests/utils/FrameFunctionFactory";
+import { createTestAuthorFrameWithDraft } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -406,36 +406,10 @@ async function setupAuthorFrameWithDraft() {
   const { workspace, auth } = await createPrivateApiMockRequest({
     role: "admin",
   });
-  await FeatureFlagFactory.basic(auth, "frames_v2");
-  await FeatureFlagFactory.basic(auth, "frames_v2_functions");
-  const conversation = await ConversationFactory.create(auth, {
+  const { frame } = await createTestAuthorFrameWithDraft(auth, {
     agentConfigurationId: "test-agent",
     messagesCreatedAt: [],
   });
-  const frame = await FileFactory.create(auth, null, {
-    contentType: frameV2ContentType,
-    fileName: FRAME_MANIFEST_FILE,
-    fileSize: 100,
-    status: "ready",
-    useCase: "conversation",
-    useCaseMetadata: {
-      conversationId: conversation.sId,
-      activePublicationId: "publication-live",
-    },
-    mountFilePath: `${getConversationFilesBasePath({
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-    })}Draft App/${FRAME_MANIFEST_FILE}`,
-  });
-  await frame.setShareScope(auth, "workspace_and_emails");
-  for (const publicationId of ["publication-live", "publication-draft"]) {
-    await createTestFramePublicationFunctions(auth, {
-      frame,
-      publicationId,
-      slug: "run-function",
-    });
-  }
-  await frame.setDraftFramePublication({ publicationId: "publication-draft" });
   return { workspace, frame };
 }
 

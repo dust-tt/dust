@@ -4,6 +4,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
@@ -14,8 +15,12 @@ import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameV2ContentType } from "@app/types/files";
-import { getPodFilesBasePath } from "@app/types/mount_path";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const inputSchema: JSONSchema = { type: "object" };
@@ -161,6 +166,60 @@ export async function createTestFrameFunction(
   }
 
   return { frame, publicationId, sandboxFunction };
+}
+
+const TEST_DRAFT_FRAME_LIVE_PUBLICATION_ID = "publication-live";
+const TEST_DRAFT_FRAME_DRAFT_PUBLICATION_ID = "publication-draft";
+
+/**
+ * A Frame in a conversation `auth` authored, with a live and a pending draft publication that each
+ * carry a `run-function`. Enables `frames_v2` and `frames_v2_functions` for the workspace. The
+ * caller owns `auth`, so it can write the conversation's source.
+ */
+export async function createTestAuthorFrameWithDraft(
+  auth: Authenticator,
+  {
+    agentConfigurationId = GLOBAL_AGENTS_SID.DUST,
+    messagesCreatedAt = [new Date()],
+  }: { agentConfigurationId?: string; messagesCreatedAt?: Date[] } = {}
+) {
+  await FeatureFlagFactory.basic(auth, "frames_v2");
+  await FeatureFlagFactory.basic(auth, "frames_v2_functions");
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId,
+    messagesCreatedAt,
+  });
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: FRAME_MANIFEST_FILE,
+    fileSize: 100,
+    status: "ready",
+    useCase: "conversation",
+    useCaseMetadata: {
+      conversationId: conversation.sId,
+      activePublicationId: TEST_DRAFT_FRAME_LIVE_PUBLICATION_ID,
+    },
+    mountFilePath: `${getConversationFilesBasePath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      conversationId: conversation.sId,
+    })}Draft App/${FRAME_MANIFEST_FILE}`,
+  });
+  await frame.setShareScope(auth, "workspace_and_emails");
+  for (const publicationId of [
+    TEST_DRAFT_FRAME_LIVE_PUBLICATION_ID,
+    TEST_DRAFT_FRAME_DRAFT_PUBLICATION_ID,
+  ]) {
+    await createTestFramePublicationFunctions(auth, {
+      frame,
+      publicationId,
+      slug: "run-function",
+    });
+  }
+  await frame.setDraftFramePublication({
+    publicationId: TEST_DRAFT_FRAME_DRAFT_PUBLICATION_ID,
+  });
+
+  return { conversation, frame };
 }
 
 export async function makeTestFrameFunction({
