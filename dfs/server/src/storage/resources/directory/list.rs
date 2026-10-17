@@ -1,5 +1,5 @@
 use dfs_protocol::{
-    ObjectId, ObjectRef,
+    ObjectRef,
     rpc::{Entry, EntryPage},
 };
 use foundationdb::Transaction;
@@ -39,6 +39,9 @@ impl DirectoryResource {
         after: Option<&str>,
         limit: u32,
     ) -> Result<EntryPage, storage::Error<Error>> {
+        directory_ref
+            .validate()
+            .map_err(|_| Error::Object(object::Error::InvalidId))?;
         let directory_id = match directory_ref {
             ObjectRef::Object(id) => id,
             ObjectRef::Root => session.tenant.root_id,
@@ -46,7 +49,15 @@ impl DirectoryResource {
             ObjectRef::Invalid => return Err(Error::Object(object::Error::InvalidId).into()),
         };
         let is_virtual_root = directory_ref == ObjectRef::Root;
-        let directory = Self::fetch_listable(tx, session, directory_id, is_virtual_root).await?;
+        let (object, mode) = ObjectResource::modes_for_session(tx, session, &[directory_id])
+            .await?
+            .pop()
+            .flatten()
+            .ok_or(Error::Object(object::Error::NotFound))?;
+        if !is_virtual_root && !mode.can_read() {
+            return Err(Error::Object(object::Error::NotAuthorized).into());
+        }
+        let directory = Self::try_from(object)?;
         let page = directory.list(tx, after, limit).await?;
         let lists_shared = is_virtual_root && directory.page_spans_shared(&page, after)?;
 
@@ -95,23 +106,6 @@ impl DirectoryResource {
             entries,
             next_after,
         })
-    }
-
-    async fn fetch_listable(
-        tx: &Transaction,
-        session: &SessionResource,
-        directory_id: ObjectId,
-        is_virtual_root: bool,
-    ) -> Result<Self, storage::Error<Error>> {
-        let (object, mode) = ObjectResource::modes_for_session(tx, session, &[directory_id])
-            .await?
-            .pop()
-            .flatten()
-            .ok_or(Error::Object(object::Error::NotFound))?;
-        if !is_virtual_root && !mode.can_read() {
-            return Err(Error::Object(object::Error::NotAuthorized).into());
-        }
-        Ok(Self::try_from(object)?)
     }
 
     /// Whether `shared`'s position in name order falls between `after` and the end of `page`.

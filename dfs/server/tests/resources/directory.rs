@@ -40,6 +40,7 @@ pub(crate) use apply_move::{
 };
 pub(crate) use list::{
     list_for_session_returns_readable_children_only,
+    list_rejects_invalid_references_before_reading,
     virtual_root_pages_keep_shared_within_the_limit,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;

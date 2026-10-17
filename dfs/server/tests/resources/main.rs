@@ -46,6 +46,7 @@ fn resources() -> Result<()> {
         directory::child_listing_pages_through_entries_in_name_order().await?;
         directory::child_listing_rejects_invalid_limits_and_cursors().await?;
         directory::list_for_session_returns_readable_children_only().await?;
+        directory::list_rejects_invalid_references_before_reading().await?;
         directory::virtual_root_pages_keep_shared_within_the_limit().await?;
         object::root_creation_persists_isolated_records().await?;
         object::updates_patch_metadata_and_preserve_receipt_results().await?;

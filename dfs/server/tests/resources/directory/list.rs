@@ -174,3 +174,19 @@ pub(crate) async fn virtual_root_pages_keep_shared_within_the_limit() -> Result<
     }
     clear_tenant(&tenant).await
 }
+
+pub(crate) async fn list_rejects_invalid_references_before_reading() -> Result<()> {
+    let tenant = create_tenant_root().await?;
+    let (session, _) = SessionResource::new(&tenant, vec![])?;
+    let tx = fdb::database()?.create_trx()?;
+    tx.set_read_version(1);
+    for reference in [ObjectRef::Invalid, ObjectRef::Object(ObjectId::default())] {
+        assert!(matches!(
+            list(&tx, &session, reference, None, 1).await,
+            Err(storage::Error::Resource(directory::Error::Object(
+                object::Error::InvalidId
+            )))
+        ));
+    }
+    clear_tenant(&tenant).await
+}

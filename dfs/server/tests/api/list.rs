@@ -70,7 +70,7 @@ pub(crate) async fn list_returns_readable_entries_and_conceals_the_rest() -> Res
         .into_inner();
     let authorization = format!("Bearer {}", session.session_key);
 
-    // Create RPCs are not implemented yet.
+    // Seed the directory tree through resources before testing List over gRPC.
     let tx = fdb::database()?.create_trx()?;
     let resource = TenantResource::fetch(&tx, &tenant.tenant_id)
         .await?
