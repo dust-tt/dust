@@ -33,10 +33,8 @@ impl From<file::Error> for ErrorCode {
     fn from(error: file::Error) -> Self {
         match error {
             file::Error::IsDirectory => ErrorCode::IsDirectory,
-            file::Error::UnsupportedKind | file::Error::UnsupportedOperation => {
-                ErrorCode::Unsupported
-            }
-            file::Error::InvalidLength => ErrorCode::InvalidInput,
+            file::Error::UnsupportedKind => ErrorCode::Unsupported,
+            file::Error::InvalidLength | file::Error::InvalidRange => ErrorCode::InvalidInput,
             file::Error::Capacity => ErrorCode::Capacity,
             file::Error::Object(error) => error.into(),
             file::Error::InvalidBlock => {

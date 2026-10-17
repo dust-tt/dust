@@ -15,6 +15,14 @@ use dfs_protocol::{
 };
 use foundationdb::Transaction;
 
+mod apply;
+pub(crate) use apply::{
+    writes_conflict_with_concurrent_append_and_grant_revocation,
+    writes_merge_blocks_and_preserve_unrelated_state,
+    writes_reject_invalid_operations_without_staging_changes,
+    writes_replay_append_results_and_follow_truncation,
+};
+
 fn object(tenant: &TenantResource, size: u64) -> Result<ObjectResource> {
     let mut object = ObjectResource::new_root(tenant)?;
     object.object_id = ObjectId::new_v7();
@@ -180,9 +188,10 @@ pub(crate) async fn reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks() ->
     let first: Vec<_> = (0..BLOCK_SIZE_BYTES)
         .map(|index| (index % 251) as u8)
         .collect();
-    // There is no write resource yet; seed content blocks directly.
+    // Seed sparse and short blocks directly to exercise the read representation.
     tx.set(&block_key(&tenant, object.object_id, 0), &first);
     tx.set(&block_key(&tenant, object.object_id, 1), b"abc");
+    // Deliberately store an invalid tail beyond EOF to test defensive read clipping.
     tx.set(
         &block_key(&tenant, object.object_id, 3),
         b"last bytes beyond EOF",

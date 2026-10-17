@@ -26,8 +26,8 @@ pub const BLOCK_SIZE_BYTES: usize = 64 * 1024;
 pub enum Error {
     IsDirectory,
     UnsupportedKind,
-    UnsupportedOperation,
     InvalidLength,
+    InvalidRange,
     InvalidBlock,
     Capacity,
     Object(object::Error),
@@ -38,8 +38,8 @@ impl fmt::Display for Error {
         match self {
             Self::IsDirectory => f.write_str("object is a directory"),
             Self::UnsupportedKind => f.write_str("unsupported file kind"),
-            Self::UnsupportedOperation => f.write_str("unsupported file operation"),
             Self::InvalidLength => f.write_str("invalid read length"),
+            Self::InvalidRange => f.write_str("invalid write range"),
             Self::InvalidBlock => f.write_str("stored file block exceeds the size limit"),
             Self::Capacity => f.write_str("file exceeds the read budget"),
             Self::Object(error) => error.fmt(f),
@@ -75,6 +75,13 @@ impl From<storage::Error<object::Error>> for storage::Error<Error> {
     }
 }
 
+/**
+ * @cc [owner:spolu,label:backend] file-content-within-size
+ * Production file mutations MUST preserve the invariant that no stored content bytes lie at or
+ * beyond logical EOF. Block changes and the corresponding size MUST commit atomically; shrinking
+ * MUST trim the final block and clear later blocks. Mutations MAY rely on this invariant without
+ * reading untouched blocks. Reads MUST still clip to logical EOF when stored data violates it.
+ */
 pub struct FileResource {
     object: ObjectResource,
 }

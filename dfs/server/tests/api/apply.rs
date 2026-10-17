@@ -123,13 +123,23 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             assert_eq!(parent.mode, 0o700);
             assert_eq!(parent.store_version, attr.store_version);
             commit_version = Some(attr.store_version);
+        } else if index == 2 {
+            assert!(result.error.is_none());
+            let mutation = result.mutation.context("missing write mutation")?;
+            let attr = mutation.object.context("missing written file")?;
+            assert_eq!(attr.id, file.into());
+            assert_eq!(attr.size, 2 * 1024 * 1024);
+            assert_eq!((attr.attr_version, attr.content_version), (2, 2));
+            assert_eq!(Some(attr.store_version), commit_version);
+            assert!(attr.metadata.is_none());
+            assert!(mutation.related.is_empty());
         } else if index == 3 {
             assert!(result.error.is_none());
             let mutation = result.mutation.context("missing move mutation")?;
             let attr = mutation.object.context("missing moved file")?;
             assert_eq!(attr.id, file.into());
             assert_eq!(attr.name, "renamed");
-            assert_eq!((attr.attr_version, attr.content_version), (2, 1));
+            assert_eq!((attr.attr_version, attr.content_version), (3, 2));
             assert_eq!(Some(attr.store_version), commit_version);
             assert_eq!(mutation.related.len(), 1);
             let parent = &mutation.related[0];
@@ -142,7 +152,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             let attr = mutation.object.context("missing updated file")?;
             assert_eq!(attr.id, file.into());
             assert_eq!((attr.size, attr.mtime), (3, Some(42)));
-            assert_eq!((attr.attr_version, attr.content_version), (3, 2));
+            assert_eq!((attr.attr_version, attr.content_version), (4, 3));
             assert_eq!(Some(attr.store_version), commit_version);
             assert!(attr.metadata.is_none());
             assert!(mutation.related.is_empty());
@@ -170,7 +180,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
                 match index {
                     1 | 7 => ErrorCode::NotFound,
                     5 => ErrorCode::InvalidInput,
-                    _ => ErrorCode::Unsupported,
+                    _ => anyhow::bail!("unexpected operation error at index {index}"),
                 }
             );
         }

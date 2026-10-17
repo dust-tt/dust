@@ -23,6 +23,10 @@ fn resources() -> Result<()> {
         file::reads_preserve_tenant_scope_snapshot_and_attributes().await?;
         file::reads_validate_kind_length_blocks_and_handle_maximum_offsets().await?;
         file::block_reads_conflict_with_concurrent_writes().await?;
+        file::writes_merge_blocks_and_preserve_unrelated_state().await?;
+        file::writes_reject_invalid_operations_without_staging_changes().await?;
+        file::writes_replay_append_results_and_follow_truncation().await?;
+        file::writes_conflict_with_concurrent_append_and_grant_revocation().await?;
         directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
         directory::apply_create_receipt_preserves_per_operation_results().await?;
         directory::apply_create_rejections_leave_no_staged_writes().await?;
