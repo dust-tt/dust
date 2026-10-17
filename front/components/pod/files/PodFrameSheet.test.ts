@@ -12,14 +12,20 @@ const frameV2Metadata = {
 };
 
 interface Mocks {
+  canWriteFrameSource: boolean;
   fileMetadata: Record<string, unknown>;
   hasFrameFunctions: boolean;
-  iframeProps: { frameId?: string } | null;
+  iframeProps: {
+    frameId?: string;
+    isEditable?: boolean;
+    stagedEditMode?: string;
+  } | null;
   metadataCalls: { disabled?: boolean; fileId: string | null }[];
   permissionsCalls: { disabled?: boolean; frameId: string }[];
 }
 
 const mocks = vi.hoisted<Mocks>(() => ({
+  canWriteFrameSource: true,
   fileMetadata: {},
   hasFrameFunctions: false,
   iframeProps: null,
@@ -34,7 +40,11 @@ vi.mock(
     return {
       AuthenticatedVisualizationActionIframe: forwardRef<
         HTMLIFrameElement,
-        { frameId?: string }
+        {
+          frameId?: string;
+          isEditable?: boolean;
+          stagedEditMode?: string;
+        }
       >(function AuthenticatedVisualizationActionIframe(props, _ref) {
         mocks.iframeProps = props;
         return "frame-iframe";
@@ -53,6 +63,13 @@ vi.mock(
   () => ({ ShareFramePopover: () => null })
 );
 
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frame/FrameEditControls",
+  () => ({
+    FrameEditControls: () => createElement("div", null, "edit-controls"),
+  })
+);
+
 vi.mock("@app/components/pod/files/PinPodBannerButton", () => ({
   PinPodBannerButton: () => null,
 }));
@@ -61,13 +78,38 @@ vi.mock("@app/components/pod/files/PodFileTabButton", () => ({
   PodFileTabButton: () => null,
 }));
 
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession",
+  () => ({
+    useFrameEditSession: () => ({
+      contentRevision: 0,
+      hasPendingEdits: false,
+      isSaving: false,
+      mode: "preview",
+      remount: vi.fn(),
+      save: vi.fn(),
+      setMode: vi.fn(),
+      stageEdit: vi.fn(),
+    }),
+  })
+);
+
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ vizUrl: "https://viz.dust.tt" }),
   useFeatureFlags: () => ({ hasFeature: () => false }),
 }));
 
 vi.mock("@app/lib/swr/files", () => ({
-  useFileContent: () => ({ fileContent: "frame bundle" }),
+  useFileContent: () => ({
+    fileContent: "frame bundle",
+    mutateFileContent: vi.fn(),
+  }),
+  useFileContentByUrl: () => ({
+    fileContent: "export default function Frame() {}",
+    isNotFound: false,
+    isFileContentLoading: false,
+    fileContentError: null,
+  }),
   useFileMetadata: (args: { disabled?: boolean; fileId: string | null }) => {
     mocks.metadataCalls.push(args);
     return {
@@ -81,8 +123,17 @@ vi.mock("@app/lib/swr/files", () => ({
 vi.mock("@app/lib/swr/frames", () => ({
   useFramePermissions: (args: { disabled?: boolean; frameId: string }) => {
     mocks.permissionsCalls.push(args);
-    return { hasFrameFunctions: mocks.hasFrameFunctions };
+    return {
+      canWriteFrameSource: mocks.canWriteFrameSource,
+      hasFrameFunctions: mocks.hasFrameFunctions,
+      isFramePermissionsLoading: false,
+      packageRoot: null,
+    };
   },
+}));
+
+vi.mock("@app/lib/swr/useIsMobile", () => ({
+  useIsMobile: () => false,
 }));
 
 vi.mock("@dust-tt/sparkle", async () => {
@@ -94,8 +145,26 @@ vi.mock("@dust-tt/sparkle", async () => {
   const Empty = () => null;
 
   return {
-    Button: Empty,
+    Button: ({
+      children,
+      "aria-label": ariaLabel,
+      tooltip,
+      onClick,
+    }: {
+      children?: ReactNode;
+      "aria-label"?: string;
+      tooltip?: string;
+      onClick?: () => void;
+    }) =>
+      createElement(
+        "button",
+        { "aria-label": ariaLabel ?? tooltip, onClick },
+        children
+      ),
     Chip: ({ label }: { label?: string }) => createElement("div", null, label),
+    CodeBlock: ({ children }: PropsWithChildren) =>
+      createElement("pre", null, children),
+    Eye: Empty,
     Maximize01: Empty,
     Minimize01: Empty,
     Sheet,
@@ -104,6 +173,7 @@ vi.mock("@dust-tt/sparkle", async () => {
     SheetHeader: Container,
     SheetTitle: Container,
     Spinner: Empty,
+    Terminal: Empty,
     Tooltip: ({ trigger }: { trigger: ReactNode }) =>
       createElement("div", null, trigger),
     XClose: Empty,
@@ -117,6 +187,7 @@ const owner = LightWorkspaceFactory.build();
 beforeEach(() => {
   mocks.fileMetadata = { ...frameV2Metadata };
   mocks.hasFrameFunctions = false;
+  mocks.canWriteFrameSource = true;
 });
 
 afterEach(() => {
@@ -221,6 +292,28 @@ describe("PodFrameSheet", () => {
     expect(mocks.iframeProps).toMatchObject({
       frameId: "fil_frame",
       framePackageRoot: "pod-vlt_project/App",
+      isEditable: true,
+      stagedEditMode: "preview",
+    });
+  });
+
+  it("shows edit controls for a source writer and hides them for other viewers", () => {
+    const { rerender } = render(createElement(PodFrameSheet, openSheetProps));
+
+    expect(screen.getByText("edit-controls")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Switch to code" })
+    ).toBeInTheDocument();
+
+    mocks.canWriteFrameSource = false;
+    rerender(createElement(PodFrameSheet, openSheetProps));
+
+    expect(screen.queryByText("edit-controls")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Switch to code" })
+    ).not.toBeInTheDocument();
+    expect(mocks.iframeProps).toMatchObject({
+      isEditable: false,
     });
   });
 });

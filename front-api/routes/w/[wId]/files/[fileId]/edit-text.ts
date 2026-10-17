@@ -82,7 +82,6 @@ app.post(
     const auth = ctx.get("auth");
     const { fileId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
-    const { conversationId } = body;
     const edits = normalizeEdits(body);
 
     const file = await FileResource.fetchById(auth, fileId);
@@ -95,7 +94,7 @@ app.post(
 
     if (file.isFrameV2) {
       const missingSource = edits.find((edit) => !edit.source);
-      if (!conversationId || missingSource) {
+      if (missingSource) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
@@ -106,19 +105,7 @@ app.post(
         });
       }
 
-      const conversation = await ConversationResource.fetchById(
-        auth,
-        conversationId
-      );
-      if (!conversation) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: { type: "file_not_found", message: "File not found." },
-        });
-      }
-
       const editResult = await editFrameV2TextsAtSource(auth, {
-        conversation: conversation.toJSON(),
         frame: file,
         edits: edits.map((edit) => ({
           source: edit.source!,

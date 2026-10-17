@@ -313,6 +313,9 @@ describe("FrameRenderer", () => {
       })
     );
     expect(screen.queryByRole("tab", { name: "Edit" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Switch to code" })
+    ).not.toBeInTheDocument();
   });
 
   it("marks a Frame declaring functions as beta", () => {
