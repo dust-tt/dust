@@ -5,7 +5,10 @@ import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
 
-import { linguiMergedCatalogPlugin } from "../front/scripts/i18n/merged_catalog";
+import {
+  linguiMergedCatalogPlugin,
+  mergedCatalogChunkName,
+} from "../front/scripts/i18n/merged_catalog";
 
 const require = createRequire(import.meta.url);
 
@@ -376,6 +379,9 @@ export default defineConfig(({ mode }) => {
       sourcemap: env.BUILD_SOURCEMAPS !== "false",
       rollupOptions: {
         input: appDefinition.inputs,
+        output: {
+          manualChunks: mergedCatalogChunkName,
+        },
       },
     },
   };
