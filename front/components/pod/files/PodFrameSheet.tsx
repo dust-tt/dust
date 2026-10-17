@@ -14,8 +14,6 @@ import {
 import { useFramePermissions } from "@app/lib/swr/frames";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
-import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
-import { getFileDisplayName } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -25,7 +23,6 @@ import {
   SheetClose,
   SheetContent,
   SheetHeader,
-  SheetTitle,
   Spinner,
   XClose,
 } from "@dust-tt/sparkle";
@@ -109,12 +106,6 @@ function PodFrameSheetWithFile({
     owner,
     config: { disabled: !isOpen },
   });
-
-  // A Frames v2 package is named by the folder holding its manifest, which is the path this
-  // sheet is opened with. Legacy Frames have no manifest and fall back to their file name.
-  const frameName = framePath
-    ? getFrameV2NameFromManifestPath(framePath)
-    : null;
 
   const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
     useFileMetadata({
@@ -218,12 +209,8 @@ function PodFrameSheetWithFile({
       >
         <SheetHeader hideButton>
           <div className="flex min-w-0 items-center gap-2">
-            <SheetTitle className="min-w-0 flex-1 truncate">
-              {fileMetadata && (frameName ?? getFileDisplayName(fileMetadata))}
-            </SheetTitle>
-            <div className="flex w-full max-w-[70%] shrink-0 items-center justify-end overflow-x-auto">
+            <div className="flex w-full">
               <FrameToolbar
-                layout="end"
                 owner={owner}
                 fileId={fileId}
                 iframeRef={iframeRef}

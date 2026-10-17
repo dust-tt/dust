@@ -81,6 +81,7 @@ export function FrameToolbar({
           onClick={onToggleCode}
           tooltip={showCode ? t`Switch to rendering` : t`Switch to code`}
           variant="ghost"
+          disabled={editSession?.mode === "edit"}
         />
       )}
       {hasFrameFunctions && <FrameBetaChip />}
@@ -90,7 +91,11 @@ export function FrameToolbar({
   const actions = (
     <div className="flex min-w-0 items-center">
       {canEditV2 && editSession && (
-        <FrameEditControls session={editSession} hideLabels={hideEditLabels} />
+        <FrameEditControls
+          session={editSession}
+          hideLabels={hideEditLabels}
+          disabled={showCode}
+        />
       )}
       <ExportContentDropdown
         iframeRef={iframeRef}

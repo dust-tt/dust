@@ -6,11 +6,13 @@ import { useLingui } from "@lingui/react/macro";
 interface FrameEditControlsProps {
   hideLabels: boolean;
   session: FrameEditSession;
+  disabled?: boolean;
 }
 
 export function FrameEditControls({
   hideLabels,
   session,
+  disabled,
 }: FrameEditControlsProps) {
   const { t } = useLingui();
   const { hasPendingEdits, isSaving, mode, save, setMode } = session;
@@ -20,7 +22,7 @@ export function FrameEditControls({
       <MarkdownFilePreviewViewModeSwitch
         viewMode={mode}
         hideLabels={hideLabels}
-        disabled={isSaving}
+        disabled={isSaving || disabled}
         onViewModeChange={(next) => {
           void setMode(next);
         }}
@@ -34,7 +36,7 @@ export function FrameEditControls({
         size="xs"
         variant="ghost"
         isLoading={isSaving}
-        disabled={!hasPendingEdits || isSaving}
+        disabled={!hasPendingEdits || isSaving || disabled}
         onClick={() => {
           void save();
         }}
