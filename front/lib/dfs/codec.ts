@@ -11,8 +11,7 @@ import type {
   DfsErrorCode,
   DfsExtendedMetadata,
   DfsFileResult,
-  DfsFlockLease,
-  DfsFlockMode,
+  DfsLockState,
   DfsGrant,
   DfsGrantPage,
   DfsObjectId,
@@ -249,38 +248,29 @@ export const WireAttrSchema = z
     metadata: a.metadata,
   }));
 
-// Advisory locks.
+// Enforced locks.
 
-const FLOCK_ID_BYTES = 16;
-const FLOCK_MAX_TTL_MS = 30_000;
+const LOCK_ID_BYTES = 16;
 
-export function encodeFlockId(id: Uint8Array, field: string): Uint8Array {
-  if (id.byteLength !== FLOCK_ID_BYTES) {
+export function encodeLockId(id: Uint8Array): Uint8Array {
+  if (id.byteLength !== LOCK_ID_BYTES) {
     throw new DfsError(
       "invalid_input",
-      `${field} must contain ${FLOCK_ID_BYTES} bytes.`
+      `lockId must contain ${LOCK_ID_BYTES} bytes.`
     );
   }
   return id;
 }
 
-export function encodeFlockMode(mode: DfsFlockMode): string {
-  switch (mode) {
-    case "shared":
-      return "SHARED";
-    case "exclusive":
-      return "EXCLUSIVE";
-    default:
-      assertNever(mode);
-  }
-}
-
-export const WireFlockLeaseSchema = z
+export const WireLockStateSchema = z
   .object({
-    leaseId: WireBytesSchema.refine((id) => id.byteLength === FLOCK_ID_BYTES),
-    ttlMs: z.number().int().min(0).max(FLOCK_MAX_TTL_MS),
+    lockId: WireBytesSchema.refine((id) => id.byteLength === LOCK_ID_BYTES),
+    expiresAt: WireNumberUint64Schema,
   })
-  .transform((lease): DfsFlockLease => lease);
+  .transform((lock): DfsLockState => ({
+    lockId: lock.lockId,
+    expiresAtMs: lock.expiresAt,
+  }));
 
 // Grants.
 

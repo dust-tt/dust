@@ -214,6 +214,10 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
                 })),
             },
         ],
+        locks: vec![rpc::ObjectLock {
+            object_id,
+            lock_id: vec![1; 16],
+        }],
     };
     assert_eq!(request.operations.len(), 3);
     assert_eq!(

@@ -43,6 +43,33 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
 
     let file = ObjectId::new_v7();
     let unrelated = ObjectId::new_v7();
+    // Until locks are enforced, supplied lock IDs must fail before any mutation runs.
+    let error = client
+        .apply(with_authorization(
+            ApplyRequest {
+                operations: vec![rpc::Operation {
+                    operation: Some(Operation::Create(CreateOperation {
+                        parent_id: tenant.root_id,
+                        object_id: file,
+                        name: "file".to_owned(),
+                        kind: ObjectKind::File.into(),
+                        ..Default::default()
+                    })),
+                }],
+                locks: vec![rpc::ObjectLock {
+                    object_id: tenant.root_id,
+                    lock_id: vec![1; 16],
+                }],
+            },
+            &authorization,
+        )?)
+        .await
+        .err()
+        .context("expected Apply with a lock to fail before enforcement exists")?;
+    assert_eq!(error_code(&error)?, ErrorCode::Unsupported);
+    let tx = fdb::database()?.create_trx()?;
+    assert!(ObjectResource::fetch(&tx, &tenant, &file).await?.is_none());
+
     let operations = vec![
         Operation::Create(CreateOperation {
             parent_id: tenant.root_id,
@@ -101,6 +128,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
                         operation: Some(operation),
                     })
                     .collect(),
+                ..Default::default()
             },
             &authorization,
         )?)
@@ -192,7 +220,10 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
     ] {
         let error = client
             .apply(with_authorization(
-                ApplyRequest { operations },
+                ApplyRequest {
+                    operations,
+                    ..Default::default()
+                },
                 &authorization,
             )?)
             .await
@@ -212,6 +243,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
                         ..Default::default()
                     })),
                 }],
+                ..Default::default()
             },
             &authorization,
         )?)

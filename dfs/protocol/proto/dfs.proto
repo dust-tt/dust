@@ -69,10 +69,9 @@ service Dfs {
   rpc Read(ReadRequest) returns (ReadData);
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
-  // Proposed advisory locking; returns UNSUPPORTED until storage support is implemented.
-  rpc Flock(FlockRequest) returns (FlockLease);
-  rpc RefreshFlock(FlockLeaseRequest) returns (FlockLease);
-  rpc ReleaseFlock(FlockLeaseRequest) returns (Empty);
+  // Proposed exclusive locks; returns UNSUPPORTED until storage support is implemented.
+  rpc Lock(LockRequest) returns (LockState);
+  rpc Unlock(ObjectLock) returns (Empty);
 
   rpc Apply(ApplyRequest) returns (OperationBatch);
   rpc Search(SearchRequest) returns (SearchResults);
@@ -361,63 +360,70 @@ message FileResult {
   optional ErrorDetails error = 4;
 }
 
-enum FlockMode {
-  SHARED = 0;
-  EXCLUSIVE = 1;
-}
+// @cc [owner:spolu,label:api;concurrency] dfs-lock-acquisition
+// When implemented, Lock without lock_id MUST acquire an exclusive lock on a real file or
+// directory within the authenticated tenant. Any active lock, including the same session's, MUST
+// return WOULD_BLOCK without waiting or changing state. Each acquisition MUST generate a fresh
+// random 16-byte lock_id, bound to the session and object, with expiry at server time plus one
+// minute capped by session expiry. Expired locks MUST stop conflicting independently of cleanup.
 
-// @cc [owner:spolu,label:api;concurrency] dfs-flock-acquisition
-// When implemented, Flock MUST acquire an advisory whole-object lock across all server instances
-// within the authenticated tenant. Shared holders MAY coexist; exclusive holders MUST exclude all
-// other holders. Contention MUST return WOULD_BLOCK without waiting or changing lock state.
-// Locks MUST NOT restrict ordinary filesystem operations or change object attributes or versions.
-
-// @cc [owner:spolu,label:api;security] dfs-flock-owner
-// When implemented, Flock MUST require current read permission on a real file or directory.
-// Missing or unreadable objects MUST return NOT_FOUND. Owners MUST be scoped to session and object.
-// The owner_id MUST contain exactly 16 bytes, freshly chosen for each independent open description.
-// Repeating Flock for an active owner and mode MUST return its lease without extending expiry.
-// A different mode for that active owner MUST return INVALID_INPUT; conversion requires release.
-// Unknown modes and malformed owner IDs MUST return INVALID_INPUT.
-message FlockRequest {
+// @cc [owner:spolu,label:api;security] dfs-lock-refresh
+// When implemented, Lock with lock_id MUST extend only that session's matching unexpired lock,
+// preserving its ID and using the same expiry bound as acquisition. It MUST NOT reacquire.
+// Acquisition and refresh MUST require read and write permission; missing objects MUST return
+// NOT_FOUND and missing permissions FORBIDDEN. After authorization, an absent, expired, or
+// mismatched ID MUST return LOCK_LOST. Malformed IDs MUST return INVALID_INPUT.
+message LockRequest {
   required ObjectId object_id = 1;
-  required bytes owner_id = 2;
-  required FlockMode mode = 3;
+  // Omit to acquire; supply the current ID to refresh.
+  optional bytes lock_id = 2;
 }
 
-// @cc [owner:spolu,label:api;concurrency] dfs-flock-lease
-// When implemented, each acquisition MUST receive a fresh 16-byte lease_id bound to its session,
-// object, and owner.
-// Expiry MUST be at most server time plus 30 seconds, capped by session expiry. Expired leases MUST
-// stop conflicting immediately, independently of cleanup. Refresh MUST preserve the lease_id and
-// extend only an unexpired lease after rechecking read access, using the same lifetime bound.
-// After object authorization, missing, expired, or replaced leases MUST return LOCK_LOST, never
-// reacquire. A removed object MUST invalidate its leases. Responses MUST report remaining lifetime,
-// recomputed after receipt replay; clients MUST bound validity by request start plus ttl_ms.
-message FlockLease {
-  required bytes lease_id = 1;
-  required uint32 ttl_ms = 2;
+// @cc [owner:spolu,label:api;backend] dfs-lock-state
+// When implemented, lock maintenance MUST NOT change object attributes or versions. Moves MUST
+// preserve locks; object removal MUST clear its lock. Responses MUST retain the original absolute
+// expiry after idempotency receipt replay, never imply an extension that did not commit.
+message LockState {
+  required bytes lock_id = 1;
+  // Unix milliseconds.
+  required uint64 expires_at = 2;
 }
 
-// @cc [owner:spolu,label:api;security] dfs-flock-release
-// When implemented, refresh and release MUST address only the session's lease on object_id. Release
-// MUST succeed if that lease is already absent and MUST NOT affect a newer lease or another owner.
-// The lease_id MUST contain exactly 16 bytes; malformed IDs MUST return INVALID_INPUT.
-// Release MUST require no object permission or existence check, allowing cleanup after access loss.
-// Every lock RPC MUST verify session validity directly in storage, bypassing authentication caches;
-// expired or revoked sessions MUST fail with UNAUTHENTICATED and MUST NOT acquire or refresh leases.
-message FlockLeaseRequest {
+// @cc [owner:spolu,label:api;security] dfs-lock-release
+// When implemented, Unlock MUST remove only the session's matching lock on object_id and succeed
+// if absent or mismatched. A stale ID MUST NOT remove a newer lock, even within the same session.
+// Unlock MUST require no object permission or existence check. Lock and Unlock MUST authenticate
+// the session directly in storage; expired or revoked sessions MUST return UNAUTHENTICATED.
+// All supplied lock IDs MUST contain exactly 16 bytes; malformed IDs MUST return INVALID_INPUT.
+message ObjectLock {
   required ObjectId object_id = 1;
-  // Exactly 16 bytes, returned by Flock; never an owner_id or a bearer credential.
-  required bytes lease_id = 2;
+  required bytes lock_id = 2;
 }
 
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
 // Operations MUST be nonempty. Exceeding FDB's transaction size limit MUST fail the request with
 // CAPACITY without committing any changes, even when it fits the RPC request limit. The server MAY
 // rely on FDB's size check and translate transaction_too_large after the retry runner returns.
+
+// @cc [owner:spolu,label:api;security;concurrency] dfs-apply-lock-enforcement
+// When implemented, each operation MUST check its targets' locks in the mutation's transaction,
+// after permission checks and before staging writes, even without supplied lock IDs. Targets are
+// Create's parent and proposed object; Update/Write's object; Move's object and both parents;
+// Remove's object and parent. Locks MUST NOT extend recursively to descendants.
+// An active lock MUST require its matching ID and owning session; otherwise return per-operation
+// WOULD_BLOCK. A supplied absent, expired, or mismatched lock MUST return per-operation LOCK_LOST,
+// even if unlocked. Without an active lock or supplied ID, mutation MAY proceed. Permission checks
+// MUST still apply, and session validity for used locks MUST be checked directly in storage.
+// Lock checks MUST use conflict-tracked reads, never a cache. Malformed lock IDs or duplicate
+// object IDs in locks MUST fail the request with INVALID_INPUT; unused entries MAY be ignored.
+
+// @cc [owner:spolu,label:api;security] dfs-apply-lock-rollout
+// Until enforcement is implemented, otherwise valid requests with nonempty locks MUST fail with
+// UNSUPPORTED before any operation runs. Lock acquisition MUST remain unsupported until Apply
+// checks are implemented.
 message ApplyRequest {
   repeated Operation operations = 1;
+  repeated ObjectLock locks = 2;
 }
 
 message Operation {

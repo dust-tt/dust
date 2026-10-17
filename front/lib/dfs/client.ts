@@ -1,7 +1,6 @@
 import {
   decodeWireResponse,
-  encodeFlockId,
-  encodeFlockMode,
+  encodeLockId,
   encodeGrant,
   encodeObjectId,
   encodeObjectRef,
@@ -14,7 +13,7 @@ import {
   WireGrantPageSchema,
   WireEntryPageSchema,
   WireFilesBatchSchema,
-  WireFlockLeaseSchema,
+  WireLockStateSchema,
   WireReadDataSchema,
   WireSearchResultsSchema,
   WireSessionSchema,
@@ -36,8 +35,8 @@ import type {
   DfsOperation,
   DfsEntryPage,
   DfsFilesBatch,
-  DfsFlockLease,
-  DfsFlockMode,
+  DfsLockState,
+  DfsObjectLock,
   DfsReadData,
   DfsSearchRequest,
   DfsSearchResults,
@@ -223,58 +222,37 @@ export class DfsClient {
     return this.call("RefreshSession", () => ({}), WireSessionSchema);
   }
 
-  // Advisory locks. Require the session key; storage support is not implemented yet.
+  // Enforced locks. Require the session key; storage support is not implemented yet.
 
-  async flock({
+  async lock({
     objectId,
-    ownerId,
-    mode,
+    lockId,
   }: {
     objectId: DfsObjectId;
-    ownerId: Uint8Array;
-    mode: DfsFlockMode;
-  }): Promise<Result<DfsFlockLease, DfsError>> {
-    return this.call(
-      "Flock",
-      () => ({
-        objectId: encodeObjectId(objectId),
-        ownerId: encodeFlockId(ownerId, "ownerId"),
-        mode: encodeFlockMode(mode),
-      }),
-      WireFlockLeaseSchema
-    );
-  }
-
-  async refreshFlock({
-    objectId,
-    leaseId,
-  }: {
-    objectId: DfsObjectId;
-    leaseId: Uint8Array;
-  }): Promise<Result<DfsFlockLease, DfsError>> {
+    lockId?: Uint8Array;
+  }): Promise<Result<DfsLockState, DfsError>> {
     return this.callMatching(
-      "RefreshFlock",
+      "Lock",
       () => ({
         objectId: encodeObjectId(objectId),
-        leaseId: encodeFlockId(leaseId, "leaseId"),
+        lockId: lockId === undefined ? undefined : encodeLockId(lockId),
       }),
-      WireFlockLeaseSchema,
-      (lease) => lease.leaseId.every((byte, index) => byte === leaseId[index])
+      WireLockStateSchema,
+      (lock) =>
+        lockId === undefined ||
+        lock.lockId.every((byte, index) => byte === lockId[index])
     );
   }
 
-  async releaseFlock({
+  async unlock({
     objectId,
-    leaseId,
-  }: {
-    objectId: DfsObjectId;
-    leaseId: Uint8Array;
-  }): Promise<Result<void, DfsError>> {
+    lockId,
+  }: DfsObjectLock): Promise<Result<void, DfsError>> {
     return this.call(
-      "ReleaseFlock",
+      "Unlock",
       () => ({
         objectId: encodeObjectId(objectId),
-        leaseId: encodeFlockId(leaseId, "leaseId"),
+        lockId: encodeLockId(lockId),
       }),
       WireEmptySchema
     );
@@ -435,12 +413,20 @@ export class DfsClient {
    */
   async apply({
     operations,
+    locks,
   }: {
     operations: DfsOperation[];
+    locks?: DfsObjectLock[];
   }): Promise<Result<DfsOperationBatch, DfsError>> {
     return this.callMatching(
       "Apply",
-      () => ({ operations: operations.map(encodeOperation) }),
+      () => ({
+        operations: operations.map(encodeOperation),
+        locks: locks?.map(({ objectId, lockId }) => ({
+          objectId: encodeObjectId(objectId),
+          lockId: encodeLockId(lockId),
+        })),
+      }),
       WireOperationBatchSchema,
       // The primary object, when returned, is the operation's object.
       ({ results }) =>

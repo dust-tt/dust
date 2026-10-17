@@ -39,10 +39,10 @@ export class DfsWireFactory {
     };
   }
 
-  static flockLease(overrides: DfsWireMessage = {}): DfsWireMessage {
+  static lockState(overrides: DfsWireMessage = {}): DfsWireMessage {
     return {
-      leaseId: Buffer.alloc(16, 1),
-      ttlMs: 30_000,
+      lockId: Buffer.alloc(16, 1),
+      expiresAt: "1700000060000",
       ...overrides,
     };
   }

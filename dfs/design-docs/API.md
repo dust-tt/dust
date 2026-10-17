@@ -208,8 +208,8 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
-| `Flock`, `RefreshFlock` | `r` on the target, for either lock mode. |
-| `ReleaseFlock` | Session ownership of the lease; no object permission required. |
+| `Lock` | `r+w` on the target, for acquisition and refresh. |
+| `Unlock` | Session ownership of the lock; no object permission required. |
 | create | `r+w` on the parent. |
 | update, write | `r+w` on the target. |
 | move | `r+w` on the source and target directories; `r` on the moved object. |
@@ -612,73 +612,69 @@ the 4 MiB encoded reply budget receive individual `CAPACITY` errors without bein
 reply budget reserves conservative overhead for every result, including errors. Attributes and
 contents share one FDB snapshot. All returned attributes carry the same `object.store_version`.
 
-## Advisory locks (proposed)
+## Exclusive locks (proposed)
 
-`Flock`, `RefreshFlock`, and `ReleaseFlock` require a session key. They currently return `UNSUPPORTED`;
-the following specifies their intended behavior.
+A collaboration channel can lock a file while it coordinates live edits. Other writers receive
+`WOULD_BLOCK` and can find the channel in the app using the object ID. DFS stores only the lock;
+channel discovery and collaboration belong to the app.
 
-Locks cover a real file or directory and coordinate cooperating callers across server instances.
-They do not restrict `Read`, `Apply`, or grant changes, and do not change attributes or versions.
-Renames and moves preserve locks; removing an object invalidates its leases. This is whole-object
-[flock-style locking](https://man7.org/linux/man-pages/man2/flock.2.html), not byte-range `fcntl` locks.
+Locks cover real files or directories across all server instances. They protect all Apply mutations
+of that object, including content, metadata, move, and removal. Reads and grant management remain
+available. Lock maintenance does not change attributes or versions.
 
-### Flock
+### Lock / Unlock
+
+Both RPCs require a session key. They currently return `UNSUPPORTED`.
 
 ```text
-FlockRequest {
+Lock(LockRequest) -> LockState
+Unlock(ObjectLock) -> Empty
+
+LockRequest {
   object_id: ObjectId
-  owner_id: bytes                // Fresh 16-byte random ID per independent open description.
-  mode: SHARED | EXCLUSIVE
+  lock_id?: bytes                // Omit to acquire; supply to refresh.
 }
 
-FlockLease {
-  lease_id: bytes                // Fresh 16-byte ID for this acquisition; not a bearer key.
-  ttl_ms: uint32                 // Remaining lease lifetime, at most 30,000 ms.
+LockState {
+  lock_id: bytes                 // One random 16-byte ID for this lock.
+  expires_at: Timestamp          // Server time + 1 minute, capped by session expiry.
+}
+
+ObjectLock {
+  object_id: ObjectId
+  lock_id: bytes
 }
 ```
 
-Multiple shared owners can coexist; an exclusive owner excludes every other owner. An incompatible
-request returns `WOULD_BLOCK` immediately without changing lock state. Blocking `flock` is implemented
-by client retries with backoff and jitter; there is no server wait queue or fairness guarantee.
+Acquiring fails immediately with `WOULD_BLOCK` if any active lock exists, including one belonging
+to the same session. Refresh requires the exact active ID and owning session: an absent, expired,
+or mismatched lock returns `LOCK_LOST`, never reacquires. Both require `r+w`; missing objects return
+`NOT_FOUND`, missing permissions `FORBIDDEN`. Lock RPCs authenticate directly in storage.
 
-Ownership is scoped to `(tenant, session, object_id, owner_id)`, independent of the connection.
-Separate opens must use distinct owners, even within one session. Descriptors shared through `dup`
-or `fork` use the same owner. Repeating `Flock` for an active owner and the same mode returns its
-existing lease and remaining lifetime, without renewing it. A different mode returns `INVALID_INPUT`:
-conversion explicitly releases then reacquires, with no atomic-upgrade guarantee.
+Unlock clears only the session's matching lock; absent or mismatched IDs are successful no-ops.
+It requires no object permission, allowing cleanup after access loss. Moves preserve the lock;
+removal clears it. Expiry takes effect without cleanup; session refresh does not extend locks.
+Revoked sessions cannot refresh; their locks expire within one minute.
 
-Both modes require current `r` permission; missing or unreadable objects return `NOT_FOUND`.
-Lock RPCs check session validity directly in storage, bypassing the authentication cache. Invalid,
-expired, or revoked sessions return `UNAUTHENTICATED`.
+The holder should refresh about every 20 seconds and include its ID when saving through Apply.
+On `LOCK_LOST`, it must stop the old editing session. An acquisition timeout can leave a lock until
+expiry; retrying acquisition never takes over an active lock. Unknown write outcomes must not be
+blindly replayed. An idempotency receipt replay returns the original absolute expiry.
 
-### RefreshFlock / ReleaseFlock
+### Apply enforcement
 
-```text
-FlockLeaseRequest {
-  object_id: ObjectId
-  lease_id: bytes                // Exactly 16 bytes from Flock.
-}
-```
+`Apply.locks` supplies object/lock ID pairs, at most one per object. Each operation checks its
+current target locks in the mutation transaction, after authorization and before staging writes.
+No lock and no supplied ID allows mutation. An active lock requires its ID and owning session;
+otherwise the operation returns `WOULD_BLOCK`. A supplied stale or foreign ID returns `LOCK_LOST`,
+even when the object is unlocked. Normal permissions still apply; used lock IDs require direct
+session authentication. Malformed IDs or duplicate objects fail the request with `INVALID_INPUT`.
 
-`RefreshFlock` rechecks read permission and extends an unexpired lease to at most 30 seconds from
-server time, capped by session expiry, returning `FlockLease` with the same ID. A missing, expired,
-or replaced lease returns `LOCK_LOST`; refresh never reacquires. Object absence or lost read access
-returns `NOT_FOUND`. Session refresh alone does not extend lock leases.
-
-`ReleaseFlock` returns `Empty`. It removes only the authenticated session's specified lease and
-succeeds if that lease is already absent. No object permission or existence check is needed.
-A delayed release cannot remove a newer lease. Clients release on unlock or final close, after
-committing buffered writes belonging to the critical section.
-
-Expired leases stop conflicting without waiting for cleanup. Revoked sessions cannot renew; their
-existing leases may contend until expiry, at most 30 seconds. Clients should renew every 10 seconds
-and use a conservative monotonic deadline of RPC start plus returned `ttl_ms`. A response received
-after that deadline does not establish ownership. On renewal failure, stop treating the lock as held;
-never silently reacquire and continue the old critical section. These advisory leases do not fence
-delayed writes from a paused or disconnected holder.
-
-Clients serialize lock RPCs per owner. A timed-out acquisition has an unknown outcome; recover by
-retrying with the same owner and mode, or abandon that owner and let any orphan lease expire.
+Targets are the same as Apply batching: Create's parent and proposed object; Update/Write's object;
+Move's object and both parents; Remove's object and parent. Directory locks affect direct targets,
+not every descendant. Lock failures change nothing for that operation; later operations continue.
+The caller may retry blocked operations or route edits through the collaboration channel.
+Until enforcement exists, Apply with nonempty `locks` returns `UNSUPPORTED` before any operation.
 
 ## Filesystem mutations
 
@@ -692,6 +688,7 @@ Requires a **session key**.
 ```text
 ApplyRequest {
   operations: Operation[]        // Nonempty; subject to the 4 MiB RPC request limit.
+  locks: ObjectLock[]            // Held locks; currently UNSUPPORTED if nonempty.
 }
 
 Operation = create(CreateOperation)

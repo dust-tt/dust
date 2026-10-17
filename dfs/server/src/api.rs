@@ -5,8 +5,8 @@ use dfs_protocol::{
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
-        ErrorCode, FileResult, FilesBatch, FlockLease, FlockLeaseRequest, FlockRequest, GrantPage,
-        ListGrantsRequest, ListRequest, LookupRequest, OperationBatch, OperationResult, ReadData,
+        ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LockRequest,
+        LockState, LookupRequest, ObjectLock, OperationBatch, OperationResult, ReadData,
         ReadFilesRequest, ReadRequest, RevokeSessionRequest, SearchRequest, SearchResults, Session,
         StatRequest, Tenant, UpdateGrantsRequest, dfs_server::Dfs,
     },
@@ -375,6 +375,9 @@ impl Dfs for API {
         if request.operations.is_empty() {
             return Err(status(ErrorCode::InvalidInput));
         }
+        if !request.locks.is_empty() {
+            return Err(status(ErrorCode::Unsupported));
+        }
         let operations = request
             .operations
             .into_iter()
@@ -421,23 +424,12 @@ impl Dfs for API {
         Ok(Response::new(response))
     }
 
-    async fn flock(&self, request: Request<FlockRequest>) -> Result<Response<FlockLease>, Status> {
+    async fn lock(&self, request: Request<LockRequest>) -> Result<Response<LockState>, Status> {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
-    async fn refresh_flock(
-        &self,
-        request: Request<FlockLeaseRequest>,
-    ) -> Result<Response<FlockLease>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
-    }
-
-    async fn release_flock(
-        &self,
-        request: Request<FlockLeaseRequest>,
-    ) -> Result<Response<Empty>, Status> {
+    async fn unlock(&self, request: Request<ObjectLock>) -> Result<Response<Empty>, Status> {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }

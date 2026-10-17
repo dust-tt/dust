@@ -172,14 +172,16 @@ export interface DfsFilesBatch {
   results: DfsFileResult[];
 }
 
-// Advisory locks.
+// Enforced locks.
 
-export type DfsFlockMode = "shared" | "exclusive";
+export interface DfsLockState {
+  lockId: Uint8Array;
+  expiresAtMs: number;
+}
 
-export interface DfsFlockLease {
-  leaseId: Uint8Array;
-  // Bound local validity by the monotonic RPC start time plus this duration.
-  ttlMs: number;
+export interface DfsObjectLock {
+  objectId: DfsObjectId;
+  lockId: Uint8Array;
 }
 
 // Filesystem mutations.

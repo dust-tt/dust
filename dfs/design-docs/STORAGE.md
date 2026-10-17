@@ -85,38 +85,29 @@ of at most 100 entries. Each batch rechecks session state with conflict tracking
 protecting refreshed sessions and allowing concurrent sweepers to retry safely. Stale and orphaned
 index entries are also removed. Authentication rejects expired sessions independently of cleanup.
 
-## Advisory locks (proposed)
+## Exclusive locks (proposed)
 
-FDB is authoritative across server instances for the [flock leases](API.md#advisory-locks-proposed).
-These keys are proposed; lock RPCs currently return `UNSUPPORTED`.
+FDB is authoritative for [exclusive locks](API.md#exclusive-locks-proposed). One key per object:
 
 | Key | Value | Rationale |
 | --- | --- | --- |
-| `dfs-v1-{env}/tenant/<tenantId>/flock/<objectId>/<sessionId>/<ownerId>` | FDB tuple `(lease_id_bytes, mode, expires_at_ms)`. | Stores one lease per open description and supports conflict checks by object. |
-| `dfs-v1-{env}/tenant/<tenantId>/flock-lease/<objectId>/<leaseId>` | FDB tuple `(session_id, owner_id_bytes)`. | Resolves the exact lease for refresh and release. |
-| `dfs-v1-{env}/flock-expiry/<expiresAtMs>/<tenantId>/<objectId>/<leaseId>` | Empty value. | Finds expired leases across tenants in bounded batches. |
+| `dfs-v1-{env}/tenant/<tenantId>/lock/<objectId>` | FDB tuple `(session_id, lock_id_bytes, expires_at_ms)`. | Stores the holder, its single random 16-byte lock ID, and expiry. |
 
-Owner and lease IDs are opaque 16-byte tuple components. Modes use the protocol enum; expiry keys
-use the same timestamp encoding as session expiry. State and both indexes change atomically.
+Lock acquisition conflict-reads the key, including absence, and replaces only an absent or expired
+lock. Refresh requires the matching session/ID and unexpired state. Both set expiry to server time
+plus one minute, capped by session expiry. Unlock clears only a matching session/ID. These writes
+use `with_idempotent_transaction`; receipt replay retains the committed absolute expiry.
 
-Acquisition conflict-reads the object's holder range, including an empty range, and ignores expired
-leases. Shared holders coexist; an exclusive holder excludes all others. Repeating an active owner
-and mode returns its existing lease without renewing. Each lock RPC authenticates directly in FDB;
-acquisition and refresh also check object read access in that transaction. Leases expire within
-30 seconds, capped by session expiry. Session refresh does not extend them; revocation prevents
-renewal but leaves existing leases to expire.
+Every Apply operation uses one common lock-check helper for its batching targets, after permission
+checks and before staging writes. Conflict-tracked reads in the mutation transaction reject active
+locks without the session's matching ID (`WOULD_BLOCK`) and supplied stale IDs (`LOCK_LOST`). No
+lock and no supplied ID permits mutation. Lock RPCs and used Apply locks check sessions directly
+in storage; lock state is never cached. All Apply mutations are covered; reads and grants are not.
 
-Refresh verifies the session, lease ID, and unexpired state before replacing the expiry entry.
-Release verifies ownership and the exact lease ID before clearing all three records; an absent
-lease succeeds. Neither operation can affect a later acquisition by the same owner. Lock writes use
-`with_idempotent_transaction`; retain absolute expiry in the retry result and compute remaining
-`ttl_ms` after the runner returns, including receipt replay.
-
-Moves preserve these keys. Object deletion atomically clears both per-object prefixes; global expiry
-entries may remain for cleanup. A future sweep can share the session/receipt loop, rechecking the
-lease ID and expiry with conflict tracking before deleting each batch. Stale or orphaned index
-entries are cleared without deleting refreshed or replacement leases. Expiry takes effect without
-waiting for cleanup. Locks are advisory and never change object attributes or versions.
+Moves keep the key; object removal clears it. Expired records do not block and are replaced on the
+next acquisition. Storage is bounded to one record per object, so no expiry index or sweeper is
+needed initially. Lock maintenance does not change object attributes or versions. This is a proposal:
+lock RPCs and Apply requests carrying locks remain unsupported until enforcement is implemented.
 
 ## Transaction receipts
 
