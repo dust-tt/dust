@@ -314,7 +314,10 @@ export class DustAPI {
   }
 
   apiUrl(): string {
-    return this._urlOverride ? this._urlOverride : this._url;
+    const url = this._urlOverride ? this._urlOverride : this._url;
+    // Endpoint paths are appended as `${apiUrl}/api/v1/...`: drop trailing
+    // slashes so a base URL such as `https://eu.dust.tt/` does not produce `//api`.
+    return url.replace(/\/+$/, "");
   }
 
   async getApiKey(): Promise<string | null> {
