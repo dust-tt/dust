@@ -49,6 +49,7 @@ import {
 } from "@app/lib/resources/file_viewer_queries";
 import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import { FrameTrustResource } from "@app/lib/resources/frame_trust_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
@@ -614,6 +615,7 @@ export class FileResource extends BaseResource<FileModel> {
       workspaceModelId,
     });
     await FramePublicationResource.deleteAllForWorkspace(auth);
+    await FrameTrustResource.deleteAllForWorkspace(auth);
     await getPrivateUploadBucket().deleteByPrefix(
       getFramesBasePath({ workspaceId: owner.sId })
     );
@@ -730,6 +732,7 @@ export class FileResource extends BaseResource<FileModel> {
       if (this.isFrameV2) {
         await this.deleteFrameFunctions(auth);
         await FramePublicationResource.deleteAllForFrame(auth, this);
+        await FrameTrustResource.deleteAllForFrame(auth, this);
         await getPrivateUploadBucket().deleteByPrefix(
           getFrameBasePath({
             workspaceId: auth.getNonNullableWorkspace().sId,
