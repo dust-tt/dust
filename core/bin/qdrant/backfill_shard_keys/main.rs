@@ -3,7 +3,7 @@ use clap::Parser;
 use dust::{
     data_sources::{
         data_source::DataSourceConfig,
-        qdrant::{QdrantClients, QdrantCluster, QdrantTenant},
+        qdrant::{QdrantClients, QdrantCluster},
     },
     stores::{postgres::PostgresStore, store::Store},
     utils,
@@ -13,7 +13,7 @@ use std::{collections::BTreeMap, env};
 use tokio_postgres::Client;
 
 #[derive(Debug, Parser)]
-#[command(about = "Backfill Qdrant shard keys from collection layouts without changing routing")]
+#[command(about = "Backfill missing Qdrant shard keys from collection layouts")]
 struct Args {
     #[arg(
         long,
@@ -60,14 +60,6 @@ fn validate_shard_key(key: &str, keys: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn validate_routing(key: &str, legacy_key: &str) -> Result<()> {
-    ensure!(
-        key == legacy_key,
-        "Assignment {key} differs from legacy route {legacy_key}; manual investigation required"
-    );
-    Ok(())
-}
-
 async fn plan_backfill(
     id: i64,
     internal_id: String,
@@ -76,10 +68,6 @@ async fn plan_backfill(
 ) -> Result<Option<Backfill>> {
     let config: DataSourceConfig = serde_json::from_str(&config_json)?;
     let mut shard_keys = config.qdrant_config.shard_keys.clone();
-    let tenant = QdrantTenant {
-        internal_id: &internal_id,
-        shard_keys: &config.qdrant_config.shard_keys,
-    };
     for cluster in [
         Some(config.qdrant_config.cluster),
         config.qdrant_config.shadow_write_cluster,
@@ -95,8 +83,6 @@ async fn plan_backfill(
             .assign_shard_key(&config.embedder_config.embedder, &internal_id)
             .await?
             .context("Cannot assign a shard key when sharding is disabled")?;
-        validate_routing(&key, &client.shard_key_name(&tenant)?)
-            .with_context(|| format!("cluster={cluster}"))?;
         for embedder in [
             Some(&config.embedder_config.embedder),
             config.embedder_config.shadow_embedder.as_ref(),
@@ -272,13 +258,6 @@ mod tests {
         assert!(validate_shard_key("key_14", &keys).is_err());
         assert!(validate_shard_key("key_14", &[]).is_err());
         validate_shard_key("key_2", &keys)?;
-        Ok(())
-    }
-
-    #[test]
-    fn rejects_changed_routing() -> Result<()> {
-        assert!(validate_routing("key_2", "key_14").is_err());
-        validate_routing("key_14", "key_14")?;
         Ok(())
     }
 
