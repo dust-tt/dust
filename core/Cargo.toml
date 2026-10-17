@@ -68,6 +68,10 @@ name = "qdrant_count_points_per_data_source"
 path = "bin/qdrant/count_points_per_data_source.rs"
 
 [[bin]]
+name = "qdrant_backfill_shard_keys"
+path = "bin/qdrant/backfill_shard_keys/main.rs"
+
+[[bin]]
 name = "qdrant_reshard"
 path = "bin/qdrant/qdrant_reshard.rs"
 
