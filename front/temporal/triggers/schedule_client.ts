@@ -94,6 +94,8 @@ function getTriggerScheduleOptions(
   triggerData: ScheduleTriggerType,
   scheduleId: string
 ): ScheduleOptions {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
   return {
     action: {
       type: "startWorkflow",
@@ -101,13 +103,19 @@ function getTriggerScheduleOptions(
       args: [
         {
           userId: auth.getNonNullableUser().sId,
-          workspaceId: auth.getNonNullableWorkspace().sId,
+          workspaceId,
           triggerId: triggerData.sId,
         },
       ],
       taskQueue: QUEUE_NAME,
+      searchAttributes: {
+        workspaceId: [workspaceId],
+      },
     },
     scheduleId,
+    searchAttributes: {
+      workspaceId: [workspaceId],
+    },
     policies: {
       overlap: ScheduleOverlapPolicy.SKIP,
     },
