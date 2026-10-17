@@ -9,8 +9,9 @@ interface EnvVar {
   value: string;
 }
 
-// Matches lines like: export KEY=value  export KEY="value"  export KEY='value'
-const EXPORT_PATTERN = /^export ([A-Za-z_][A-Za-z0-9_]*)=(.*)/;
+// Matches lines like: export KEY=value  export KEY="value"  KEY='value'
+// (env.sh auto-exports config.env, so plain assignments are active too)
+const EXPORT_PATTERN = /^(?:export )?([A-Za-z_][A-Za-z0-9_]*)=(.*)/;
 
 function unquoteValue(raw: string): string {
   if (
