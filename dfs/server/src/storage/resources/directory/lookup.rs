@@ -21,7 +21,7 @@ impl DirectoryResource {
      * A target MUST resolve only when the session can read its parent and its child in the caller's
      * transaction. An unreadable parent MUST return NotFound, as a missing one would, whatever it
      * contains or is. An unreadable child MUST fail through Stat's authorization, never with its
-     * Attr. The virtual root parent needs no read; its children do.
+     * Attr. Virtual root and shared need no stored-parent read; their children must be readable.
      */
     /**
      * @cc [owner:pmilliotte,label:backend] lookup-batch-results
@@ -29,8 +29,8 @@ impl DirectoryResource {
      */
     /**
      * @cc [owner:pmilliotte,label:product] lookup-virtual-parents
-     * Under virtual root, `shared` MUST resolve to virtual shared. A virtual shared parent MUST
-     * return SharedUnsupported.
+     * Under virtual root, `shared` MUST resolve to virtual shared. Under virtual shared, aliases
+     * MUST resolve by ID only when an explicit ALLOW matches a session subject and Stat permits read.
      */
     pub async fn lookup_for_session(
         tx: &Transaction,
@@ -62,7 +62,7 @@ impl DirectoryResource {
                     ObjectRef::Object(_) | ObjectRef::Root => parents.next().flatten(),
                     ObjectRef::Shared | ObjectRef::Invalid => None,
                 };
-                Self::resolve_child_for_session(tx, target, parent)
+                Self::resolve_child_for_session(tx, session, target, parent)
             })
             .collect();
         let children: Vec<_> = stream::iter(resolutions)
@@ -91,10 +91,13 @@ impl DirectoryResource {
 
     async fn resolve_child_for_session(
         tx: &Transaction,
+        session: &SessionResource,
         target: &LookupTarget,
         parent: Option<(ObjectResource, Mode)>,
     ) -> Result<Result<ObjectRef, Error>, storage::Error<Error>> {
-        if let Err(error) = Self::validate_name(&target.name) {
+        if target.parent_id != ObjectRef::Shared
+            && let Err(error) = Self::validate_name(&target.name)
+        {
             return Ok(Err(error));
         }
         let readable = match target.parent_id {
@@ -103,7 +106,9 @@ impl DirectoryResource {
             }
             ObjectRef::Root => true,
             ObjectRef::Object(_) => parent.as_ref().is_some_and(|(_, mode)| mode.can_read()),
-            ObjectRef::Shared => return Ok(Err(Error::SharedUnsupported)),
+            ObjectRef::Shared => {
+                return Self::resolve_shared_for_session(tx, session, &target.name).await;
+            }
             ObjectRef::Invalid => return Ok(Err(Error::Object(object::Error::InvalidId))),
         };
         if !readable {

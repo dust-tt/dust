@@ -135,7 +135,6 @@ pub(crate) async fn list_returns_readable_entries_and_conceals_the_rest() -> Res
         (request(hidden_id, None, 1), ErrorCode::NotFound),
         (request(ObjectId::new_v7(), None, 1), ErrorCode::NotFound),
         (request(notes_id, None, 1), ErrorCode::NotDirectory),
-        (request(ObjectRef::Shared, None, 1), ErrorCode::Unsupported),
         (
             request(ObjectRef::Invalid, None, 1),
             ErrorCode::InvalidInput,

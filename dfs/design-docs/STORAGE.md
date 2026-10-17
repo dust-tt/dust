@@ -168,9 +168,10 @@ an exclusive cursor. Cursors are validated against the authenticated tenant and 
 
 Authorization walks the real ancestor chain in one transaction. At each level, DENY removes inherited
 bits, then matching ALLOW adds bits. Only read/write bits exist; a deeper ALLOW can reopen access.
-Reverse scans return candidates requiring deduplication and full permission/projection checks. DENY
-creates no entry point. Inherited grants are never materialized, so grant changes need no descendant
-rewrites.
+Shared listing merges bounded per-subject reverse scans in object-ID order, deduplicates candidates,
+and checks effective read. Lookup parses `name--<object-id>`, checks explicit ALLOW membership, and
+checks effective read. DENY creates no entry point. Inherited grants are never materialized, so grant
+changes need no descendant rewrites.
 
 ## Transactions
 

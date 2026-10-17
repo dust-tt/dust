@@ -51,7 +51,7 @@ pub(crate) async fn lookup_resolves_readable_children_and_conceals_the_rest() ->
         .into_inner();
     let authorization = format!("Bearer {}", session.session_key);
 
-    // Create RPCs are not implemented yet.
+    // Seed the directory tree through resources before testing Lookup over gRPC.
     let tx = fdb::database()?.create_trx()?;
     let resource = TenantResource::fetch(&tx, &tenant.tenant_id)
         .await?
@@ -139,7 +139,7 @@ pub(crate) async fn lookup_resolves_readable_children_and_conceals_the_rest() ->
         (4, ErrorCode::NotFound),
         (5, ErrorCode::NotFound),
         (6, ErrorCode::NotDirectory),
-        (7, ErrorCode::Unsupported),
+        (7, ErrorCode::InvalidInput),
         (8, ErrorCode::InvalidInput),
         (9, ErrorCode::NameTooLong),
     ] {

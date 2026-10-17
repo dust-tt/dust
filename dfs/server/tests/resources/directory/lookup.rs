@@ -98,10 +98,7 @@ pub(crate) async fn lookup_attrs_require_readable_parents_and_children() -> Resu
     }
     assert_eq!(found(&results[1])?.id, docs.object_id.into());
     assert_eq!(found(&results[2])?.id, ObjectRef::Shared);
-    assert!(matches!(
-        results[3],
-        Err(directory::Error::SharedUnsupported)
-    ));
+    assert!(matches!(results[3], Err(directory::Error::InvalidName)));
     assert!(matches!(
         results[4],
         Err(directory::Error::Object(object::Error::NotFound))
