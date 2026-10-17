@@ -5,21 +5,12 @@ import type * as sync_status from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
-  deprecatePatch,
   proxyActivities,
   setHandler,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 import uniq from "lodash/uniq";
-
-// The SharePoint list-sync steps were introduced behind patched() to survive
-// the deploy that inserted them before syncSucceeded. Now deprecated: new runs
-// execute list sync unconditionally while histories that still carry the marker
-// remain replayable.
-// TODO(2026-10-23): remove deprecatePatch() once no replayable history still
-// carries the marker.
-const SYNC_SHAREPOINT_LISTS_PATCH = "microsoft-sync-sharepoint-lists";
 
 const {
   getRootNodesToSync,
@@ -194,7 +185,6 @@ export async function fullSyncWorkflow({
   // SharePoint lists are not part of the drive/folder BFS above: they live at
   // the site level and are synced as standalone tables. Re-sync all selected
   // lists once the drive sync has drained.
-  deprecatePatch(SYNC_SHAREPOINT_LISTS_PATCH);
   const fullSyncListNodeIds = await getListNodesToSync(connectorId);
   for (const listInternalId of fullSyncListNodeIds) {
     await syncOneListActivity({
@@ -325,7 +315,6 @@ export async function incrementalSyncWorkflowV2({
 
   // Lists have no delta endpoint in this pipeline: re-sync each selected list,
   // skipping the upload when its lastModifiedDateTime has not advanced.
-  deprecatePatch(SYNC_SHAREPOINT_LISTS_PATCH);
   const listNodeIds = await getListNodesToSync(connectorId);
   for (const listInternalId of listNodeIds) {
     await syncOneListActivity({
