@@ -474,6 +474,70 @@ describe("VisualizationActionIframe", () => {
       );
     });
   });
+
+  it.each([
+    ["latest" as const, { target: "latest" }],
+    [undefined, {}],
+  ])(
+    "sends the function target %s only when the host sets one",
+    async (functionTarget, expectedTarget) => {
+      mocks.clientFetch.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            invocation: { functionId: "sfn_function", sId: "sfi_invocation" },
+            outcome: { status: "succeeded", result: { ok: true } },
+          }),
+          { status: 201, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+      const { container } = render(
+        createElement(VisualizationActionIframe, {
+          agentConfigurationId: null,
+          canInvokeFunctions: true,
+          conversationId: null,
+          frameId: "fil_frame",
+          functionTarget,
+          scopedUserIdentity,
+          viewer: null,
+          visualization: {
+            code: "export default function Frame() {}",
+            complete: true,
+            identifier: "viz-fil_frame",
+          },
+          vizUrl: "https://viz.dust.tt",
+          workspaceId: "w_current",
+        })
+      );
+      const iframe = container.querySelector("iframe");
+      if (!iframe?.contentWindow) {
+        throw new Error("Expected the visualization iframe to be mounted.");
+      }
+      vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(
+        () => {}
+      );
+
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          source: iframe.contentWindow,
+          data: {
+            command: "callFunction",
+            identifier: "viz-fil_frame",
+            messageUniqueId: "message-target",
+            params: { functionIdOrSlug: "list-comments" },
+          },
+        })
+      );
+
+      await waitFor(() => {
+        expect(mocks.clientFetch).toHaveBeenCalled();
+      });
+      const [, init] = mocks.clientFetch.mock.calls.at(-1) ?? [];
+      const body = JSON.parse(init.body);
+      expect(body).toMatchObject(expectedTarget);
+      expect("target" in body).toBe(functionTarget !== undefined);
+    }
+  );
 });
 
 const renderFileFrame = (

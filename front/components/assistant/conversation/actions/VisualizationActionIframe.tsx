@@ -15,6 +15,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
 import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
+import type { FramePublicationTarget } from "@app/types/api/frame_publication";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -801,6 +802,11 @@ export interface VisualizationActionIframeProps {
   framePackageRoot?: string | null;
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
+  /**
+   * Which publication function invocations run against. Only the conversation panel passes
+   * `"latest"` (the draft for editors, live otherwise); omitted, the live publication runs.
+   */
+  functionTarget?: FramePublicationTarget;
   isEditable?: boolean;
   /**
    * Frames v2 authors only: edits are staged in the viz until Save. Switching between Preview and
@@ -1026,6 +1032,7 @@ export const VisualizationActionIframe = forwardRef<
           context: {
             timezone: getLocalTimeZone(),
           },
+          target: props.functionTarget,
         };
 
         const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
@@ -1063,6 +1070,7 @@ export const VisualizationActionIframe = forwardRef<
     },
     [
       functionReferenceScope,
+      props.functionTarget,
       runtimeAccess.canInvokeFunctions,
       runtimeAccess.userIdentity.isWorkspaceMember,
       workspaceId,

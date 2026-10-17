@@ -888,6 +888,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_pod_goal"
   | "fireworks_new_model_feature"
   | "frames_v2"
+  | "frames_v2_drafts"
   | "frames_v2_functions"
   | "frames_v2_public_functions"
   | "google_sheets_tool"

@@ -13,10 +13,12 @@ const frameV2Metadata = {
 
 interface Mocks {
   canWriteFrameSource: boolean;
+  contentCalls: Record<string, unknown>[];
   fileMetadata: Record<string, unknown>;
   hasFrameFunctions: boolean;
   iframeProps: {
     frameId?: string;
+    functionTarget?: string;
     isEditable?: boolean;
     stagedEditMode?: string;
   } | null;
@@ -26,6 +28,7 @@ interface Mocks {
 
 const mocks = vi.hoisted<Mocks>(() => ({
   canWriteFrameSource: true,
+  contentCalls: [],
   fileMetadata: {},
   hasFrameFunctions: false,
   iframeProps: null,
@@ -100,10 +103,10 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
 }));
 
 vi.mock("@app/lib/swr/files", () => ({
-  useFileContent: () => ({
-    fileContent: "frame bundle",
-    mutateFileContent: vi.fn(),
-  }),
+  useFileContent: (args: Record<string, unknown>) => {
+    mocks.contentCalls.push(args);
+    return { fileContent: "frame bundle", mutateFileContent: vi.fn() };
+  },
   useFileContentByUrl: () => ({
     fileContent: "export default function Frame() {}",
     isNotFound: false,
@@ -193,6 +196,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   mocks.iframeProps = null;
+  mocks.contentCalls = [];
   mocks.metadataCalls = [];
   mocks.permissionsCalls = [];
 });
@@ -315,5 +319,13 @@ describe("PodFrameSheet", () => {
     expect(mocks.iframeProps).toMatchObject({
       isEditable: false,
     });
+  });
+
+  it("serves the live publication: no latest bundle, functions or function target", () => {
+    render(createElement(PodFrameSheet, openSheetProps));
+
+    expect(mocks.contentCalls.at(-1)).not.toHaveProperty("publication");
+    expect(mocks.permissionsCalls.at(-1)).not.toHaveProperty("publication");
+    expect(mocks.iframeProps).not.toHaveProperty("functionTarget");
   });
 });

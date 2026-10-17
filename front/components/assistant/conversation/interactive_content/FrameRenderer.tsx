@@ -126,6 +126,9 @@ export function FrameRenderer({
       fileId,
       owner,
       cacheKey: contentHash,
+      // The conversation panel is the one surface that shows editors the latest publication
+      // (a pending draft); the server still serves live to callers who cannot write the Frame.
+      publication: "latest",
     });
 
   const { fileMetadata, mutateFileMetadata } = useFileMetadata({
@@ -175,6 +178,7 @@ export function FrameRenderer({
   } = useFramePermissions({
     owner,
     frameId: fileId,
+    publication: "latest",
     disabled: renderMode !== "v2",
   });
   const framePackageRoot =
@@ -228,7 +232,7 @@ export function FrameRenderer({
 
   const reloadFile = async () => {
     setIsLoading(true);
-    await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
+    await mutateFileContent();
     if (renderMode === "v2") {
       // v2 renders a built bundle: remount so react-runner loads the refreshed content.
       editSession.remount();
@@ -442,6 +446,7 @@ export function FrameRenderer({
                 framePackageRoot={framePackageRoot}
                 frameId={renderMode === "v2" ? fileId : undefined}
                 isInDrawer={true}
+                functionTarget="latest"
                 isEditable={isEditable}
                 stagedEditMode={canEditV2 ? editSession.mode : undefined}
                 onEditText={

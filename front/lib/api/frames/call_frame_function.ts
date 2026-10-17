@@ -71,9 +71,11 @@ export async function callFrameFunction(
     input?: unknown;
   }
 ): Promise<Result<CallFrameFunctionResult, CallFrameFunctionError>> {
+  // The agent calls what it would see: its draft when it can edit the Frame, live otherwise.
   const sandboxFunction = await resolveActiveFrameFunctionForUse(auth, {
     frameId,
     functionName,
+    target: "latest",
   });
   if (!sandboxFunction) {
     return new Err(

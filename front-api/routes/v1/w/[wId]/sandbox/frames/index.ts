@@ -6,6 +6,10 @@ import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import {
+  type FramePublicationStatus,
+  FramePublishModeSchema,
+} from "@app/types/api/frame_publication";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { frameSourceErrorStatus } from "@front-api/lib/api/frame_source_errors";
 import { sandboxApp } from "@front-api/middlewares/ctx";
@@ -22,12 +26,15 @@ import share from "./share";
 const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
   replacesPath: z.string().min(1).optional(),
+  // Older dsbx binaries send no mode: they keep publishing live.
+  mode: FramePublishModeSchema.default("live"),
 });
 
 type FramePublishResponse = {
   frameId: string;
   manifestPath: string;
   publicationId?: string;
+  status?: FramePublicationStatus;
   created?: boolean;
   warnings?: ValidationWarning[];
 };
@@ -88,12 +95,22 @@ app.post(
     }
 
     // Keep the request field name for compatibility. Legacy Frames pass their entry source path.
-    const { manifestPath, replacesPath } = ctx.req.valid("json");
+    const { manifestPath, replacesPath, mode } = ctx.req.valid("json");
+    if (mode === "draft" && !(await hasFeatureFlag(auth, "frames_v2_drafts"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "feature_not_enabled",
+          message: "Frame drafts are not enabled for this workspace.",
+        },
+      });
+    }
     const publication = await publishFrameFromSource(auth, {
       conversation: conversation.toJSON(),
       publishedByAgentConfigurationId: claims.aId,
       sourcePath: manifestPath,
       replacesPath,
+      mode,
     });
     if (publication.isErr()) {
       const status = frameSourceErrorStatus(publication.error);
@@ -160,6 +177,7 @@ app.post(
             frameId: publication.value.frameId,
             manifestPath: publication.value.sourcePath,
             publicationId: publication.value.publicationId,
+            status: publication.value.status,
             created: publication.value.created,
           },
           200

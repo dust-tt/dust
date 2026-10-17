@@ -102,7 +102,7 @@ export async function readFrameFileContent(
   const workspace = renderLightWorkspaceType({
     workspace: auth.getNonNullableWorkspace(),
   });
-  return frameFile.getRenderableContent(workspace);
+  return frameFile.getRenderableContent(workspace, { publication: "live" });
 }
 
 export async function computeAuthorizedFileAccessForShare(

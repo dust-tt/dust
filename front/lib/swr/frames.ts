@@ -18,20 +18,42 @@ import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
+/** Relative API path of a Frame's permissions, for the live publication unless asked. */
+export function getFramePermissionsKey({
+  owner,
+  frameId,
+  publication,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+  publication?: "latest";
+}): string {
+  const publicationParam = publication ? `?publication=${publication}` : "";
+  return `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions${publicationParam}`;
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] frame-permissions-serve-live-unless-asked
+ * Without `publication`, permissions MUST be fetched without a `publication` query param, so
+ * `hasFrameFunctions` describes the live publication. Only the conversation panel
+ * (`FrameRenderer`) passes `publication: "latest"`.
+ */
 export function useFramePermissions({
   owner,
   frameId,
+  publication,
   disabled = false,
 }: {
   owner: LightWorkspaceType;
   frameId: string;
+  publication?: "latest";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const permissionsFetcher: Fetcher<GetFramePermissionsResponseBody> = fetcher;
   const swrKey = disabled
     ? null
-    : `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions`;
+    : getFramePermissionsKey({ owner, frameId, publication });
 
   const { data, error } = useSWRWithDefaults(swrKey, permissionsFetcher, {
     disabled,

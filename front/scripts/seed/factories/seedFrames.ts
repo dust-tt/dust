@@ -67,6 +67,7 @@ async function seedFrame(ctx: SeedContext, frame: FrameAsset): Promise<void> {
     conversation: conversation.toJSON(),
     publishedByAgentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     sourcePath: manifestPath,
+    mode: "live",
   });
   if (published.isErr()) {
     throw published.error;

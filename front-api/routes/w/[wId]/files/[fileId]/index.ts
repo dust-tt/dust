@@ -1,4 +1,5 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
 import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
@@ -8,6 +9,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { FramePublicationTargetSchema } from "@app/types/api/frame_publication";
 import { frameContentType, isConversationFileUseCase } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
@@ -20,6 +22,10 @@ import { z } from "zod";
 
 const ParamsSchema = z.object({
   fileId: z.string(),
+});
+
+const GetQuerySchema = z.object({
+  publication: FramePublicationTargetSchema.optional(),
 });
 
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -103,6 +109,13 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *         schema:
  *           type: string
  *           enum: [view, download]
+ *       - in: query
+ *         name: publication
+ *         required: false
+ *         description: Frames v2 publication to view. `latest` serves the newest publication (a pending draft) only to callers who can write the Frame's source; everyone else, and every request without it, is served the live publication.
+ *         schema:
+ *           type: string
+ *           enum: [live, latest]
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -194,80 +207,101 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *         description: File not found
  */
 
-app.get("/", validate("param", ParamsSchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { fileId } = ctx.req.valid("param");
+/**
+ * @cc [owner:davidebbo,label:product;security] frame-view-serves-latest-only-when-asked
+ * A Frames v2 view MUST serve `"latest"` only when the request asks for `publication=latest` AND
+ * the caller passes `canWriteFrameV2Source`; every other request is served live. Only the
+ * conversation panel asks for latest: Pod tabs, pinned banners and other in-app surfaces omit it,
+ * so Pod members with write access see live while someone iterates on a draft in a conversation.
+ */
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  validate("query", GetQuerySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { fileId } = ctx.req.valid("param");
+    const { publication: requestedPublication = "live" } =
+      ctx.req.valid("query");
 
-  const file = await FileResource.fetchById(auth, fileId);
-  if (!file) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
-
-  const accessCheck = await checkFileAccess(ctx, file);
-  if (accessCheck) {
-    return accessCheck;
-  }
-
-  if (
-    file.useCase === "skill_attachment" &&
-    !(await canReadSkillFile(auth, file))
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
-
-  const action = getSecureFileAction(ctx.req.query("action"), file);
-  if (action === "view") {
-    if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
-      // Start waking the Frame's sandbox while its UI loads; the pre-warm gates itself.
-      void prewarmFrameSandbox(auth, file);
-
-      const owner = renderLightWorkspaceType({
-        workspace: auth.getNonNullableWorkspace(),
-      });
-      const uiBundle = await file.getRenderableContent(owner);
-      if (!uiBundle) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "file_not_found",
-            message: "Published Frame not found.",
-          },
-        });
-      }
-
-      return ctx.body(uiBundle, 200, {
-        "Content-Type": frameContentType,
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
       });
     }
 
-    const versionParam = ctx.req.query("version");
-    // Default to the frame's renderable version (a published frame serves its built bundle);
-    // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
-    const version = isValidViewVersion(versionParam)
-      ? versionParam
-      : file.getRenderableVersion();
+    const accessCheck = await checkFileAccess(ctx, file);
+    if (accessCheck) {
+      return accessCheck;
+    }
 
-    const readStream = file.getReadStream({ auth, version });
-    return new Response(readableToReadableStream(readStream), {
-      status: 200,
-      headers: { "Content-Type": file.contentType },
-    });
+    if (
+      file.useCase === "skill_attachment" &&
+      !(await canReadSkillFile(auth, file))
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+
+    const action = getSecureFileAction(ctx.req.query("action"), file);
+    if (action === "view") {
+      if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
+        // Start waking the Frame's sandbox while its UI loads; the pre-warm gates itself.
+        void prewarmFrameSandbox(auth, file);
+
+        const owner = renderLightWorkspaceType({
+          workspace: auth.getNonNullableWorkspace(),
+        });
+        const publication =
+          requestedPublication === "latest" &&
+          (await canWriteFrameV2Source(auth, file))
+            ? "latest"
+            : "live";
+        const uiBundle = await file.getRenderableContent(owner, {
+          publication,
+        });
+        if (!uiBundle) {
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "file_not_found",
+              message: "Published Frame not found.",
+            },
+          });
+        }
+
+        return ctx.body(uiBundle, 200, {
+          "Content-Type": frameContentType,
+        });
+      }
+
+      const versionParam = ctx.req.query("version");
+      // Default to the frame's renderable version (a published frame serves its built bundle);
+      // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
+      const version = isValidViewVersion(versionParam)
+        ? versionParam
+        : file.getRenderableVersion();
+
+      const readStream = file.getReadStream({ auth, version });
+      return new Response(readableToReadableStream(readStream), {
+        status: 200,
+        headers: { "Content-Type": file.contentType },
+      });
+    }
+
+    if (file.isFrameV2) {
+      return redirectToFrameSourceArchive(ctx, file);
+    }
+
+    // Redirect to a signed URL.
+    const url = await file.getSignedUrlForDownload(auth, "original");
+    return ctx.redirect(url);
   }
-
-  if (file.isFrameV2) {
-    return redirectToFrameSourceArchive(ctx, file);
-  }
-
-  // Redirect to a signed URL.
-  const url = await file.getSignedUrlForDownload(auth, "original");
-  return ctx.redirect(url);
-});
+);
 
 app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");

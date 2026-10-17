@@ -5,6 +5,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -233,6 +234,101 @@ describe("GET /api/w/:wId/files/:fileId", () => {
       expect.anything(),
       expect.objectContaining({ sId: frame.sId })
     );
+  });
+
+  async function setupEditorWithDraftFrame() {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 128,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        activePublicationId: "publication-live",
+        conversationId: conversation.sId,
+      },
+    });
+    await frame.setLatestFramePublication({
+      publicationId: "publication-draft",
+    });
+    for (const publicationId of ["publication-live", "publication-draft"]) {
+      fileStorageMock.setObject(
+        getFramePublicationUiBundlePath({
+          workspaceId: workspace.sId,
+          frameId: frame.sId,
+          publicationId,
+        }),
+        `bundle ${publicationId}`
+      );
+    }
+    return { frame, workspace };
+  }
+
+  it("serves the pending draft bundle to a Frame editor who asks for latest", async () => {
+    const { frame, workspace } = await setupEditorWithDraftFrame();
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view&publication=latest")
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("bundle publication-draft");
+  });
+
+  it("serves the live bundle to a Frame editor who does not ask for latest", async () => {
+    const { frame, workspace } = await setupEditorWithDraftFrame();
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view")
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("bundle publication-live");
+  });
+
+  it("rejects an unknown publication", async () => {
+    const { frame, workspace } = await setupEditorWithDraftFrame();
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view&publication=draft")
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("serves the live bundle to a viewer who cannot edit the Frame, even when asked for latest", async () => {
+    const { frame, space, workspace } = await makeTestFrameFunction();
+    const { globalGroup } = await GroupFactory.defaults(workspace);
+    await SpaceFactory.attachGroup(space, globalGroup, "project_viewer");
+    await frame.setLatestFramePublication({
+      publicationId: "publication-draft",
+    });
+    for (const publicationId of ["publication-1", "publication-draft"]) {
+      fileStorageMock.setObject(
+        getFramePublicationUiBundlePath({
+          workspaceId: workspace.sId,
+          frameId: frame.sId,
+          publicationId,
+        }),
+        `bundle ${publicationId}`
+      );
+    }
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view&publication=latest")
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("bundle publication-1");
   });
 
   it("returns 404 for an unpublished Frames v2 file", async () => {

@@ -1,7 +1,18 @@
 import { resolveActiveFrameFunctionForUse } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import {
+  createTestAuthorFrameWithDraft,
+  createTestFramePublicationFunctions,
+  makeTestFrameFunction,
+} from "@app/tests/utils/FrameFunctionFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it, vi } from "vitest";
+
+async function setupAuthorFrameWithDraft() {
+  const { authenticator: auth } = await createResourceTest({ role: "admin" });
+  const { frame } = await createTestAuthorFrameWithDraft(auth);
+  return { auth, frame };
+}
 
 describe("resolveActiveFrameFunctionForUse", () => {
   it("resolves a function from the active publication", async () => {
@@ -11,6 +22,7 @@ describe("resolveActiveFrameFunctionForUse", () => {
       resolveActiveFrameFunctionForUse(auth, {
         frameId: frame.sId,
         functionName: "run-function",
+        target: "live",
       })
     ).resolves.toMatchObject({ sId: sandboxFunction.sId });
   });
@@ -36,6 +48,7 @@ describe("resolveActiveFrameFunctionForUse", () => {
       resolveActiveFrameFunctionForUse(auth, {
         frameId: frame.sId,
         functionName: "run-function",
+        target: "live",
       })
     ).resolves.toBeNull();
   });
@@ -49,7 +62,48 @@ describe("resolveActiveFrameFunctionForUse", () => {
       resolveActiveFrameFunctionForUse(auth, {
         frameId: frame.sId,
         functionName: "run-function",
+        target: "live",
       })
     ).resolves.toBeNull();
+  });
+
+  it("resolves the draft for an editor asking for the latest publication", async () => {
+    const { auth, frame } = await setupAuthorFrameWithDraft();
+    const fn = await resolveActiveFrameFunctionForUse(auth, {
+      frameId: frame.sId,
+      functionName: "run-function",
+      target: "latest",
+    });
+    expect(fn?.publicationId).toBe("publication-draft");
+  });
+
+  it("resolves live when the live publication is asked for", async () => {
+    const { auth, frame } = await setupAuthorFrameWithDraft();
+    const fn = await resolveActiveFrameFunctionForUse(auth, {
+      frameId: frame.sId,
+      functionName: "run-function",
+      target: "live",
+    });
+    expect(fn?.publicationId).toBe("publication-live");
+  });
+
+  it("serves live to a caller who cannot write the Frame when asked for latest", async () => {
+    const { adminAuth, auth, frame, sandboxFunction } =
+      await makeTestFrameFunction();
+    await createTestFramePublicationFunctions(adminAuth, {
+      frame,
+      publicationId: "publication-draft",
+      slug: "run-function",
+    });
+    await frame.setLatestFramePublication({
+      publicationId: "publication-draft",
+    });
+
+    const fn = await resolveActiveFrameFunctionForUse(auth, {
+      frameId: frame.sId,
+      functionName: "run-function",
+      target: "latest",
+    });
+    expect(fn?.publicationId).toBe(sandboxFunction.publicationId);
   });
 });

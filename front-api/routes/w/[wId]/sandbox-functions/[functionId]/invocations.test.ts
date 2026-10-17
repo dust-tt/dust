@@ -11,6 +11,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestAuthorFrameWithDraft } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -399,6 +400,19 @@ function postInvocation({
   );
 }
 
+// A Frame in the caller's own conversation, with a live and a pending draft publication that each
+// carry a `run-function`. The caller is the conversation's author, so they can write its source.
+async function setupAuthorFrameWithDraft() {
+  const { workspace, auth } = await createPrivateApiMockRequest({
+    role: "admin",
+  });
+  const { frame } = await createTestAuthorFrameWithDraft(auth, {
+    agentConfigurationId: "test-agent",
+    messagesCreatedAt: [],
+  });
+  return { workspace, frame };
+}
+
 function mockInvocationEventStream(events: SandboxFunctionInvocationEvent[]) {
   vi.mocked(getSandboxFunctionInvocationEvents).mockImplementation(
     async function* () {
@@ -452,6 +466,40 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
           origin: "interactive_session",
         }),
       }
+    );
+  });
+
+  it("invokes the draft publication for the author when the body asks for latest", async () => {
+    const { workspace, frame } = await setupAuthorFrameWithDraft();
+
+    const latest = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+      body: { input: { message: "hello" }, target: "latest" },
+    });
+    expect(latest.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sandboxFunction: expect.objectContaining({
+          publicationId: "publication-draft",
+        }),
+      })
+    );
+
+    const live = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+      body: { input: { message: "hello" } },
+    });
+    expect(live.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sandboxFunction: expect.objectContaining({
+          publicationId: "publication-live",
+        }),
+      })
     );
   });
 

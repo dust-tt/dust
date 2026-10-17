@@ -1,5 +1,7 @@
+import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
   FramePublicationDescriptorSchema,
+  isSameFramePublicationContent,
   parseFramePublicationDescriptor,
 } from "@app/types/api/frame_publication";
 import { describe, expect, it } from "vitest";
@@ -133,5 +135,53 @@ describe("parseFramePublicationDescriptor", () => {
     expect(result.isErr() && result.error).toContain(
       "publication.json is not valid JSON"
     );
+  });
+});
+
+describe("isSameFramePublicationContent", () => {
+  const base = {
+    schemaVersion: 1 as const,
+    manifest: FrameManifestSchema.parse({
+      version: 1,
+      description: "Track tasks.",
+    }),
+    publishedAt: "2026-10-14T00:00:00.000Z",
+    publisherId: null,
+    sourceFiles: [{ path: "index.tsx", contentSha256: SHA256 }],
+    ui: { bundleSha256: SHA256 },
+    functions: [],
+    databases: [],
+  };
+
+  it("ignores publish time, publisher and source hashes", () => {
+    expect(
+      isSameFramePublicationContent(base, {
+        ...base,
+        publishedAt: "2026-10-15T00:00:00.000Z",
+        publisherId: "user_2",
+        sourceFiles: [{ path: "README.md", contentSha256: "b".repeat(64) }],
+      })
+    ).toBe(true);
+  });
+
+  it("differs when the UI bundle differs", () => {
+    expect(
+      isSameFramePublicationContent(base, {
+        ...base,
+        ui: { bundleSha256: "c".repeat(64) },
+      })
+    ).toBe(false);
+  });
+
+  it("differs when the manifest differs", () => {
+    expect(
+      isSameFramePublicationContent(base, {
+        ...base,
+        manifest: FrameManifestSchema.parse({
+          version: 1,
+          description: "Track bugs.",
+        }),
+      })
+    ).toBe(false);
   });
 });

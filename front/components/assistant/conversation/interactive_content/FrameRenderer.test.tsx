@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   iframe: vi.fn(
     (_props: {
       frameId?: string;
+      functionTarget?: string;
       isEditable?: boolean;
       stagedEditMode?: "preview" | "edit";
       onEditText?: EditTextFn;
@@ -32,6 +33,8 @@ const mocks = vi.hoisted(() => ({
   /** Incremented on every iframe mount (React key change). */
   iframeMounts: 0,
   mutateFileContent: vi.fn(),
+  useFileContent: vi.fn(),
+  useFramePermissions: vi.fn(),
 }));
 
 vi.mock(
@@ -111,12 +114,15 @@ vi.mock("@app/lib/context/clientType", () => ({
   useClientType: () => "web",
 }));
 vi.mock("@app/lib/swr/files", () => ({
-  useFileContent: () => ({
-    fileContent: "export default function Frame() {}",
-    error: null,
-    isFileContentLoading: false,
-    mutateFileContent: mocks.mutateFileContent,
-  }),
+  useFileContent: (args: unknown) => {
+    mocks.useFileContent(args);
+    return {
+      fileContent: "export default function Frame() {}",
+      error: null,
+      isFileContentLoading: false,
+      mutateFileContent: mocks.mutateFileContent,
+    };
+  },
   useFileContentByUrl: () => ({
     fileContent: "export default function FrameV2() {}",
     isNotFound: false,
@@ -145,13 +151,16 @@ vi.mock("@app/components/Confirm", async () => {
 vi.mock("@app/lib/swr/frames", () => ({
   useBatchEditFrameText: () => mocks.batchEditFrameText,
   useEditFrameText: () => mocks.editFrameText,
-  useFramePermissions: () => ({
-    canWriteFrameSource: mocks.canWriteFrameSource,
-    packageRoot: null,
-    hasFrameFunctions: mocks.hasFrameFunctions,
-    isFramePermissionsLoading: false,
-    isFramePermissionsError: null,
-  }),
+  useFramePermissions: (args: unknown) => {
+    mocks.useFramePermissions(args);
+    return {
+      canWriteFrameSource: mocks.canWriteFrameSource,
+      packageRoot: null,
+      hasFrameFunctions: mocks.hasFrameFunctions,
+      isFramePermissionsLoading: false,
+      isFramePermissionsError: null,
+    };
+  },
 }));
 vi.mock("@app/lib/swr/pods", () => ({
   usePodFiles: () => ({ files: [] }),
@@ -194,6 +203,46 @@ afterEach(() => {
 });
 
 describe("FrameRenderer", () => {
+  it("asks for the latest publication for the bundle, its functions and their presence", () => {
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    expect(mocks.useFileContent).toHaveBeenCalledWith(
+      expect.objectContaining({ fileId: "frame_1", publication: "latest" })
+    );
+    expect(mocks.useFramePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({ frameId: "frame_1", publication: "latest" })
+    );
+    expect(mocks.iframe).toHaveBeenCalledWith(
+      expect.objectContaining({ functionTarget: "latest" })
+    );
+  });
+
+  it("reloads the bundle it rendered", async () => {
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload the file" }));
+
+    await waitFor(() => {
+      expect(mocks.mutateFileContent).toHaveBeenCalledWith();
+    });
+  });
+
   it("shows the Frame v2 source when switching to code", async () => {
     const { container } = render(
       <FrameRenderer

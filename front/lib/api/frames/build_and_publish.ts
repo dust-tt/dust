@@ -28,6 +28,10 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import type {
+  FramePublicationStatus,
+  FramePublishMode,
+} from "@app/types/api/frame_publication";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
@@ -503,15 +507,17 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
     publishedByAgentConfigurationId,
+    mode,
   }: {
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
     publishedByAgentConfigurationId?: string;
+    mode: FramePublishMode;
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -544,6 +550,7 @@ export async function buildAndPublishFramePublication(
         sourceFiles,
         uiBundleCode: buildResult.value.uiBundleCode,
         publishedByAgentConfigurationId,
+        mode,
       });
     }
   );

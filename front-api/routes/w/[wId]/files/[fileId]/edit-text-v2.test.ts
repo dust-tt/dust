@@ -98,6 +98,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
       conversation,
       frame,
       manifestPath,
+      mode: "live",
     });
     if (firstPublication.isErr()) {
       throw firstPublication.error;
@@ -120,6 +121,9 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
     const activePublicationId = reloaded.useCaseMetadata?.activePublicationId;
     assert(activePublicationId);
     expect(activePublicationId).not.toBe(firstPublication.value.publicationId);
+    expect(reloaded.useCaseMetadata?.latestPublicationId).toBe(
+      activePublicationId
+    );
 
     const uiBundle = fileStorageMock.getObject(
       getFramePublicationUiBundlePath({
@@ -172,6 +176,94 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
     expect(
       reloadedAfterStorageFailure?.useCaseMetadata?.activePublicationId
     ).toBe(activePublicationId);
+  });
+
+  it("saves as a draft while a draft is pending", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const gcsSourceDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Status`;
+    const sourcePath = `${gcsSourceDirectoryPath}/index.tsx`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const sourceByPath = new Map([
+      [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+      [sourcePath, uiSource],
+    ]);
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === `${gcsSourceDirectoryPath}/`
+        ? [...sourceByPath.entries()].map(([name, content]) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : frameV2ContentType,
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
+        : null
+    );
+    fileStorageMock.setFileContent(
+      (filePath) => sourceByPath.get(filePath) ?? null
+    );
+
+    const livePublication = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+      mode: "live",
+    });
+    if (livePublication.isErr()) {
+      throw livePublication.error;
+    }
+    sourceByPath.set(sourcePath, uiSource.replace("Ready", "Almost ready"));
+    const draftPublication = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+      mode: "draft",
+    });
+    if (draftPublication.isErr()) {
+      throw draftPublication.error;
+    }
+    expect(draftPublication.value.status).toBe("draft");
+
+    const response = await postEdit(workspace, frame.sId, {
+      conversationId: conversation.sId,
+      oldText: "Almost ready",
+      newText: "Done",
+      source: "index.tsx:1:1",
+    });
+
+    expect(response.status).toBe(200);
+    expect(fileStorageMock.getObject(sourcePath)).toContain("<p>Done</p>");
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    assert(reloaded?.isFrameV2);
+    expect(reloaded.useCaseMetadata?.activePublicationId).toBe(
+      livePublication.value.publicationId
+    );
+    const draftPublicationId = reloaded.pendingDraftPublicationId;
+    assert(draftPublicationId);
+    expect(draftPublicationId).not.toBe(draftPublication.value.publicationId);
   });
 
   it("applies edits[] in one publish for Frames v2", async () => {
@@ -228,6 +320,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
       conversation,
       frame,
       manifestPath,
+      mode: "live",
     });
     if (firstPublication.isErr()) {
       throw firstPublication.error;

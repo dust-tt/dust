@@ -641,23 +641,53 @@ export function useFileMetadata({
   };
 }
 
+/**
+ * Relative API path a file's content is viewed at. A Frames v2 file is served its live publication
+ * unless `publication: "latest"` is asked for (see `frame-view-serves-latest-only-when-asked`).
+ */
+export function getFileContentViewKey({
+  owner,
+  fileId,
+  cacheKey,
+  publication,
+}: {
+  owner: LightWorkspaceType;
+  fileId: string | null | undefined;
+  cacheKey?: string;
+  publication?: "latest";
+}): string {
+  const publicationParam = publication ? `&publication=${publication}` : "";
+  // Include cacheKey in the SWR key if provided to force cache invalidation.
+  const cacheParam = cacheKey ? `&v=${cacheKey}` : "";
+  return `/api/w/${owner.sId}/files/${fileId}?action=view${publicationParam}${cacheParam}`;
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] file-content-serves-live-unless-asked
+ * Without `publication`, a Frames v2 file MUST be fetched without a `publication` query param, so
+ * it is served live. Only the conversation panel (`FrameRenderer`) passes `publication: "latest"`.
+ */
 export function useFileContent({
   fileId,
   owner,
   cacheKey,
+  publication,
   config,
 }: {
   fileId: string | null | undefined;
   owner: LightWorkspaceType;
   cacheKey?: string;
+  publication?: "latest";
   config?: SWRConfiguration & {
     disabled?: boolean;
   };
 }) {
-  // Include cacheKey in the SWR key if provided to force cache invalidation.
-  const swrKey = cacheKey
-    ? `/api/w/${owner.sId}/files/${fileId}?action=view&v=${cacheKey}`
-    : `/api/w/${owner.sId}/files/${fileId}?action=view`;
+  const swrKey = getFileContentViewKey({
+    owner,
+    fileId,
+    cacheKey,
+    publication,
+  });
 
   const { data, error, mutate } = useSWRWithDefaults<string, string>(
     swrKey,

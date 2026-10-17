@@ -39,6 +39,10 @@ import {
   isSafeFrameRelativePath,
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
+import type {
+  FramePublicationStatus,
+  FramePublishMode,
+} from "@app/types/api/frame_publication";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
@@ -132,6 +136,7 @@ export type PublishFrameFromSourceResult =
       frameId: string;
       sourcePath: string;
       publicationId: string;
+      status: FramePublicationStatus;
       created: boolean;
     };
 
@@ -230,6 +235,11 @@ export type PublishFrameFromSourceParams = {
    * Frame's identity is converted in place once the replacement builds.
    */
   replacesPath?: string;
+  /**
+   * `draft` publishes a Frames v2 change for editors only; a Frame with nothing live goes live
+   * anyway.
+   */
+  mode: FramePublishMode;
 };
 
 export async function publishFrameFromSource(
@@ -239,6 +249,7 @@ export async function publishFrameFromSource(
     publishedByAgentConfigurationId,
     sourcePath,
     replacesPath,
+    mode,
   }: PublishFrameFromSourceParams
 ): Promise<Result<PublishFrameFromSourceResult, PublishFrameFromSourceError>> {
   if (replacesPath) {
@@ -265,6 +276,7 @@ export async function publishFrameFromSource(
       frame,
       manifestPath: normalizedPath,
       publishedByAgentConfigurationId,
+      mode,
     });
     if (publication.isErr()) {
       return new Err(publication.error);
@@ -275,8 +287,16 @@ export async function publishFrameFromSource(
       frameId: frame.sId,
       sourcePath: normalizedPath,
       publicationId: publication.value.publicationId,
+      status: publication.value.status,
       created,
     });
+  }
+
+  if (mode === "draft") {
+    return frameError(
+      "invalid_source",
+      "Drafts are only supported for Frames v2."
+    );
   }
 
   const splitResult = splitFrameEntryScopedPath(normalizedPath);
@@ -492,7 +512,7 @@ async function replaceLegacyFrameFromSource(
   const target = resolved.value;
 
   const publication = await withFrameSourceLock<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     PublishFrameFromSourceError
   >(target.legacyFrameId, async () => {
     const legacyFrame = await FileResource.fetchById(
@@ -607,6 +627,7 @@ async function replaceLegacyFrameFromSource(
         sourceFiles,
         uiBundleCode,
         publishedByAgentConfigurationId: params.publishedByAgentConfigurationId,
+        mode: "live",
       });
       if (published.isErr()) {
         logger.warn(
@@ -663,6 +684,7 @@ async function replaceLegacyFrameFromSource(
     frameId: target.legacyFrameId,
     sourcePath: target.manifestPath,
     publicationId: publication.value.publicationId,
+    status: publication.value.status,
     created: false,
   });
 }
@@ -903,15 +925,17 @@ async function publishFrameV2FromCapturedSourceWithSourceLockHeld(
     manifest,
     sourceFiles,
     publishedByAgentConfigurationId,
+    mode,
   }: {
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
     publishedByAgentConfigurationId?: string;
+    mode: FramePublishMode;
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -933,6 +957,7 @@ async function publishFrameV2FromCapturedSourceWithSourceLockHeld(
     manifest,
     sourceFiles,
     publishedByAgentConfigurationId,
+    mode,
   });
 }
 
@@ -942,15 +967,17 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     frame,
     manifestPath,
     publishedByAgentConfigurationId,
+    mode,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
     publishedByAgentConfigurationId?: string;
+    mode: FramePublishMode;
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -967,6 +994,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     manifest: source.value.manifest,
     sourceFiles: source.value.sourceFiles,
     publishedByAgentConfigurationId,
+    mode,
   });
 }
 
@@ -977,15 +1005,17 @@ export async function publishFrameV2FromSource(
     frame,
     manifestPath,
     publishedByAgentConfigurationId,
+    mode,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
     publishedByAgentConfigurationId?: string;
+    mode: FramePublishMode;
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -1010,6 +1040,7 @@ export async function publishFrameV2FromSource(
       frame: freshFrame,
       manifestPath,
       publishedByAgentConfigurationId,
+      mode,
     });
   });
   if (publication.isErr()) {
@@ -1033,6 +1064,11 @@ export type FrameV2TextEdit = {
 export const MAX_FRAME_TEXT_EDITS = 50;
 
 /**
+ * @cc [owner:davidebbo,label:product;security] panel-save-keeps-pending-draft
+ * A user text edit MUST publish as a draft whenever the Frame has a pending draft. The source
+ * folder holds the draft's changes, so a live publish would ship them unreviewed.
+ */
+/**
  * Apply one or more location-based text edits to a Frames v2 package, then publish once.
  *
  * Each edit is a small diff (`oldText` → `newText`) anchored at `data-source`. Edits are applied
@@ -1051,7 +1087,12 @@ export async function editFrameV2TextsAtSource(
     frame: FileResource;
     edits: FrameV2TextEdit[];
   }
-): Promise<Result<{ publicationId: string }, PublishFrameFromSourceError>> {
+): Promise<
+  Result<
+    { publicationId: string; status: FramePublicationStatus },
+    PublishFrameFromSourceError
+  >
+> {
   if (edits.length === 0) {
     return frameError("invalid_source", "No edits provided.");
   }
@@ -1109,7 +1150,7 @@ export async function editFrameV2TextsAtSource(
 
   const editTotalStartedAt = Date.now();
   const publication = await withFrameSourceLock<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     PublishFrameFromSourceError
   >(frame.sId, async () => {
     let stepStartedAt = Date.now();
@@ -1264,6 +1305,9 @@ export async function editFrameV2TextsAtSource(
           frame: freshFrame,
           manifest: manifestResult.value,
           sourceFiles: patchedSourceFiles,
+          // A Save while a draft is pending must not push the draft's unreviewed changes live: the
+          // source folder already holds them.
+          mode: freshFrame.pendingDraftPublicationId ? "draft" : "live",
         });
       logEditStep("publish", stepStartedAt);
       if (publishResult.isErr()) {

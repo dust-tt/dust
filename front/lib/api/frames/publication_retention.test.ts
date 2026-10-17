@@ -214,6 +214,24 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, active)).toBe(1);
   });
 
+  it("keeps the latest publication whatever its age", async () => {
+    const { active, auth, frame } = await setupFrame();
+    const draft = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    await frame.setLatestFramePublication({ publicationId: draft });
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result.deletedPublicationCount).toBe(0);
+    expect((await publicationRowIds(frame)).sort()).toEqual(
+      [active, draft].sort()
+    );
+  });
+
   it("keeps every publication of a Frame with no active publication", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",

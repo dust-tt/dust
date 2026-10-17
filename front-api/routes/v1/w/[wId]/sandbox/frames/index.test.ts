@@ -41,7 +41,8 @@ const uiSource = "export default function Status() { return <p>Ready</p>; }";
 function requestFramePublish(
   workspaceId: string,
   token: string,
-  manifestPath: string
+  manifestPath: string,
+  mode?: "live" | "draft"
 ) {
   return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/publish`, {
     method: "POST",
@@ -49,7 +50,7 @@ function requestFramePublish(
       authorization: `Bearer ${token}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ manifestPath }),
+    body: JSON.stringify({ manifestPath, mode }),
   });
 }
 
@@ -109,7 +110,7 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
       : null
   );
 
-  return { ...context, frame, manifestPath };
+  return { ...context, frame, manifestPath, sourceByPath, mountDirectoryPath };
 }
 
 async function setupLegacyFrame() {
@@ -250,6 +251,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(published.frameId).toBe(context.frame.sId);
     expect(published.created).toBe(false);
     expect(published.publicationId).toBeTypeOf("string");
+    expect(published.status).toBe("live");
 
     const frame = await FileResource.fetchById(context.auth, published.frameId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
@@ -267,6 +269,79 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
         contentType: frameV2ContentType,
       }),
     ]);
+  });
+
+  it("publishes a draft when asked and the Frame is already live", async () => {
+    const context = await setup();
+    assert(context.frame);
+    await FeatureFlagFactory.basic(context.auth, "frames_v2_drafts");
+
+    const liveResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(liveResponse.status).toBe(200);
+    const live = await liveResponse.json();
+
+    context.sourceByPath.set(
+      `${context.mountDirectoryPath}/index.tsx`,
+      uiSource.replace("Ready", "Almost ready")
+    );
+    const draftResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath,
+      "draft"
+    );
+    expect(draftResponse.status).toBe(200);
+    const draft = await draftResponse.json();
+    expect(draft.status).toBe("draft");
+    expect(draft.publicationId).not.toBe(live.publicationId);
+
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(
+      live.publicationId
+    );
+    expect(frame?.useCaseMetadata?.latestPublicationId).toBe(
+      draft.publicationId
+    );
+  });
+
+  it("refuses a draft when drafts are not enabled", async () => {
+    const context = await setup();
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath,
+      "draft"
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        type: "feature_not_enabled",
+        message: "Frame drafts are not enabled for this workspace.",
+      },
+    });
+  });
+
+  it("refuses a draft for a legacy Frame", async () => {
+    const context = await setupLegacyFrame();
+    await FeatureFlagFactory.basic(context.auth, "frames_v2_drafts");
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      "draft"
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { message: "Drafts are only supported for Frames v2." },
+    });
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {

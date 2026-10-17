@@ -40,6 +40,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "davidebbo",
   },
+  frames_v2_drafts: {
+    description:
+      "Let agents publish Frames v2 changes as drafts that go live only when made live (requires frames_v2)",
+    stage: "ask_owner",
+    owner: "davidebbo",
+  },
   frames_v2_public_functions: {
     description:
       "Let Frames v2 declare public functions that anonymous visitors of a public share can call (requires frames_v2_functions)",

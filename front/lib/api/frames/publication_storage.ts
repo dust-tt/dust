@@ -42,11 +42,14 @@ import {
 } from "@app/types/api/frame_manifest";
 import type {
   FramePublicationDescriptor,
+  FramePublicationStatus,
+  FramePublishMode,
   FrameToolCallPair,
 } from "@app/types/api/frame_publication";
 import {
   FRAME_PUBLICATION_SCHEMA_VERSION,
   FramePublicationDescriptorSchema,
+  isSameFramePublicationContent,
   parseFramePublicationDescriptor,
 } from "@app/types/api/frame_publication";
 import {
@@ -58,7 +61,10 @@ import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import type { AllSupportedFileContentType } from "@app/types/files";
+import type {
+  AllSupportedFileContentType,
+  ComputedAuthorizedFileAccess,
+} from "@app/types/files";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
@@ -519,9 +525,9 @@ export async function storeFramePublication(
 }
 
 /**
- * The published bundle of a single Frame function, taken from `functions.tar`.
- * Activation verifies every entry's hash via the same archive; poke only needs
- * one slug and still shares this path.
+ * The published bundle of a single Frame function, taken from `functions.tar`. Used by poke to
+ * inspect a publication's bundle; publishing verifies bundle hashes against the artifacts it
+ * stages.
  */
 export async function readFramePublicationFunctionBundle(
   auth: Authenticator,
@@ -698,52 +704,89 @@ function functionDefinitionsFromBundles({
   return new Ok(definitions);
 }
 
-async function loadFramePublicationFunctionDefinitions(
-  auth: Authenticator,
-  {
-    frame,
-    descriptor,
-    publicationId,
-    functionArtifacts,
-  }: {
-    frame: FileResource;
-    descriptor: FramePublicationDescriptor;
-    publicationId: string;
-    functionArtifacts?: FramePublicationFunctionArtifact[];
-  }
-): Promise<
-  Result<FramePublicationFunctionDefinition[], FramePublicationError>
-> {
+function loadFramePublicationFunctionDefinitions({
+  descriptor,
+  functionArtifacts,
+}: {
+  descriptor: FramePublicationDescriptor;
+  functionArtifacts: FramePublicationFunctionArtifact[];
+}): Result<FramePublicationFunctionDefinition[], FramePublicationError> {
   if (descriptor.manifest.functions.length === 0) {
     return new Ok([]);
   }
 
-  if (functionArtifacts) {
-    return functionDefinitionsFromBundles({
-      descriptor,
-      bundles: new Map(
-        functionArtifacts.map((artifact) => [
-          artifact.name,
-          artifact.bundleCode,
-        ])
-      ),
-    });
-  }
-
-  const bundles = await loadFramePublicationFunctionBundles(auth, {
-    frame,
-    publicationId,
-  });
-  if (bundles.isErr()) {
-    return bundles;
-  }
-
   return functionDefinitionsFromBundles({
     descriptor,
-    bundles: bundles.value,
+    bundles: new Map(
+      functionArtifacts.map((artifact) => [artifact.name, artifact.bundleCode])
+    ),
   });
 }
 
+/**
+ * Make a stored publication invocable by creating its immutable function rows. Does not touch the
+ * Frame's pointers. Rows left behind by a publication that never goes live are purged by
+ * retention.
+ */
+export async function createFramePublicationFunctionRows(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    descriptor,
+    functionArtifacts,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    descriptor: FramePublicationDescriptor;
+    functionArtifacts: FramePublicationFunctionArtifact[];
+  }
+): Promise<Result<void, FramePublicationError>> {
+  const functionDefinitions = loadFramePublicationFunctionDefinitions({
+    descriptor,
+    functionArtifacts,
+  });
+  if (functionDefinitions.isErr()) {
+    return functionDefinitions;
+  }
+
+  await withTransaction(async (tx) => {
+    await SandboxFunctionResource.createForFramePublication(
+      auth,
+      { frame, functions: functionDefinitions.value, publicationId },
+      tx
+    );
+  });
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] draft-publish-checks-the-share-allowlist
+ * A draft publish MUST fail on the share allowlist exactly when a live publish of the same content
+ * would (both go through this helper), so a draft never hides a failure until make-live.
+ */
+async function computeFramePublicationAllowlist(
+  auth: Authenticator,
+  frame: FileResource,
+  uiBundleCode: string
+): Promise<Result<ComputedAuthorizedFileAccess, FramePublicationError>> {
+  const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
+    frameContent: uiBundleCode,
+  });
+  if (allowlist.isErr()) {
+    return new Err(
+      new FramePublicationError("allowlist_failed", allowlist.error.message)
+    );
+  }
+  return allowlist;
+}
+
+/**
+ * @cc [owner:davidebbo,label:backend] activation-requires-staged-function-rows
+ * Callers MUST have created the publication's function rows first
+ * (`createFramePublicationFunctionRows`); activation only moves the live pointer, so activating an
+ * unstaged publication with functions makes them uninvocable.
+ */
 export async function activateFramePublication(
   auth: Authenticator,
   {
@@ -752,7 +795,6 @@ export async function activateFramePublication(
     publishedByAgentConfigurationId,
     descriptor: providedDescriptor,
     uiBundleCode: providedUiBundleCode,
-    functionArtifacts,
   }: {
     frame: FileResource;
     publicationId: string;
@@ -761,8 +803,6 @@ export async function activateFramePublication(
     descriptor?: FramePublicationDescriptor;
     /** When set (publish path), skip re-fetching ui/bundle.js from GCS. */
     uiBundleCode?: string;
-    /** When set (publish path), skip re-fetching functions.tar from GCS. */
-    functionArtifacts?: FramePublicationFunctionArtifact[];
   }
 ): Promise<Result<void, FramePublicationError>> {
   let descriptor: FramePublicationDescriptor;
@@ -782,19 +822,6 @@ export async function activateFramePublication(
   const frameIdentity = getFrameIdentity(auth, frame);
   if (frameIdentity.isErr()) {
     return frameIdentity;
-  }
-
-  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
-    auth,
-    {
-      frame,
-      descriptor,
-      publicationId,
-      functionArtifacts,
-    }
-  );
-  if (functionDefinitions.isErr()) {
-    return functionDefinitions;
   }
 
   let uiBundleCode: string;
@@ -830,13 +857,13 @@ export async function activateFramePublication(
   }
 
   await frame.ensureShareableFrame(auth);
-  const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
-    frameContent: uiBundleCode,
-  });
+  const allowlist = await computeFramePublicationAllowlist(
+    auth,
+    frame,
+    uiBundleCode
+  );
   if (allowlist.isErr()) {
-    return new Err(
-      new FramePublicationError("allowlist_failed", allowlist.error.message)
-    );
+    return allowlist;
   }
   const shareScope = await frame.getShareScope();
 
@@ -852,15 +879,6 @@ export async function activateFramePublication(
       transaction
     );
     await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
-    await SandboxFunctionResource.createForFramePublication(
-      auth,
-      {
-        frame,
-        functions: functionDefinitions.value,
-        publicationId,
-      },
-      transaction
-    );
   });
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
@@ -902,6 +920,7 @@ export async function publishFramePublication(
     sourceFiles,
     uiBundleCode,
     publishedByAgentConfigurationId,
+    mode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
@@ -909,10 +928,11 @@ export async function publishFramePublication(
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
     publishedByAgentConfigurationId?: string;
+    mode: FramePublishMode;
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -925,48 +945,117 @@ export async function publishFramePublication(
   };
 
   const publication = await withFramePublishLock<
-    { publicationId: string },
+    { publicationId: string; status: FramePublicationStatus },
     FramePublicationError | SandboxFunctionError
   >(frame.sId, async () => {
+    // Re-read under the lock so concurrent publishes see each other's pointers.
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    if (!freshFrame) {
+      return new Err(
+        new FramePublicationError("invalid_frame", "Frame not found.")
+      );
+    }
+
     // DB reconcile runs during build (shared Frame-sandbox staging). Store then
-    // activate using in-memory artifacts — no GCS re-fetch of what we just wrote.
-    const storedPublication = await withFramePublishTimingResult(
+    // stage or activate using in-memory artifacts — no GCS re-fetch of what we just wrote.
+    const stored = await withFramePublishTimingResult(
       "store",
       timingContext,
       () =>
         storeFramePublication(auth, {
-          frame,
+          frame: freshFrame,
           functionArtifacts,
           manifest,
           sourceFiles,
           uiBundleCode,
         })
     );
-    if (storedPublication.isErr()) {
-      return storedPublication;
+    if (stored.isErr()) {
+      return stored;
+    }
+    const { publicationId, descriptor } = stored.value;
+    const livePublicationId = freshFrame.useCaseMetadata?.activePublicationId;
+    // A Frame with nothing live has nothing to protect: its first publish always goes live.
+    const publishesDraft = mode === "draft" && livePublicationId !== undefined;
+
+    if (publishesDraft) {
+      // The allowlist is only checked here, not persisted: the share link keeps serving the live
+      // one until activation computes and persists its own. It runs before the compare-to-live
+      // shortcut so a draft publish fails exactly when a live publish of the same content would,
+      // even when that content matches what is live. The shareable row already exists because a
+      // draft only exists on a Frame that went live.
+      const allowlist = await withFramePublishTimingResult(
+        "allowlist",
+        timingContext,
+        () => computeFramePublicationAllowlist(auth, freshFrame, uiBundleCode)
+      );
+      if (allowlist.isErr()) {
+        return allowlist;
+      }
+
+      const live = await withFramePublishTimingResult(
+        "compare",
+        timingContext,
+        () =>
+          loadFramePublicationDescriptor(auth, {
+            frame: freshFrame,
+            publicationId: livePublicationId,
+          })
+      );
+      if (live.isErr()) {
+        return live;
+      }
+      if (isSameFramePublicationContent(live.value, descriptor)) {
+        if (freshFrame.pendingDraftPublicationId) {
+          await freshFrame.dropPendingDraft();
+        }
+        return new Ok({
+          publicationId: livePublicationId,
+          status: "live" as const,
+        });
+      }
+    }
+
+    const rows = await withFramePublishTimingResult(
+      "stage",
+      { ...timingContext, publicationId },
+      () =>
+        createFramePublicationFunctionRows(auth, {
+          frame: freshFrame,
+          publicationId,
+          descriptor,
+          functionArtifacts,
+        })
+    );
+    if (rows.isErr()) {
+      return rows;
+    }
+
+    if (publishesDraft) {
+      // Editors are served the draft in the app; the share link keeps serving the live publication.
+      await freshFrame.setLatestFramePublication({
+        publicationId,
+        publishedByAgentConfigurationId,
+      });
+      return new Ok({ publicationId, status: "draft" as const });
     }
 
     const activation = await withFramePublishTimingResult(
       "activate",
-      {
-        ...timingContext,
-        publicationId: storedPublication.value.publicationId,
-      },
+      { ...timingContext, publicationId },
       () =>
         activateFramePublication(auth, {
-          frame,
-          publicationId: storedPublication.value.publicationId,
+          frame: freshFrame,
+          publicationId,
           publishedByAgentConfigurationId,
-          descriptor: storedPublication.value.descriptor,
+          descriptor,
           uiBundleCode,
-          functionArtifacts,
         })
     );
     if (activation.isErr()) {
       return activation;
     }
-
-    return new Ok({ publicationId: storedPublication.value.publicationId });
+    return new Ok({ publicationId, status: "live" as const });
   });
   if (publication.isErr()) {
     const error = publication.error;
