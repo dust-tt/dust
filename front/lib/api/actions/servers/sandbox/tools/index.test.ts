@@ -931,6 +931,7 @@ describe("addEgressDomainTool", () => {
     expect(mockAddOwnerPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
       domain: "example.org",
       ownerId: "conversation-id",
+      allowWildcard: false,
     });
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith({
       auth: expect.anything(),
@@ -980,6 +981,7 @@ describe("addEgressDomainTool", () => {
     expect(mockAddOwnerPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
       domain: "example.org",
       ownerId: "conversation-id",
+      allowWildcard: false,
     });
     if (result.isOk()) {
       expect(result.value[0].text).toContain("applies to this conversation");

@@ -586,6 +586,7 @@ export async function addEgressDomainTool(
   const result = await addOwnerPolicyDomain(auth, {
     ownerId: egressPolicyOwnerId,
     domain: parsed.value,
+    allowWildcard: false,
   });
   if (result.isErr()) {
     return new Err(new MCPError(result.error.message));

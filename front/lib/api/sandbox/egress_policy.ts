@@ -244,13 +244,41 @@ export async function writeOwnerPolicy(
   }
 }
 
+// Admin surfaces may add wildcard patterns (`*.example.com`), the same trust
+// boundary as the admin settings PUT. Agent-driven appends must not.
+function parseAddedEgressDomain(
+  domain: string,
+  { allowWildcard }: { allowWildcard: boolean }
+): Result<string, Error> {
+  if (!allowWildcard) {
+    return parseExactEgressDomain(domain);
+  }
+
+  const normalized = normalizeEgressPolicyDomain(domain);
+  if (normalized.isErr()) {
+    return new Err(new Error(`${domain}: ${normalized.error.message}`));
+  }
+
+  return new Ok(normalized.value);
+}
+
+/**
+ * @cc [owner:fabiencelier,label:security] wildcard-only-when-allowed
+ * When `allowWildcard` is false, a wildcard `domain` (`*.example.com`) MUST be
+ * rejected without reading or writing the policy file. Agent-driven callers
+ * MUST pass `allowWildcard: false`.
+ */
 export async function addOwnerPolicyDomain(
   auth: Authenticator,
-  { ownerId, domain }: { ownerId: string; domain: string }
+  {
+    ownerId,
+    domain,
+    allowWildcard,
+  }: { ownerId: string; domain: string; allowWildcard: boolean }
 ): Promise<
   Result<{ policy: EgressPolicy; addedDomain: string | null }, Error>
 > {
-  const parsedDomain = parseExactEgressDomain(domain);
+  const parsedDomain = parseAddedEgressDomain(domain, { allowWildcard });
   if (parsedDomain.isErr()) {
     return new Err(parsedDomain.error);
   }
@@ -296,15 +324,20 @@ export async function addOwnerPolicyDomain(
   return new Ok({ policy: written.value, addedDomain });
 }
 
-// Workspace-scoped counterpart of addOwnerPolicyDomain: exact-domain append
-// with the same dedupe and cap, but on the workspace policy file.
+// Workspace-scoped counterpart of addOwnerPolicyDomain: same parsing, dedupe
+// and cap, but on the workspace policy file.
+/**
+ * @cc [owner:fabiencelier,label:security] wildcard-only-when-allowed
+ * When `allowWildcard` is false, a wildcard `domain` (`*.example.com`) MUST be
+ * rejected without reading or writing the policy file.
+ */
 export async function addWorkspacePolicyDomain(
   auth: Authenticator,
-  { domain }: { domain: string }
+  { domain, allowWildcard }: { domain: string; allowWildcard: boolean }
 ): Promise<
   Result<{ policy: EgressPolicy; addedDomain: string | null }, Error>
 > {
-  const parsedDomain = parseExactEgressDomain(domain);
+  const parsedDomain = parseAddedEgressDomain(domain, { allowWildcard });
   if (parsedDomain.isErr()) {
     return new Err(parsedDomain.error);
   }

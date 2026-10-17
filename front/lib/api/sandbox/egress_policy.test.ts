@@ -217,6 +217,7 @@ describe("owner egress policy storage", () => {
     const result = await addOwnerPolicyDomain(mockAuth, {
       ownerId: "owner-sid",
       domain: "Registry.NPMJS.org",
+      allowWildcard: false,
     });
 
     expect(result).toEqual(
@@ -244,6 +245,7 @@ describe("owner egress policy storage", () => {
     const result = await addOwnerPolicyDomain(mockAuth, {
       ownerId: "owner-sid",
       domain: "API.GitHub.COM",
+      allowWildcard: false,
     });
 
     expect(result).toEqual(
@@ -260,6 +262,7 @@ describe("owner egress policy storage", () => {
     const result = await addOwnerPolicyDomain(mockAuth, {
       ownerId: "owner-sid",
       domain: "example.org",
+      allowWildcard: false,
     });
 
     expect(result).toEqual(
@@ -279,10 +282,41 @@ describe("owner egress policy storage", () => {
     const result = await addOwnerPolicyDomain(mockAuth, {
       ownerId: "owner-sid",
       domain: "*.example.org",
+      allowWildcard: false,
     });
 
     expect(result.isErr()).toBe(true);
     expect(mockFetchFileContent).not.toHaveBeenCalled();
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("appends a wildcard domain when allowWildcard is set", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["api.github.com"] },
+    });
+
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "*.Mistral.AI",
+      allowWildcard: true,
+    });
+
+    expect(result).toEqual(
+      new Ok({
+        policy: { allowedDomains: ["api.github.com", "*.mistral.ai"] },
+        addedDomain: "*.mistral.ai",
+      })
+    );
+  });
+
+  it("rejects malformed wildcards even when allowWildcard is set", async () => {
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "*.ai",
+      allowWildcard: true,
+    });
+
+    expect(result.isErr()).toBe(true);
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 
@@ -321,6 +355,7 @@ describe("owner egress policy storage", () => {
     const result = await addOwnerPolicyDomain(mockAuth, {
       ownerId: "owner-sid",
       domain: "overflow.example.com",
+      allowWildcard: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -333,6 +368,7 @@ describe("owner egress policy storage", () => {
     await addOwnerPolicyDomain(mockAuth, {
       ownerId: "owner-sid",
       domain: "example.org",
+      allowWildcard: false,
     });
 
     await vi.waitFor(() => {
