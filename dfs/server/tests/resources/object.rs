@@ -18,6 +18,7 @@ use foundationdb::{RangeOption, tuple::unpack};
 mod grants;
 mod modes;
 mod stat;
+mod update;
 pub(crate) use grants::{
     allow, deny, grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
@@ -35,6 +36,11 @@ pub(crate) use stat::{
     metadata_reads_preserve_snapshot_and_tenant_scope,
     stat_distinguishes_object_errors_and_preserves_transaction_failures,
     virtual_stat_projects_root_and_keeps_shared_versions_fixed,
+};
+pub(crate) use update::{
+    updates_conflict_with_grant_revocation, updates_patch_metadata_and_preserve_receipt_results,
+    updates_reject_invalid_patches_without_staging_writes,
+    updates_resize_files_without_restoring_discarded_bytes,
 };
 
 type StoredObject = (

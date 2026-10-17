@@ -184,7 +184,7 @@ impl ObjectResource {
         Ok(self.to_attr(mode, version))
     }
 
-    fn attr_mode(&self, mode: Mode) -> Result<u32, Error> {
+    pub(super) fn attr_mode(&self, mode: Mode) -> Result<u32, Error> {
         if !mode.can_read() {
             return Err(Error::NotAuthorized);
         }

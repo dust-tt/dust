@@ -83,11 +83,10 @@ impl From<object::Error> for ErrorCode {
             | object::Error::InvalidGrantLimit
             | object::Error::InvalidGrantCursor => ErrorCode::InvalidInput,
             object::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            object::Error::Forbidden => ErrorCode::Forbidden,
             // Ordinary reads conceal inaccessible objects just like missing objects.
             object::Error::NotFound | object::Error::NotAuthorized => ErrorCode::NotFound,
-            object::Error::UnsupportedKind | object::Error::UnsupportedOperation => {
-                ErrorCode::Unsupported
-            }
+            object::Error::UnsupportedKind => ErrorCode::Unsupported,
             object::Error::Directory(error) => (*error).into(),
             object::Error::File(error) => (*error).into(),
             object::Error::TimestampGeneration

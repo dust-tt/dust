@@ -718,6 +718,7 @@ XattrChange {
 **Successful result:** `mutation.object` contains the object's attributes after the update.
 The requested changes form one operation: a validation failure applies none of that patch. Growing
 a file with `size` exposes zero-filled bytes; truncation discards data beyond the new size.
+Xattr changes apply in order. Explicit `mtime` overrides the automatic resize timestamp.
 
 ### write operation
 

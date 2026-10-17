@@ -12,8 +12,8 @@ use dfs_protocol::{
     ObjectId,
     rpc::{
         self, AllowGrant, ApplyRequest, CreateOperation, ErrorCode, Grant, MoveOperation,
-        ObjectKind, RemoveOperation, UpdateOperation, WriteOperation, dfs_client::DfsClient, grant,
-        operation::Operation,
+        ObjectKind, RemoveOperation, UpdateOperation, WriteOperation, XattrChange,
+        dfs_client::DfsClient, grant, operation::Operation,
     },
 };
 
@@ -67,6 +67,20 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             name: "renamed".to_owned(),
             ..Default::default()
         }),
+        Operation::Update(UpdateOperation {
+            object_id: file,
+            size: Some(3),
+            mtime: Some(42),
+            ..Default::default()
+        }),
+        Operation::Update(UpdateOperation {
+            object_id: file,
+            xattrs: vec![XattrChange {
+                name: String::new(),
+                value: None,
+            }],
+            ..Default::default()
+        }),
         Operation::Remove(RemoveOperation {
             object_id: file,
             parent_id: tenant.root_id,
@@ -111,6 +125,16 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             commit_version = Some(attr.store_version);
         } else if index == 4 {
             assert!(result.error.is_none());
+            let mutation = result.mutation.context("missing update mutation")?;
+            let attr = mutation.object.context("missing updated file")?;
+            assert_eq!(attr.id, file.into());
+            assert_eq!((attr.size, attr.mtime), (3, Some(42)));
+            assert_eq!((attr.attr_version, attr.content_version), (2, 2));
+            assert_eq!(Some(attr.store_version), commit_version);
+            assert!(attr.metadata.is_none());
+            assert!(mutation.related.is_empty());
+        } else if index == 6 {
+            assert!(result.error.is_none());
             let mutation = result.mutation.context("missing removal mutation")?;
             assert!(mutation.object.is_none());
             assert_eq!(mutation.related.len(), 1);
@@ -130,7 +154,11 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             assert!(result.mutation.is_none());
             assert_eq!(
                 result.error.context("missing operation error")?.code(),
-                ErrorCode::Unsupported
+                match index {
+                    1 | 7 => ErrorCode::NotFound,
+                    5 => ErrorCode::InvalidInput,
+                    _ => ErrorCode::Unsupported,
+                }
             );
         }
     }
