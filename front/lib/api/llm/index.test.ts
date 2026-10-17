@@ -4,6 +4,7 @@ import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
 import {
   AGENT_PLATFORM_HOST,
+  BLACKFUEL_HOST,
   FIREWORKS_HOST,
   GOOGLE_AI_STUDIO_HOST,
   MISTRAL_HOST,
@@ -13,6 +14,7 @@ import {
   GEMINI_3_1_PRO,
   GEMINI_3_8_FLASH,
   GLM_5P3,
+  KIMI_K3,
 } from "@app/lib/model_constructors/types/models";
 import {
   isCreditPricedPlanPrefix,
@@ -218,6 +220,27 @@ describe("getWorkspaceFilter", () => {
       `eu/${MISTRAL_HOST}`,
       `global/${FIREWORKS_HOST}`,
     ]);
+  });
+
+  it("routes Kimi K3 to Blackfuel in the EU only behind blackfuel_inference", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const workspaceConfig = await getWorkspaceConfig(auth);
+    const kimiHosts = (config: WorkspaceConfig) =>
+      getStreamEndpoints(config, {
+        ...getWorkspaceFilter(auth),
+        model: { eq: KIMI_K3 },
+      })
+        .map((e) => `${e.region}/${e.host}`)
+        .sort();
+
+    expect(kimiHosts(workspaceConfig)).toEqual([`global/${FIREWORKS_HOST}`]);
+    expect(
+      kimiHosts({
+        ...workspaceConfig,
+        featureFlags: [...workspaceConfig.featureFlags, "blackfuel_inference"],
+      })
+    ).toEqual([`eu/${BLACKFUEL_HOST}`, `global/${FIREWORKS_HOST}`]);
   });
 
   it("gates GLM-5.3 on Z.ai on every host, whether Mistral is whitelisted or not", async () => {

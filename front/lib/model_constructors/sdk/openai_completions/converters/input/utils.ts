@@ -83,7 +83,7 @@ export interface OpenAICompletionsMessageConverters {
   ): ChatCompletionMessageParam;
   assistantReasoningMessageToMessage(
     message: BaseAssistantReasoningMessage
-  ): ChatCompletionMessageParam;
+  ): ChatCompletionMessageParam | null;
   assistantToolCallRequestToMessage(
     message: BaseAssistantToolCallRequestMessage
   ): ChatCompletionMessageParam;

@@ -25,6 +25,7 @@ export type LLMCredentialsType = {
   COHERE_API_KEY?: string;
   AI21_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
+  BLACKFUEL_API_KEY?: string;
   AGENT_PLATFORM_PROJECT_ID?: string;
 };
 

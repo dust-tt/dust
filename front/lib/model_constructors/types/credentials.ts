@@ -5,5 +5,6 @@ export type Credentials = {
   AGENT_PLATFORM_PROJECT_ID?: string;
   MISTRAL_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
+  BLACKFUEL_API_KEY?: string;
   XAI_API_KEY?: string;
 };

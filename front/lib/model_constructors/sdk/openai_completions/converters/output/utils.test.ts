@@ -1,13 +1,16 @@
 import { convertToOldEvent } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_completions/converters/output/utils";
 import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,
   APIError,
   APIUserAbortError,
 } from "openai";
+import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 import { describe, expect, it } from "vitest";
 
 const metadata: EndpointMetadata = {
@@ -178,5 +181,66 @@ describe("streamErrorToErrorEvent", () => {
     );
     expect(result.content.type).toBe("unknown_error");
     expect(result.content.errorSource).toBe("unknown");
+  });
+});
+
+async function* chunks(
+  deltasAndFinish: [object, ChatCompletionChunk.Choice["finish_reason"]][]
+): AsyncGenerator<ChatCompletionChunk> {
+  for (const [delta, finish_reason] of deltasAndFinish) {
+    yield {
+      id: "chunk",
+      object: "chat.completion.chunk",
+      created: 0,
+      model: "kimi-k3",
+      choices: [{ index: 0, delta, finish_reason, logprobs: null }],
+    };
+  }
+}
+
+async function collectEvents(stream: AsyncGenerator<ChatCompletionChunk>) {
+  const events: ModelResponseEvent[] = [];
+  for await (const event of rawOutputToEvents(stream, metadata)) {
+    events.push(event);
+  }
+  return events;
+}
+
+describe("rawOutputToEvents", () => {
+  it("reads reasoning from a `reasoning` delta", async () => {
+    const events = await collectEvents(
+      chunks([
+        [{ reasoning: "thinking" }, null],
+        [{ content: "391" }, "stop"],
+      ])
+    );
+
+    expect(events.map((e) => e.type)).toContain("reasoning");
+  });
+
+  it("emits a tool call that finishes with `stop`", async () => {
+    const events = await collectEvents(
+      chunks([
+        [
+          {
+            tool_calls: [
+              {
+                index: 0,
+                id: "call_1",
+                function: { name: "calculator", arguments: '{"a":3}' },
+              },
+            ],
+          },
+          "stop",
+        ],
+      ])
+    );
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "tool_call",
+        content: { id: "call_1", name: "calculator", arguments: { a: 3 } },
+      })
+    );
   });
 });

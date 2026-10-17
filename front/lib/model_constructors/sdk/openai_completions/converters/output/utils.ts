@@ -23,13 +23,17 @@ function parseToolArguments(argumentsJson: string): Record<string, unknown> {
   return parsed.value;
 }
 
-// `reasoning_content` is a Fireworks/open-model extension absent from the OpenAI
-// chat-completions types, so read it defensively off the delta.
+// Reasoning is an open-model extension absent from the OpenAI chat-completions
+// types, so read it defensively off the delta: Fireworks names it
+// `reasoning_content`, Blackfuel `reasoning`.
 function deltaReasoningContent(delta: object): string | undefined {
-  if (isRecord(delta) && isString(delta.reasoning_content)) {
+  if (!isRecord(delta)) {
+    return undefined;
+  }
+  if (isString(delta.reasoning_content)) {
     return delta.reasoning_content;
   }
-  return undefined;
+  return isString(delta.reasoning) ? delta.reasoning : undefined;
 }
 
 function usageToTokenUsageEvent(
@@ -108,7 +112,8 @@ function flushAccumulated(
 
 export async function* rawOutputToEvents(
   stream: AsyncGenerator<ChatCompletionChunk>,
-  metadata: EndpointMetadata
+  metadata: EndpointMetadata,
+  providerName = "Fireworks"
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   const acc: Accumulator = { textParts: "", reasoningParts: "" };
@@ -122,7 +127,7 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      yield openaiStreamErrorToErrorEvent(metadata, err, "Fireworks");
+      yield openaiStreamErrorToErrorEvent(metadata, err, providerName);
       return;
     }
     if (result.done) {
@@ -198,11 +203,9 @@ export async function* rawOutputToEvents(
     }
     stopReason = finishReason;
     switch (finishReason) {
+      // Blackfuel ends a forced tool call with `stop` rather than `tool_calls`
+      // (verified live 2026-10-05), so both emit the accumulated tool calls.
       case "stop":
-        for (const e of flushAccumulated(acc, metadata, aggregated)) {
-          yield e;
-        }
-        break;
       case "tool_calls": {
         for (const e of flushAccumulated(acc, metadata, aggregated)) {
           yield e;

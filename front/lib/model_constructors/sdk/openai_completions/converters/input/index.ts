@@ -38,7 +38,8 @@ export function WithOpenAICompletionsInputConverter<
     userImageMessageToMessage = userImageMessageToMessage;
     toolCallResultMessageToMessage = toolCallResultMessageToMessage;
     assistantTextMessageToMessage = assistantTextMessageToMessage;
-    assistantReasoningMessageToMessage = assistantReasoningMessageToMessage;
+    assistantReasoningMessageToMessage: OpenAICompletionsMessageConverters["assistantReasoningMessageToMessage"] =
+      assistantReasoningMessageToMessage;
     assistantToolCallRequestToMessage = assistantToolCallRequestToMessage;
 
     // Identity by default; endpoints whose host expects a different model string
