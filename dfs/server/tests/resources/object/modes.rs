@@ -422,7 +422,7 @@ pub(crate) async fn ancestry_reads_follow_stale_hints_without_reading_grants() -
         assert!(!grants_were_read(&old, &tenant, id).await?);
     }
     let old_version = old.get_read_version().await?;
-    // Parent hints must not be mistaken for cached empty grants.
+    // An ancestry read does not populate the grant cache.
     assert_eq!(
         bits(ObjectResource::modes_for_session(&old, &session, &[leaf.object_id]).await?),
         [Some(6)]
@@ -467,6 +467,10 @@ pub(crate) async fn ancestry_reads_follow_stale_hints_without_reading_grants() -
     for id in [root.object_id, destination.object_id, leaf.object_id] {
         assert!(!grants_were_read(&fresh, &tenant, id).await?);
     }
+    assert_eq!(
+        bits(ObjectResource::modes_for_session(&fresh, &session, &[leaf.object_id]).await?),
+        [Some(2)]
+    );
 
     // Hints learned at a newer version must not change the older transaction's ancestry.
     let objects = hints

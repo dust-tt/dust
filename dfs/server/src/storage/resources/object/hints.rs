@@ -31,8 +31,7 @@ type Key = (String, ObjectId);
 pub(super) struct Hint {
     pub parent_id: Option<ObjectId>,
     pub grants_version: u64,
-    // None means grants have not been loaded, rather than an empty grant set.
-    pub grants: Option<Arc<[Grant]>>,
+    pub grants: Arc<[Grant]>,
 }
 
 /**
@@ -76,9 +75,9 @@ impl TreeHints {
      */
     /**
      * @cc [owner:spolu,label:backend;performance] tree-hints-ancestry-cache
-     * Successful ancestry reads MUST refresh parent hints without reading grants. A missing grant
-     * cache entry MUST remain distinct from a cached empty grant set. Existing cached grants MAY
-     * survive a parent refresh only when their grants_version matches the freshly read object.
+     * Ancestry reads MUST NOT read grants or add, replace, or remove cache entries. Reading hints
+     * MUST still refresh LRU recency. Cache entries MUST retain complete grants and their version;
+     * only modes_for_session populates them after evaluating permissions.
      */
     pub async fn fetch_ancestry(
         &self,
@@ -162,21 +161,6 @@ impl TreeHints {
             }
             validated.extend(path);
         }
-        self.remember(
-            &tenant.tenant_id,
-            objects.values().map(|object| {
-                (
-                    object.object_id,
-                    Hint {
-                        parent_id: object.parent_id,
-                        grants_version: object.grants_version,
-                        grants: None,
-                    },
-                )
-            }),
-            missing,
-        )
-        .await;
         Ok(objects)
     }
 
@@ -218,8 +202,7 @@ impl TreeHints {
             .into_iter()
             .filter_map(|(id, version)| {
                 let hint = cache.get(&(tenant_id.to_owned(), id))?;
-                let grants = hint.grants.as_ref()?;
-                (hint.grants_version == version).then(|| (id, Arc::clone(grants)))
+                (hint.grants_version == version).then(|| (id, Arc::clone(&hint.grants)))
             })
             .collect()
     }
@@ -238,14 +221,7 @@ impl TreeHints {
             cache.pop(&(tenant_id.to_owned(), id));
         }
         for (id, hint) in hints {
-            let key = (tenant_id.to_owned(), id);
-            let grants = hint.grants.or_else(|| {
-                cache
-                    .peek(&key)
-                    .filter(|cached| cached.grants_version == hint.grants_version)
-                    .and_then(|cached| cached.grants.clone())
-            });
-            cache.put(key, Hint { grants, ..hint });
+            cache.put((tenant_id.to_owned(), id), hint);
         }
     }
 }

@@ -132,11 +132,14 @@ impl ObjectResource {
                         Hint {
                             parent_id: object.parent_id,
                             grants_version: object.grants_version,
-                            grants: Some(grants),
+                            grants,
                         },
                     ))
                 }),
-                [],
+                object_ids
+                    .iter()
+                    .filter(|id| !objects.contains_key(id))
+                    .copied(),
             )
             .await;
         Ok(results)
