@@ -112,6 +112,13 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(action).not.toBeNull();
     expect(action?.status).toBe("running");
     expect(action?.toolName).toBe("generate_random_number");
+    // Approvals are keyed on this name, so it must match what a conversation records.
+    expect(action?.toolConfiguration.name).toBe(
+      "common_utilities__generate_random_number"
+    );
+    expect(action?.toolConfiguration.originalName).toBe(
+      "generate_random_number"
+    );
     expect(action?.inputs).toEqual({ max: 10 });
     expect(action?.sandboxFunctionInvocationId).toBe(invocation.id);
     expect(action?.toolConfiguration.permission).toBe("never_ask");
@@ -224,7 +231,7 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     );
   });
 
-  it("reuses medium-stake approvals for matching tool inputs", async () => {
+  it("reuses medium-stake approvals recorded in conversations for matching tool inputs", async () => {
     const context =
       await createPersistedSandboxFunctionInvocationTokenTestContext();
     const gmail = await InternalMCPServerInMemoryResource.makeNew(
@@ -236,9 +243,10 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
       gmail.id,
       context.globalSpace
     );
+    // Recorded under the prefixed function-call name, as a conversation "Always allow" does.
     await context.auth.getNonNullableUser().createToolApproval(context.auth, {
       mcpServerId: view.mcpServerId,
-      toolName: "create_draft",
+      toolName: "gmail__create_draft",
       argsAndValues: { to: "approved@dust.tt" },
     });
 
