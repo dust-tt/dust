@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use dfs_protocol::{
-    ObjectId, ObjectRef,
+    ObjectId,
     rpc::{Mutation, UpdateOperation, operation::Operation},
 };
 use foundationdb::Transaction;
@@ -32,8 +32,9 @@ impl ObjectResource {
      * Storage failures MUST abort the attempt and preserve FDB errors for retry.
      */
     /**
-     * @cc [owner:spolu,label:backend] object-apply-final-attributes
-     * Successful mutation attributes MUST reflect the final transaction state after all operations.
+     * @cc [owner:spolu,label:backend] object-apply-operation-attributes
+     * Successful mutation attributes MUST reflect state immediately after their operation. Later
+     * operations MUST NOT rewrite earlier results.
      */
     pub async fn apply(
         tx: &Transaction,
@@ -61,35 +62,7 @@ impl ObjectResource {
         for (index, result) in completed.into_iter().flatten() {
             results[index] = Some(result);
         }
-        let mut results: Vec<_> = results.into_iter().flatten().collect();
-        // Resolve attributes after all operations, including children created later in a batch.
-        let ids: HashSet<_> = results
-            .iter()
-            .filter_map(|result| result.as_ref().ok())
-            .flat_map(|mutation| mutation.object.iter().chain(&mutation.related))
-            .filter_map(|attr| match attr.id {
-                ObjectRef::Object(id) => Some(id),
-                _ => None,
-            })
-            .collect();
-        let ids: Vec<_> = ids.into_iter().collect();
-        let mut attrs = HashMap::new();
-        for (object, mode) in Self::modes_for_session(tx, session, &ids)
-            .await?
-            .into_iter()
-            .flatten()
-        {
-            attrs.insert(object.object_id, object.attr(tx, mode).await?);
-        }
-        for mutation in results.iter_mut().filter_map(|result| result.as_mut().ok()) {
-            let final_attr = |attr: &dfs_protocol::rpc::Attr| match attr.id {
-                ObjectRef::Object(id) => attrs.get(&id).cloned(),
-                _ => None,
-            };
-            mutation.object = mutation.object.as_ref().and_then(final_attr);
-            mutation.related = mutation.related.iter().filter_map(final_attr).collect();
-        }
-        Ok(results)
+        Ok(results.into_iter().flatten().collect())
     }
 
     async fn apply_operation(

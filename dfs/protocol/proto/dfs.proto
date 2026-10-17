@@ -385,11 +385,12 @@ message OperationResult {
   optional ErrorDetails error = 2;
 }
 
+// Attributes reflect state immediately after this operation; later operations do not rewrite them.
 message Mutation {
   optional Attr object = 1;
-  // @cc [owner:spolu,label:api;backend] dfs-removal-parent-attributes
-  // For a successful removal, related MUST include the removed object's parent's final Attr
-  // unless that parent is also removed later in the Apply batch.
+  // @cc [owner:spolu,label:api;backend] dfs-mutation-parent-attributes
+  // Successful Create and Remove operations MUST include their parent's Attr immediately after
+  // the operation, even if that parent is changed or removed later in the Apply batch.
   repeated Attr related = 2;
 }
 

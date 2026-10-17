@@ -17,7 +17,8 @@ use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpa
 mod apply;
 mod lookup;
 pub(crate) use apply::{
-    apply_create_conflicts_with_grant_revocation, apply_create_receipt_preserves_nested_results,
+    apply_create_conflicts_with_grant_revocation,
+    apply_create_receipt_preserves_per_operation_results,
     apply_create_rejections_leave_no_staged_writes,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;

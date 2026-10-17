@@ -34,7 +34,7 @@ fn create(parent_id: ObjectId, name: &str, kind: ObjectKind) -> CreateOperation 
     }
 }
 
-pub(crate) async fn apply_create_receipt_preserves_nested_results() -> Result<()> {
+pub(crate) async fn apply_create_receipt_preserves_per_operation_results() -> Result<()> {
     use dfs_api::storage::receipt::Receipt;
     use dfs_protocol::rpc::operation::Operation;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -73,14 +73,28 @@ pub(crate) async fn apply_create_receipt_preserves_nested_results() -> Result<()
         let parent_attr = mutations[0].object.as_ref().context("missing directory")?;
         assert_eq!(parent_attr.id, directory.object_id.into());
         assert_eq!(parent_attr.mode, 0o700);
-        // The first result includes the later creation of its child.
+        // The first result stays at creation state, even after its child is created.
         assert_eq!(
             (parent_attr.attr_version, parent_attr.content_version),
-            (2, 2)
+            (1, 1)
         );
+        assert_eq!(mutations[0].related.len(), 1);
+        let root_attr = &mutations[0].related[0];
+        assert_eq!(root_attr.id, tenant.root_id.into());
+        assert_eq!((root_attr.attr_version, root_attr.content_version), (2, 2));
         let file_attr = mutations[1].object.as_ref().context("missing file")?;
         assert_eq!(file_attr.id, file.object_id.into());
         assert_eq!(file_attr.mode, 0o600);
+        assert_eq!(mutations[1].related.len(), 1);
+        // The later result supplies the directory's updated attributes to the client.
+        let updated_parent = &mutations[1].related[0];
+        assert_eq!(updated_parent.id, directory.object_id.into());
+        assert_eq!(
+            (updated_parent.attr_version, updated_parent.content_version),
+            (2, 2)
+        );
+        assert_eq!(updated_parent.mtime, file_attr.ctime);
+        assert_eq!(updated_parent.ctime, file_attr.ctime);
         if let Some(original) = &original {
             assert_eq!(&result, original);
         } else {

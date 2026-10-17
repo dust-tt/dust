@@ -16,6 +16,11 @@ impl DirectoryResource {
      * Create MUST evaluate session modes in the caller's transaction and require read and write on
      * the parent directory. Missing either permission MUST return Forbidden without staging writes.
      */
+    /**
+     * @cc [owner:spolu,label:backend] directory-apply-create-attributes
+     * A successful Create MUST return the child's attributes in object and the updated parent's
+     * attributes in related, both reflecting state immediately after creation.
+     */
     pub async fn apply_create(
         tx: &Transaction,
         session: &SessionResource,
@@ -35,7 +40,7 @@ impl DirectoryResource {
         let mut parent = Self::try_from(parent)?;
 
         // Create the child and update the parent directory.
-        let child = parent
+        let mut child = parent
             .create_child(
                 tx,
                 operation.object_id,
@@ -46,10 +51,13 @@ impl DirectoryResource {
             )
             .await?;
 
+        // Apply responses omit optional metadata.
+        child.metadata = None;
+
         // The child has no explicit grants and inherits its parent's mode.
         Ok(Mutation {
             object: Some(child.attr(tx, mode).await?),
-            related: Vec::new(),
+            related: vec![parent.object.attr(tx, mode).await?],
         })
     }
 
