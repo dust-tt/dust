@@ -85,6 +85,39 @@ of at most 100 entries. Each batch rechecks session state with conflict tracking
 protecting refreshed sessions and allowing concurrent sweepers to retry safely. Stale and orphaned
 index entries are also removed. Authentication rejects expired sessions independently of cleanup.
 
+## Advisory locks (proposed)
+
+FDB is authoritative across server instances for the [flock leases](API.md#advisory-locks-proposed).
+These keys are proposed; lock RPCs currently return `UNSUPPORTED`.
+
+| Key | Value | Rationale |
+| --- | --- | --- |
+| `dfs-v1-{env}/tenant/<tenantId>/flock/<objectId>/<sessionId>/<ownerId>` | FDB tuple `(lease_id_bytes, mode, expires_at_ms)`. | Stores one lease per open description and supports conflict checks by object. |
+| `dfs-v1-{env}/tenant/<tenantId>/flock-lease/<objectId>/<leaseId>` | FDB tuple `(session_id, owner_id_bytes)`. | Resolves the exact lease for refresh and release. |
+| `dfs-v1-{env}/flock-expiry/<expiresAtMs>/<tenantId>/<objectId>/<leaseId>` | Empty value. | Finds expired leases across tenants in bounded batches. |
+
+Owner and lease IDs are opaque 16-byte tuple components. Modes use the protocol enum; expiry keys
+use the same timestamp encoding as session expiry. State and both indexes change atomically.
+
+Acquisition conflict-reads the object's holder range, including an empty range, and ignores expired
+leases. Shared holders coexist; an exclusive holder excludes all others. Repeating an active owner
+and mode returns its existing lease without renewing. Each lock RPC authenticates directly in FDB;
+acquisition and refresh also check object read access in that transaction. Leases expire within
+30 seconds, capped by session expiry. Session refresh does not extend them; revocation prevents
+renewal but leaves existing leases to expire.
+
+Refresh verifies the session, lease ID, and unexpired state before replacing the expiry entry.
+Release verifies ownership and the exact lease ID before clearing all three records; an absent
+lease succeeds. Neither operation can affect a later acquisition by the same owner. Lock writes use
+`with_idempotent_transaction`; retain absolute expiry in the retry result and compute remaining
+`ttl_ms` after the runner returns, including receipt replay.
+
+Moves preserve these keys. Object deletion atomically clears both per-object prefixes; global expiry
+entries may remain for cleanup. A future sweep can share the session/receipt loop, rechecking the
+lease ID and expiry with conflict tracking before deleting each batch. Stale or orphaned index
+entries are cleared without deleting refreshed or replacement leases. Expiry takes effect without
+waiting for cleanup. Locks are advisory and never change object attributes or versions.
+
 ## Transaction receipts
 
 All resource writes use `fdb::with_idempotent_transaction`, protecting the whole transaction and its
