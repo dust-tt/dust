@@ -65,3 +65,4 @@ in the root `CONTRACTS`).
 - `en-US` (source locale, written in the code): [references/en-US.md](references/en-US.md)
 - `en-GB`: [references/en-GB.md](references/en-GB.md)
 - `fr-FR`: [references/fr-FR.md](references/fr-FR.md)
+- `de-DE`: [references/de-DE.md](references/de-DE.md)
