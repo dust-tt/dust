@@ -230,6 +230,24 @@ fn tenant_errors_preserve_retries_and_statuses_through_sessions() -> Result<(), 
 }
 
 #[test]
+fn transaction_size_errors_preserve_fdb_errors_until_status_conversion()
+-> Result<(), prost::DecodeError> {
+    for (code, expected) in [(2101, ErrorCode::Capacity), (1020, ErrorCode::Internal)] {
+        let error: storage::Error<object::Error> =
+            FdbBindingError::from(FdbError::from_code(code)).into();
+        let error = FdbBindingError::from(storage::Error::<Status>::from(error));
+        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(code));
+
+        let response: Status = storage::Error::<Status>::from(error).into();
+        let expected_status = status(expected);
+        assert_eq!(response.code(), expected_status.code());
+        assert_eq!(response.message(), expected_status.message());
+        assert_eq!(ErrorDetails::decode(response.details())?.code(), expected);
+    }
+    Ok(())
+}
+
+#[test]
 fn decoding_errors_return_generic_internal_details() -> Result<(), prost::DecodeError> {
     for error in [
         storage::Error::<tenant::Error>::InvalidKeyHash(InvalidKeyHash),

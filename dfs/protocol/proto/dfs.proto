@@ -355,9 +355,9 @@ message FileResult {
 }
 
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
-// Operations MUST be nonempty. FDB transaction size MUST be checked separately from the RPC request
-// limit; exceeding the store's transaction budget MUST fail the request with CAPACITY before
-// committing.
+// Operations MUST be nonempty. Exceeding FDB's transaction size limit MUST fail the request with
+// CAPACITY without committing any changes, even when it fits the RPC request limit. The server MAY
+// rely on FDB's size check and translate transaction_too_large after the retry runner returns.
 message ApplyRequest {
   repeated Operation operations = 1;
 }
