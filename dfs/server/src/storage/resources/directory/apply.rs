@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use dfs_protocol::rpc::{CreateOperation, MoveOperation, Mutation, ObjectKind, RemoveOperation};
 use foundationdb::{Transaction, tuple::pack};
 
@@ -143,23 +141,14 @@ impl DirectoryResource {
             return Err(Error::AlreadyExists.into());
         }
 
-        // Follow stored parents with conflict tracking to prevent directory cycles.
+        // Reuse the warm permission hints to read the target's ancestry concurrently.
         if object.kind == ObjectKind::Directory {
-            let mut ancestor = target.object.clone();
-            let mut visited = HashSet::new();
-            loop {
-                if ancestor.object_id == object.object_id {
-                    return Err(Error::InvalidMove.into());
-                }
-                if !visited.insert(ancestor.object_id) {
-                    return Err(Error::Object(object::Error::InvalidAncestry).into());
-                }
-                let Some(parent_id) = ancestor.parent_id else {
-                    break;
-                };
-                ancestor = ObjectResource::fetch(tx, &session.tenant, &parent_id)
-                    .await?
-                    .ok_or(Error::Object(object::Error::InvalidAncestry))?;
+            let ancestry = session
+                .tree_hints
+                .fetch_ancestry(tx, &session.tenant, &[target_id])
+                .await?;
+            if ancestry.contains_key(&object.object_id) {
+                return Err(Error::InvalidMove.into());
             }
         }
 
