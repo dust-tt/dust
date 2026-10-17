@@ -209,7 +209,7 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
 | `Lock` | `r+w` on the target, for acquisition and refresh. |
-| `Unlock` | Session ownership of the lock; no object permission required. |
+| `Unlock` | Matching lock ID; no object permission required. |
 | create | `r+w` on the parent. |
 | update, write | `r+w` on the target. |
 | move | `r+w` on the source and target directories; `r` on the moved object. |
@@ -614,17 +614,13 @@ contents share one FDB snapshot. All returned attributes carry the same `object.
 
 ## Exclusive locks (proposed)
 
-A collaboration channel can lock a file while it coordinates live edits. Other writers receive
-`WOULD_BLOCK` and can find the channel in the app using the object ID. DFS stores only the lock;
-channel discovery and collaboration belong to the app.
+A collaboration channel locks an object while coordinating edits. Other writers receive
+`WOULD_BLOCK`; the app resolves the channel using the object ID. Locks protect all Apply mutations,
+including content, metadata, move, and removal. Reads and grant management remain available.
 
-Locks cover real files or directories across all server instances. They protect all Apply mutations
-of that object, including content, metadata, move, and removal. Reads and grant management remain
-available. Lock maintenance does not change attributes or versions.
-
-### Lock / Unlock
-
-Both RPCs require a session key. They currently return `UNSUPPORTED`.
+Lock IDs are secret ownership tokens within a tenant and object, independent of session identity.
+Callers still supply a session key and use normal authentication, including its 30-second revocation
+window. Lock RPCs and Apply with nonempty `locks` currently return `UNSUPPORTED`.
 
 ```text
 Lock(LockRequest) -> LockState
@@ -636,8 +632,8 @@ LockRequest {
 }
 
 LockState {
-  lock_id: bytes                 // One random 16-byte ID for this lock.
-  expires_at: Timestamp          // Server time + 1 minute, capped by session expiry.
+  lock_id: bytes                 // Random 16-byte ownership token.
+  expires_at: Timestamp          // Server time + 1 minute.
 }
 
 ObjectLock {
@@ -646,36 +642,28 @@ ObjectLock {
 }
 ```
 
-Acquiring fails immediately with `WOULD_BLOCK` if any active lock exists, including one belonging
-to the same session. Refresh requires the exact active ID and owning session: an absent, expired,
-or mismatched lock returns `LOCK_LOST`, never reacquires. Both require `r+w`; missing objects return
-`NOT_FOUND`, missing permissions `FORBIDDEN`. Lock RPCs authenticate directly in storage.
+Acquiring fails immediately with `WOULD_BLOCK` if an active lock exists. Refresh extends only the
+matching unexpired lock; an absent, expired, or mismatched ID returns `LOCK_LOST`, never reacquires.
+Both require `r+w`; missing objects return `NOT_FOUND`, missing permissions `FORBIDDEN`.
+Unlock clears only the matching ID; absent or mismatched IDs are successful no-ops. It requires no
+object permission, allowing cleanup after access loss. Moves preserve locks; removal clears them.
+Lock maintenance does not change object attributes or versions.
 
-Unlock clears only the session's matching lock; absent or mismatched IDs are successful no-ops.
-It requires no object permission, allowing cleanup after access loss. Moves preserve the lock;
-removal clears it. Expiry takes effect without cleanup; session refresh does not extend locks.
-Revoked sessions cannot refresh; their locks expire within one minute.
-The storage sweep reclaims expired locks even when their clients never return.
+Refresh about every 20 seconds and include the ID when saving. On `LOCK_LOST`, stop the old editing
+session. A lost acquisition response may leave a lock until expiry. Internal receipt replay returns
+the original expiry; session refresh never extends a lock. Expired locks stop blocking immediately
+and the storage sweep reclaims their records.
 
-The holder should refresh about every 20 seconds and include its ID when saving through Apply.
-On `LOCK_LOST`, it must stop the old editing session. An acquisition timeout can leave a lock until
-expiry; retrying acquisition never takes over an active lock. Unknown write outcomes must not be
-blindly replayed. An idempotency receipt replay returns the original absolute expiry.
+`Apply.locks` supplies object/lock ID pairs, at most one per object. Each operation checks locks
+transactionally after authorization and before staging writes. An active lock with no supplied ID
+gives `WOULD_BLOCK`; a supplied stale or mismatched ID gives `LOCK_LOST`, even when unlocked. No lock
+and no supplied ID allows mutation. Normal permissions still apply. Malformed IDs or duplicate
+objects fail the request with `INVALID_INPUT`.
 
-### Apply enforcement
-
-`Apply.locks` supplies object/lock ID pairs, at most one per object. Each operation checks its
-current target locks in the mutation transaction, after authorization and before staging writes.
-No lock and no supplied ID allows mutation. An active lock requires its ID and owning session;
-otherwise the operation returns `WOULD_BLOCK`. A supplied stale or foreign ID returns `LOCK_LOST`,
-even when the object is unlocked. Normal permissions still apply; used lock IDs require direct
-session authentication. Malformed IDs or duplicate objects fail the request with `INVALID_INPUT`.
-
-Targets are the same as Apply batching: Create's parent and proposed object; Update/Write's object;
-Move's object and both parents; Remove's object and parent. Directory locks affect direct targets,
-not every descendant. Lock failures change nothing for that operation; later operations continue.
-The caller may retry blocked operations or route edits through the collaboration channel.
-Until enforcement exists, Apply with nonempty `locks` returns `UNSUPPORTED` before any operation.
+Checks use the existing batching targets: Create's parent and proposed object; Update/Write's object;
+Move's object and both parents; Remove's object and parent. Directory locks are not recursive.
+A blocked operation changes nothing; later operations continue. Retry only blocked operations or
+route edits through the channel; do not replay successful operations or unknown write outcomes.
 
 ## Filesystem mutations
 
