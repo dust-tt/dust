@@ -36,6 +36,7 @@ const XATTR_FAMILY: &str = "xattr";
 const INITIAL_VERSION: u64 = 1;
 const EMPTY_SIZE_BYTES: u64 = 0;
 const XATTR_NAME_MAX_BYTES: usize = 255;
+const MIME_TYPE_MAX_BYTES: usize = 255;
 const XATTRS_MAX_BYTES: usize = 32 * 1024;
 const GRANT_FAMILY: &str = "object-grant";
 const REVERSE_GRANT_FAMILY: &str = "grant-object";
@@ -52,6 +53,7 @@ pub enum Error {
     AlreadyExists,
     MissingMetadata,
     InvalidXattrName,
+    InvalidMimeType,
     XattrsTooLarge,
     InvalidId,
     NotFound,
@@ -65,7 +67,6 @@ pub enum Error {
     InvalidAncestry,
     UnsupportedKind,
     UnsupportedOperation,
-    VersionOverflow,
     // Boxed because directory and file errors can themselves wrap object errors.
     Directory(Box<directory::Error>),
     File(Box<file::Error>),
@@ -78,6 +79,7 @@ impl fmt::Display for Error {
             Self::AlreadyExists => f.write_str("object already exists"),
             Self::MissingMetadata => f.write_str("object metadata missing"),
             Self::InvalidXattrName => f.write_str("invalid xattr name"),
+            Self::InvalidMimeType => f.write_str("invalid MIME type"),
             Self::XattrsTooLarge => f.write_str("xattrs exceed the size limit"),
             Self::InvalidId => f.write_str("invalid object ID"),
             Self::NotFound => f.write_str("object not found"),
@@ -91,7 +93,6 @@ impl fmt::Display for Error {
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
             Self::UnsupportedOperation => f.write_str("unsupported object operation"),
-            Self::VersionOverflow => f.write_str("object version overflow"),
             Self::Directory(error) => error.fmt(f),
             Self::File(error) => error.fmt(f),
         }
@@ -140,6 +141,11 @@ impl From<storage::Error<file::Error>> for storage::Error<Error> {
     }
 }
 
+/**
+ * @cc [owner:spolu,label:backend] object-version-capacity
+ * Object version counters are assumed never to exhaust u64 during an object's lifetime.
+ * Increments MUST use ordinary addition without overflow checks or saturation.
+ */
 #[derive(Clone)]
 pub struct ObjectResource {
     pub tenant: TenantResource,
@@ -332,7 +338,7 @@ impl ObjectResource {
             grants_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
-                mime_type,
+                mime_type: mime_type.filter(|value| !value.is_empty()),
                 xattrs,
             }),
         }
@@ -342,16 +348,18 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend;error-handling] object-create-atomicity
      * Creation MUST write attributes, metadata, xattrs, and grants in the caller's transaction. An
      * occupied object ID in the same tenant MUST return AlreadyExists before staging any writes,
-     * even when attributes match, preserving the existing object, metadata, and grants. The
-     * occupied-ID check MUST precede metadata, xattr, and grant validation. Missing metadata or
-     * invalid xattrs MUST fail before staging any writes. Initial grants MUST be validated and
+     * even when attributes match, preserving the existing object, metadata, and grants.
+     * The occupied-ID check MUST precede metadata, xattr, and grant validation. Missing metadata,
+     * invalid MIME types, or invalid xattrs MUST fail before staging any writes. Nonempty MIME types
+     * MUST parse as a MIME type and contain at most 255 bytes. Initial grants MUST be validated and
      * deduplicated, with at most 512 distinct values, before staging writes.
      */
     /**
      * @cc [owner:spolu,label:backend] object-xattr-validation
-     * Xattr validation MUST run only after confirming the object ID is unoccupied. Names MUST
-     * contain 1-255 UTF-8 bytes without NUL; invalid names MUST return InvalidXattrName. Combined
-     * name and value bytes MUST NOT exceed 32 KiB; exceeding this limit MUST return XattrsTooLarge.
+     * Xattr validation MUST run only after confirming the object ID is unoccupied and metadata
+     * and MIME type are valid. Names MUST contain 1-255 UTF-8 bytes without NUL; invalid names MUST
+     * return InvalidXattrName. Combined name and value bytes MUST NOT exceed 32 KiB; exceeding this
+     * limit MUST return XattrsTooLarge.
      * When both xattr constraints fail, either error MAY be returned.
      */
     /**
@@ -376,6 +384,11 @@ impl ObjectResource {
         }
 
         let metadata = self.metadata.as_ref().ok_or(Error::MissingMetadata)?;
+        if let Some(mime_type) = &metadata.mime_type
+            && (mime_type.len() > MIME_TYPE_MAX_BYTES || mime_type.parse::<mime::Mime>().is_err())
+        {
+            return Err(Error::InvalidMimeType.into());
+        }
         let mut xattrs_bytes = 0;
         for (name, value) in &metadata.xattrs {
             if name.is_empty() || name.len() > XATTR_NAME_MAX_BYTES || name.contains('\0') {
@@ -435,23 +448,16 @@ impl ObjectResource {
         ))
     }
 
-    pub fn record_content_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
-        self.content_version = self
-            .content_version
-            .checked_add(1)
-            .ok_or(Error::VersionOverflow)?;
+    pub fn record_content_change(&mut self, tx: &Transaction, now_ms: u64) {
+        self.content_version += 1;
         self.mtime_ms = Some(now_ms);
-        self.record_attr_change(tx, now_ms)
+        self.record_attr_change(tx, now_ms);
     }
 
-    pub fn record_attr_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
-        self.attr_version = self
-            .attr_version
-            .checked_add(1)
-            .ok_or(Error::VersionOverflow)?;
+    pub fn record_attr_change(&mut self, tx: &Transaction, now_ms: u64) {
+        self.attr_version += 1;
         self.ctime_ms = Some(now_ms);
         self.save_attributes(tx);
-        Ok(())
     }
 
     /**
@@ -503,7 +509,7 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend] object-grants-version
      * Each successful update MUST increment only this object's grants_version once, atomically
      * with the grants, including empty or no-op updates. Initial grants MUST NOT advance it.
-     * Overflow MUST fail before staging writes; versions MUST NOT wrap or reset.
+     * Versions MUST NOT reset during the object's lifetime.
      */
     pub fn update_grants(
         &mut self,
@@ -520,14 +526,10 @@ impl ObjectResource {
                 return Err(Error::DuplicateGrant.into());
             }
         }
-        let grants_version = self
-            .grants_version
-            .checked_add(1)
-            .ok_or(Error::VersionOverflow)?;
         for change in changes {
             self.write_grant(tx, &change.grant, change.remove)?;
         }
-        self.grants_version = grants_version;
+        self.grants_version += 1;
         self.save_attributes(tx);
         Ok(())
     }

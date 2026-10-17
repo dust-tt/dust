@@ -24,7 +24,11 @@ fn resources() -> Result<()> {
         file::reads_validate_kind_length_blocks_and_handle_maximum_offsets().await?;
         file::block_reads_conflict_with_concurrent_writes().await?;
         directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
+        directory::apply_create_receipt_preserves_per_operation_results().await?;
+        directory::apply_create_rejections_leave_no_staged_writes().await?;
+        directory::apply_create_conflicts_with_grant_revocation().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;
+        directory::child_creation_rejects_old_ids_and_accepts_recent_ids().await?;
         directory::shared_name_is_only_reserved_under_the_tenant_root().await?;
         directory::child_lookup_resolves_names_within_each_directory().await?;
         directory::lookup_attrs_require_readable_parents_and_children().await?;
@@ -35,7 +39,7 @@ fn resources() -> Result<()> {
         object::invalid_xattr_names_fail_before_staging_writes().await?;
         object::xattr_size_limit_counts_all_names_and_values().await?;
         object::grant_listing_and_updates_preserve_indexes_and_attributes().await?;
-        object::grant_versions_advance_for_no_ops_and_reject_overflow().await?;
+        object::grant_versions_advance_for_no_ops().await?;
         object::grant_creation_and_update_validation_preserve_state().await?;
         object::grant_pagination_handles_full_pages_and_object_deletion().await?;
         object::modes_for_session_evaluate_full_paths_and_all_grants().await?;

@@ -380,7 +380,7 @@ export class DfsClient {
       "Apply",
       () => ({ operations: operations.map(encodeOperation) }),
       WireOperationBatchSchema,
-      // The primary object, when it survives the request, is the operation's object.
+      // The primary object, when returned, is the operation's object.
       ({ results }) =>
         results.length === operations.length &&
         results.every(

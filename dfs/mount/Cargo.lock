@@ -339,6 +339,7 @@ dependencies = [
  "foundationdb",
  "futures",
  "lru",
+ "mime",
  "prost",
  "ring",
  "sha2",

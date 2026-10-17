@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, time::Duration};
 
 use dfs_protocol::{NAME_MAX_BYTES, ObjectId, is_valid_name, rpc::ObjectKind};
 use foundationdb::{
@@ -23,6 +23,7 @@ mod lookup;
 
 const FAMILY: &str = "child";
 const PAGE_MAX_ENTRIES: usize = 4_096;
+const CREATE_OBJECT_ID_MAX_AGE: Duration = Duration::from_secs(5 * 60);
 pub const VIRTUAL_SHARED_NAME: &str = "shared";
 
 #[derive(Debug)]
@@ -33,6 +34,8 @@ pub enum Error {
     UnsupportedKind,
     UnsupportedOperation,
     AlreadyExists,
+    Forbidden,
+    InvalidKind,
     TimestampGeneration,
     InvalidPageLimit,
     InvalidCursor,
@@ -49,6 +52,8 @@ impl fmt::Display for Error {
             Self::UnsupportedKind => f.write_str("unsupported child kind"),
             Self::UnsupportedOperation => f.write_str("unsupported directory operation"),
             Self::AlreadyExists => f.write_str("child name already exists"),
+            Self::Forbidden => f.write_str("directory mutation forbidden"),
+            Self::InvalidKind => f.write_str("child kind does not match"),
             Self::TimestampGeneration => f.write_str("child timestamp generation failed"),
             Self::InvalidPageLimit => f.write_str("invalid child page limit"),
             Self::InvalidCursor => f.write_str("invalid child cursor"),
@@ -107,7 +112,8 @@ impl DirectoryResource {
 
     /**
      * @cc [owner:spolu,label:backend;error-handling] directory-create-input-id
-     * An invalid child object ID MUST return Object(InvalidId) without staging writes.
+     * An invalid child object ID or a UUIDv7 timestamp more than five minutes before server time
+     * MUST return Object(InvalidId) without staging writes.
      */
     /**
      * @cc [owner:spolu,label:backend;error-handling] directory-create-collision
@@ -116,8 +122,8 @@ impl DirectoryResource {
      */
     /**
      * @cc [owner:pmilliotte,label:product] root-reserves-shared-name
-     * Under the tenant root, a child named `shared` MUST fail with AlreadyExists without writing,
-     * so it never collides with virtual `shared` at virtual root. Other directories MUST accept it.
+     * For valid creation inputs, a child named `shared` under the tenant root MUST fail with
+     * AlreadyExists without writing. Other directories MUST accept that name.
      */
     pub async fn create_child(
         &mut self,
@@ -131,6 +137,16 @@ impl DirectoryResource {
         object_id
             .validate()
             .map_err(|_| Error::Object(object::Error::InvalidId))?;
+        let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
+        let (seconds, nanos) = uuid::Uuid::from_bytes(*object_id.as_bytes())
+            .get_timestamp()
+            .ok_or(Error::Object(object::Error::InvalidId))?
+            .to_unix();
+        if Duration::from_millis(now_ms).saturating_sub(Duration::new(seconds, nanos))
+            > CREATE_OBJECT_ID_MAX_AGE
+        {
+            return Err(Error::Object(object::Error::InvalidId).into());
+        }
         Self::validate_name(&name)?;
         if self.is_tenant_root() && name == VIRTUAL_SHARED_NAME {
             return Err(Error::AlreadyExists.into());
@@ -148,7 +164,6 @@ impl DirectoryResource {
             return Err(Error::AlreadyExists.into());
         }
 
-        let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
         let child = ObjectResource::new(
             &self.object.tenant,
             object_id,
@@ -161,9 +176,7 @@ impl DirectoryResource {
         );
         child.create(tx, &[]).await?;
         tx.set(&entry_key, &pack(&child.object_id.as_bytes().as_slice()));
-        self.object
-            .record_content_change(tx, now_ms)
-            .map_err(Error::Object)?;
+        self.object.record_content_change(tx, now_ms);
         Ok(child)
     }
 

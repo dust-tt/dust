@@ -267,7 +267,7 @@ pub(crate) async fn reads_preserve_tenant_scope_snapshot_and_attributes() -> Res
         .await?
         .context("missing file")?;
     updated.size = 3;
-    updated.record_content_change(&update, 123)?;
+    updated.record_content_change(&update, 123);
     update.commit().await?;
 
     assert_eq!(file.read(&old, 0, 10).await?, b"first");

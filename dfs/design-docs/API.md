@@ -208,10 +208,10 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
-| create | `w` on the parent. |
-| update, write | `w` on the target. |
-| move | `w` on the source and target directories. |
-| remove | `w` on the target and its parent. |
+| create | `r+w` on the parent. |
+| update, write | `r+w` on the target. |
+| move | `r+w` on the source and target directories. |
+| remove | `r+w` on the target and its parent. |
 
 Namespace permissions are checked on each participating object using its effective read/write
 permissions. Directory traversal follows read access; there is no separate execution permission or
@@ -636,7 +636,7 @@ OperationResult {
 }
 
 Mutation {
-  object?: Attr                  // Primary object, if it survives the complete request.
+  object?: Attr                  // Primary object after this operation; absent for removal.
   related: Attr[]                // Other returned objects affected by the operation.
 }
 ```
@@ -653,18 +653,19 @@ records that operation's error without changing state; later operations continue
 operations commit together. Storage or commit failures affect the entire transaction attempt and
 cannot be reported as isolated operation failures. No results are returned before commit.
 
-Returned attributes reflect the final committed state, rather than an intermediate state after
-each operation. Removed objects have no returned attributes. Removal returns the surviving parent's
-attributes in `mutation.related`. Other operations may omit parents changed only by listing
-membership and its associated version bookkeeping; clients must invalidate omitted parents' cached
-attributes and listing pages.
+Returned attributes reflect state immediately after each operation; later operations do not rewrite
+earlier results. Clients process successful results in request order, keeping the latest attributes
+and applying removals. Create and removal return their updated parent in `mutation.related`.
+Invalidate cached attributes for affected parents omitted from results, and affected listing pages.
 
 Every attribute returned in `mutation.object` or `mutation.related` across the batch carries the
 same `Attr.store_version`: the batch's commit version, or the transaction's read version when no
-stored changes were made. A successful mutation returning no attributes carries no store version.
+stored changes were made. This identifies the batch commit, not a snapshot of each intermediate
+result. A successful mutation returning no attributes carries no store version.
 
 Accepted work continues after disconnection, so a lost response does not prove a mutation failed.
 The request has no idempotency key; callers must not blindly replay operations with uncertain outcomes.
+Internal FDB retries reuse one receipt for the whole batch, returning its original results after commit.
 
 The following operations are variants within `Apply`, not separate RPCs. Each produces the
 `OperationResult` described above.
@@ -679,15 +680,16 @@ Creates an empty file or directory under an authorized real directory.
 CreateOperation {
   parent_id: ObjectId
   name: string
-  object_id: ObjectId            // Fresh UUIDv7 supplied by the caller.
+  object_id: ObjectId            // Caller-supplied UUIDv7, at most five minutes old.
   kind: ObjectKind               // FILE or DIRECTORY; SYMLINK fails with UNSUPPORTED.
-  mime_type?: string             // Defaults to inode/directory or application/octet-stream.
+  mime_type?: string             // Omitted or empty stores None.
   xattrs: map<string, bytes>
 }
 ```
 
-**Successful result:** `mutation.object` contains the created object's final attributes, unless a
-later operation in the same request removes it. Name or ID collisions fail with `ALREADY_EXISTS`.
+**Successful result:** `mutation.object` contains the created object's attributes and
+`mutation.related` contains its updated parent's attributes. Name or ID collisions fail with
+`ALREADY_EXISTS`.
 The name `shared` is reserved directly under the tenant root, where virtual `shared` lives: creating
 it there fails with `ALREADY_EXISTS`. Deeper directories accept it.
 
@@ -713,7 +715,7 @@ XattrChange {
 }
 ```
 
-**Successful result:** `mutation.object` contains the object's final attributes if it survives.
+**Successful result:** `mutation.object` contains the object's attributes after the update.
 The requested changes form one operation: a validation failure applies none of that patch. Growing
 a file with `size` exposes zero-filled bytes; truncation discards data beyond the new size.
 
@@ -732,7 +734,7 @@ WriteOperation {
 }
 ```
 
-**Successful result:** `mutation.object` contains the file's final attributes if it survives.
+**Successful result:** `mutation.object` contains the file's attributes after the write.
 Sparse gaps read as zeroes. Append observes earlier successful operations in the same request.
 
 ### move operation
@@ -751,7 +753,7 @@ MoveOperation {
 }
 ```
 
-**Successful result:** `mutation.object` contains the moved object's final attributes if it survives.
+**Successful result:** `mutation.object` contains the moved object's attributes after the move.
 The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
 Replacement requires the same kind; a destination directory must be empty. Moving a directory into
 itself or a descendant is rejected.
@@ -771,9 +773,8 @@ RemoveOperation {
 ```
 
 **Successful result:** `mutation` is present, with no `object` attributes. Its `related` field
-includes the parent's final attributes and `store_version`, unless that parent is also removed later
-in the batch. Nonempty directories fail with `NOT_EMPTY`; recursive deletion requires explicitly
-removing descendants first.
+includes the parent's attributes after removal. Nonempty directories fail with `NOT_EMPTY`;
+recursive deletion requires explicitly removing descendants first.
 The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
 
 ## Search

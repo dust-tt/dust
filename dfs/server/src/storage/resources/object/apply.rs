@@ -31,6 +31,11 @@ impl ObjectResource {
      * Resource failures MUST become per-operation errors without stopping later operations.
      * Storage failures MUST abort the attempt and preserve FDB errors for retry.
      */
+    /**
+     * @cc [owner:spolu,label:backend] object-apply-operation-attributes
+     * Successful mutation attributes MUST reflect state immediately after their operation. Later
+     * operations MUST NOT rewrite earlier results.
+     */
     pub async fn apply(
         tx: &Transaction,
         session: &SessionResource,

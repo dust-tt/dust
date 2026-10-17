@@ -293,7 +293,7 @@ pub(crate) async fn grant_creation_and_update_validation_preserve_state() -> Res
     Ok(())
 }
 
-pub(crate) async fn grant_versions_advance_for_no_ops_and_reject_overflow() -> Result<()> {
+pub(crate) async fn grant_versions_advance_for_no_ops() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let mut root = ObjectResource::new_root(&tenant)?;
     let tx = fdb::database()?.create_trx()?;
@@ -330,26 +330,6 @@ pub(crate) async fn grant_versions_advance_for_no_ops_and_reject_overflow() -> R
         assert_eq!(records(&tx, &tenant.tenant_id).await?, expected);
     }
 
-    let value = tx.get(&object_key, false).await?.context("missing root")?;
-    let mut attributes: StoredObject = unpack(&value)?;
-    attributes.9 = u64::MAX;
-    tx.set(&object_key, &pack(&attributes));
-    let mut root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
-        .await?
-        .context("missing root")?;
-    let before = records(&tx, &tenant.tenant_id).await?;
-    assert!(matches!(
-        root.update_grants(
-            &tx,
-            &[GrantUpdate {
-                grant: allow("new", 4),
-                remove: false,
-            }]
-        ),
-        Err(storage::Error::Resource(object::Error::VersionOverflow))
-    ));
-    assert_eq!(root.grants_version, u64::MAX);
-    assert_eq!(records(&tx, &tenant.tenant_id).await?, before);
     Ok(())
 }
 

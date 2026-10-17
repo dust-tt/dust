@@ -385,21 +385,23 @@ message OperationResult {
   optional ErrorDetails error = 2;
 }
 
+// Attributes reflect state immediately after this operation; later operations do not rewrite them.
 message Mutation {
   optional Attr object = 1;
-  // @cc [owner:spolu,label:api;backend] dfs-removal-parent-attributes
-  // For a successful removal, related MUST include the removed object's parent's final Attr
-  // unless that parent is also removed later in the Apply batch.
+  // @cc [owner:spolu,label:api;backend] dfs-mutation-parent-attributes
+  // Successful Create and Remove operations MUST include their parent's Attr immediately after
+  // the operation, even if that parent is changed or removed later in the Apply batch.
   repeated Attr related = 2;
 }
 
 // @cc [owner:spolu,label:api] dfs-create-metadata-limits
 // Name MUST satisfy Attr's stored-basename limits. A supplied MIME type and xattrs MUST satisfy
 // ExtendedMetadata's limits, including the 32 KiB total xattr key/value budget.
+// The object ID's UUIDv7 timestamp MUST be at most five minutes old at creation.
 message CreateOperation {
   required ObjectId parent_id = 1;
   required string name = 2;
-  // The caller supplies a fresh UUIDv7.
+  // The caller supplies a UUIDv7 no more than five minutes old.
   required ObjectId object_id = 3;
   required ObjectKind kind = 4;
   optional string mime_type = 5;

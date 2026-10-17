@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -14,7 +14,13 @@ use dfs_api::storage::{
 use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpack};
 
+mod apply;
 mod lookup;
+pub(crate) use apply::{
+    apply_create_conflicts_with_grant_revocation,
+    apply_create_receipt_preserves_per_operation_results,
+    apply_create_rejections_leave_no_staged_writes,
+};
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
 
 async fn create_child(
@@ -202,6 +208,51 @@ pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Resul
         };
         assert_eq!(actual, expected);
         assert_eq!(tenant_records(&tx, &tenant).await?, before);
+    }
+    clear_tenant(&tenant).await
+}
+
+pub(crate) async fn child_creation_rejects_old_ids_and_accepts_recent_ids() -> Result<()> {
+    let tenant = create_tenant_root().await?;
+    for kind in [ObjectKind::File, ObjectKind::Directory] {
+        for (age_ms, accepted) in [(240_000, true), (300_001, false)] {
+            let timestamp = Duration::from_millis(dfs_api::clock::now_ms()? - age_ms);
+            let id = uuid::Uuid::new_v7(uuid::Timestamp::from_unix(
+                uuid::NoContext,
+                timestamp.as_secs(),
+                timestamp.subsec_nanos(),
+            ));
+            let object_id = ObjectId::from_bytes(*id.as_bytes())?;
+            let tx = fdb::database()?.create_trx()?;
+            let before = tenant_records(&tx, &tenant).await?;
+            let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
+            let result = root
+                .create_child(
+                    &tx,
+                    object_id,
+                    object_id.to_string(),
+                    kind,
+                    None,
+                    HashMap::new(),
+                )
+                .await;
+            if accepted {
+                assert_eq!(result?.object_id, object_id);
+                assert_eq!(
+                    root.lookup(&tx, &object_id.to_string()).await?,
+                    Some(object_id)
+                );
+            } else {
+                assert!(matches!(
+                    result,
+                    Err(storage::Error::Resource(directory::Error::Object(
+                        object::Error::InvalidId
+                    )))
+                ));
+                assert_eq!(tenant_records(&tx, &tenant).await?, before);
+            }
+            tx.commit().await?;
+        }
     }
     clear_tenant(&tenant).await
 }
