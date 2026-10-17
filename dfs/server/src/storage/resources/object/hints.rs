@@ -28,7 +28,8 @@ pub(super) struct Hint {
  * Parent hints MUST be tenant-scoped and only schedule reads; every object and actual ancestor
  * MUST still be read in the caller's transaction. Cached grants MUST contain the complete grant
  * set, independent of session subjects, and may be reused only when the freshly read grants_version
- * matches. Uncommitted grants MUST NOT enter the cache. No hint guard may be held during an FDB read.
+ * matches. Staged nonempty grants MUST NOT enter the cache; new objects MAY cache their empty
+ * grant set. No hint guard may be held during an FDB read.
  */
 /**
  * @cc [owner:spolu,label:performance] tree-hints-capacity

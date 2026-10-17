@@ -53,9 +53,10 @@ impl ObjectResource {
      */
     /**
      * @cc [owner:spolu,label:backend;security] grant-cache-committed-state
-     * Callers MUST call modes_for_session before staging any writes in the transaction and MUST NOT
-     * stage writes concurrently with it. Cached grant sets and their versions MUST come from the
-     * same committed transaction view; staged grants MUST NOT enter the shared cache.
+     * Callers MUST NOT stage grant updates before or concurrently with modes_for_session. Namespace
+     * writes MAY precede it: parents are always re-read, and newly created objects MUST have empty
+     * grants. Within an object's lifetime, cached grants and their versions MUST describe the same
+     * state. Staged nonempty grants MUST NOT enter the shared cache.
      */
     /**
      * @cc [owner:spolu,label:backend;security] inherited-grant-evaluation

@@ -119,6 +119,7 @@ same transaction. Xattr changes preserve the 32 KiB limit on combined xattr name
 deletion clears both the base metadata entry and all xattr entries.
 
 The MIME type in base metadata is optional (`Option<String>`); `None` is encoded as FDB tuple null.
+Create leaves it unset when omitted.
 A create or update request with `mime_type: ""` clears it by storing `None`, and subsequent metadata
 reads omit the field.
 
@@ -179,8 +180,7 @@ existence, source/destination bindings, directory emptiness, and move-cycle chec
 Within `Apply`, each operation validates before staging writes; failed operations leave no changes.
 Later operations see earlier successes, and all successes commit together. Storage or commit
 failures fail the attempt. Retry definitely uncommitted transactions, recomputing reads and
-decisions. Retrying an unknown commit result requires each resource write to recognize its own
-earlier commit, as tenant, object and session creation do.
+decisions. Receipts preserve the whole transaction's result after an unknown commit result.
 
 The 4 MiB RPC ceiling is separate from FDB transaction accounting.
 Budget index maintenance, metadata, blocks, and required responses before commit. Scans use bounded
