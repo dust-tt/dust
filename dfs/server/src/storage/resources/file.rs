@@ -253,6 +253,17 @@ impl FileResource {
             index,
         ))
     }
+
+    pub(in crate::storage::resources) fn clear_blocks(
+        tx: &Transaction,
+        tenant: &super::tenant::TenantResource,
+        object_id: &ObjectId,
+    ) {
+        let (begin, end) = tenant_subspace(&tenant.tenant_id)
+            .subspace(&(FAMILY, object_id.as_bytes().as_slice()))
+            .range();
+        tx.clear_range(&begin, &end);
+    }
 }
 
 impl TryFrom<ObjectResource> for FileResource {

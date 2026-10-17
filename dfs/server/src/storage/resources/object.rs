@@ -640,6 +640,38 @@ impl ObjectResource {
         tenant_subspace(tenant_id).pack(&(FAMILY, object_id.as_bytes().as_slice()))
     }
 
+    /**
+     * @cc [owner:spolu,label:backend;security] object-deletion-identity
+     * Deletion MUST clear attributes, metadata, blocks, and forward and reverse grants atomically.
+     */
+    pub(in crate::storage::resources) async fn remove(
+        &self,
+        tx: &Transaction,
+    ) -> Result<(), storage::Error<Error>> {
+        // Decode every grant before clearing anything: a domain failure must leave no staged writes.
+        let grants = self.load_grants(tx).await?;
+        let keys = grants
+            .iter()
+            .map(|grant| self.grant_keys(grant))
+            .collect::<Result<Vec<_>, _>>()?;
+        for (forward, reverse) in keys {
+            tx.clear(&forward);
+            if let Some(reverse) = reverse {
+                tx.clear(&reverse);
+            }
+        }
+        let metadata = Self::metadata_key(&self.tenant.tenant_id, &self.object_id);
+        tx.clear(&metadata);
+        let (begin, end) = Subspace::from_bytes(metadata).range();
+        tx.clear_range(&begin, &end);
+        file::FileResource::clear_blocks(tx, &self.tenant, &self.object_id);
+        tx.clear(&Self::object_key(&self.tenant.tenant_id, &self.object_id));
+        // Apply creates objects with empty grants and grants_version 1. Reusing a deleted ID can
+        // match an old cached version after grant updates. These require the tenant key, which can
+        // already grant access directly, so we accept this case without eviction or deletion markers.
+        Ok(())
+    }
+
     fn metadata_key(tenant_id: &str, object_id: &ObjectId) -> Vec<u8> {
         tenant_subspace(tenant_id).pack(&(METADATA_FAMILY, object_id.as_bytes().as_slice()))
     }

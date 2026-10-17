@@ -128,12 +128,14 @@ impl From<directory::Error> for ErrorCode {
         match error {
             directory::Error::InvalidName
             | directory::Error::InvalidKind
+            | directory::Error::InvalidMove
             | directory::Error::InvalidPageLimit
             | directory::Error::InvalidCursor => ErrorCode::InvalidInput,
             directory::Error::NameTooLong => ErrorCode::NameTooLong,
             directory::Error::NotDirectory => ErrorCode::NotDirectory,
             directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
             directory::Error::Forbidden => ErrorCode::Forbidden,
+            directory::Error::NotEmpty => ErrorCode::NotEmpty,
             directory::Error::UnsupportedKind
             | directory::Error::UnsupportedOperation
             | directory::Error::SharedUnsupported => ErrorCode::Unsupported,

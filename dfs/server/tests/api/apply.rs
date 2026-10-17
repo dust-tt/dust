@@ -94,18 +94,25 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
         .into_inner();
     assert_eq!(batch.results.len(), count);
     for (index, result) in batch.results.into_iter().enumerate() {
-        if index == 0 {
+        if [0, 3, 4].contains(&index) {
             assert!(result.error.is_none());
             let mutation = result.mutation.context("missing mutation")?;
-            let attr = mutation.object.context("missing created file")?;
-            assert_eq!(attr.id, file.into());
-            assert_eq!(attr.mode, 0o200);
-            let tx = fdb::database()?.create_trx()?;
-            tx.set_read_version(attr.store_version);
-            let object = ObjectResource::fetch(&tx, &tenant, &file)
-                .await?
-                .context("missing committed file")?;
-            assert_eq!(object.name, "file");
+            // Create and Move both reference an object removed later in this request.
+            assert!(mutation.object.is_none());
+            if index == 4 {
+                let parent = mutation
+                    .related
+                    .first()
+                    .context("missing surviving parent")?;
+                assert_eq!(parent.id, tenant.root_id.into());
+                assert_eq!(parent.content_version, 4);
+                let tx = fdb::database()?.create_trx()?;
+                tx.set_read_version(parent.store_version);
+                let root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
+                    .await?
+                    .context("missing root")?;
+                assert_eq!(root.content_version, 4);
+            }
         } else {
             assert!(result.mutation.is_none());
             assert_eq!(

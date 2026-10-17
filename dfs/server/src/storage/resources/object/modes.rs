@@ -203,7 +203,10 @@ impl ObjectResource {
         Ok(results)
     }
 
-    async fn load_grants(&self, tx: &Transaction) -> Result<Vec<Grant>, storage::Error<Error>> {
+    pub(super) async fn load_grants(
+        &self,
+        tx: &Transaction,
+    ) -> Result<Vec<Grant>, storage::Error<Error>> {
         let mut grants = Vec::new();
         let mut next_range = Some(RangeOption::from(self.grant_subspace().range()));
         let mut iteration = 1;
@@ -219,6 +222,17 @@ impl ObjectResource {
             iteration += 1;
         }
         Ok(grants)
+    }
+
+    pub(in crate::storage::resources) async fn mode_with_parent(
+        &self,
+        tx: &Transaction,
+        session: &SessionResource,
+        parent_mode: Mode,
+    ) -> Result<Mode, storage::Error<Error>> {
+        let grants = self.load_grants(tx).await?;
+        let mode = Self::mode_for_grants(session, &grants)?;
+        Ok(Mode((parent_mode.0 & !mode.deny) | mode.allow))
     }
 
     fn mode_for_grants(session: &SessionResource, grants: &[Grant]) -> Result<ObjectMode, Error> {

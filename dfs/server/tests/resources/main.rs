@@ -27,6 +27,11 @@ fn resources() -> Result<()> {
         directory::apply_create_receipt_preserves_nested_results().await?;
         directory::apply_create_rejections_leave_no_staged_writes().await?;
         directory::apply_create_conflicts_with_grant_revocation().await?;
+        directory::directory_apply_moves_preserve_identity_and_removals_clear_records().await?;
+        directory::apply_move_and_remove_rejections_leave_no_staged_writes().await?;
+        directory::moves_check_both_parents_and_revalidate_staged_tree_hints().await?;
+        directory::move_replacement_clears_victim_and_rejects_nonempty_directories().await?;
+        directory::apply_receipt_preserves_later_creates_when_the_batch_is_retried().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;
         directory::child_creation_rejects_old_ids_and_accepts_recent_ids().await?;
         directory::shared_name_is_only_reserved_under_the_tenant_root().await?;

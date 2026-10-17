@@ -211,7 +211,7 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | create | `w` on the parent. |
 | update, write | `w` on the target. |
 | move | `w` on the source and target directories. |
-| remove | `w` on the target and its parent. |
+| remove | `w` on the parent. |
 
 Namespace permissions are checked on each participating object using its effective read/write
 permissions. Directory traversal follows read access; there is no separate execution permission or

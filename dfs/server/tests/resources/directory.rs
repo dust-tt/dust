@@ -19,6 +19,11 @@ mod lookup;
 pub(crate) use apply::{
     apply_create_conflicts_with_grant_revocation, apply_create_receipt_preserves_nested_results,
     apply_create_rejections_leave_no_staged_writes,
+    apply_move_and_remove_rejections_leave_no_staged_writes,
+    apply_receipt_preserves_later_creates_when_the_batch_is_retried,
+    directory_apply_moves_preserve_identity_and_removals_clear_records,
+    move_replacement_clears_victim_and_rejects_nonempty_directories,
+    moves_check_both_parents_and_revalidate_staged_tree_hints,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
 

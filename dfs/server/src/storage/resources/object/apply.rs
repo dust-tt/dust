@@ -34,6 +34,7 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] object-apply-final-attributes
      * Successful mutation attributes MUST reflect the final transaction state after all operations.
+     * Deleted objects MUST have no returned attributes, including when removed by a later operation.
      */
     pub async fn apply(
         tx: &Transaction,
@@ -62,7 +63,7 @@ impl ObjectResource {
             results[index] = Some(result);
         }
         let mut results: Vec<_> = results.into_iter().flatten().collect();
-        // Resolve attributes after all operations, including children created later in a batch.
+        // Resolve attributes after all operations, including moves and removals later in a batch.
         let ids: HashSet<_> = results
             .iter()
             .filter_map(|result| result.as_ref().ok())
