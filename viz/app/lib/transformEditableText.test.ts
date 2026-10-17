@@ -69,6 +69,18 @@ function Foo() {
     expect(transformEditableText(code)).toBe(code);
   });
 
+  it("does not throw when an emoji straddles a context window boundary", () => {
+    // The ctxBefore/ctxAfter windows are cut at a fixed count of UTF-16 code units; an emoji
+    // sitting on the cut used to leave a lone surrogate, which encodeURIComponent rejects with
+    // `URIError: URI malformed`.
+    for (let padding = 0; padding <= 90; padding++) {
+      const before = `const App = () => <div>{"\u{1F389}${"x".repeat(padding)}"}<span>Hello</span></div>;`;
+      const after = `const App = () => <div><span>Hello</span>{"${"x".repeat(padding)}\u{1F389}"}</div>;`;
+      expect(() => transformEditableText(before)).not.toThrow();
+      expect(() => transformEditableText(after)).not.toThrow();
+    }
+  });
+
   it("wraps text in multiple sibling elements", () => {
     const code = `
 function Foo() {
