@@ -93,7 +93,8 @@ Receipts use `dfs-v1-{env}/idempotency-receipt/<createdAtMs>/<receiptId>` and st
 and commit versionstamp. One in-memory receipt retains each attempt's result across FDB retries;
 a marker skips the body. Success spawns receipt deletion in a separate transaction without delaying
 the response. Failed cleanup leaves the receipt for expiry cleanup, which removes up to 100 markers
-per transaction after the retry timeout plus a 60-second grace. Periodic sweeping is follow-up work.
+per transaction after the retry timeout plus a 60-second grace. Receipt and session cleanup share
+each jittered sweep pass and run independently in ordinary transactions.
 
 ## Objects and contents
 

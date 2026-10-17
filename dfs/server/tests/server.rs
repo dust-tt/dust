@@ -10,6 +10,7 @@ use tonic_health::pb::{
 };
 
 mod api;
+mod sweep;
 
 const MASTER_KEY: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
@@ -66,6 +67,7 @@ fn server() -> Result<()> {
         tokio::try_join!(
             api::auth::tenant_key_cache_is_shared_across_connections_and_expires(),
             api::session::session_cache_bounds_revocation_and_absolute_expiry(),
+            sweep::server_sweeps_expired_storage_and_preserves_live_entries(),
         )?;
         Ok(())
     })

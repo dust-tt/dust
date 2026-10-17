@@ -29,8 +29,8 @@ const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
  */
 /**
  * @cc [owner:spolu,label:concurrency] dfs-cache-sweep-lifecycle
- * Cache and expired-session maintenance MUST stop when shutdown begins and MUST NOT outlive
- * `serve`, including when the server fails or the serving future is dropped.
+ * Cache, expired-session, and expired-receipt maintenance MUST stop when shutdown begins and MUST
+ * NOT outlive `serve`, including when the server fails or the serving future is dropped.
  */
 pub async fn serve(
     listener: TcpListener,
@@ -55,7 +55,7 @@ pub async fn serve(
         result = &mut server => return Ok(result?),
         _ = shutdown => {}
         _ = api.sweep_key_caches() => {}
-        _ = sweep::sweep_expired_sessions() => {}
+        _ = sweep::sweep_expired_storage() => {}
     }
 
     tracing::info!("dfs-api draining");

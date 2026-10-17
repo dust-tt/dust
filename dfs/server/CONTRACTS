@@ -2,6 +2,8 @@
 Production transactions that mutate resource state MUST use `fdb::with_idempotent_transaction`,
 covering the whole transaction and its returned result with one receipt. Bodies MUST still tolerate
 retries after aborted attempts; mutable resource state MUST be rebuilt inside each attempt.
+Expired-session cleanup MAY use ordinary transactions: repeating a committed batch MUST be safe,
+and its cleanup counts need not survive an unknown commit result.
 Receipt maintenance MUST use ordinary transactions to avoid creating receipts recursively.
 Tests MAY use raw transactions to exercise conflicts, rollback, and resource validation directly.
 
