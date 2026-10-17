@@ -176,6 +176,7 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
 
     private func restoreSession() async {
         guard let tokens = AuthService.loadTokens() else {
+            logger.info("No saved tokens, showing sign-in")
             state = .unauthenticated
             return
         }
@@ -189,11 +190,12 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
                 expiresIn: response.expiresIn
             )
             state = .authenticated(user: response.user, tokenProvider: provider)
-        } catch let APIError.httpError(statusCode, _) where (400 ..< 500).contains(statusCode) {
+        } catch let APIError.httpError(statusCode, body) where (400 ..< 500).contains(statusCode) {
+            logger.warning("Session restore rejected (\(statusCode)): \(body, privacy: .public)")
             AuthService.clearTokens()
             state = .unauthenticated
         } catch {
-            logger.error("Session restore failed: \(error)")
+            logger.error("Session restore failed: \(error.localizedDescription, privacy: .public)")
             state = .error(error.localizedDescription)
         }
     }

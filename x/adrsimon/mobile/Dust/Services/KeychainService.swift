@@ -6,6 +6,7 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "Keychain")
 
 enum KeychainService {
     private static let service = AppConfig.bundleId
+    private static let accessibility = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
     enum Key: String {
         case accessToken
@@ -13,6 +14,12 @@ enum KeychainService {
         case tokenExpiry
     }
 
+    /**
+     * @cc [owner:adrsimon,label:security;product] tokens-readable-after-first-unlock
+     * Saved items MUST stay readable while the device is locked once it has been unlocked since
+     * boot, so background launches and prewarming can restore the session. Items MUST NOT sync off
+     * the device. Saving MUST overwrite an existing item in place, never delete it first.
+     */
     static func save(_ value: String, for key: Key) {
         let data = Data(value.utf8)
         let query: [String: Any] = [
@@ -20,17 +27,24 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key.rawValue,
         ]
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: accessibility,
+        ]
 
-        let deleteStatus = SecItemDelete(query as CFDictionary)
-        if deleteStatus != errSecSuccess, deleteStatus != errSecItemNotFound {
-            logger.error("Keychain delete before save failed for \(key.rawValue): \(deleteStatus)")
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecSuccess {
+            return
+        }
+        guard updateStatus == errSecItemNotFound else {
+            logger.error("Keychain update failed for \(key.rawValue, privacy: .public): \(updateStatus)")
+            return
         }
 
-        var addQuery = query
-        addQuery[kSecValueData as String] = data
+        let addQuery = query.merging(attributes) { _, new in new }
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
         if addStatus != errSecSuccess {
-            logger.error("Keychain save failed for \(key.rawValue): \(addStatus)")
+            logger.error("Keychain save failed for \(key.rawValue, privacy: .public): \(addStatus)")
         }
     }
 
@@ -47,6 +61,9 @@ enum KeychainService {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess, let data = result as? Data else {
+            if status != errSecItemNotFound {
+                logger.error("Keychain load failed for \(key.rawValue, privacy: .public): \(status)")
+            }
             return nil
         }
 
@@ -61,7 +78,7 @@ enum KeychainService {
         ]
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess, status != errSecItemNotFound {
-            logger.error("Keychain delete failed for \(key.rawValue): \(status)")
+            logger.error("Keychain delete failed for \(key.rawValue, privacy: .public): \(status)")
         }
     }
 

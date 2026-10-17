@@ -67,7 +67,7 @@ actor TokenProvider {
                 logger.info("Token refreshed successfully")
                 return response.accessToken
             } catch {
-                logger.error("Token refresh failed: \(error)")
+                logger.error("Token refresh failed: \(error.localizedDescription, privacy: .public)")
                 // Only latch on a definitive 4xx; network errors must stay retryable.
                 if case let APIError.httpError(statusCode, _) = error, (400 ..< 500).contains(statusCode) {
                     refreshFailed = true
