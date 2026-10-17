@@ -11,6 +11,8 @@ import type {
   DfsErrorCode,
   DfsExtendedMetadata,
   DfsFileResult,
+  DfsFlockLease,
+  DfsFlockMode,
   DfsGrant,
   DfsGrantPage,
   DfsObjectId,
@@ -53,6 +55,8 @@ const WIRE_ERROR_CODES = {
   UNAVAILABLE: "unavailable",
   UNSUPPORTED: "unsupported",
   NAME_TOO_LONG: "name_too_long",
+  WOULD_BLOCK: "would_block",
+  LOCK_LOST: "lock_lost",
 } as const satisfies Record<string, DfsErrorCode>;
 
 type WireErrorCode = keyof typeof WIRE_ERROR_CODES;
@@ -244,6 +248,39 @@ export const WireAttrSchema = z
     storeVersion: a.storeVersion,
     metadata: a.metadata,
   }));
+
+// Advisory locks.
+
+const FLOCK_ID_BYTES = 16;
+const FLOCK_MAX_TTL_MS = 30_000;
+
+export function encodeFlockId(id: Uint8Array, field: string): Uint8Array {
+  if (id.byteLength !== FLOCK_ID_BYTES) {
+    throw new DfsError(
+      "invalid_input",
+      `${field} must contain ${FLOCK_ID_BYTES} bytes.`
+    );
+  }
+  return id;
+}
+
+export function encodeFlockMode(mode: DfsFlockMode): string {
+  switch (mode) {
+    case "shared":
+      return "SHARED";
+    case "exclusive":
+      return "EXCLUSIVE";
+    default:
+      assertNever(mode);
+  }
+}
+
+export const WireFlockLeaseSchema = z
+  .object({
+    leaseId: WireBytesSchema.refine((id) => id.byteLength === FLOCK_ID_BYTES),
+    ttlMs: z.number().int().min(0).max(FLOCK_MAX_TTL_MS),
+  })
+  .transform((lease): DfsFlockLease => lease);
 
 // Grants.
 

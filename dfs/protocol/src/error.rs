@@ -23,6 +23,8 @@ pub fn status(error: ErrorCode) -> Status {
         ErrorCode::Unavailable => (Code::Unavailable, "Unavailable."),
         ErrorCode::Unsupported => (Code::Unimplemented, "Unsupported."),
         ErrorCode::NameTooLong => (Code::InvalidArgument, "Name too long."),
+        ErrorCode::WouldBlock => (Code::Aborted, "Would block."),
+        ErrorCode::LockLost => (Code::FailedPrecondition, "Lock lost."),
     };
     Status::with_details(
         code,

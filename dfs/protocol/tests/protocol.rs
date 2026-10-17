@@ -440,6 +440,8 @@ fn grpc_status_details_preserve_protocol_errors() -> Result<()> {
             tonic::Code::Unauthenticated,
         ),
         (rpc::ErrorCode::Capacity, tonic::Code::ResourceExhausted),
+        (rpc::ErrorCode::WouldBlock, tonic::Code::Aborted),
+        (rpc::ErrorCode::LockLost, tonic::Code::FailedPrecondition),
     ] {
         let status = error::status(code);
         assert_eq!(rpc::ErrorDetails::decode(status.details())?.code(), code);

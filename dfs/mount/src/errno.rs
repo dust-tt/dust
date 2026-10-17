@@ -46,6 +46,8 @@ impl From<ErrorCode> for Errno {
             // The mount sizes its requests to fit the server limits; hitting one is a mount bug.
             ErrorCode::Capacity => libc::EIO,
             ErrorCode::Unavailable => libc::EIO,
+            ErrorCode::WouldBlock => libc::EWOULDBLOCK,
+            ErrorCode::LockLost => libc::EIO,
         })
     }
 }
@@ -83,6 +85,11 @@ mod tests {
             Errno::from(status(ErrorCode::NotDirectory)),
             Errno(libc::ENOTDIR)
         );
+        assert_eq!(
+            Errno::from(status(ErrorCode::WouldBlock)),
+            Errno(libc::EWOULDBLOCK)
+        );
+        assert_eq!(Errno::from(status(ErrorCode::LockLost)), Errno::EIO);
     }
 
     #[test]

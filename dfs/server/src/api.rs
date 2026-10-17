@@ -5,10 +5,10 @@ use dfs_protocol::{
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
-        ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
-        LookupRequest, OperationBatch, OperationResult, ReadData, ReadFilesRequest, ReadRequest,
-        RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
-        UpdateGrantsRequest, dfs_server::Dfs,
+        ErrorCode, FileResult, FilesBatch, FlockLease, FlockLeaseRequest, FlockRequest, GrantPage,
+        ListGrantsRequest, ListRequest, LookupRequest, OperationBatch, OperationResult, ReadData,
+        ReadFilesRequest, ReadRequest, RevokeSessionRequest, SearchRequest, SearchResults, Session,
+        StatRequest, Tenant, UpdateGrantsRequest, dfs_server::Dfs,
     },
 };
 use prost::Message;
@@ -419,6 +419,27 @@ impl Dfs for API {
             }
         }
         Ok(Response::new(response))
+    }
+
+    async fn flock(&self, request: Request<FlockRequest>) -> Result<Response<FlockLease>, Status> {
+        self.require_session(&request).await?;
+        Err(status(ErrorCode::Unsupported))
+    }
+
+    async fn refresh_flock(
+        &self,
+        request: Request<FlockLeaseRequest>,
+    ) -> Result<Response<FlockLease>, Status> {
+        self.require_session(&request).await?;
+        Err(status(ErrorCode::Unsupported))
+    }
+
+    async fn release_flock(
+        &self,
+        request: Request<FlockLeaseRequest>,
+    ) -> Result<Response<Empty>, Status> {
+        self.require_session(&request).await?;
+        Err(status(ErrorCode::Unsupported))
     }
 
     async fn search(

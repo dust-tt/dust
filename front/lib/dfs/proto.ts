@@ -16,6 +16,9 @@ export const DFS_METHODS = {
   List: { request: "ListRequest", response: "EntryPage" },
   Read: { request: "ReadRequest", response: "ReadData" },
   ReadFiles: { request: "ReadFilesRequest", response: "FilesBatch" },
+  Flock: { request: "FlockRequest", response: "FlockLease" },
+  RefreshFlock: { request: "FlockLeaseRequest", response: "FlockLease" },
+  ReleaseFlock: { request: "FlockLeaseRequest", response: "Empty" },
   Apply: { request: "ApplyRequest", response: "OperationBatch" },
   Search: { request: "SearchRequest", response: "SearchResults" },
 } as const;

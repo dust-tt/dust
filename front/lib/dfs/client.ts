@@ -1,5 +1,7 @@
 import {
   decodeWireResponse,
+  encodeFlockId,
+  encodeFlockMode,
   encodeGrant,
   encodeObjectId,
   encodeObjectRef,
@@ -12,6 +14,7 @@ import {
   WireGrantPageSchema,
   WireEntryPageSchema,
   WireFilesBatchSchema,
+  WireFlockLeaseSchema,
   WireReadDataSchema,
   WireSearchResultsSchema,
   WireSessionSchema,
@@ -33,6 +36,8 @@ import type {
   DfsOperation,
   DfsEntryPage,
   DfsFilesBatch,
+  DfsFlockLease,
+  DfsFlockMode,
   DfsReadData,
   DfsSearchRequest,
   DfsSearchResults,
@@ -216,6 +221,63 @@ export class DfsClient {
    */
   async refreshSession(): Promise<Result<DfsSession, DfsError>> {
     return this.call("RefreshSession", () => ({}), WireSessionSchema);
+  }
+
+  // Advisory locks. Require the session key; storage support is not implemented yet.
+
+  async flock({
+    objectId,
+    ownerId,
+    mode,
+  }: {
+    objectId: DfsObjectId;
+    ownerId: Uint8Array;
+    mode: DfsFlockMode;
+  }): Promise<Result<DfsFlockLease, DfsError>> {
+    return this.call(
+      "Flock",
+      () => ({
+        objectId: encodeObjectId(objectId),
+        ownerId: encodeFlockId(ownerId, "ownerId"),
+        mode: encodeFlockMode(mode),
+      }),
+      WireFlockLeaseSchema
+    );
+  }
+
+  async refreshFlock({
+    objectId,
+    leaseId,
+  }: {
+    objectId: DfsObjectId;
+    leaseId: Uint8Array;
+  }): Promise<Result<DfsFlockLease, DfsError>> {
+    return this.callMatching(
+      "RefreshFlock",
+      () => ({
+        objectId: encodeObjectId(objectId),
+        leaseId: encodeFlockId(leaseId, "leaseId"),
+      }),
+      WireFlockLeaseSchema,
+      (lease) => lease.leaseId.every((byte, index) => byte === leaseId[index])
+    );
+  }
+
+  async releaseFlock({
+    objectId,
+    leaseId,
+  }: {
+    objectId: DfsObjectId;
+    leaseId: Uint8Array;
+  }): Promise<Result<void, DfsError>> {
+    return this.call(
+      "ReleaseFlock",
+      () => ({
+        objectId: encodeObjectId(objectId),
+        leaseId: encodeFlockId(leaseId, "leaseId"),
+      }),
+      WireEmptySchema
+    );
   }
 
   // Grants. Require the tenant key, which also determines the tenant.

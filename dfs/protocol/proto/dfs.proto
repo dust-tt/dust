@@ -69,6 +69,11 @@ service Dfs {
   rpc Read(ReadRequest) returns (ReadData);
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
+  // Proposed advisory locking; returns UNSUPPORTED until storage support is implemented.
+  rpc Flock(FlockRequest) returns (FlockLease);
+  rpc RefreshFlock(FlockLeaseRequest) returns (FlockLease);
+  rpc ReleaseFlock(FlockLeaseRequest) returns (Empty);
+
   rpc Apply(ApplyRequest) returns (OperationBatch);
   rpc Search(SearchRequest) returns (SearchResults);
 }
@@ -356,6 +361,57 @@ message FileResult {
   optional ErrorDetails error = 4;
 }
 
+enum FlockMode {
+  SHARED = 0;
+  EXCLUSIVE = 1;
+}
+
+// @cc [owner:spolu,label:api;concurrency] dfs-flock-acquisition
+// When implemented, Flock MUST acquire an advisory whole-object lock across all server instances
+// within the authenticated tenant. Shared holders MAY coexist; exclusive holders MUST exclude all
+// other holders. Contention MUST return WOULD_BLOCK without waiting or changing lock state.
+// Locks MUST NOT restrict ordinary filesystem operations or change object attributes or versions.
+
+// @cc [owner:spolu,label:api;security] dfs-flock-owner
+// When implemented, Flock MUST require current read permission on a real file or directory.
+// Missing or unreadable objects MUST return NOT_FOUND. Owners MUST be scoped to session and object.
+// The owner_id MUST contain exactly 16 bytes, freshly chosen for each independent open description.
+// Repeating Flock for an active owner and mode MUST return its lease without extending expiry.
+// A different mode for that active owner MUST return INVALID_INPUT; conversion requires release.
+// Unknown modes and malformed owner IDs MUST return INVALID_INPUT.
+message FlockRequest {
+  required ObjectId object_id = 1;
+  required bytes owner_id = 2;
+  required FlockMode mode = 3;
+}
+
+// @cc [owner:spolu,label:api;concurrency] dfs-flock-lease
+// When implemented, each acquisition MUST receive a fresh 16-byte lease_id bound to its session,
+// object, and owner.
+// Expiry MUST be at most server time plus 30 seconds, capped by session expiry. Expired leases MUST
+// stop conflicting immediately, independently of cleanup. Refresh MUST preserve the lease_id and
+// extend only an unexpired lease after rechecking read access, using the same lifetime bound.
+// After object authorization, missing, expired, or replaced leases MUST return LOCK_LOST, never
+// reacquire. A removed object MUST invalidate its leases. Responses MUST report remaining lifetime,
+// recomputed after receipt replay; clients MUST bound validity by request start plus ttl_ms.
+message FlockLease {
+  required bytes lease_id = 1;
+  required uint32 ttl_ms = 2;
+}
+
+// @cc [owner:spolu,label:api;security] dfs-flock-release
+// When implemented, refresh and release MUST address only the session's lease on object_id. Release
+// MUST succeed if that lease is already absent and MUST NOT affect a newer lease or another owner.
+// The lease_id MUST contain exactly 16 bytes; malformed IDs MUST return INVALID_INPUT.
+// Release MUST require no object permission or existence check, allowing cleanup after access loss.
+// Every lock RPC MUST verify session validity directly in storage, bypassing authentication caches;
+// expired or revoked sessions MUST fail with UNAUTHENTICATED and MUST NOT acquire or refresh leases.
+message FlockLeaseRequest {
+  required ObjectId object_id = 1;
+  // Exactly 16 bytes, returned by Flock; never an owner_id or a bearer credential.
+  required bytes lease_id = 2;
+}
+
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
 // Operations MUST be nonempty. Exceeding FDB's transaction size limit MUST fail the request with
 // CAPACITY without committing any changes, even when it fits the RPC request limit. The server MAY
@@ -559,6 +615,8 @@ enum ErrorCode {
   UNAVAILABLE = 10;
   UNSUPPORTED = 11;
   NAME_TOO_LONG = 12;
+  WOULD_BLOCK = 13;
+  LOCK_LOST = 14;
 }
 
 message ErrorDetails {

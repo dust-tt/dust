@@ -208,6 +208,8 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
+| `Flock`, `RefreshFlock` | `r` on the target, for either lock mode. |
+| `ReleaseFlock` | Session ownership of the lease; no object permission required. |
 | create | `r+w` on the parent. |
 | update, write | `r+w` on the target. |
 | move | `r+w` on the source and target directories; `r` on the moved object. |
@@ -610,6 +612,74 @@ the 4 MiB encoded reply budget receive individual `CAPACITY` errors without bein
 reply budget reserves conservative overhead for every result, including errors. Attributes and
 contents share one FDB snapshot. All returned attributes carry the same `object.store_version`.
 
+## Advisory locks (proposed)
+
+`Flock`, `RefreshFlock`, and `ReleaseFlock` require a session key. They currently return `UNSUPPORTED`;
+the following specifies their intended behavior.
+
+Locks cover a real file or directory and coordinate cooperating callers across server instances.
+They do not restrict `Read`, `Apply`, or grant changes, and do not change attributes or versions.
+Renames and moves preserve locks; removing an object invalidates its leases. This is whole-object
+[flock-style locking](https://man7.org/linux/man-pages/man2/flock.2.html), not byte-range `fcntl` locks.
+
+### Flock
+
+```text
+FlockRequest {
+  object_id: ObjectId
+  owner_id: bytes                // Fresh 16-byte random ID per independent open description.
+  mode: SHARED | EXCLUSIVE
+}
+
+FlockLease {
+  lease_id: bytes                // Fresh 16-byte ID for this acquisition; not a bearer key.
+  ttl_ms: uint32                 // Remaining lease lifetime, at most 30,000 ms.
+}
+```
+
+Multiple shared owners can coexist; an exclusive owner excludes every other owner. An incompatible
+request returns `WOULD_BLOCK` immediately without changing lock state. Blocking `flock` is implemented
+by client retries with backoff and jitter; there is no server wait queue or fairness guarantee.
+
+Ownership is scoped to `(tenant, session, object_id, owner_id)`, independent of the connection.
+Separate opens must use distinct owners, even within one session. Descriptors shared through `dup`
+or `fork` use the same owner. Repeating `Flock` for an active owner and the same mode returns its
+existing lease and remaining lifetime, without renewing it. A different mode returns `INVALID_INPUT`:
+conversion explicitly releases then reacquires, with no atomic-upgrade guarantee.
+
+Both modes require current `r` permission; missing or unreadable objects return `NOT_FOUND`.
+Lock RPCs check session validity directly in storage, bypassing the authentication cache. Invalid,
+expired, or revoked sessions return `UNAUTHENTICATED`.
+
+### RefreshFlock / ReleaseFlock
+
+```text
+FlockLeaseRequest {
+  object_id: ObjectId
+  lease_id: bytes                // Exactly 16 bytes from Flock.
+}
+```
+
+`RefreshFlock` rechecks read permission and extends an unexpired lease to at most 30 seconds from
+server time, capped by session expiry, returning `FlockLease` with the same ID. A missing, expired,
+or replaced lease returns `LOCK_LOST`; refresh never reacquires. Object absence or lost read access
+returns `NOT_FOUND`. Session refresh alone does not extend lock leases.
+
+`ReleaseFlock` returns `Empty`. It removes only the authenticated session's specified lease and
+succeeds if that lease is already absent. No object permission or existence check is needed.
+A delayed release cannot remove a newer lease. Clients release on unlock or final close, after
+committing buffered writes belonging to the critical section.
+
+Expired leases stop conflicting without waiting for cleanup. Revoked sessions cannot renew; their
+existing leases may contend until expiry, at most 30 seconds. Clients should renew every 10 seconds
+and use a conservative monotonic deadline of RPC start plus returned `ttl_ms`. A response received
+after that deadline does not establish ownership. On renewal failure, stop treating the lock as held;
+never silently reacquire and continue the old critical section. These advisory leases do not fence
+delayed writes from a paused or disconnected holder.
+
+Clients serialize lock RPCs per owner. A timed-out acquisition has an unknown outcome; recover by
+retrying with the same owner and mode, or abandon that owner and let any orphan lease expire.
+
 ## Filesystem mutations
 
 ### Apply
@@ -896,7 +966,9 @@ Application failures, including authentication rejections, carry a gRPC status w
 Clients handle any failure using the gRPC status when details are absent. Individual batch failures
 always carry `ErrorDetails`. Stable protocol codes are `INTERNAL`,
 `INVALID_INPUT`, `NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`,
-`IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.
+`IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, `NAME_TOO_LONG`, `WOULD_BLOCK`,
+and `LOCK_LOST`. Lock contention uses gRPC `ABORTED` and maps to `EWOULDBLOCK` in the mount;
+`LOCK_LOST` uses `FAILED_PRECONDITION` and maps to `EIO`.
 
 ## Future work
 

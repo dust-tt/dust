@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { DfsClient } from "@app/lib/dfs/client";
-import { MAX_UINT64 } from "@app/lib/dfs/codec";
+import { dfsErrorCodeFromWire, MAX_UINT64 } from "@app/lib/dfs/codec";
 import { newDfsObjectId } from "@app/lib/dfs/object_id";
 import type { DfsMethod } from "@app/lib/dfs/proto";
 import { DfsWireFactory } from "@app/tests/utils/dfs/DfsWireFactory";
@@ -22,6 +22,93 @@ function setup(answers: Partial<Record<DfsMethod, FakeDfsAnswer>>) {
 }
 
 describe("DfsClient", () => {
+  it.each(["shared", "exclusive"] as const)(
+    "encodes a %s flock and decodes its lease",
+    async (mode) => {
+      const { client, transport } = setup({
+        Flock: new Ok(DfsWireFactory.flockLease()),
+      });
+      const ownerId = Buffer.alloc(16, 2);
+      const result = await client.flock({ objectId: FILE_ID, ownerId, mode });
+
+      expect(result.isOk() && result.value).toEqual({
+        leaseId: Buffer.alloc(16, 1),
+        ttlMs: 30_000,
+      });
+      expect(transport.calls).toEqual([
+        {
+          method: "Flock",
+          key: SESSION_KEY,
+          request: {
+            objectId: wireId(FILE_ID),
+            ownerId,
+            mode: mode.toUpperCase(),
+          },
+        },
+      ]);
+    }
+  );
+
+  it("refreshes and releases the exact lease, rejecting a replacement lease in the response", async () => {
+    const { client, transport } = setup({
+      RefreshFlock: new Ok(DfsWireFactory.flockLease()),
+      ReleaseFlock: new Ok({}),
+    });
+    const leaseId = Buffer.alloc(16, 1);
+    const request = { objectId: FILE_ID, leaseId };
+    const refreshed = await client.refreshFlock(request);
+    expect(refreshed.isOk() && refreshed.value.leaseId).toEqual(leaseId);
+    expect((await client.releaseFlock(request)).isOk()).toBe(true);
+    expect(
+      transport.calls.map(({ method, request }) => [method, request])
+    ).toEqual([
+      ["RefreshFlock", { objectId: wireId(FILE_ID), leaseId }],
+      ["ReleaseFlock", { objectId: wireId(FILE_ID), leaseId }],
+    ]);
+
+    const wrongLease = await client.refreshFlock({
+      objectId: FILE_ID,
+      leaseId: Buffer.alloc(16, 2),
+    });
+    expect(wrongLease.isErr() && wrongLease.error.code).toBe(
+      "invalid_response"
+    );
+  });
+
+  it("rejects malformed lock IDs before calling the server", async () => {
+    const { client, transport } = setup({});
+    const badId = Buffer.alloc(15);
+    const results = [
+      await client.flock({ objectId: FILE_ID, ownerId: badId, mode: "shared" }),
+      await client.refreshFlock({ objectId: FILE_ID, leaseId: badId }),
+      await client.releaseFlock({ objectId: FILE_ID, leaseId: badId }),
+    ];
+    for (const result of results) {
+      expect(result.isErr() && result.error.code).toBe("invalid_input");
+    }
+    expect(transport.calls).toHaveLength(0);
+  });
+
+  it.each([{ leaseId: Buffer.alloc(15) }, { ttlMs: 30_001 }])(
+    "rejects malformed lease responses: %j",
+    async (overrides) => {
+      const { client } = setup({
+        Flock: new Ok(DfsWireFactory.flockLease(overrides)),
+      });
+      const result = await client.flock({
+        objectId: FILE_ID,
+        ownerId: Buffer.alloc(16),
+        mode: "shared",
+      });
+      expect(result.isErr() && result.error.code).toBe("invalid_response");
+    }
+  );
+
+  it("preserves lock error codes from the wire", () => {
+    expect(dfsErrorCodeFromWire("WOULD_BLOCK")).toBe("would_block");
+    expect(dfsErrorCodeFromWire("LOCK_LOST")).toBe("lock_lost");
+  });
+
   it("creates a session and decodes ids and timestamps", async () => {
     const { client, transport } = setup({
       CreateSession: new Ok(

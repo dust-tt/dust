@@ -38,4 +38,12 @@ export class DfsWireFactory {
       ...overrides,
     };
   }
+
+  static flockLease(overrides: DfsWireMessage = {}): DfsWireMessage {
+    return {
+      leaseId: Buffer.alloc(16, 1),
+      ttlMs: 30_000,
+      ...overrides,
+    };
+  }
 }
