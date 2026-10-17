@@ -13,7 +13,7 @@ use std::{collections::BTreeMap, env};
 use tokio_postgres::Client;
 
 #[derive(Debug, Parser)]
-#[command(about = "Persist missing legacy Qdrant shard keys without changing routing")]
+#[command(about = "Backfill Qdrant shard keys from collection layouts without changing routing")]
 struct Args {
     #[arg(
         long,
@@ -55,7 +55,15 @@ fn config_with_shard_keys(
 fn validate_shard_key(key: &str, keys: &[String]) -> Result<()> {
     ensure!(
         keys.iter().any(|candidate| candidate == key),
-        "Legacy shard key {key} is absent from the collection; manual investigation required"
+        "Assigned shard key {key} is absent from the collection; manual investigation required"
+    );
+    Ok(())
+}
+
+fn validate_routing(key: &str, legacy_key: &str) -> Result<()> {
+    ensure!(
+        key == legacy_key,
+        "Assignment {key} differs from legacy route {legacy_key}; manual investigation required"
     );
     Ok(())
 }
@@ -83,7 +91,12 @@ async fn plan_backfill(
             continue;
         }
         let client = clients.client(cluster);
-        let key = client.shard_key_name(&tenant)?;
+        let key = client
+            .assign_shard_key(&config.embedder_config.embedder, &internal_id)
+            .await?
+            .context("Cannot assign a shard key when sharding is disabled")?;
+        validate_routing(&key, &client.shard_key_name(&tenant)?)
+            .with_context(|| format!("cluster={cluster}"))?;
         for embedder in [
             Some(&config.embedder_config.embedder),
             config.embedder_config.shadow_embedder.as_ref(),
@@ -250,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_missing_legacy_key_instead_of_remapping() -> Result<()> {
+    fn rejects_missing_shard_keys() -> Result<()> {
         let keys = vec![
             "key_0".to_string(),
             "key_1".to_string(),
@@ -259,6 +272,13 @@ mod tests {
         assert!(validate_shard_key("key_14", &keys).is_err());
         assert!(validate_shard_key("key_14", &[]).is_err());
         validate_shard_key("key_2", &keys)?;
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_changed_routing() -> Result<()> {
+        assert!(validate_routing("key_2", "key_14").is_err());
+        validate_routing("key_14", "key_14")?;
         Ok(())
     }
 
