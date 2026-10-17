@@ -174,15 +174,9 @@ impl DirectoryResource {
             xattrs,
             now_ms,
         );
-        // Check version overflow before the child or its binding can be written.
-        let mut parent = self.object.clone();
-        parent
-            .prepare_content_change(now_ms)
-            .map_err(Error::Object)?;
         child.create(tx, &[]).await?;
         tx.set(&entry_key, &pack(&child.object_id.as_bytes().as_slice()));
-        parent.save_attributes(tx);
-        self.object = parent;
+        self.object.record_content_change(tx, now_ms);
         Ok(child)
     }
 

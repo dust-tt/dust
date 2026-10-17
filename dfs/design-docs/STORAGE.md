@@ -137,9 +137,9 @@ extension cannot restore it.
 ### Directory state and versions
 
 All three versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters.
-Update them and the timestamps atomically as [VERSIONS.md](VERSIONS.md) lists, using checked
-increments that fail before commit on overflow. Directory entry changes read and update the parent
-record in the same transaction. Concurrent sibling changes may conflict and retry.
+Update them and the timestamps atomically as [VERSIONS.md](VERSIONS.md) lists, using ordinary
+increments; exhausting `uint64` is assumed unreachable. Directory entry changes read and update the
+parent record in the same transaction. Concurrent sibling changes may conflict and retry.
 
 ## Grants
 

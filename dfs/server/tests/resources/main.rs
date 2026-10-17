@@ -39,7 +39,7 @@ fn resources() -> Result<()> {
         object::invalid_xattr_names_fail_before_staging_writes().await?;
         object::xattr_size_limit_counts_all_names_and_values().await?;
         object::grant_listing_and_updates_preserve_indexes_and_attributes().await?;
-        object::grant_versions_advance_for_no_ops_and_reject_overflow().await?;
+        object::grant_versions_advance_for_no_ops().await?;
         object::grant_creation_and_update_validation_preserve_state().await?;
         object::grant_pagination_handles_full_pages_and_object_deletion().await?;
         object::modes_for_session_evaluate_full_paths_and_all_grants().await?;

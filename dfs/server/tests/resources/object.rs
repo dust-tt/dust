@@ -21,8 +21,7 @@ mod stat;
 pub(crate) use grants::{
     allow, deny, grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
-    grant_pagination_handles_full_pages_and_object_deletion,
-    grant_versions_advance_for_no_ops_and_reject_overflow,
+    grant_pagination_handles_full_pages_and_object_deletion, grant_versions_advance_for_no_ops,
 };
 pub(crate) use modes::{
     grant_cache_skips_matching_versions_and_preserves_session_snapshots,

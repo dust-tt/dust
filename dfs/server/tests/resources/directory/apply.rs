@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use dfs_api::storage::resources::session::SessionResource;
 use dfs_protocol::rpc::{CreateOperation, GrantUpdate};
-use foundationdb::tuple::pack;
 
 use super::*;
 use crate::object::allow;
@@ -151,44 +150,6 @@ pub(crate) async fn apply_create_rejections_leave_no_staged_writes() -> Result<(
     }
     tx.commit().await?;
 
-    // Overflow is a per-operation failure, including when it is discovered on the parent.
-    let tx = fdb::database()?.create_trx()?;
-    let root = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
-        .await?
-        .context("missing root")?;
-    let key =
-        tenant_subspace(&tenant.tenant_id).pack(&("object", tenant.root_id.as_bytes().as_slice()));
-    tx.set(
-        &key,
-        &pack(&(
-            None::<&[u8]>,
-            "",
-            i32::from(ObjectKind::Directory),
-            root.size,
-            root.atime_ms,
-            root.mtime_ms,
-            root.ctime_ms,
-            u64::MAX,
-            root.content_version,
-            root.grants_version,
-        )),
-    );
-    tx.commit().await?;
-    let tx = fdb::database()?.create_trx()?;
-    let before = tenant_records(&tx, tenant).await?;
-    assert!(matches!(
-        DirectoryResource::apply_create(
-            &tx,
-            &session,
-            create(tenant.root_id, "overflow", ObjectKind::File)
-        )
-        .await,
-        Err(storage::Error::Resource(directory::Error::Object(
-            object::Error::VersionOverflow
-        )))
-    ));
-    assert_eq!(tenant_records(&tx, tenant).await?, before);
-    tx.commit().await?;
     clear_tenant(tenant).await
 }
 

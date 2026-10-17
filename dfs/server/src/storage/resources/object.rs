@@ -67,7 +67,6 @@ pub enum Error {
     InvalidAncestry,
     UnsupportedKind,
     UnsupportedOperation,
-    VersionOverflow,
     // Boxed because directory and file errors can themselves wrap object errors.
     Directory(Box<directory::Error>),
     File(Box<file::Error>),
@@ -94,7 +93,6 @@ impl fmt::Display for Error {
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
             Self::UnsupportedOperation => f.write_str("unsupported object operation"),
-            Self::VersionOverflow => f.write_str("object version overflow"),
             Self::Directory(error) => error.fmt(f),
             Self::File(error) => error.fmt(f),
         }
@@ -143,6 +141,11 @@ impl From<storage::Error<file::Error>> for storage::Error<Error> {
     }
 }
 
+/**
+ * @cc [owner:spolu,label:backend] object-version-capacity
+ * Object version counters are assumed never to exhaust u64 during an object's lifetime.
+ * Increments MUST use ordinary addition without overflow checks or saturation.
+ */
 #[derive(Clone)]
 pub struct ObjectResource {
     pub tenant: TenantResource,
@@ -422,7 +425,7 @@ impl ObjectResource {
         Ok(())
     }
 
-    pub(in crate::storage::resources) fn save_attributes(&self, tx: &Transaction) {
+    fn save_attributes(&self, tx: &Transaction) {
         tx.set(
             &Self::object_key(&self.tenant.tenant_id, &self.object_id),
             &self.packed_attributes(),
@@ -445,42 +448,16 @@ impl ObjectResource {
         ))
     }
 
-    pub fn record_content_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
-        self.prepare_content_change(now_ms)?;
-        self.save_attributes(tx);
-        Ok(())
-    }
-
-    pub(in crate::storage::resources) fn prepare_content_change(
-        &mut self,
-        now_ms: u64,
-    ) -> Result<(), Error> {
-        let content_version = self
-            .content_version
-            .checked_add(1)
-            .ok_or(Error::VersionOverflow)?;
-        self.prepare_attr_change(now_ms)?;
-        self.content_version = content_version;
+    pub fn record_content_change(&mut self, tx: &Transaction, now_ms: u64) {
+        self.content_version += 1;
         self.mtime_ms = Some(now_ms);
-        Ok(())
+        self.record_attr_change(tx, now_ms);
     }
 
-    pub fn record_attr_change(&mut self, tx: &Transaction, now_ms: u64) -> Result<(), Error> {
-        self.prepare_attr_change(now_ms)?;
-        self.save_attributes(tx);
-        Ok(())
-    }
-
-    pub(in crate::storage::resources) fn prepare_attr_change(
-        &mut self,
-        now_ms: u64,
-    ) -> Result<(), Error> {
-        self.attr_version = self
-            .attr_version
-            .checked_add(1)
-            .ok_or(Error::VersionOverflow)?;
+    pub fn record_attr_change(&mut self, tx: &Transaction, now_ms: u64) {
+        self.attr_version += 1;
         self.ctime_ms = Some(now_ms);
-        Ok(())
+        self.save_attributes(tx);
     }
 
     /**
@@ -532,7 +509,7 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend] object-grants-version
      * Each successful update MUST increment only this object's grants_version once, atomically
      * with the grants, including empty or no-op updates. Initial grants MUST NOT advance it.
-     * Overflow MUST fail before staging writes; versions MUST NOT wrap or reset.
+     * Versions MUST NOT reset during the object's lifetime.
      */
     pub fn update_grants(
         &mut self,
@@ -549,14 +526,10 @@ impl ObjectResource {
                 return Err(Error::DuplicateGrant.into());
             }
         }
-        let grants_version = self
-            .grants_version
-            .checked_add(1)
-            .ok_or(Error::VersionOverflow)?;
         for change in changes {
             self.write_grant(tx, &change.grant, change.remove)?;
         }
-        self.grants_version = grants_version;
+        self.grants_version += 1;
         self.save_attributes(tx);
         Ok(())
     }

@@ -40,7 +40,6 @@ fn resource_errors_share_codes_across_api_conversions() {
         || object::Error::UnsupportedOperation,
         ErrorCode::Unsupported,
     );
-    assert_api_codes(|| object::Error::VersionOverflow, ErrorCode::Internal);
     assert_api_codes(
         || object::Error::Directory(Box::new(directory::Error::NameTooLong)),
         ErrorCode::NameTooLong,
