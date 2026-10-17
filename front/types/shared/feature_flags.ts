@@ -504,6 +504,8 @@ export const WHITELISTABLE_FEATURES = Object.keys(
 const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
 const FRAMES_V2_FUNCTIONS_FEATURE =
   "frames_v2_functions" as const satisfies WhitelistableFeature;
+const FRAMES_V2_DRAFTS_FEATURE =
+  "frames_v2_drafts" as const satisfies WhitelistableFeature;
 const FRAMES_V2_PUBLIC_FUNCTIONS_FEATURE =
   "frames_v2_public_functions" as const satisfies WhitelistableFeature;
 const DISABLE_FRAMES_V2_FEATURE =
@@ -536,6 +538,20 @@ export function isFramesV2FunctionsEnabled(
   return (
     featureFlags.includes(FRAMES_V2_FEATURE) &&
     featureFlags.includes(FRAMES_V2_FUNCTIONS_FEATURE)
+  );
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] frames-v2-drafts-requires-frames-v2
+ * Frame drafts MUST be reported enabled only when both frames_v2 and frames_v2_drafts are on;
+ * frames_v2_drafts alone MUST NOT enable anything.
+ */
+export function isFramesV2DraftsEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    featureFlags.includes(FRAMES_V2_FEATURE) &&
+    featureFlags.includes(FRAMES_V2_DRAFTS_FEATURE)
   );
 }
 
