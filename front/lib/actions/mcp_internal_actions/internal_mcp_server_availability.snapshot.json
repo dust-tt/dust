@@ -83,6 +83,7 @@
     { "name": "clari_copilot", "id": 1030 },
     { "name": "servicenow", "id": 1042 },
     { "name": "shopify", "id": 1046 },
-    { "name": "cursor_cloud_agents", "id": 1049 }
+    { "name": "cursor_cloud_agents", "id": 1049 },
+    { "name": "temporal", "id": 1053 }
   ]
 }

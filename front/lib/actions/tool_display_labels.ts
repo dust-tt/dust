@@ -1099,6 +1099,7 @@ function getDynamicToolDisplayLabels({
     case "front":
     case "triggers_management":
     case "poke":
+    case "temporal":
     default:
       return null;
   }

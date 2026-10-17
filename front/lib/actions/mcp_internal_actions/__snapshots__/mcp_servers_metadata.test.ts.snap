@@ -2403,6 +2403,28 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
+  "temporal": {
+    "count_workflows": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "describe_task_queue": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "describe_workflow": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workflow_history": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_workflows": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
   "toolsets": {
     "enable": {
       "freeUsage": true,
@@ -3436,6 +3458,13 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_incidents": "never_ask",
     "list_pages": "never_ask",
     "update_incident": "high",
+  },
+  "temporal": {
+    "count_workflows": "never_ask",
+    "describe_task_queue": "never_ask",
+    "describe_workflow": "never_ask",
+    "get_workflow_history": "never_ask",
+    "list_workflows": "never_ask",
   },
   "toolsets": {
     "enable": "never_ask",

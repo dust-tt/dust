@@ -139,6 +139,7 @@ const INTERNAL_MCP_SERVER_DESCRIPTIONS: Record<
   sandbox: msg`Execute code and commands in the conversation's Computer (an isolated Linux environment).`,
   user_mentions: msg`Tools for mentioning users in conversations.`,
   poke: null,
+  temporal: null,
   ask_user_question: msg`Ask the user a question with multiple-choice options.`,
   wakeups: msg`Resume the current conversation later for reminders, follow-ups, and polling.`,
   clari_copilot: msg`Access Clari Copilot call transcripts, AI summaries, and action items.`,
