@@ -43,6 +43,31 @@ export const convertMarkdownToHTML = async (text: string): Promise<string> => {
   );
 };
 
+// Parses a `Retry-After` header, which is either a number of seconds or a date
+// (RFC 9110). Returns the wait in milliseconds, or null when the header is
+// missing or unrecognised so callers can fall back to their own backoff. Dates
+// are read with Date.parse, so this is lenient and not a strict HTTP-date check.
+export function parseRetryAfterMs(
+  retryAfter: string | null,
+  now: number = Date.now()
+): number | null {
+  const value = retryAfter?.trim();
+  if (!value) {
+    return null;
+  }
+  if (/^\d+$/.test(value)) {
+    // Huge digit strings overflow Number to Infinity; keep the wait finite.
+    return Math.min(Number(value) * 1000, Number.MAX_SAFE_INTEGER);
+  }
+  // Dates start with a weekday name. Without this check Date.parse would read
+  // values like "-3" as a year.
+  const dateMs = /^[A-Za-z]/.test(value) ? Date.parse(value) : NaN;
+  if (Number.isNaN(dateMs)) {
+    return null;
+  }
+  return Math.max(0, dateMs - now);
+}
+
 export const makeFrontAPIRequest = async (
   options: FrontAPIOptions,
   retryCount = 0
@@ -75,13 +100,25 @@ export const makeFrontAPIRequest = async (
   });
 
   if (response.status === 429 && retryCount < MAX_RETRIES) {
-    const retryAfter = response.headers.get("Retry-After");
-    const delay = retryAfter
-      ? parseInt(retryAfter, 10) * 1000
-      : Math.min(
-          INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount),
-          MAX_RETRY_DELAY_MS
-        );
+    const retryAfterMs = parseRetryAfterMs(response.headers.get("Retry-After"));
+
+    // Never retry before the time Front asked for. If that wait is longer than
+    // we are willing to block the tool call for, surface the rate limit instead.
+    if (retryAfterMs !== null && retryAfterMs > MAX_RETRY_DELAY_MS) {
+      throw new MCPError(
+        `Front API rate limit exceeded. Front asked to retry in ${Math.ceil(
+          retryAfterMs / 1000
+        )} seconds. Please try again later.`,
+        { code: 429 }
+      );
+    }
+
+    const delay =
+      retryAfterMs ??
+      Math.min(
+        INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount),
+        MAX_RETRY_DELAY_MS
+      );
 
     await setTimeoutAsync(delay);
     return makeFrontAPIRequest(options, retryCount + 1);
