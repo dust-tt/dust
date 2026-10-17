@@ -24,7 +24,7 @@ import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { WhitelistableModelMakerIdSchema } from "@app/types/assistant/models/providers";
 import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
-import { SUPPORTED_LOCALES } from "@app/types/locale";
+import { LOCALE_FEATURE_FLAGS, SUPPORTED_LOCALES } from "@app/types/locale";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -1010,6 +1010,20 @@ app.post(
         },
       });
     } else if ("locale" in body) {
+      const localeFeatureFlag = LOCALE_FEATURE_FLAGS[body.locale];
+      if (
+        localeFeatureFlag &&
+        !(await hasFeatureFlag(auth, localeFeatureFlag))
+      ) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_not_enabled",
+            message: `The ${body.locale} locale is not enabled for this workspace.`,
+          },
+        });
+      }
+
       await workspace.updateWorkspaceSettings({ locale: body.locale });
       owner.locale = body.locale;
     }

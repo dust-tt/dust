@@ -408,9 +408,31 @@ describe("POST /api/w/:wId (workspace locale)", () => {
   it("returns 400 for an unsupported locale", async () => {
     const { workspace } = await setup();
 
-    const response = await post(workspace, { locale: "de-DE" });
+    const response = await post(workspace, { locale: "es-ES" });
 
     expect(response.status).toBe(400);
+  });
+
+  it("returns 403 for de-DE when its flag is disabled", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, { locale: "de-DE" });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("feature_not_enabled");
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.locale).toBe("en-US");
+  });
+
+  it("accepts de-DE when its flag is enabled", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "localisation_de-DE");
+
+    const response = await post(workspace, { locale: "de-DE" });
+
+    expect(response.status).toBe(200);
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.locale).toBe("de-DE");
   });
 
   it("returns 403 for non-admin users", async () => {

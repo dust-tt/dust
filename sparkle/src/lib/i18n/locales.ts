@@ -29,6 +29,11 @@ export const SPARKLE_CATALOG_FALLBACK_LOCALES: Partial<
  * so that front can format sparkle components in each of its locales. Front's `SparkleLocaleProvider`
  * fails to typecheck when one is missing.
  */
-export const SPARKLE_FORMAT_LOCALES = ["en-US", "en-GB", "fr-FR"] as const;
+export const SPARKLE_FORMAT_LOCALES = [
+  "en-US",
+  "en-GB",
+  "fr-FR",
+  "de-DE",
+] as const;
 
 export type SparkleFormatLocale = (typeof SPARKLE_FORMAT_LOCALES)[number];

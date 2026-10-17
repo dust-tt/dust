@@ -897,6 +897,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "legacy_dust_apps"
   | "legacy_trigger_limits"
+  | "localisation_de-DE"
   | "message_export_from_consumption_index"
   | "netsuite_mcp"
   | "noop_model_feature"

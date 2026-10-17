@@ -1,4 +1,6 @@
-export const SUPPORTED_LOCALES = ["en-US", "en-GB", "fr-FR"] as const;
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+
+export const SUPPORTED_LOCALES = ["en-US", "en-GB", "fr-FR", "de-DE"] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -57,6 +59,7 @@ export const CATALOG_LOCALE_BY_LOCALE: Record<SupportedLocale, CatalogLocale> =
     "en-US": "en-US",
     "en-GB": "en-GB",
     "fr-FR": "fr-FR",
+    "de-DE": "en-US",
   };
 
 // Native names: a user who cannot read the current UI language must still recognize their own.
@@ -64,6 +67,19 @@ export const LOCALE_LABELS: Record<SupportedLocale, string> = {
   "en-US": "English (US)",
   "en-GB": "English (UK)",
   "fr-FR": "Français",
+  "de-DE": "Deutsch",
+};
+
+/**
+ * @cc [owner:sfriquet,label:product] flagged-locale-selectable-only-with-flag
+ * A locale listed here MUST NOT be offered by the user or workspace locale pickers, nor accepted
+ * as the workspace locale by the workspace settings API, unless its feature flag is enabled for
+ * the current workspace.
+ */
+export const LOCALE_FEATURE_FLAGS: Partial<
+  Record<SupportedLocale, WhitelistableFeature>
+> = {
+  "de-DE": "localisation_de-DE",
 };
 
 export const USER_LOCALE_METADATA_KEY = "locale";

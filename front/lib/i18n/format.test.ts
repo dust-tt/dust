@@ -175,6 +175,12 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
         gbp: "0,01\u00a0£GB",
         seatGbp: "0,05\u00a0£GB",
       },
+      "de-DE": {
+        usd: "1.234,57\u00a0$",
+        eur: "1.234,50\u00a0€",
+        gbp: "0,01\u00a0£",
+        seatGbp: "0,05\u00a0£",
+      },
     };
 
     it.each([

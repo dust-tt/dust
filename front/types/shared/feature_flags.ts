@@ -446,6 +446,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "adrsimon",
   },
+  "localisation_de-DE": {
+    description:
+      "Let members and admins pick German (Deutsch) as their language",
+    stage: "ask_owner",
+    owner: "sfriquet",
+  },
   co_edition: {
     description: "Collaborative editing features",
     stage: "dust_only",
