@@ -208,7 +208,7 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
-| create | `w` on the parent. |
+| create | `r+w` on the parent. |
 | update, write | `w` on the target. |
 | move | `w` on the source and target directories. |
 | remove | `w` on the target and its parent. |

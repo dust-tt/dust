@@ -79,7 +79,7 @@ impl ObjectResource {
             .into_iter()
             .flatten()
         {
-            attrs.insert(object.object_id, object.mutation_attr(tx, mode).await?);
+            attrs.insert(object.object_id, object.attr(tx, mode).await?);
         }
         for mutation in results.iter_mut().filter_map(|result| result.as_mut().ok()) {
             let final_attr = |attr: &dfs_protocol::rpc::Attr| match attr.id {

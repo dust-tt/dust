@@ -33,7 +33,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             &[Grant {
                 kind: Some(grant::Kind::Allow(AllowGrant {
                     subject: "writer".to_owned(),
-                    mode: 0o2,
+                    mode: 0o6,
                 })),
             }],
         )
@@ -99,7 +99,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             let mutation = result.mutation.context("missing mutation")?;
             let attr = mutation.object.context("missing created file")?;
             assert_eq!(attr.id, file.into());
-            assert_eq!(attr.mode, 0o200);
+            assert_eq!(attr.mode, 0o600);
             let tx = fdb::database()?.create_trx()?;
             tx.set_read_version(attr.store_version);
             let object = ObjectResource::fetch(&tx, &tenant, &file)

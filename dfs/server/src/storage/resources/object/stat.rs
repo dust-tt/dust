@@ -197,22 +197,6 @@ impl ObjectResource {
         }
     }
 
-    // Mutation authorization is independent of read access, including a write-only parent.
-    pub(in crate::storage::resources) async fn mutation_attr(
-        &self,
-        tx: &Transaction,
-        mode: Mode,
-    ) -> Result<Attr, storage::Error<Error>> {
-        let owner_mode = (mode.bits() << OWNER_MODE_SHIFT_BITS)
-            | if self.kind == ObjectKind::Directory && mode.can_read() {
-                DIRECTORY_EXECUTE_MODE
-            } else {
-                0
-            };
-        let version = tx.get_read_version().await.map_err(FdbBindingError::from)?;
-        Ok(self.to_attr(owner_mode, version))
-    }
-
     fn to_attr(&self, mode: u32, version: i64) -> Attr {
         Attr {
             id: self.object_id.into(),

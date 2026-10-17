@@ -13,10 +13,12 @@ async fn writer() -> Result<SessionResource> {
         .context("missing root")?;
     root.update_grants(
         &tx,
-        &[GrantUpdate {
-            grant: allow("writer", 0o2),
-            remove: false,
-        }],
+        &[("writer", 0o6), ("read-only", 0o4), ("write-only", 0o2)].map(|(subject, mode)| {
+            GrantUpdate {
+                grant: allow(subject, mode),
+                remove: false,
+            }
+        }),
     )?;
     tx.commit().await?;
     Ok(SessionResource::new(&tenant, vec!["writer".to_owned()])?.0)
@@ -70,6 +72,7 @@ pub(crate) async fn apply_create_receipt_preserves_nested_results() -> Result<()
         assert_eq!(mutations.len(), 2);
         let parent_attr = mutations[0].object.as_ref().context("missing directory")?;
         assert_eq!(parent_attr.id, directory.object_id.into());
+        assert_eq!(parent_attr.mode, 0o700);
         // The first result includes the later creation of its child.
         assert_eq!(
             (parent_attr.attr_version, parent_attr.content_version),
@@ -77,7 +80,7 @@ pub(crate) async fn apply_create_receipt_preserves_nested_results() -> Result<()
         );
         let file_attr = mutations[1].object.as_ref().context("missing file")?;
         assert_eq!(file_attr.id, file.object_id.into());
-        assert_eq!(file_attr.mode, 0o200);
+        assert_eq!(file_attr.mode, 0o600);
         if let Some(original) = &original {
             assert_eq!(&result, original);
         } else {
@@ -117,16 +120,21 @@ pub(crate) async fn apply_create_rejections_leave_no_staged_writes() -> Result<(
 
     let tx = fdb::database()?.create_trx()?;
     let before = tenant_records(&tx, tenant).await?;
-    let unauthorized = SessionResource::new(tenant, vec!["reader".to_owned()])?.0;
-    assert!(matches!(
-        DirectoryResource::apply_create(
-            &tx,
-            &unauthorized,
-            create(tenant.root_id, "denied", ObjectKind::File)
-        )
-        .await,
-        Err(storage::Error::Resource(directory::Error::Forbidden))
-    ));
+    for subject in ["no-access", "read-only", "write-only"] {
+        let unauthorized = SessionResource::new(tenant, vec![subject.to_owned()])?.0;
+        for kind in [ObjectKind::File, ObjectKind::Directory] {
+            assert!(matches!(
+                DirectoryResource::apply_create(
+                    &tx,
+                    &unauthorized,
+                    create(tenant.root_id, "denied", kind)
+                )
+                .await,
+                Err(storage::Error::Resource(directory::Error::Forbidden))
+            ));
+            assert_eq!(tenant_records(&tx, tenant).await?, before);
+        }
+    }
     for mut invalid in [
         create(tenant.root_id, "shared", ObjectKind::File),
         create(tenant.root_id, "file", ObjectKind::File),
@@ -166,7 +174,7 @@ pub(crate) async fn apply_create_conflicts_with_grant_revocation() -> Result<()>
     root.update_grants(
         &revoke,
         &[GrantUpdate {
-            grant: allow("writer", 0o2),
+            grant: allow("writer", 0o6),
             remove: true,
         }],
     )?;
