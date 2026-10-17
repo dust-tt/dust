@@ -7,6 +7,10 @@ import {
 } from "@app/types/api/frame_manifest";
 import { FRAME_PUBLICATION_FILE } from "@app/types/api/frame_storage";
 import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
+import type {
+  AuthorizedFileAccessAllowlist,
+  FileShareScope,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -189,6 +193,12 @@ export const FramePublishModeSchema = z.enum(["live", "draft"]);
 export type FramePublishMode = z.infer<typeof FramePublishModeSchema>;
 
 export type FramePublicationStatus = "live" | "draft";
+
+/** Share allowlist computed at publish time, with the share scope it was computed for. */
+export type FramePublicationAllowlist = {
+  shareScope: FileShareScope;
+  allowlist: AuthorizedFileAccessAllowlist;
+};
 
 /**
  * @cc [owner:davidebbo,label:product] identical-publish-is-not-a-draft

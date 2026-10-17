@@ -38,6 +38,7 @@ vi.mock("@app/lib/api/viz/share_frame_viewer_files", () => ({
     sharedAt: Date.now(),
     shareUrl: "https://example.com/share",
     viewerFiles: [],
+    draftViewerFiles: null,
   })),
 }));
 

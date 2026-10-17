@@ -137,6 +137,16 @@ function ShareFramePopoverContent({
     fileShare?.scope ?? "workspace_and_emails";
   const shareURL = fileShare?.shareUrl ?? "";
   const viewerFiles = fileShare?.viewerFiles ?? [];
+  const draftViewerFiles = fileShare?.draftViewerFiles ?? null;
+  const liveViewerFileRefs = new Set(viewerFiles.map((file) => file.ref));
+  // Only worth a section when making the draft live would change what the link exposes. Unlike
+  // the live list, it also covers a draft that stops sharing files.
+  const pendingDraftFiles =
+    draftViewerFiles !== null &&
+    (draftViewerFiles.length !== viewerFiles.length ||
+      draftViewerFiles.some((file) => !liveViewerFileRefs.has(file.ref)))
+      ? draftViewerFiles
+      : null;
 
   const externalSharingDisabledByPolicy =
     owner.sharingPolicy === "workspace_only";
@@ -234,7 +244,31 @@ function ShareFramePopoverContent({
                 </Trans>
               </ContentMessage>
             )}
-            <FrameSharingFiles viewerFiles={viewerFiles} />
+            {draftViewerFiles && (
+              <p className="px-2 copy-xs text-muted-foreground">
+                <Trans>
+                  The link shows the live version, not the changes you haven’t
+                  made live yet.
+                </Trans>
+              </p>
+            )}
+            <FrameSharingFiles viewerFiles={viewerFiles} variant="live" />
+            {pendingDraftFiles && (
+              <Section label={t`After you make your changes live`}>
+                {pendingDraftFiles.length === 0 ? (
+                  <p className="px-2 copy-xs text-muted-foreground">
+                    <Trans>
+                      No files will be shared once your changes are live.
+                    </Trans>
+                  </p>
+                ) : (
+                  <FrameSharingFiles
+                    viewerFiles={pendingDraftFiles}
+                    variant="pending"
+                  />
+                )}
+              </Section>
+            )}
             <AccessScopeSection
               titleId={titleId}
               currentScope={currentScope}

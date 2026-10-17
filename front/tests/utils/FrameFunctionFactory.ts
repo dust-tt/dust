@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -11,6 +12,7 @@ import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_test
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import type { FramePublicationAllowlist } from "@app/types/api/frame_publication";
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionUserIdentityPolicy,
@@ -172,16 +174,48 @@ const TEST_DRAFT_FRAME_LIVE_PUBLICATION_ID = "publication-live";
 const TEST_DRAFT_FRAME_DRAFT_PUBLICATION_ID = "publication-draft";
 
 /**
+ * Stores the `frame_publications` row of a Frame's pending draft, with `authorizedFileAccess` as
+ * its stored allowlist, the way a draft publish does. The Frame must have a pending draft.
+ */
+export async function storeTestDraftPublicationAllowlist(
+  auth: Authenticator,
+  {
+    frame,
+    authorizedFileAccess,
+  }: { frame: FileResource; authorizedFileAccess: FramePublicationAllowlist }
+): Promise<void> {
+  const draftPublicationId = frame.pendingDraftPublicationId;
+  if (!draftPublicationId) {
+    throw new Error("Expected the Frame to have a pending draft.");
+  }
+  await FramePublicationResource.makeNew(auth, {
+    frame,
+    publicationId: draftPublicationId,
+  });
+  await FramePublicationResource.setAuthorizedFileAccess(auth, {
+    frame,
+    publicationId: draftPublicationId,
+    authorizedFileAccess,
+  });
+}
+
+/**
  * A Frame in a conversation `auth` authored, with a live and a pending draft publication that each
  * carry a `run-function`. Enables `frames_v2` and `frames_v2_functions` for the workspace. The
- * caller owns `auth`, so it can write the conversation's source.
+ * caller owns `auth`, so it can write the conversation's source. When `draftAuthorizedFileAccess`
+ * is given, the draft's `frame_publications` row is stored with it as its allowlist.
  */
 export async function createTestAuthorFrameWithDraft(
   auth: Authenticator,
   {
     agentConfigurationId = GLOBAL_AGENTS_SID.DUST,
     messagesCreatedAt = [new Date()],
-  }: { agentConfigurationId?: string; messagesCreatedAt?: Date[] } = {}
+    draftAuthorizedFileAccess,
+  }: {
+    agentConfigurationId?: string;
+    messagesCreatedAt?: Date[];
+    draftAuthorizedFileAccess?: FramePublicationAllowlist;
+  } = {}
 ) {
   await FeatureFlagFactory.basic(auth, "frames_v2");
   await FeatureFlagFactory.basic(auth, "frames_v2_functions");
@@ -218,6 +252,12 @@ export async function createTestAuthorFrameWithDraft(
   await frame.setLatestFramePublication({
     publicationId: TEST_DRAFT_FRAME_DRAFT_PUBLICATION_ID,
   });
+  if (draftAuthorizedFileAccess) {
+    await storeTestDraftPublicationAllowlist(auth, {
+      frame,
+      authorizedFileAccess: draftAuthorizedFileAccess,
+    });
+  }
 
   return { conversation, frame };
 }

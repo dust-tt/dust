@@ -7,7 +7,10 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { FrameToolCallPair } from "@app/types/api/frame_publication";
+import type {
+  FramePublicationAllowlist,
+  FrameToolCallPair,
+} from "@app/types/api/frame_publication";
 import {
   FRAME_TOOL_CALL_REF_MAX_LENGTH,
   FrameToolCallPairSchema,
@@ -31,6 +34,11 @@ export class FramePublicationModel extends WorkspaceAwareModel<FramePublicationM
    * function contracts. Each inner array is exactly `[server, tool]`.
    */
   declare requiredTools: CreationOptional<FrameToolCallPair[]>;
+  /**
+   * Share allowlist computed when this publication was published. Null for publications from
+   * before it was stored; activation then computes it.
+   */
+  declare authorizedFileAccess: CreationOptional<FramePublicationAllowlist | null>;
 }
 
 function assertRequiredTools(
@@ -79,6 +87,11 @@ FramePublicationModel.init(
           assertRequiredTools(value);
         },
       },
+    },
+    authorizedFileAccess: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

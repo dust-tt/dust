@@ -159,6 +159,11 @@ export type ShareFileResponseBody = {
   sharedAt: number;
   shareUrl: string;
   viewerFiles: ShareFrameViewerFile[];
+  /**
+   * The files the pending draft would expose once live. Null unless the caller can write the
+   * Frame and the draft has a stored allowlist.
+   */
+  draftViewerFiles: ShareFrameViewerFile[] | null;
 };
 
 /** Where a legacy Frame's FileResource lives once converted to a Frames v2 manifest. */

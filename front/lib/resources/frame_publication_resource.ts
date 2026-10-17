@@ -4,7 +4,10 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { FrameToolCallPair } from "@app/types/api/frame_publication";
+import type {
+  FramePublicationAllowlist,
+  FrameToolCallPair,
+} from "@app/types/api/frame_publication";
 import { FrameToolCallPairSchema } from "@app/types/api/frame_publication";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -64,6 +67,35 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     });
 
     return new this(this.model, row.get());
+  }
+
+  static async setAuthorizedFileAccess(
+    auth: Authenticator,
+    {
+      frame,
+      publicationId,
+      authorizedFileAccess,
+    }: {
+      frame: FileResource;
+      publicationId: string;
+      authorizedFileAccess: FramePublicationAllowlist;
+    }
+  ): Promise<void> {
+    this.assertFrameOfWorkspace(auth, frame);
+    const [affectedCount] = await this.model.update(
+      { authorizedFileAccess },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          fileId: frame.id,
+          publicationId,
+        },
+      }
+    );
+    assert(
+      affectedCount === 1,
+      `Expected one frame publication row to be updated, got ${affectedCount}.`
+    );
   }
 
   static async fetchForFramePublication(

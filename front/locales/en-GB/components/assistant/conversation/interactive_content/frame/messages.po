@@ -78,7 +78,15 @@ msgid "Workspace"
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "These files and data will be shared too"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
 msgid "Files and data used by this frame are shared too"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Once your changes are live, people who can view this frame will also be able to access the files and data it uses. They won’t be able to access the rest of the conversation or pod."
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
@@ -91,6 +99,10 @@ msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
 msgid "Included files"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
+msgid "Files and data that will be available to people you share this frame with."
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameSharingFiles.tsx
@@ -335,6 +347,18 @@ msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
 msgid "Viewers will only be able to access files you can verify. Fix or remove these references before sharing: {blockedRefs}"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "The link shows the live version, not the changes you haven’t made live yet."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "After you make your changes live"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx
+msgid "No files will be shared once your changes are live."
 msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/ShareFramePopover.tsx

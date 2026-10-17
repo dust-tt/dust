@@ -19,6 +19,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 
 interface FrameSharingFilesProps {
   viewerFiles: ShareFrameViewerFile[];
+  // "pending" lists what the link will serve once a draft is live, so its copy is future tense.
+  variant: "live" | "pending";
 }
 
 const SOURCE_LABELS: Record<
@@ -31,9 +33,13 @@ const SOURCE_LABELS: Record<
   workspace: msg`Workspace`,
 };
 
-export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
+export function FrameSharingFiles({
+  viewerFiles,
+  variant,
+}: FrameSharingFilesProps) {
   const { t } = useLingui();
   const fileCount = viewerFiles.length;
+  const isPending = variant === "pending";
 
   if (viewerFiles.length === 0) {
     return null;
@@ -41,15 +47,27 @@ export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
 
   return (
     <ContentMessage
-      title={t`Files and data used by this frame are shared too`}
+      title={
+        isPending
+          ? t`These files and data will be shared too`
+          : t`Files and data used by this frame are shared too`
+      }
       variant="blue"
       size="sm"
     >
       <p>
-        <Trans>
-          People who can view this frame can also access the files and data it
-          uses. They can’t access the rest of the conversation or pod.
-        </Trans>
+        {isPending ? (
+          <Trans>
+            Once your changes are live, people who can view this frame will also
+            be able to access the files and data it uses. They won’t be able to
+            access the rest of the conversation or pod.
+          </Trans>
+        ) : (
+          <Trans>
+            People who can view this frame can also access the files and data it
+            uses. They can’t access the rest of the conversation or pod.
+          </Trans>
+        )}
       </p>
       <Dialog>
         <div className="mt-2">
@@ -72,9 +90,16 @@ export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
               <Trans>Included files</Trans>
             </DialogTitle>
             <DialogDescription>
-              <Trans>
-                Files and data available to people you share this frame with.
-              </Trans>
+              {isPending ? (
+                <Trans>
+                  Files and data that will be available to people you share this
+                  frame with.
+                </Trans>
+              ) : (
+                <Trans>
+                  Files and data available to people you share this frame with.
+                </Trans>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div
