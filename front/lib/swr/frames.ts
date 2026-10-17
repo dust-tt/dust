@@ -18,18 +18,32 @@ import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
-/** Relative API path of a Frame's permissions, for the live publication unless asked. */
+/**
+ * Relative API path of a Frame's permissions, for the live publication unless asked. A `cacheKey`
+ * (the Frame's content hash) makes a new publish refetch them.
+ */
 export function getFramePermissionsKey({
   owner,
   frameId,
   publication,
+  cacheKey,
 }: {
   owner: LightWorkspaceType;
   frameId: string;
   publication?: "latest";
+  cacheKey?: string;
 }): string {
-  const publicationParam = publication ? `?publication=${publication}` : "";
-  return `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions${publicationParam}`;
+  const params = new URLSearchParams();
+  if (cacheKey) {
+    params.set("v", cacheKey);
+  }
+  if (publication) {
+    params.set("publication", publication);
+  }
+  const query = params.toString();
+  return `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/permissions${
+    query ? `?${query}` : ""
+  }`;
 }
 
 /**
@@ -42,23 +56,31 @@ export function useFramePermissions({
   owner,
   frameId,
   publication,
+  cacheKey,
   disabled = false,
 }: {
   owner: LightWorkspaceType;
   frameId: string;
   publication?: "latest";
+  cacheKey?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const permissionsFetcher: Fetcher<GetFramePermissionsResponseBody> = fetcher;
   const swrKey = disabled
     ? null
-    : getFramePermissionsKey({ owner, frameId, publication });
+    : getFramePermissionsKey({ owner, frameId, publication, cacheKey });
 
-  const { data, error } = useSWRWithDefaults(swrKey, permissionsFetcher, {
-    disabled,
-    revalidateOnFocus: false,
-  });
+  const { data, error, mutate } = useSWRWithDefaults(
+    swrKey,
+    permissionsFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      // A new cacheKey (agent publish) must not swap the panel to its loading state or drop edit rights.
+      keepPreviousData: true,
+    }
+  );
 
   return {
     canWriteFrameSource: data?.canWriteFrameSource ?? false,
@@ -66,6 +88,47 @@ export function useFramePermissions({
     hasFrameFunctions: data?.hasFunctions ?? false,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
+    draftPublicationId: data?.draftPublicationId ?? null,
+    livePublishedAt: data?.livePublishedAt ?? null,
+    mutateFramePermissions: mutate,
+  };
+}
+
+export function useMakeFrameDraftLive({
+  owner,
+  frameId,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+}) {
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
+  const sendNotification = useSendNotification();
+
+  return async (draftPublicationId: string): Promise<boolean> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/make-live`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draftPublicationId }),
+      }
+    );
+
+    if (!res.ok) {
+      sendApiErrorNotification({
+        title: t`Could not make the changes live`,
+        error: await getErrorFromResponse(res),
+      });
+      return false;
+    }
+
+    sendNotification({
+      type: "success",
+      title: t`Changes are live`,
+      description: t`The share link now shows this version.`,
+    });
+    return true;
   };
 }
 

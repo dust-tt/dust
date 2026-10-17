@@ -73,12 +73,14 @@ export function useFrameEditSession({
   fileId,
   iframeRef,
   mutateFileContent,
+  onSaved,
   owner,
 }: {
   conversationId?: string;
   fileId: string;
   iframeRef: RefObject<HTMLIFrameElement | null>;
   mutateFileContent: () => Promise<unknown>;
+  onSaved: () => Promise<unknown>;
   owner: LightWorkspaceType;
 }) {
   const { t } = useLingui();
@@ -157,6 +159,7 @@ export function useFrameEditSession({
       } catch {
         // Mutation succeeded server-side; remount anyway so the next load picks up content.
       }
+      await onSaved();
       setModeState("preview");
       remount();
     } finally {
@@ -167,6 +170,7 @@ export function useFrameEditSession({
     iframeRef,
     isSaving,
     mutateFileContent,
+    onSaved,
     remount,
     replacePendingEdits,
     sendNotification,

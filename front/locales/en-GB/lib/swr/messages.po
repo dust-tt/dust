@@ -381,6 +381,18 @@ msgid "Failed to revoke access"
 msgstr ""
 
 #: front/lib/swr/frames.ts
+msgid "Could not make the changes live"
+msgstr ""
+
+#: front/lib/swr/frames.ts
+msgid "Changes are live"
+msgstr ""
+
+#: front/lib/swr/frames.ts
+msgid "The share link now shows this version."
+msgstr ""
+
+#: front/lib/swr/frames.ts
 msgid "Couldn't save edits"
 msgstr ""
 

@@ -25,6 +25,26 @@ msgstr "Beta"
 msgid "Error loading the Frame source."
 msgstr "Error loading the Frame source."
 
+#: front/components/assistant/conversation/interactive_content/frame/FrameDraftControls.tsx
+msgid "Not live yet. The share link shows the version from {liveSince}."
+msgstr "Not live yet. The share link shows the version from {liveSince}."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameDraftControls.tsx
+msgid "Not live yet. The share link shows the live version."
+msgstr "Not live yet. The share link shows the live version."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameDraftControls.tsx
+msgid "Draft"
+msgstr "Draft"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameDraftControls.tsx
+msgid "Make live"
+msgstr "Make live"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameDraftControls.tsx
+msgid "Show these changes on the share link"
+msgstr "Show these changes on the share link"
+
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
 msgid "Save"
 msgstr "Save"

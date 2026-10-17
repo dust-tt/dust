@@ -26,6 +26,19 @@ describe("getFramePermissionsKey", () => {
       getFramePermissionsKey({ owner, frameId: "fil_1", publication: "latest" })
     ).toBe("/api/w/workspace_1/frames/fil_1/permissions?publication=latest");
   });
+
+  it("keys on the cache key alongside the requested publication", () => {
+    expect(
+      getFramePermissionsKey({
+        owner,
+        frameId: "fil_1",
+        publication: "latest",
+        cacheKey: "hash_1",
+      })
+    ).toBe(
+      "/api/w/workspace_1/frames/fil_1/permissions?v=hash_1&publication=latest"
+    );
+  });
 });
 
 describe("useEditFrameText", () => {
