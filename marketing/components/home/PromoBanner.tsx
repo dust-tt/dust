@@ -23,7 +23,38 @@ const OUTSIDE_FRANCE: readonly LogoListRegion[] = LOGO_LIST_REGIONS.filter(
   (region) => region !== "FR"
 );
 
+const OUTSIDE_US: readonly LogoListRegion[] = LOGO_LIST_REGIONS.filter(
+  (region) => region !== "US"
+);
+
 const PROMO_SCHEDULE: PromoConfig[] = [
+  // Same event, split by market so each audience reads its own time zone. The
+  // US entry waits for the 1Password event to wrap up before taking the slot.
+  {
+    id: "5-dust-agents-for-revops-teams-nov5-us",
+    image: "/static/landing/RevOps_Agents_Webinar_Banner.png",
+    link: "https://watch.getcontrast.io/register/dust-5-dust-agents-for-revops-teams?utm_source=website",
+    badge: "Online Event",
+    title: "5 Dust Agents for RevOps Teams",
+    time: "November 5 · 12:00pm ET / 9:00am PT",
+    host: "Charlotte Comte & Hasan Ansari",
+    linkLabel: "Register Now",
+    regions: ["US"],
+    startsAt: new Date("2026-10-14T13:00:00-04:00"),
+    expiresAt: new Date("2026-11-05T13:00:00-05:00"),
+  },
+  {
+    id: "5-dust-agents-for-revops-teams-nov5-europe",
+    image: "/static/landing/RevOps_Agents_Webinar_Banner.png",
+    link: "https://watch.getcontrast.io/register/dust-5-dust-agents-for-revops-teams?utm_source=website",
+    badge: "Online Event",
+    title: "5 Dust Agents for RevOps Teams",
+    time: "November 5 · 12:00pm ET / 6:00pm CET",
+    host: "Charlotte Comte & Hasan Ansari",
+    linkLabel: "Register Now",
+    regions: OUTSIDE_US,
+    expiresAt: new Date("2026-11-05T13:00:00-05:00"),
+  },
   {
     id: "dust-for-gtm-engineers-with-1password-oct14",
     image: "/static/landing/GTM_Engineers_1Password_Webinar_Banner.png",
@@ -47,17 +78,17 @@ const PROMO_SCHEDULE: PromoConfig[] = [
     expiresAt: new Date("2026-10-08T13:30:00-04:00"),
   },
   {
-    id: "ia-en-entreprise-passez-a-l-echelle-oct13",
+    id: "ia-en-entreprise-passez-a-l-echelle-nov4",
     image: "/static/landing/IA_Entreprise_Webinar_Banner.png",
     link: "https://watch.getcontrast.io/register/dust-ia-en-entreprise-passez-a-l-echelle-gardez-le-controle?utm_source=website",
     badge: "Événement en ligne",
     // Non-breaking space before the colon: French typography, and it keeps the
     // colon off the start of a line when this title wraps.
     title: "IA en entreprise\u00a0: passez à l’échelle, gardez le contrôle",
-    time: "Mardi 13 octobre · 11h30–12h30",
+    time: "Mercredi 4 novembre · 11h30–12h30",
     linkLabel: "S’inscrire",
     regions: ["FR"],
-    expiresAt: new Date("2026-10-13T12:30:00+02:00"),
+    expiresAt: new Date("2026-11-04T12:30:00+01:00"),
   },
 ];
 
@@ -73,6 +104,7 @@ interface PromoConfig {
   linkLabel: string;
   /** Markets this promo runs in. Omit to show it everywhere. */
   regions?: readonly LogoListRegion[];
+  startsAt?: Date;
   expiresAt?: Date;
 }
 
@@ -94,11 +126,19 @@ function storageKey(promos: PromoConfig[]) {
  * A promo MUST NOT be returned once `now` is past its `expiresAt`, whatever the visitor's region.
  * A promo with no `expiresAt` never expires.
  */
+/**
+ * @cc [owner:martindust,label:product] scheduled-promo-not-returned-early
+ * A promo MUST NOT be returned while `now` is before its `startsAt`, whatever the visitor's region.
+ * A promo with no `startsAt` is live as soon as it ships.
+ */
 function getActivePromos(
   now: Date,
   region: LogoListRegion | null
 ): PromoConfig[] {
   return PROMO_SCHEDULE.filter((promo) => {
+    if (promo.startsAt && now < promo.startsAt) {
+      return false;
+    }
     if (promo.expiresAt && now > promo.expiresAt) {
       return false;
     }
