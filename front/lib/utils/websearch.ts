@@ -13,7 +13,9 @@ import omitBy from "lodash/omitBy";
 const credentials = dustManagedServiceCredentials();
 
 const SERPAPI_BASE_URL = "https://serpapi.com";
-const SERPER_BASE_URL = "https://google.serper.dev";
+const SERPER_BASE_URL = (
+  process.env.SERPER_BASE_URL || "https://google.serper.dev"
+).replace(/\/+$/, "");
 
 type BaseWebSearchParams = {
   query: string;
@@ -146,8 +148,13 @@ const serperSearch = async (
     method: "POST",
     headers: {
       "X-API-KEY": options.api_key,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(options),
+    body: JSON.stringify({
+      q: options.query,
+      num: options.num,
+      page: options.page,
+    }),
   });
 
   if (res.ok) {

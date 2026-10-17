@@ -233,7 +233,11 @@ impl Block for Search {
                 request
             }
             SearchProviderID::Serper => {
-                let url = "https://google.serper.dev/search";
+                let base_url = std::env::var("SERPER_BASE_URL")
+                    .ok()
+                    .filter(|url| !url.is_empty())
+                    .unwrap_or_else(|| "https://google.serper.dev".to_string());
+                let url = format!("{}/search", base_url.trim_end_matches('/'));
 
                 let headers = json!({
                     "X-API-KEY": provider_api_key,
@@ -245,7 +249,12 @@ impl Block for Search {
                     "num": num.unwrap_or(8),
                 });
 
-                let request = HttpRequest::new("POST", url, headers, body)?;
+                let request = HttpRequest::new(
+                    "POST",
+                    &url,
+                    headers,
+                    Value::String(serde_json::to_string(&body)?),
+                )?;
 
                 request
             }
