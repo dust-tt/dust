@@ -1,15 +1,25 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import {
   FILE_RPC_TIMEOUT_MS,
   makeSendCrossDocumentMessage,
   USER_IDENTITY_RPC_TIMEOUT_MS,
   useFile,
+  VisualizationWrapper,
 } from "@viz/app/components/VisualizationWrapper";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
+import type { VisualizationAPI } from "@viz/app/lib/visualization-api";
 import type { CommandResultMap } from "@viz/app/types";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("lottie-react", () => ({ default: () => null }));
 
@@ -246,4 +256,67 @@ describe("useFile", () => {
       });
     }
   );
+});
+
+describe("VisualizationWrapper", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const renderFrame = (props: Record<string, string>) => {
+    const api: VisualizationAPI = {
+      data: {
+        callFunction: vi.fn(),
+        getUserIdentity: vi.fn(),
+        fetchFile: vi.fn(),
+        writeFile: vi.fn(),
+        fetchCode: vi.fn().mockResolvedValue({
+          code: `export default function Frame({ region = "none", year = "none" }) {
+  return <p>{region} {year}</p>;
+}`,
+          props,
+        }),
+      },
+      ui: {
+        addEventListener: vi.fn(() => () => {}),
+        displayCode: vi.fn(),
+        downloadFile: vi.fn(),
+        editText: vi.fn(),
+        sendHeightToParent: vi.fn(),
+      },
+    };
+    render(
+      createElement(VisualizationWrapper, {
+        config: {
+          identifier: "viz-1",
+          allowedOrigins: [ALLOWED_ORIGIN],
+          dataAPI: api.data,
+        },
+        api,
+      })
+    );
+  };
+
+  it("renders the Frame with the props sent with its code", async () => {
+    renderFrame({ region: "EU", year: "2026" });
+
+    expect(await screen.findByText("EU 2026")).toBeDefined();
+  });
+
+  it("renders the Frame without props when none are sent", async () => {
+    renderFrame({});
+
+    expect(await screen.findByText("none none")).toBeDefined();
+  });
 });

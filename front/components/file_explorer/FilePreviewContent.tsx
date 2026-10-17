@@ -22,6 +22,7 @@ import { AuthContext } from "@app/lib/auth/AuthContext";
 import { caretColor } from "@app/lib/client/collab/messages";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
+import type { FrameEmbedProps } from "@app/lib/markdown/frame_embed";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
 import { toSessionName } from "@app/types/collab";
 import type { FilePreviewCategory } from "@app/types/file_preview";
@@ -422,8 +423,13 @@ function RichMarkdownDocument({
   });
   const resolveImageSource = useResolveMarkdownImageUrl(owner);
   const renderFrame = useCallback(
-    (path: string, height: number) => (
-      <DocumentFrameEmbed owner={owner} path={path} height={height} />
+    (path: string, height: number, frameProps: FrameEmbedProps) => (
+      <DocumentFrameEmbed
+        owner={owner}
+        path={path}
+        height={height}
+        frameProps={frameProps}
+      />
     ),
     [owner]
   );

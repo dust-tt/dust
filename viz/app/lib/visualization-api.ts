@@ -8,6 +8,11 @@ import type {
   SupportedMessage,
 } from "@viz/app/types/messages";
 
+export interface FrameCode {
+  code: string;
+  props: Record<string, string>;
+}
+
 export interface FrameFile {
   file: File;
   revision: string | null;
@@ -37,9 +42,9 @@ export interface VisualizationDataAPI {
   writeFile(params: WriteFileParams): Promise<WriteFileResult>;
 
   /**
-   * Fetch visualization code.
+   * Fetch visualization code and the props its component renders with.
    */
-  fetchCode(): Promise<string | null>;
+  fetchCode(): Promise<FrameCode | null>;
 }
 
 export type EditTextFn = (params: {

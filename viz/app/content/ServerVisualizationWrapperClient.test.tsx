@@ -99,7 +99,10 @@ describe("shared-view file access", () => {
         });
         expect(mocks.sendMessage).not.toHaveBeenCalled();
       }
-      await expect(dataAPI.fetchCode()).resolves.toBe("Published code");
+      await expect(dataAPI.fetchCode()).resolves.toEqual({
+        code: "Published code",
+        props: {},
+      });
     }
   );
 });

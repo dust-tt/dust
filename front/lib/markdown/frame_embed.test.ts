@@ -3,6 +3,8 @@ import {
   isFrameEmbedPath,
   parseFrameEmbedDirective,
   parseFrameEmbedHeight,
+  parseFrameEmbedProps,
+  parseFrameEmbedPropsJson,
   serializeFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
 import { describe, expect, it } from "vitest";
@@ -33,8 +35,37 @@ describe("frame embed directive", () => {
     ).toMatchObject({ height: null });
   });
 
+  it("reads back the props it writes, in order", () => {
+    const props = {
+      region: "EU",
+      year: "2026",
+      label: 'a "b" & <c>',
+      empty: "",
+    };
+    for (const height of [null, 400]) {
+      const parsed = parseFrameEmbedDirective(
+        `${serializeFrameEmbedDirective("pod-abc/x.tsx", height, props)}\n`
+      );
+      expect(parsed).toMatchObject({ path: "pod-abc/x.tsx", height, props });
+      expect(Object.keys(parsed?.props ?? {})).toEqual(Object.keys(props));
+    }
+    expect(
+      parseFrameEmbedDirective('::embed_frame{path="pod-abc/x.tsx"}')?.props
+    ).toEqual({});
+  });
+
   it.each([
-    '::embed_frame{path="pod-abc/x.tsx" title="X"}',
+    '::embed_frame{path="pod-abc/x.tsx" title=X}',
+    '::embed_frame{path="pod-abc/x.tsx" a="1" a="2"}',
+    '::embed_frame{path="pod-abc/x.tsx" path="pod-abc/y.tsx"}',
+    '::embed_frame{path="pod-abc/x.tsx" region="EU" height="400"}',
+    '::embed_frame{path="pod-abc/x.tsx" height="400" height="400"}',
+    '::embed_frame{path="pod-abc/x.tsx" 1a="x"}',
+    '::embed_frame{path="pod-abc/x.tsx" _a="x"}',
+    '::embed_frame{path="pod-abc/x.tsx" data-x="x"}',
+    '::embed_frame{path="pod-abc/x.tsx" a="b & c"}',
+    '::embed_frame{path="pod-abc/x.tsx"  a="x"}',
+    "::embed_frame{path=\"pod-abc/x.tsx\" a='x'}",
     '::embed_frame{path="pod-abc/x.tsx" height="0"}',
     '::embed_frame{path="pod-abc/x.tsx" height="040"}',
     '::embed_frame{path="pod-abc/x.tsx" height="400px"}',
@@ -64,6 +95,32 @@ describe("frame embed directive", () => {
       expect(parseFrameEmbedHeight(height)).toBeNull();
     }
   );
+
+  it("reads props only when the directive can hold them all", () => {
+    expect(parseFrameEmbedProps({ region: "EU", year: "2026" })).toEqual({
+      region: "EU",
+      year: "2026",
+    });
+    for (const invalid of [
+      { path: "x" },
+      { height: "1" },
+      { _a: "x" },
+      { "data-x": "x" },
+      { multi: "a\nb" },
+      { count: 1 },
+    ]) {
+      expect(parseFrameEmbedProps({ region: "EU", ...invalid })).toEqual({});
+    }
+    for (const value of [null, "region", ["EU"]]) {
+      expect(parseFrameEmbedProps(value)).toEqual({});
+    }
+    expect(parseFrameEmbedPropsJson('{"region":"EU"}')).toEqual({
+      region: "EU",
+    });
+    for (const json of [null, undefined, "", "{", "[1]"]) {
+      expect(parseFrameEmbedPropsJson(json)).toEqual({});
+    }
+  });
 
   it.each(["", "pod-abc/a\nb.tsx", "pod-abc/a\rb.tsx"])(
     "refuses the path %j",

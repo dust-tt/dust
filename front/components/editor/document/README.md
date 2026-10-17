@@ -139,13 +139,14 @@ conversation's files only once an entry is picked.
 
 ## Frames
 
-A line holding exactly `::embed_frame{path="…"}`, or `::embed_frame{path="…" height="…"}` with a height in
-pixels, embeds a Frame: a `frameEmbed` node on its own line, keeping its path and height. Anything
-else on the line, another attribute, or the line opening a list item keeps it as text. Text reading as such a line saves as `::embed\_frame{…}`, since the editor escapes `_` in
+A line holding exactly `::embed_frame{path="…"}`, optionally followed by a height in pixels,
+`height="…"`, then by any number of props, `region="EU"`, embeds a Frame: a `frameEmbed` node on its
+own line, keeping its path, height and props. Anything else on the line, an attribute out of order
+or repeated, or the line opening a list item keeps it as text. Text reading as such a line saves as `::embed\_frame{…}`, since the editor escapes `_` in
 text, so it reopens as text. The host's optional
 `renderFrame` displays it, in the editor and in the read-only preview; events inside it go to the
 Frame, never the editor. The file preview renders the Frame inline in a box of its height, 600px
-by default, after loading it from its path through the file API, so only readers of the Frame's
+by default, its component given the props as string props, after loading it from its path through the file API, so only readers of the Frame's
 file see it (`DocumentFrameEmbed`). While editable, hovering a Frame shows a menu at its top right
 with a height slider and a remove action; the slider previews the height while dragged and saves
 it on release, each action its own undo step. Without a renderer, or for a path that is not a readable Frame,

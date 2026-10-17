@@ -1,5 +1,6 @@
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type {
+  FrameCode,
   FrameFile,
   VisualizationDataAPI,
 } from "@viz/app/lib/visualization-api";
@@ -80,7 +81,7 @@ export class CacheDataAPI implements VisualizationDataAPI {
     };
   }
 
-  async fetchCode(): Promise<string | null> {
-    return this.codeCache;
+  async fetchCode(): Promise<FrameCode | null> {
+    return this.codeCache ? { code: this.codeCache, props: {} } : null;
   }
 }

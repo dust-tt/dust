@@ -25,7 +25,12 @@ const AUTH = { vizUrl: "https://viz.dust.tt" } as AuthContextValue;
 const renderEmbed = (path: string) =>
   render(
     <AuthContext.Provider value={AUTH}>
-      <DocumentFrameEmbed owner={owner} path={path} height={600} />
+      <DocumentFrameEmbed
+        owner={owner}
+        path={path}
+        height={600}
+        frameProps={{ region: "EU" }}
+      />
     </AuthContext.Provider>
   );
 
@@ -64,6 +69,7 @@ describe("DocumentFrameEmbed", () => {
         isPodMember: true,
         frameId: "fil_frame",
         framePath: "pod-spc_pod/dashboards/revenue.frame.json",
+        frameProps: { region: "EU" },
       }),
       expect.anything()
     );

@@ -19,6 +19,7 @@ import { documentExtensions } from "@app/components/editor/document/extensions";
 import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
 import {
   parseFrameEmbedHeight,
+  parseFrameEmbedProps,
   serializeFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
 import type { Result } from "@app/types/shared/result";
@@ -278,7 +279,8 @@ const framesOpeningListItemsAsText = (node: JSONContent): JSONContent => {
           type: "text",
           text: serializeFrameEmbedDirective(
             first.attrs.path,
-            parseFrameEmbedHeight(first.attrs.height)
+            parseFrameEmbedHeight(first.attrs.height),
+            parseFrameEmbedProps(first.attrs.props)
           ),
         },
       ],

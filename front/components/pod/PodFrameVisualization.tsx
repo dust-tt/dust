@@ -7,6 +7,7 @@ interface PodFrameVisualizationProps {
   spaceId?: string;
   conversationId?: string | null;
   fileContent: string;
+  frameProps?: Record<string, string>;
   vizUrl: string;
   identifier: string;
   isPodEditor?: boolean;
@@ -26,6 +27,7 @@ export function PodFrameVisualization({
   spaceId,
   conversationId = null,
   fileContent,
+  frameProps,
   vizUrl,
   identifier,
   isPodEditor,
@@ -42,6 +44,7 @@ export function PodFrameVisualization({
       vizUrl={vizUrl}
       visualization={{
         code: fileContent,
+        props: frameProps,
         complete: true,
         identifier,
       }}
