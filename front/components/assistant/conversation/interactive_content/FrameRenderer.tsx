@@ -5,6 +5,7 @@ import { CenteredState } from "@app/components/assistant/conversation/interactiv
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
+import { PreviewActionButtons } from "@app/components/assistant/conversation/interactive_content/frame/PreviewActionButtons";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -14,7 +15,6 @@ import {
   useSendNotification,
 } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useFileContent,
@@ -29,23 +29,12 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  CheckCircle,
-  LinkExternal01,
-  Maximize01,
-  Minimize01,
-  RefreshCw01,
-  ReverseLeft,
-  Spinner,
-  Tooltip,
-  UploadCloud02,
-} from "@dust-tt/sparkle";
+import { Button, Cube01, Spinner } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 interface FrameRendererProps {
-  conversation?: ConversationWithoutContentType;
+  conversation: ConversationWithoutContentType;
   fileId: string;
   projectId: string | null;
   owner: LightWorkspaceType;
@@ -70,7 +59,7 @@ export function FrameRenderer({
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: conversation?.spaceId ?? projectId ?? null,
+    spaceId: conversation.spaceId ?? projectId ?? null,
   });
 
   const isFrameInPod = Boolean(
@@ -82,7 +71,7 @@ export function FrameRenderer({
       return "unknown";
     }
     if (
-      !conversation?.spaceId ||
+      !conversation.spaceId ||
       !projectInfo ||
       projectInfo.kind !== "project"
     ) {
@@ -93,7 +82,7 @@ export function FrameRenderer({
     }
 
     return "saved";
-  }, [conversation?.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
+  }, [conversation.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
 
   const { files: projectFiles } = usePodFiles({
     owner,
@@ -113,7 +102,7 @@ export function FrameRenderer({
   // The space to resolve `project/` file paths inside the viz.
   // Priority: explicit project the frame was saved to -> the conversation's own project space
   // (a conversation can belong to a project space even before the frame is saved there).
-  const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
+  const frameSpaceId = projectId ?? conversation.spaceId ?? null;
 
   const {
     isFullScreen,
@@ -147,7 +136,7 @@ export function FrameRenderer({
 
   const { handleVisualizationRevert } = useVisualizationRevert({
     workspaceId: owner.sId,
-    conversationId: conversation?.sId,
+    conversationId: conversation.sId,
   });
 
   const [showCode, setShowCode] = useState(false);
@@ -195,7 +184,7 @@ export function FrameRenderer({
   const editFrameText = useEditFrameText({
     owner,
     fileId,
-    conversationId: conversation?.sId,
+    conversationId: conversation.sId,
   });
   const isEditable = renderMode === "legacy" || canWriteFrameSource;
   // Frames v2 source writers edit in a Preview|Edit session with batch Save. Legacy Frames keep
@@ -204,7 +193,7 @@ export function FrameRenderer({
   const editSession = useFrameEditSession({
     owner,
     fileId,
-    conversationId: conversation?.sId,
+    conversationId: conversation.sId,
     iframeRef,
     mutateFileContent,
   });
@@ -252,7 +241,7 @@ export function FrameRenderer({
   };
 
   const handleSaveToProject = useCallback(async () => {
-    const projectIdToSave = conversation?.spaceId;
+    const projectIdToSave = conversation.spaceId;
     if (!projectIdToSave) {
       return;
     }
@@ -319,7 +308,7 @@ export function FrameRenderer({
     }
   }, [
     confirm,
-    conversation?.spaceId,
+    conversation.spaceId,
     fileId,
     mutateFileMetadata,
     owner.sId,
@@ -367,7 +356,7 @@ export function FrameRenderer({
           canEditV2={canEditV2}
           hideEditLabels={isMobile}
           podActions={
-            renderMode === "legacy"
+            isFrameInPod
               ? {
                   spaceId: projectId ?? "",
                   pinnedFramePath: projectInfo?.pinnedFramePath ?? null,
@@ -376,7 +365,6 @@ export function FrameRenderer({
                   fileName: fileMetadata?.fileName,
                   fileTabs: projectInfo?.frameTabs ?? [],
                   tabsOrder: projectInfo?.tabsOrder ?? [],
-                  hidden: !isFrameInPod,
                 }
               : null
           }
@@ -384,7 +372,7 @@ export function FrameRenderer({
             <>
               {projectSaveState === "saved" && (
                 <Button
-                  icon={CheckCircle}
+                  icon={Cube01}
                   variant="ghost"
                   disabled={true}
                   label={isMobile ? undefined : t`Saved`}
@@ -393,7 +381,7 @@ export function FrameRenderer({
               )}
               {projectSaveState === "supported" && (
                 <Button
-                  icon={UploadCloud02}
+                  icon={Cube01}
                   variant="ghost"
                   label={
                     isMobile
@@ -424,184 +412,77 @@ export function FrameRenderer({
               await mutateFramePermissions();
             }}
           />
-        ) : showCode ? (
-          <FrameCodeView
-            code={
-              renderMode === "v2" ? (frameSource ?? undefined) : fileContent
-            }
-            isLoading={renderMode === "v2" && isFrameSourceLoading}
-            hasError={
-              renderMode === "v2" &&
-              (isFrameSourceNotFound || Boolean(frameSourceError))
-            }
-          />
         ) : (
-          <div className="h-full">
-            <div className="relative h-full">
-              <AuthenticatedVisualizationActionIframe
-                agentConfigurationId={
-                  fileMetadata?.useCaseMetadata
-                    .lastEditedByAgentConfigurationId ?? ""
+          <>
+            {showCode ? (
+              <FrameCodeView
+                code={
+                  renderMode === "v2" ? (frameSource ?? undefined) : fileContent
                 }
-                workspaceId={owner.sId}
-                vizUrl={vizUrl}
-                visualization={{
-                  code: fileContent ?? "",
-                  complete: true,
-                  // Stable across revisions — contentHash belongs in `key` only.
-                  // Putting it in identifier forced Next.js to recompile /content
-                  // for every publish / content refresh.
-                  identifier: `viz-${fileId}`,
-                }}
-                key={vizInstanceKey}
-                conversationId={conversation?.sId ?? null}
-                spaceId={frameSpaceId ?? undefined}
-                framePackageRoot={framePackageRoot}
-                frameId={renderMode === "v2" ? fileId : undefined}
-                isInDrawer={true}
-                isEditable={isEditable}
-                stagedEditMode={canEditV2 ? editSession.mode : undefined}
-                onEditText={
-                  !isEditable
-                    ? undefined
-                    : canEditV2
-                      ? editSession.stageEdit
-                      : handleEditText
+                isLoading={renderMode === "v2" && isFrameSourceLoading}
+                hasError={
+                  renderMode === "v2" &&
+                  (isFrameSourceNotFound || Boolean(frameSourceError))
                 }
-                ref={iframeRef}
               />
-              {editSession.isSaving && (
-                <div
-                  className="absolute inset-0 z-10 cursor-wait"
-                  aria-busy="true"
-                  aria-label={t`Publishing your changes...`}
+            ) : (
+              <div className="relative h-full">
+                <AuthenticatedVisualizationActionIframe
+                  agentConfigurationId={
+                    fileMetadata?.useCaseMetadata
+                      .lastEditedByAgentConfigurationId ?? ""
+                  }
+                  workspaceId={owner.sId}
+                  vizUrl={vizUrl}
+                  visualization={{
+                    code: fileContent ?? "",
+                    complete: true,
+                    // Stable across revisions — contentHash belongs in `key` only.
+                    // Putting it in identifier forced Next.js to recompile /content
+                    // for every publish / content refresh.
+                    identifier: `viz-${fileId}`,
+                  }}
+                  key={vizInstanceKey}
+                  conversationId={conversation.sId}
+                  spaceId={frameSpaceId ?? undefined}
+                  framePackageRoot={framePackageRoot}
+                  frameId={renderMode === "v2" ? fileId : undefined}
+                  isInDrawer={true}
+                  isEditable={isEditable}
+                  stagedEditMode={canEditV2 ? editSession.mode : undefined}
+                  onEditText={
+                    !isEditable
+                      ? undefined
+                      : canEditV2
+                        ? editSession.stageEdit
+                        : handleEditText
+                  }
+                  ref={iframeRef}
                 />
-              )}
-            </div>
-            {conversation && (
-              <PreviewActionButtons
-                owner={owner}
-                lastEditedByAgentConfigurationId={
-                  lastEditedByAgentConfigurationId
-                }
-                hasPreviousVersion={(fileMetadata?.version ?? 0) > 1}
-                onRevert={onRevert}
-                isFullScreen={isFullScreen}
-                exitFullScreen={exitFullScreen}
-                enterFullScreen={enterFullScreen}
-                shareUrl={fileShare?.shareUrl}
-                reloadFile={reloadFile}
-              />
+                {editSession.isSaving && (
+                  <div
+                    className="absolute inset-0 z-10 cursor-wait"
+                    aria-busy="true"
+                    aria-label={t`Publishing your changes...`}
+                  />
+                )}
+              </div>
             )}
-          </div>
+            <PreviewActionButtons
+              lastEditedByAgentConfigurationId={
+                lastEditedByAgentConfigurationId
+              }
+              hasPreviousVersion={(fileMetadata?.version ?? 0) > 1}
+              onRevert={onRevert}
+              isFullScreen={isFullScreen}
+              exitFullScreen={exitFullScreen}
+              enterFullScreen={enterFullScreen}
+              shareUrl={fileShare?.shareUrl}
+              reloadFile={reloadFile}
+            />
+          </>
         )}
       </div>
-    </div>
-  );
-}
-
-interface PreviewActionButtonsProps {
-  owner: LightWorkspaceType;
-  lastEditedByAgentConfigurationId?: string;
-  hasPreviousVersion: boolean;
-  onRevert: () => void;
-  isFullScreen: boolean;
-  enterFullScreen: () => void;
-  exitFullScreen: () => void;
-  shareUrl?: string;
-  reloadFile: () => void;
-}
-
-function PreviewActionButtons({
-  lastEditedByAgentConfigurationId,
-  hasPreviousVersion,
-  onRevert,
-  isFullScreen,
-  enterFullScreen,
-  exitFullScreen,
-  shareUrl,
-  reloadFile,
-}: PreviewActionButtonsProps) {
-  const { t } = useLingui();
-  const clientType = useClientType();
-  return (
-    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
-      {clientType !== "extension" && (
-        <Tooltip
-          label={
-            isFullScreen ? t`Exit full screen mode` : t`Go to full screen mode`
-          }
-          side="left"
-          tooltipTriggerAsChild
-          trigger={
-            <Button
-              aria-label={
-                isFullScreen
-                  ? t`Exit full screen mode`
-                  : t`Go to full screen mode`
-              }
-              icon={isFullScreen ? Minimize01 : Maximize01}
-              variant="ghost"
-              size="xs"
-              onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-            />
-          }
-        />
-      )}
-      {clientType !== "extension" && (
-        <Tooltip
-          label={t`Open in a new tab`}
-          side="left"
-          tooltipTriggerAsChild
-          trigger={
-            <Button
-              aria-label={t`Open in a new tab`}
-              icon={LinkExternal01}
-              variant="ghost"
-              size="xs"
-              disabled={!shareUrl}
-              onClick={() =>
-                window.open(shareUrl, "_blank", "noopener,noreferrer")
-              }
-            />
-          }
-        />
-      )}
-      {lastEditedByAgentConfigurationId && (
-        <Tooltip
-          label={
-            hasPreviousVersion
-              ? t`Revert the last change`
-              : t`No previous version`
-          }
-          side="left"
-          tooltipTriggerAsChild
-          trigger={
-            <Button
-              aria-label={t`Revert the last change`}
-              variant="ghost"
-              disabled={!hasPreviousVersion}
-              size="xs"
-              icon={ReverseLeft}
-              onClick={onRevert}
-            />
-          }
-        />
-      )}
-      <Tooltip
-        label={t`Reload the file`}
-        side="left"
-        tooltipTriggerAsChild
-        trigger={
-          <Button
-            aria-label={t`Reload the file`}
-            icon={RefreshCw01}
-            variant="ghost"
-            size="xs"
-            onClick={reloadFile}
-          />
-        }
-      />
     </div>
   );
 }

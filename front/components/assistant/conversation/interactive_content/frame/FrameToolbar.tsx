@@ -7,14 +7,7 @@ import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  cn,
-  Eye,
-  Maximize01,
-  Minimize01,
-  Terminal,
-} from "@dust-tt/sparkle";
+import { Button, cn, Eye, Terminal } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode, RefObject } from "react";
 
@@ -52,10 +45,6 @@ interface FrameToolbarProps {
   hideEditLabels?: boolean;
   /** Pin / open-as-tab actions when the Frame lives in a Pod. */
   podActions?: FrameToolbarPodActions | null;
-  fullscreen?: {
-    isFullscreen: boolean;
-    onToggle: () => void;
-  };
   /** Conversation-only actions (e.g. save-to-pod) rendered after the shared cluster. */
   trailing?: ReactNode;
 }
@@ -80,7 +69,6 @@ export function FrameToolbar({
   canEditV2 = false,
   hideEditLabels = false,
   podActions = null,
-  fullscreen,
   trailing,
 }: FrameToolbarProps) {
   const { t } = useLingui();
@@ -93,6 +81,7 @@ export function FrameToolbar({
           onClick={onToggleCode}
           tooltip={showCode ? t`Switch to rendering` : t`Switch to code`}
           variant="ghost"
+          disabled={editSession?.mode === "edit"}
         />
       )}
       {hasFrameFunctions && <FrameBetaChip />}
@@ -100,9 +89,13 @@ export function FrameToolbar({
   );
 
   const actions = (
-    <div className="flex min-w-0 items-center gap-1">
+    <div className="flex min-w-0 items-center">
       {canEditV2 && editSession && (
-        <FrameEditControls session={editSession} hideLabels={hideEditLabels} />
+        <FrameEditControls
+          session={editSession}
+          hideLabels={hideEditLabels}
+          disabled={showCode}
+        />
       )}
       <ExportContentDropdown
         iframeRef={iframeRef}
@@ -140,19 +133,6 @@ export function FrameToolbar({
             hidden={podActions.hidden}
           />
         </>
-      )}
-      {fullscreen && (
-        <Button
-          icon={fullscreen.isFullscreen ? Minimize01 : Maximize01}
-          variant="ghost"
-          size="sm"
-          tooltip={
-            fullscreen.isFullscreen
-              ? t`Exit full screen`
-              : t`Open in full screen`
-          }
-          onClick={fullscreen.onToggle}
-        />
       )}
       {trailing}
     </div>

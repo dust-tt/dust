@@ -106,6 +106,10 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
   useFeatureFlags: () => ({ hasFeature: () => false }),
 }));
 
+vi.mock("@app/lib/context/clientType", () => ({
+  useClientType: () => "web",
+}));
+
 vi.mock("@app/lib/swr/files", () => ({
   useFileContent: () => ({
     fileContent: "frame bundle",
@@ -125,6 +129,9 @@ vi.mock("@app/lib/swr/files", () => ({
       isFileMetadataLoading: false,
     };
   },
+  useShareInteractiveContentFile: () => ({
+    fileShare: { shareUrl: "https://dust.tt/share/frame/token" },
+  }),
 }));
 
 vi.mock("@app/lib/swr/frames", () => ({
@@ -176,8 +183,11 @@ vi.mock("@dust-tt/sparkle", async () => {
     CodeBlock: ({ children }: PropsWithChildren) =>
       createElement("pre", null, children),
     Eye: Empty,
+    LinkExternal01: Empty,
     Maximize01: Empty,
     Minimize01: Empty,
+    RefreshCw01: Empty,
+    ReverseLeft: Empty,
     Sheet,
     SheetClose: Container,
     SheetContent: Container,

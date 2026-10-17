@@ -86,8 +86,8 @@ export function ExportContentDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           icon={Download01}
-          isSelect
           label={isMobile ? undefined : exportLabel}
+          aria-label={exportLabel}
           tooltip={isMobile ? exportLabel : undefined}
           variant="ghost"
           disabled={isExportingPdf}

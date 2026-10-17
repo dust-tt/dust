@@ -2,8 +2,13 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
 import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
+import { PreviewActionButtons } from "@app/components/assistant/conversation/interactive_content/frame/PreviewActionButtons";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
-import { useFileContent, useFileContentByUrl } from "@app/lib/swr/files";
+import {
+  useFileContent,
+  useFileContentByUrl,
+  useShareInteractiveContentFile,
+} from "@app/lib/swr/files";
 import { useFramePermissions } from "@app/lib/swr/frames";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { PodFileTab } from "@app/types/pod_file_tab";
@@ -11,7 +16,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, DotsHorizontal, Spinner } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface PodHoverFrameViewerProps {
@@ -100,6 +105,11 @@ export function PodHoverFrameViewer({
   const needsToolConsent =
     isV2 && !isFramePermissionsLoading && !hasAuthorizedRequiredTools;
 
+  const { fileShare } = useShareInteractiveContentFile({
+    fileId,
+    owner,
+  });
+
   const frameSourceUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
     fileContent: frameSource,
@@ -127,6 +137,21 @@ export function PodHoverFrameViewer({
   const vizInstanceKey = `${identifier}${
     isV2 ? `-${editSession.contentRevision}` : ""
   }`;
+
+  const [isReloading, setIsReloading] = useState(false);
+  const reloadFile = useCallback(async () => {
+    setIsReloading(true);
+    try {
+      await mutateFileContent(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      if (isV2) {
+        editSession.remount();
+      }
+    } finally {
+      setIsReloading(false);
+    }
+  }, [editSession, fileId, isV2, mutateFileContent, owner.sId]);
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -170,15 +195,21 @@ export function PodHoverFrameViewer({
         tabsOrder,
         hidden: isArchived,
       }}
-      fullscreen={{
-        isFullscreen,
-        onToggle: () => setIsFullscreen((prev) => !prev),
-      }}
     />
   );
 
+  const showPreviewActions =
+    !(isV2 && isFramePermissionsLoading) && !needsToolConsent && !isReloading;
+  // Consent occupies the viewport; pin/share/edit chrome would sit on top of it.
+  const showToolbar =
+    !(isV2 && isFramePermissionsLoading) && !needsToolConsent && !isReloading;
+
   const body =
     isV2 && isFramePermissionsLoading ? (
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+      </div>
+    ) : isReloading ? (
       <div className="flex h-full items-center justify-center">
         <Spinner />
       </div>
@@ -233,40 +264,67 @@ export function PodHoverFrameViewer({
 
   const chrome = (
     <>
-      <div
-        className={cn(
-          "pointer-events-none absolute right-2 top-2 z-10 transition-opacity",
-          overlayVisible
-            ? "opacity-100"
-            : "opacity-0 group-hover/frame:opacity-100 group-focus-within/frame:opacity-100"
-        )}
-      >
-        <div className="pointer-events-auto flex max-w-[min(100vw-2rem,40rem)] items-center gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
-          {overlayLeading}
-          {toolbar}
-          {controlsPinned && (
-            <Button
-              variant="ghost"
-              size="xs"
-              label={t`Done`}
-              onClick={() => setControlsPinned(false)}
-            />
+      {showToolbar && (
+        <>
+          <div
+            className={cn(
+              "pointer-events-none absolute right-2 top-2 z-10 transition-opacity",
+              overlayVisible
+                ? "opacity-100"
+                : "opacity-0 group-hover/frame:opacity-100 group-focus-within/frame:opacity-100"
+            )}
+          >
+            <div className="pointer-events-auto flex max-w-[min(100vw-2rem,40rem)] items-center gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
+              {overlayLeading}
+              {toolbar}
+              {controlsPinned && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  label={t`Done`}
+                  onClick={() => setControlsPinned(false)}
+                />
+              )}
+            </div>
+          </div>
+          {!overlayVisible && (
+            <div className="absolute right-2 top-2 z-10 opacity-100 group-hover/frame:opacity-0 group-focus-within/frame:opacity-0 sm:hidden">
+              <Button
+                icon={DotsHorizontal}
+                variant="ghost"
+                size="xs"
+                tooltip={t`Frame actions`}
+                className="rounded-lg border border-border/60 bg-background/95 shadow-sm backdrop-blur-sm"
+                onClick={() => setControlsPinned(true)}
+              />
+            </div>
           )}
-        </div>
-      </div>
-      {!overlayVisible && (
-        <div className="absolute right-2 top-2 z-10 opacity-100 group-hover/frame:opacity-0 group-focus-within/frame:opacity-0 sm:hidden">
-          <Button
-            icon={DotsHorizontal}
-            variant="ghost"
-            size="xs"
-            tooltip={t`Frame actions`}
-            className="rounded-lg border border-border/60 bg-background/95 shadow-sm backdrop-blur-sm"
-            onClick={() => setControlsPinned(true)}
-          />
-        </div>
+        </>
       )}
       {body}
+      {showPreviewActions && (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 z-10 transition-opacity",
+            overlayVisible
+              ? "opacity-100"
+              : "opacity-0 group-hover/frame:opacity-100 group-focus-within/frame:opacity-100"
+          )}
+        >
+          <div className="pointer-events-auto">
+            <PreviewActionButtons
+              position="absolute"
+              isFullScreen={isFullscreen}
+              enterFullScreen={() => setIsFullscreen(true)}
+              exitFullScreen={() => setIsFullscreen(false)}
+              shareUrl={fileShare?.shareUrl}
+              reloadFile={() => {
+                void reloadFile();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 

@@ -101,30 +101,6 @@ msgstr "Enregistrer dans « {savePodName} »"
 msgid "Publishing your changes..."
 msgstr "Publication de vos modifications…"
 
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Exit full screen mode"
-msgstr "Quitter le mode plein écran"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Go to full screen mode"
-msgstr "Passer en mode plein écran"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Open in a new tab"
-msgstr "Ouvrir dans un nouvel onglet"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Revert the last change"
-msgstr "Annuler la dernière modification"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "No previous version"
-msgstr "Aucune version précédente"
-
-#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
-msgid "Reload the file"
-msgstr "Recharger le fichier"
-
 #: front/components/assistant/conversation/interactive_content/InteractiveContentContainer.tsx
 #: front/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer.tsx
 msgid "Loading Frame..."

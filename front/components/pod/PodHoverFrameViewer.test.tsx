@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   canWriteFrameSource: true,
+  hasAuthorizedRequiredTools: true,
+  requiredTools: [] as [string, string][],
   iframe: vi.fn((_props: unknown) => null),
 }));
 
@@ -57,6 +59,9 @@ vi.mock(
     }),
   })
 );
+vi.mock("@app/lib/context/clientType", () => ({
+  useClientType: () => "web",
+}));
 vi.mock("@app/lib/swr/files", () => ({
   useFileContent: () => ({ mutateFileContent: vi.fn() }),
   useFileContentByUrl: () => ({
@@ -65,14 +70,23 @@ vi.mock("@app/lib/swr/files", () => ({
     isFileContentLoading: false,
     fileContentError: null,
   }),
+  useShareInteractiveContentFile: () => ({
+    fileShare: { shareUrl: "https://dust.tt/share/frame/token" },
+  }),
 }));
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate",
+  () => ({
+    FrameToolConsentGate: () => <div>tool-consent-gate</div>,
+  })
+);
 vi.mock("@app/lib/swr/frames", () => ({
   useFramePermissions: () => ({
     canWriteFrameSource: mocks.canWriteFrameSource,
     hasFrameFunctions: false,
-    requiredTools: [],
+    requiredTools: mocks.requiredTools,
     isLastPublisher: false,
-    hasAuthorizedRequiredTools: true,
+    hasAuthorizedRequiredTools: mocks.hasAuthorizedRequiredTools,
     isFramePermissionsLoading: false,
     packageRoot: null,
     mutateFramePermissions: vi.fn(),
@@ -86,6 +100,8 @@ const owner = LightWorkspaceFactory.build();
 
 beforeEach(() => {
   mocks.canWriteFrameSource = true;
+  mocks.hasAuthorizedRequiredTools = true;
+  mocks.requiredTools = [];
 });
 
 afterEach(() => {
@@ -175,5 +191,35 @@ describe("PodHoverFrameViewer", () => {
     expect(
       screen.getByRole("button", { name: "Hide banner" })
     ).toBeInTheDocument();
+  });
+
+  it("hides the toolbar while the tool consent screen is shown", () => {
+    mocks.hasAuthorizedRequiredTools = false;
+    mocks.requiredTools = [["gmail", "send_email"]];
+
+    render(
+      <PodHoverFrameViewer
+        owner={owner}
+        spaceId="vlt_project"
+        fileId="fil_frame"
+        fileContent="bundle"
+        vizUrl="https://viz.dust.tt"
+        identifier="viz-test"
+        isPodEditor={true}
+        isPodMember={true}
+        frameId="fil_frame"
+        framePath="pod-vlt_project/App/manifest.json"
+        pinnedFramePath={null}
+        fileTabs={[]}
+        overlayLeading={<button type="button">Hide banner</button>}
+      />
+    );
+
+    expect(screen.getByText("tool-consent-gate")).toBeInTheDocument();
+    expect(screen.queryByText("edit-controls")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Hide banner" })
+    ).not.toBeInTheDocument();
+    expect(mocks.iframe).not.toHaveBeenCalled();
   });
 });

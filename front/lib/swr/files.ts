@@ -689,22 +689,29 @@ export function useShareInteractiveContentFile({
   fileId,
   owner,
   cacheKey,
+  disabled = false,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
   cacheKey?: string | null;
+  disabled?: boolean;
 }) {
   const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
 
   const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
+  const isDisabled = disabled || !fileId;
 
-  const swrKey = cacheKey
-    ? `/api/w/${owner.sId}/files/${fileId}/share?v=${cacheKey}`
-    : `/api/w/${owner.sId}/files/${fileId}/share`;
+  const swrKey = isDisabled
+    ? null
+    : cacheKey
+      ? `/api/w/${owner.sId}/files/${fileId}/share?v=${cacheKey}`
+      : `/api/w/${owner.sId}/files/${fileId}/share`;
 
-  const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher, {
+    disabled: isDisabled,
+  });
 
   const doShare = async (
     shareScope: FileShareScope
