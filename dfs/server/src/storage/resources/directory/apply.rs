@@ -1,7 +1,9 @@
-use dfs_protocol::rpc::{CreateOperation, MoveOperation, Mutation, ObjectKind, RemoveOperation};
-use foundationdb::Transaction;
+use std::collections::HashSet;
 
-use super::{DirectoryResource, Error};
+use dfs_protocol::rpc::{CreateOperation, MoveOperation, Mutation, ObjectKind, RemoveOperation};
+use foundationdb::{Transaction, tuple::pack};
+
+use super::{DirectoryResource, Error, VIRTUAL_SHARED_NAME};
 use crate::{
     clock,
     storage::{
@@ -64,12 +66,156 @@ impl DirectoryResource {
         })
     }
 
+    /**
+     * @cc [owner:spolu,label:backend;security] directory-apply-move-authorization
+     * Move MUST evaluate modes in the caller's transaction and require read and write on the
+     * source and target directories and read on the moved object. Missing permissions MUST return
+     * Forbidden without writes. Replacement is authorized by access to the target directory.
+     */
+    /**
+     * @cc [owner:spolu,label:backend;error-handling] directory-apply-move-validation
+     * With a valid name, Move MUST reject the tenant root with Forbidden. For authorized objects,
+     * a wrong source binding MUST return Object(NotFound), and moving a directory into itself or a
+     * descendant MUST return InvalidMove. A destination occupied by another object MUST fail with
+     * AlreadyExists unless replace is set; replacements MUST have the same kind, and directories
+     * MUST be empty.
+     * Renaming an object to its current name MUST succeed without replace.
+     * All validation MUST complete before staging writes.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] directory-apply-move-attributes
+     * Move MUST preserve the object's ID, content, metadata, and grants. Besides parent and name,
+     * only its attr_version and ctime MUST change. Each distinct parent MUST advance attr_version
+     * and content_version once and set mtime and ctime, including for a rename to the current name.
+     * The result MUST include the moved object and each distinct parent immediately after the
+     * operation. Bindings, attributes, and replacement cleanup MUST change atomically.
+     */
     pub async fn apply_move(
-        _tx: &Transaction,
-        _session: &SessionResource,
-        _operation: MoveOperation,
+        tx: &Transaction,
+        session: &SessionResource,
+        operation: MoveOperation,
     ) -> Result<Mutation, storage::Error<Error>> {
-        Err(Error::UnsupportedOperation.into())
+        Self::validate_name(&operation.name)?;
+        if operation.object_id == session.tenant.root_id {
+            return Err(Error::Forbidden.into());
+        }
+
+        // Check permissions using the same fetched records.
+        let target_id = operation.target_id.unwrap_or(operation.parent_id);
+        let mut objects = ObjectResource::modes_for_session(
+            tx,
+            session,
+            &[operation.parent_id, target_id, operation.object_id],
+        )
+        .await?
+        .into_iter();
+        let (source, source_mode) = objects
+            .next()
+            .flatten()
+            .ok_or(Error::Object(object::Error::NotFound))?;
+        let (target, target_mode) = objects
+            .next()
+            .flatten()
+            .ok_or(Error::Object(object::Error::NotFound))?;
+        let (mut object, mode) = objects
+            .next()
+            .flatten()
+            .ok_or(Error::Object(object::Error::NotFound))?;
+        if !source_mode.can_read()
+            || !source_mode.can_write()
+            || !target_mode.can_read()
+            || !target_mode.can_write()
+            || !mode.can_read()
+        {
+            return Err(Error::Forbidden.into());
+        }
+        let mut source = Self::try_from(source)?;
+        let mut target = Self::try_from(target)?;
+        Self::supported_kind(object.kind.into())?;
+
+        // Check the source binding and reserve shared under the tenant root.
+        if object.parent_id != Some(operation.parent_id)
+            || source.lookup(tx, &object.name).await? != Some(object.object_id)
+        {
+            return Err(Error::Object(object::Error::NotFound).into());
+        }
+        if target.is_tenant_root() && operation.name == VIRTUAL_SHARED_NAME {
+            return Err(Error::AlreadyExists.into());
+        }
+
+        // Follow stored parents with conflict tracking to prevent directory cycles.
+        if object.kind == ObjectKind::Directory {
+            let mut ancestor = target.object.clone();
+            let mut visited = HashSet::new();
+            loop {
+                if ancestor.object_id == object.object_id {
+                    return Err(Error::InvalidMove.into());
+                }
+                if !visited.insert(ancestor.object_id) {
+                    return Err(Error::Object(object::Error::InvalidAncestry).into());
+                }
+                let Some(parent_id) = ancestor.parent_id else {
+                    break;
+                };
+                ancestor = ObjectResource::fetch(tx, &session.tenant, &parent_id)
+                    .await?
+                    .ok_or(Error::Object(object::Error::InvalidAncestry))?;
+            }
+        }
+
+        // Validate an occupied destination before removing it.
+        let destination = target.lookup(tx, &operation.name).await?;
+        let replaced = match destination {
+            Some(id) if id != object.object_id => {
+                if !operation.replace {
+                    return Err(Error::AlreadyExists.into());
+                }
+                let replaced = ObjectResource::fetch(tx, &session.tenant, &id)
+                    .await?
+                    .ok_or(Error::Object(object::Error::NotFound))?;
+                if replaced.parent_id != Some(target_id) || replaced.name != operation.name {
+                    return Err(Error::Object(object::Error::InvalidAncestry).into());
+                }
+                if replaced.kind != object.kind {
+                    return Err(Error::InvalidKind.into());
+                }
+                if replaced.kind == ObjectKind::Directory {
+                    let directory = Self::try_from(replaced.clone())?;
+                    if !directory.list(tx, None, 1).await?.entries.is_empty() {
+                        return Err(Error::NotEmpty.into());
+                    }
+                }
+                Some(replaced)
+            }
+            _ => None,
+        };
+        let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
+
+        // Removal validates stored grants before writing. The moved object's grants stay intact.
+        if let Some(replaced) = replaced {
+            replaced.remove(tx).await?;
+        }
+        tx.clear(&source.child_key(&object.name));
+        tx.set(
+            &target.child_key(&operation.name),
+            &pack(&object.object_id.as_bytes().as_slice()),
+        );
+        object.parent_id = Some(target_id);
+        object.name = operation.name;
+        object.record_attr_change(tx, now_ms);
+        source.object.record_content_change(tx, now_ms);
+
+        // A same-directory rename updates and returns its parent only once.
+        let mut related = vec![source.object.attr(tx, source_mode).await?];
+        if target_id != operation.parent_id {
+            target.object.record_content_change(tx, now_ms);
+            related.push(target.object.attr(tx, target_mode).await?);
+        }
+        // Both parents have read/write, so inherited permissions and the object's mode are unchanged.
+        Ok(Mutation {
+            object: Some(object.attr(tx, mode).await?),
+            related,
+        })
     }
 
     /**

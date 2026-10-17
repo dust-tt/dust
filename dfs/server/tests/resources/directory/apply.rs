@@ -5,7 +5,7 @@ use dfs_protocol::rpc::{CreateOperation, GrantUpdate, RemoveOperation};
 use super::*;
 use crate::object::{allow, deny};
 
-async fn writer() -> Result<SessionResource> {
+pub(super) async fn writer() -> Result<SessionResource> {
     let tenant = create_tenant_root().await?;
     let tx = fdb::database()?.create_trx()?;
     let mut root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
@@ -24,7 +24,7 @@ async fn writer() -> Result<SessionResource> {
     Ok(SessionResource::new(&tenant, vec!["writer".to_owned()])?.0)
 }
 
-fn create(parent_id: ObjectId, name: &str, kind: ObjectKind) -> CreateOperation {
+pub(super) fn create(parent_id: ObjectId, name: &str, kind: ObjectKind) -> CreateOperation {
     CreateOperation {
         parent_id,
         object_id: ObjectId::new_v7(),

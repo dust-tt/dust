@@ -109,6 +109,19 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             assert_eq!(parent.mode, 0o700);
             assert_eq!(parent.store_version, attr.store_version);
             commit_version = Some(attr.store_version);
+        } else if index == 3 {
+            assert!(result.error.is_none());
+            let mutation = result.mutation.context("missing move mutation")?;
+            let attr = mutation.object.context("missing moved file")?;
+            assert_eq!(attr.id, file.into());
+            assert_eq!(attr.name, "renamed");
+            assert_eq!((attr.attr_version, attr.content_version), (2, 1));
+            assert_eq!(Some(attr.store_version), commit_version);
+            assert_eq!(mutation.related.len(), 1);
+            let parent = &mutation.related[0];
+            assert_eq!(parent.id, tenant.root_id.into());
+            assert_eq!((parent.attr_version, parent.content_version), (3, 3));
+            assert_eq!(Some(parent.store_version), commit_version);
         } else if index == 4 {
             assert!(result.error.is_none());
             let mutation = result.mutation.context("missing removal mutation")?;
@@ -116,7 +129,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             assert_eq!(mutation.related.len(), 1);
             let parent = &mutation.related[0];
             assert_eq!(parent.id, tenant.root_id.into());
-            assert_eq!((parent.attr_version, parent.content_version), (3, 3));
+            assert_eq!((parent.attr_version, parent.content_version), (4, 4));
             assert_eq!(Some(parent.store_version), commit_version);
             let tx = fdb::database()?.create_trx()?;
             tx.set_read_version(parent.store_version);

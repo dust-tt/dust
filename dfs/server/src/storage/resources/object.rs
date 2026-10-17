@@ -427,7 +427,7 @@ impl ObjectResource {
 
     /**
      * @cc [owner:spolu,label:backend] object-remove-storage
-     * Callers MUST fetch and authorize the object in this transaction and verify directory
+     * Callers MUST fetch the object and authorize its removal in this transaction and verify directory
      * emptiness before removal. Removal MUST clear attributes, metadata, xattrs, file blocks, and
      * all forward and reverse grants in the caller's transaction. Stored grants MUST be decoded
      * before staging writes. The caller MUST remove the parent binding in the same transaction.

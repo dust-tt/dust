@@ -15,6 +15,7 @@ use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpack};
 
 mod apply;
+mod apply_move;
 mod lookup;
 pub(crate) use apply::{
     apply_create_conflicts_with_grant_revocation,
@@ -23,6 +24,13 @@ pub(crate) use apply::{
     apply_remove_clears_owned_records_and_updates_parent, apply_remove_conflicts_with_new_children,
     apply_remove_receipt_preserves_deleted_parent_attributes,
     apply_remove_rejections_leave_no_staged_writes,
+};
+pub(crate) use apply_move::{
+    apply_move_preserves_records_and_updates_versions,
+    apply_move_receipt_preserves_per_operation_results,
+    apply_move_rejections_leave_no_staged_writes, apply_move_replaces_files_and_empty_directories,
+    apply_moves_in_separate_transactions_conflict_on_ancestry,
+    apply_moves_with_disjoint_targets_cannot_create_a_cycle,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
 

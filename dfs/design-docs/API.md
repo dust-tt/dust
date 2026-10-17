@@ -210,7 +210,7 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Search` | `r` on each hit and supplied scope directory. |
 | create | `r+w` on the parent. |
 | update, write | `r+w` on the target. |
-| move | `r+w` on the source and target directories. |
+| move | `r+w` on the source and target directories; `r` on the moved object. |
 | remove | `r+w` on the target and its parent. |
 
 Namespace permissions are checked on each participating object using its effective read/write
@@ -642,7 +642,8 @@ Mutation {
 ```
 
 Operations with overlapping targets run in request order; disjoint batches run concurrently within
-one FDB transaction. Later operations in a batch see earlier successful changes, allowing a request
+one FDB transaction. All batches containing a Move are merged to prevent cycles across moves.
+Later operations in a batch see earlier successful changes, allowing a request
 to create a directory, create a file within it, and write that file. Transaction write budgets may
 reject the request with `CAPACITY` even when its input fits. All required results and attributes are
 checked against the 4 MiB encoded response budget before substituting the commit `store_version`.
@@ -655,7 +656,8 @@ cannot be reported as isolated operation failures. No results are returned befor
 
 Returned attributes reflect state immediately after each operation; later operations do not rewrite
 earlier results. Clients process successful results in request order, keeping the latest attributes
-and applying removals. Create and removal return their updated parent in `mutation.related`.
+and applying removals. Create and removal return their updated parent in `mutation.related`;
+Move returns each distinct parent.
 Invalidate cached attributes for affected parents omitted from results, and affected listing pages.
 
 Every attribute returned in `mutation.object` or `mutation.related` across the batch carries the
@@ -753,9 +755,11 @@ MoveOperation {
 ```
 
 **Successful result:** `mutation.object` contains the moved object's attributes after the move.
+`mutation.related` contains the updated source and target directories, once each.
 The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
 An occupied destination fails with `ALREADY_EXISTS`, except when renaming an object to its current
-name. Moving a directory into itself or a descendant is rejected.
+name. Moving a directory into itself or a descendant fails with `INVALID_INPUT`. Moving the tenant
+root fails with `FORBIDDEN`; the name `shared` remains reserved under it.
 
 ### remove operation
 

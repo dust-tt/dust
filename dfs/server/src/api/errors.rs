@@ -129,6 +129,7 @@ impl From<directory::Error> for ErrorCode {
         match error {
             directory::Error::InvalidName
             | directory::Error::InvalidKind
+            | directory::Error::InvalidMove
             | directory::Error::InvalidPageLimit
             | directory::Error::InvalidCursor => ErrorCode::InvalidInput,
             directory::Error::NameTooLong => ErrorCode::NameTooLong,

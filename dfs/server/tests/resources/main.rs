@@ -31,6 +31,12 @@ fn resources() -> Result<()> {
         directory::apply_remove_rejections_leave_no_staged_writes().await?;
         directory::apply_remove_receipt_preserves_deleted_parent_attributes().await?;
         directory::apply_remove_conflicts_with_new_children().await?;
+        directory::apply_move_preserves_records_and_updates_versions().await?;
+        directory::apply_move_receipt_preserves_per_operation_results().await?;
+        directory::apply_move_replaces_files_and_empty_directories().await?;
+        directory::apply_move_rejections_leave_no_staged_writes().await?;
+        directory::apply_moves_in_separate_transactions_conflict_on_ancestry().await?;
+        directory::apply_moves_with_disjoint_targets_cannot_create_a_cycle().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;
         directory::child_creation_rejects_old_ids_and_accepts_recent_ids().await?;
         directory::shared_name_is_only_reserved_under_the_tenant_root().await?;
