@@ -164,7 +164,7 @@ const _Conversation: FC<ConversationProps> = ({
       {!showCommandSelector && !inlineSelector && (
         <Box marginTop={0} paddingLeft={1}>
           <Text dimColor>
-            ↵ to send · \↵ for new line · ESC to clear
+            ↵ to send · ⇧↵ or \↵ for new line · ESC to clear
             {conversationId && " · Ctrl+G to open in browser"}
           </Text>
         </Box>

@@ -671,7 +671,7 @@ const CliChat: FC<CliChatProps> = ({
   const showHelp = useCallback(() => {
     const helpText =
       "Commands: /help /switch /new /resume /attach /clear-files /auto /exit\n" +
-      "Shortcuts: Enter=send  \\Enter=newline  ESC=clear/cancel  Ctrl+G=open in browser";
+      "Shortcuts: Enter=send  Shift+Enter or \\Enter=newline  ESC=clear/cancel  Ctrl+G=open in browser";
     const lines = helpText.split("\n");
     setConversationItems((prev) => [
       ...prev,
@@ -1637,6 +1637,25 @@ const CliChat: FC<CliChatProps> = ({
       } else if (userInput) {
         setUserInput("");
         setCursorPosition(0);
+      }
+      return;
+    }
+
+    // Shift+Enter (CSI-u or modifyOtherKeys) and Alt+Enter add a new line.
+    // Ink does not decode these sequences: it strips the leading ESC and
+    // reports the remainder as plain input, without `key.return`.
+    const isNewlineKey =
+      input === "[13;2u" ||
+      input === "[27;2;13~" ||
+      (input === "\r" && !key.return);
+    if (isNewlineKey) {
+      if (!isInCommandMode) {
+        setUserInput(
+          userInput.slice(0, cursorPosition) +
+            "\n" +
+            userInput.slice(cursorPosition)
+        );
+        setCursorPosition(cursorPosition + 1);
       }
       return;
     }
