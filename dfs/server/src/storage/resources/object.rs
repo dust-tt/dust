@@ -425,6 +425,34 @@ impl ObjectResource {
         Ok(())
     }
 
+    /**
+     * @cc [owner:spolu,label:backend] object-remove-storage
+     * Callers MUST fetch and authorize the object in this transaction and verify directory
+     * emptiness before removal. Removal MUST clear attributes, metadata, xattrs, file blocks, and
+     * all forward and reverse grants in the caller's transaction. Stored grants MUST be decoded
+     * before staging writes. The caller MUST remove the parent binding in the same transaction.
+     */
+    pub(in crate::storage::resources) async fn remove(
+        &self,
+        tx: &Transaction,
+    ) -> Result<(), storage::Error<Error>> {
+        let grants = self.load_grants(tx).await?;
+        for grant in grants {
+            self.write_grant(tx, &grant, true)?;
+        }
+        tx.clear(&Self::object_key(&self.tenant.tenant_id, &self.object_id));
+        tx.clear(&Self::metadata_key(&self.tenant.tenant_id, &self.object_id));
+        let metadata = tenant_subspace(&self.tenant.tenant_id)
+            .subspace(&(METADATA_FAMILY, self.object_id.as_bytes().as_slice()));
+        let (begin, end) = metadata.range();
+        tx.clear_range(&begin, &end);
+        file::FileResource::clear_blocks(tx, self);
+
+        // Hints re-read object existence. Reusing an ID could match an old grants_version, but
+        // populating nonempty grants requires the tenant key, which already controls authorization.
+        Ok(())
+    }
+
     fn save_attributes(&self, tx: &Transaction) {
         tx.set(
             &Self::object_key(&self.tenant.tenant_id, &self.object_id),

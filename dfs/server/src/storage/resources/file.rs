@@ -246,6 +246,13 @@ impl FileResource {
         Ok(data)
     }
 
+    pub(super) fn clear_blocks(tx: &Transaction, object: &ObjectResource) {
+        let blocks = tenant_subspace(&object.tenant.tenant_id)
+            .subspace(&(FAMILY, object.object_id.as_bytes().as_slice()));
+        let (begin, end) = blocks.range();
+        tx.clear_range(&begin, &end);
+    }
+
     fn block_key(&self, index: u64) -> Vec<u8> {
         tenant_subspace(&self.object.tenant.tenant_id).pack(&(
             FAMILY,

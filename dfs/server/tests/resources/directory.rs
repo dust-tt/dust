@@ -20,6 +20,9 @@ pub(crate) use apply::{
     apply_create_conflicts_with_grant_revocation,
     apply_create_receipt_preserves_per_operation_results,
     apply_create_rejections_leave_no_staged_writes,
+    apply_remove_clears_owned_records_and_updates_parent, apply_remove_conflicts_with_new_children,
+    apply_remove_receipt_preserves_deleted_parent_attributes,
+    apply_remove_rejections_leave_no_staged_writes,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
 

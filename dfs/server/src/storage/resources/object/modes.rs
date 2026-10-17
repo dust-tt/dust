@@ -203,7 +203,10 @@ impl ObjectResource {
         Ok(results)
     }
 
-    async fn load_grants(&self, tx: &Transaction) -> Result<Vec<Grant>, storage::Error<Error>> {
+    pub(super) async fn load_grants(
+        &self,
+        tx: &Transaction,
+    ) -> Result<Vec<Grant>, storage::Error<Error>> {
         let mut grants = Vec::new();
         let mut next_range = Some(RangeOption::from(self.grant_subspace().range()));
         let mut iteration = 1;

@@ -134,6 +134,7 @@ impl From<directory::Error> for ErrorCode {
             directory::Error::NameTooLong => ErrorCode::NameTooLong,
             directory::Error::NotDirectory => ErrorCode::NotDirectory,
             directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            directory::Error::NotEmpty => ErrorCode::NotEmpty,
             directory::Error::Forbidden => ErrorCode::Forbidden,
             directory::Error::UnsupportedKind
             | directory::Error::UnsupportedOperation

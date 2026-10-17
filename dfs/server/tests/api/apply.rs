@@ -93,6 +93,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
         .await?
         .into_inner();
     assert_eq!(batch.results.len(), count);
+    let mut commit_version = None;
     for (index, result) in batch.results.into_iter().enumerate() {
         if index == 0 {
             assert!(result.error.is_none());
@@ -107,12 +108,19 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             assert_eq!((parent.attr_version, parent.content_version), (2, 2));
             assert_eq!(parent.mode, 0o700);
             assert_eq!(parent.store_version, attr.store_version);
+            commit_version = Some(attr.store_version);
+        } else if index == 4 {
+            assert!(result.error.is_none());
+            let mutation = result.mutation.context("missing removal mutation")?;
+            assert!(mutation.object.is_none());
+            assert_eq!(mutation.related.len(), 1);
+            let parent = &mutation.related[0];
+            assert_eq!(parent.id, tenant.root_id.into());
+            assert_eq!((parent.attr_version, parent.content_version), (3, 3));
+            assert_eq!(Some(parent.store_version), commit_version);
             let tx = fdb::database()?.create_trx()?;
-            tx.set_read_version(attr.store_version);
-            let object = ObjectResource::fetch(&tx, &tenant, &file)
-                .await?
-                .context("missing committed file")?;
-            assert_eq!(object.name, "file");
+            tx.set_read_version(parent.store_version);
+            assert!(ObjectResource::fetch(&tx, &tenant, &file).await?.is_none());
             let root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
                 .await?
                 .context("missing committed parent")?;
