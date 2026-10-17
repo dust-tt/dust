@@ -376,6 +376,64 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).toBe(true);
   });
 
+  it("writes nothing when only unavailable model calls ran and nothing was billed", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { name: `Attribution ${generateRandomModelSId()}` }
+    );
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+    });
+    const { run } = await RunFactory.createWithUnavailableUsage(auth);
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig: agentConfiguration,
+        runIds: [run.dustRunId],
+      }
+    );
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: agentMessage.agentMessageId,
+      costCredits: null,
+    });
+
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId: agentMessage.sId, conversationId: conversation.sId }
+    );
+
+    expect(result).toEqual(new Ok(undefined));
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessage.agentMessageId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(items).toHaveLength(0);
+  });
+
+  it("fails when a reported model call was never billed", async () => {
+    const { auth, conversationId, agentMessageId, agentMessageModelId } =
+      await setupSettledMessageWithUsage();
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId,
+      costCredits: null,
+    });
+
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId, conversationId }
+    );
+
+    expect(result.isErr() && result.error.code).toBe("no_billed_credits");
+  });
+
   it("keeps the amounts of the last reconciliation when a later pass does not reconcile", async () => {
     const {
       auth,

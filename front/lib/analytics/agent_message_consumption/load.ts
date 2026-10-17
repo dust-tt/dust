@@ -1,3 +1,4 @@
+import { isUnavailableRunUsage } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
   canEnableSkill,
@@ -195,6 +196,11 @@ async function loadAnalyticsUser({
  * is restricted to its reconciled attribution items, which only cover the executions billed before
  * the message failed.
  */
+/**
+ * @cc [owner:sfriquet,label:product;backend] unbilled-unavailable-calls-not-indexed
+ * A message whose `costCredits` is null and whose billed run usages are all `unavailable` MUST
+ * return null. A null `costCredits` alongside a reported billed run usage MUST NOT return null.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
@@ -255,6 +261,12 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   });
   const billedUsages = usages.filter(isBilledRunUsage);
   if (billedUsages.length === 0) {
+    return null;
+  }
+  if (
+    agentMessage.costCredits === null &&
+    billedUsages.every(isUnavailableRunUsage)
+  ) {
     return null;
   }
 
