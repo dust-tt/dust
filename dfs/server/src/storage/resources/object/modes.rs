@@ -1,11 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use dfs_protocol::{
     ObjectId,
-    rpc::{Grant, ObjectKind, grant},
+    rpc::{Grant, grant},
 };
 use foundationdb::{FdbBindingError, RangeOption, Transaction};
 use futures::{StreamExt, TryStreamExt, stream};
@@ -70,55 +67,9 @@ impl ObjectResource {
         session: &SessionResource,
         object_ids: &[ObjectId],
     ) -> Result<Vec<Option<(Self, Mode)>>, storage::Error<Error>> {
-        for id in object_ids {
-            id.validate().map_err(|_| Error::InvalidId)?;
-        }
         let tenant = &session.tenant;
         let hints = &session.tree_hints;
-        let mut pending = object_ids.to_vec();
-        let mut prefetched = HashMap::new();
-        let mut objects = HashMap::new();
-        let mut missing = HashSet::new();
-
-        while !pending.is_empty() {
-            let predicted = hints.predict(&tenant.tenant_id, &pending).await;
-            let reads = stream::iter(predicted.into_iter().filter(|id| {
-                !prefetched.contains_key(id) && !objects.contains_key(id) && !missing.contains(id)
-            }))
-            .map(|id| async move {
-                let value = tx
-                    .get(&Self::object_key(&tenant.tenant_id, &id), false)
-                    .await
-                    .map_err(FdbBindingError::from)?;
-                Ok::<_, storage::Error<Error>>((id, value))
-            })
-            .buffer_unordered(CONCURRENT_READS)
-            .try_collect::<Vec<_>>()
-            .await?;
-            prefetched.extend(reads);
-
-            let mut next = HashSet::new();
-            while let Some(id) = pending.pop() {
-                if objects.contains_key(&id) || missing.contains(&id) {
-                    continue;
-                }
-                let Some(value) = prefetched.remove(&id) else {
-                    next.insert(id);
-                    continue;
-                };
-                let Some(value) = value else {
-                    missing.insert(id);
-                    continue;
-                };
-                // Decode only actual ancestors; obsolete hints may point to unrelated records.
-                let object = Self::from_value(tenant, &id, &value)?;
-                if let Some(parent_id) = object.parent_id {
-                    pending.push(parent_id);
-                }
-                objects.insert(id, object);
-            }
-            pending.extend(next);
-        }
+        let objects = hints.fetch_ancestry(tx, tenant, object_ids).await?;
 
         let mut grants_by_object = hints
             .cached_grants(
@@ -145,34 +96,22 @@ impl ObjectResource {
         let mut resolved = HashMap::new();
         let mut results = Vec::with_capacity(object_ids.len());
         for id in object_ids {
-            if missing.contains(id) {
+            if !objects.contains_key(id) {
                 results.push(None);
                 continue;
             }
             let mut path = Vec::new();
-            let mut visited = HashSet::new();
             let mut current = *id;
             let mut mode = loop {
                 if let Some(mode) = resolved.get(&current) {
                     break *mode;
                 }
-                if !visited.insert(current) {
-                    return Err(Error::InvalidAncestry.into());
-                }
                 let object = objects.get(&current).ok_or(Error::InvalidAncestry)?;
                 path.push(current);
                 if current == tenant.root_id {
-                    if object.parent_id.is_some() || object.kind != ObjectKind::Directory {
-                        return Err(Error::InvalidAncestry.into());
-                    }
                     break Mode::default();
                 }
-                let parent_id = object.parent_id.ok_or(Error::InvalidAncestry)?;
-                let parent = objects.get(&parent_id).ok_or(Error::InvalidAncestry)?;
-                if parent.kind != ObjectKind::Directory {
-                    return Err(Error::InvalidAncestry.into());
-                }
-                current = parent_id;
+                current = object.parent_id.ok_or(Error::InvalidAncestry)?;
             };
             for id in path.into_iter().rev() {
                 let grants = grants_by_object.get(&id).ok_or(Error::InvalidAncestry)?;
@@ -197,7 +136,10 @@ impl ObjectResource {
                         },
                     ))
                 }),
-                missing,
+                object_ids
+                    .iter()
+                    .filter(|id| !objects.contains_key(id))
+                    .copied(),
             )
             .await;
         Ok(results)

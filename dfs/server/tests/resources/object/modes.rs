@@ -386,6 +386,172 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     cleanup(&tenant).await
 }
 
+pub(crate) async fn ancestry_reads_follow_stale_hints_without_reading_grants() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (mut session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
+    session.tree_hints = Arc::new(TreeHints::new(32));
+    let hints = &session.tree_hints;
+    let root = ObjectResource::new_root(&tenant)?;
+    let branch = child(&tenant, root.object_id)?;
+    let destination = child(&tenant, root.object_id)?;
+    let leaf = child(&tenant, branch.object_id)?;
+    let tx = fdb::database()?.create_trx()?;
+    root.create(&tx, &[allow("reader", 6)]).await?;
+    branch.create(&tx, &[]).await?;
+    destination.create(&tx, &[deny(4)]).await?;
+    leaf.create(&tx, &[]).await?;
+    tx.commit().await?;
+
+    let old = fdb::database()?.create_trx()?;
+    let objects = hints
+        .fetch_ancestry(
+            &old,
+            &tenant,
+            &[leaf.object_id, leaf.object_id, ObjectId::new_v7()],
+        )
+        .await?;
+    assert_eq!(objects.len(), 3);
+    for id in [root.object_id, branch.object_id, leaf.object_id] {
+        assert!(
+            objects
+                .get(&id)
+                .context("missing ancestor")?
+                .metadata
+                .is_none()
+        );
+        assert!(!grants_were_read(&old, &tenant, id).await?);
+    }
+    let old_version = old.get_read_version().await?;
+    // An ancestry read does not populate the grant cache.
+    assert_eq!(
+        bits(ObjectResource::modes_for_session(&old, &session, &[leaf.object_id]).await?),
+        [Some(6)]
+    );
+    assert!(grants_were_read(&old, &tenant, root.object_id).await?);
+
+    let warm = fdb::database()?.create_trx()?;
+    hints
+        .fetch_ancestry(&warm, &tenant, &[leaf.object_id])
+        .await?;
+    assert_eq!(
+        bits(ObjectResource::modes_for_session(&warm, &session, &[leaf.object_id]).await?),
+        [Some(6)]
+    );
+    for id in [root.object_id, branch.object_id, leaf.object_id] {
+        assert!(!grants_were_read(&warm, &tenant, id).await?);
+    }
+
+    let moved = fdb::database()?.create_trx()?;
+    set_parent(&moved, &tenant, leaf.object_id, Some(destination.object_id)).await?;
+    // The stale hinted parent is now irrelevant, even if its record cannot be decoded.
+    moved.set(
+        &tenant_subspace(&tenant.tenant_id)
+            .pack(&("object", branch.object_id.as_bytes().as_slice())),
+        &[0xff],
+    );
+    moved.commit().await?;
+    let fresh = fdb::database()?.create_trx()?;
+    let objects = hints
+        .fetch_ancestry(&fresh, &tenant, &[leaf.object_id])
+        .await?;
+    assert_eq!(objects.len(), 3);
+    assert_eq!(
+        objects
+            .get(&leaf.object_id)
+            .context("missing moved leaf")?
+            .parent_id,
+        Some(destination.object_id)
+    );
+    assert!(objects.contains_key(&destination.object_id));
+    assert!(!objects.contains_key(&branch.object_id));
+    for id in [root.object_id, destination.object_id, leaf.object_id] {
+        assert!(!grants_were_read(&fresh, &tenant, id).await?);
+    }
+    assert_eq!(
+        bits(ObjectResource::modes_for_session(&fresh, &session, &[leaf.object_id]).await?),
+        [Some(2)]
+    );
+
+    // Hints learned at a newer version must not change the older transaction's ancestry.
+    let objects = hints
+        .fetch_ancestry(&old, &tenant, &[leaf.object_id])
+        .await?;
+    assert_eq!(
+        objects
+            .get(&leaf.object_id)
+            .context("missing original leaf")?
+            .parent_id,
+        Some(branch.object_id)
+    );
+    assert!(objects.contains_key(&branch.object_id));
+    assert!(!objects.contains_key(&destination.object_id));
+    assert_eq!(old.get_read_version().await?, old_version);
+    cleanup(&tenant).await
+}
+
+pub(crate) async fn ancestry_reads_validate_paths_and_conflict_with_reparenting() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let hints = TreeHints::new(32);
+    let root = ObjectResource::new_root(&tenant)?;
+    let a = child(&tenant, root.object_id)?;
+    let b = child(&tenant, root.object_id)?;
+    let leaf = child(&tenant, a.object_id)?;
+    let setup = fdb::database()?.create_trx()?;
+    for object in [&root, &a, &b, &leaf] {
+        object.create(&setup, &[]).await?;
+    }
+    setup.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    assert!(hints.fetch_ancestry(&tx, &tenant, &[]).await?.is_empty());
+    assert!(
+        hints
+            .fetch_ancestry(&tx, &tenant, &[ObjectId::new_v7()])
+            .await?
+            .is_empty()
+    );
+    assert!(matches!(
+        hints
+            .fetch_ancestry(&tx, &tenant, &[ObjectId::default()])
+            .await,
+        Err(storage::Error::Resource(object::Error::InvalidId))
+    ));
+    hints
+        .fetch_ancestry(&tx, &tenant, &[leaf.object_id])
+        .await?;
+    let concurrent = fdb::database()?.create_trx()?;
+    set_parent(&concurrent, &tenant, a.object_id, Some(b.object_id)).await?;
+    concurrent.commit().await?;
+    // A write ensures FDB checks this transaction's recorded ancestry reads at commit.
+    tx.set(
+        &tenant_subspace(&tenant.tenant_id).pack(&"conflict-test"),
+        &[],
+    );
+    let error: FdbError = tx
+        .commit()
+        .await
+        .err()
+        .context("expected ancestry conflict")?
+        .into();
+    assert_eq!(error.code(), 1020);
+
+    let tx = fdb::database()?.create_trx()?;
+    assert!(
+        hints
+            .fetch_ancestry(&tx, &tenant, &[leaf.object_id])
+            .await?
+            .contains_key(&b.object_id)
+    );
+    for parent in [None, Some(ObjectId::new_v7()), Some(leaf.object_id)] {
+        set_parent(&tx, &tenant, a.object_id, parent).await?;
+        assert!(matches!(
+            hints.fetch_ancestry(&tx, &tenant, &[leaf.object_id]).await,
+            Err(storage::Error::Resource(object::Error::InvalidAncestry))
+        ));
+    }
+    cleanup(&tenant).await
+}
+
 pub(crate) async fn modes_for_session_isolate_tenants_and_reject_invalid_ancestry() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let (mut other, _) = TenantResource::new(format!("{}/other", tenant.tenant_id))?;

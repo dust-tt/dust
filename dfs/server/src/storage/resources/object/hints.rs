@@ -4,9 +4,20 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use dfs_protocol::{ObjectId, rpc::Grant};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{Grant, ObjectKind},
+};
+use foundationdb::{FdbBindingError, Transaction};
+use futures::{StreamExt, TryStreamExt, stream};
 use lru::LruCache;
 use tokio::sync::Mutex;
+
+use super::{Error, ObjectResource};
+use crate::storage::{
+    self,
+    resources::{CONCURRENT_READS, tenant::TenantResource},
+};
 
 const TREE_HINTS_MAX_ENTRIES: usize = 100_000;
 static TREE_HINTS: OnceLock<Arc<TreeHints>> = OnceLock::new();
@@ -51,6 +62,106 @@ impl TreeHints {
         Self {
             entries: Mutex::new(NonZeroUsize::new(capacity_entries).map(LruCache::sparse)),
         }
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] tree-hints-fetch-ancestry
+     * The result MUST contain each existing requested object and its actual ancestors through the
+     * tenant root, keyed by ID and without metadata. Missing requested objects MUST be omitted.
+     * Every returned object MUST be read in the caller's transaction with conflict tracking;
+     * hints MUST only schedule reads. Changed parents MUST be followed, and obsolete hinted
+     * records MUST NOT be decoded or returned. Missing, non-directory, or cyclic ancestry MUST
+     * fail with InvalidAncestry. Invalid requested IDs MUST fail with InvalidId.
+     */
+    /**
+     * @cc [owner:spolu,label:backend;performance] tree-hints-ancestry-cache
+     * Ancestry reads MUST NOT read grants or add, replace, or remove cache entries. Reading hints
+     * MUST still refresh LRU recency. Cache entries MUST retain complete grants and their version;
+     * only modes_for_session populates them after evaluating permissions.
+     */
+    pub async fn fetch_ancestry(
+        &self,
+        tx: &Transaction,
+        tenant: &TenantResource,
+        object_ids: &[ObjectId],
+    ) -> Result<HashMap<ObjectId, ObjectResource>, storage::Error<Error>> {
+        for id in object_ids {
+            id.validate().map_err(|_| Error::InvalidId)?;
+        }
+        let mut pending = object_ids.to_vec();
+        let mut prefetched = HashMap::new();
+        let mut objects = HashMap::new();
+        let mut missing = HashSet::new();
+
+        while !pending.is_empty() {
+            let predicted = self.predict(&tenant.tenant_id, &pending).await;
+            let reads = stream::iter(predicted.into_iter().filter(|id| {
+                !prefetched.contains_key(id) && !objects.contains_key(id) && !missing.contains(id)
+            }))
+            .map(|id| async move {
+                let value = tx
+                    .get(&ObjectResource::object_key(&tenant.tenant_id, &id), false)
+                    .await
+                    .map_err(FdbBindingError::from)?;
+                Ok::<_, storage::Error<Error>>((id, value))
+            })
+            .buffer_unordered(CONCURRENT_READS)
+            .try_collect::<Vec<_>>()
+            .await?;
+            prefetched.extend(reads);
+
+            let mut next = HashSet::new();
+            while let Some(id) = pending.pop() {
+                if objects.contains_key(&id) || missing.contains(&id) {
+                    continue;
+                }
+                let Some(value) = prefetched.remove(&id) else {
+                    next.insert(id);
+                    continue;
+                };
+                let Some(value) = value else {
+                    missing.insert(id);
+                    continue;
+                };
+                // Decode only actual ancestors; obsolete hints may point to unrelated records.
+                let object = ObjectResource::from_value(tenant, &id, &value)?;
+                if let Some(parent_id) = object.parent_id {
+                    pending.push(parent_id);
+                }
+                objects.insert(id, object);
+            }
+            pending.extend(next);
+        }
+
+        // Validate every path once, sharing the validated suffixes of overlapping paths.
+        let mut validated = HashSet::new();
+        for id in object_ids {
+            if !objects.contains_key(id) {
+                continue;
+            }
+            let mut path = HashSet::new();
+            let mut current = *id;
+            while !validated.contains(&current) {
+                if !path.insert(current) {
+                    return Err(Error::InvalidAncestry.into());
+                }
+                let object = objects.get(&current).ok_or(Error::InvalidAncestry)?;
+                if current == tenant.root_id {
+                    if object.parent_id.is_some() || object.kind != ObjectKind::Directory {
+                        return Err(Error::InvalidAncestry.into());
+                    }
+                    break;
+                }
+                let parent_id = object.parent_id.ok_or(Error::InvalidAncestry)?;
+                let parent = objects.get(&parent_id).ok_or(Error::InvalidAncestry)?;
+                if parent.kind != ObjectKind::Directory {
+                    return Err(Error::InvalidAncestry.into());
+                }
+                current = parent_id;
+            }
+            validated.extend(path);
+        }
+        Ok(objects)
     }
 
     pub(super) async fn predict(

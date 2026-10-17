@@ -24,6 +24,8 @@ pub(crate) use grants::{
     grant_pagination_handles_full_pages_and_object_deletion, grant_versions_advance_for_no_ops,
 };
 pub(crate) use modes::{
+    ancestry_reads_follow_stale_hints_without_reading_grants,
+    ancestry_reads_validate_paths_and_conflict_with_reparenting,
     grant_cache_skips_matching_versions_and_preserves_session_snapshots,
     modes_for_session_evaluate_full_paths_and_all_grants,
     modes_for_session_isolate_tenants_and_reject_invalid_ancestry,
