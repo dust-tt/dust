@@ -1825,6 +1825,7 @@ describe("sandbox.lifecycle.running_delta counter", () => {
     );
     mockGetSandboxProvider.mockReturnValue({
       create: mockProviderCreate,
+      exec: mockProviderExec,
       destroy: mockProviderDestroy,
       sleep: mockProviderSleep,
       wake: mockProviderWake,
@@ -1883,6 +1884,59 @@ describe("sandbox.lifecycle.running_delta counter", () => {
     }
   }
 
+  function runningDeltas() {
+    return mockIncrement.mock.calls
+      .filter(([metric]) => metric === "sandbox.lifecycle.running_delta")
+      .map(([, delta]) => delta);
+  }
+
+  it("balances missing-sandbox recreation and ignores stale provider errors", async () => {
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    mockProviderExec.mockResolvedValue(
+      new Err(new SandboxNotFoundError("gone"))
+    );
+    await sandbox.exec(authenticator, "true");
+    await sandbox.exec(authenticator, "true");
+
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      conversation
+    );
+    expect(result.isOk()).toBe(true);
+    expect(runningDeltas()).toEqual([-1, 1]);
+
+    await sandbox.exec(authenticator, "true");
+    const replacement = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversation
+    );
+    expect(replacement?.status).toBe("running");
+    expect(replacement?.killRequestedAt).toBeNull();
+    expect(runningDeltas()).toEqual([-1, 1]);
+  });
+
+  it("does not decrement again when recreation is retried", async () => {
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    await sandbox.requestKill();
+    mockProviderCreate.mockResolvedValue(new Err(new Error("create failed")));
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await ConversationSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        conversation
+      );
+      expect(result.isErr()).toBe(true);
+      expect(runningDeltas()).toEqual([-1]);
+    }
+    mockProviderCreate.mockResolvedValue(new Ok({ providerId: "replacement" }));
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      conversation
+    );
+    expect(result.isOk()).toBe(true);
+    expect(runningDeltas()).toEqual([-1, 1]);
+  });
+
   it("increments on conversation sandbox create", async () => {
     const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
@@ -1937,19 +1991,31 @@ describe("sandbox.lifecycle.running_delta counter", () => {
     expectRunningDelta(-1, "conversation");
   });
 
-  it("decrements on pause for approval", async () => {
-    await SandboxFactory.create(authenticator, conversation, {
-      status: "running",
-    });
+  it.each([false, true])(
+    "balances approval pause and wake (sleep fails: %s)",
+    async (sleepFails) => {
+      await SandboxFactory.create(authenticator, conversation, {
+        status: "running",
+      });
 
-    const result = await ConversationSandboxAdapter.pauseSandboxForApproval(
-      authenticator,
-      conversation
-    );
+      if (sleepFails) {
+        mockProviderSleep.mockResolvedValue(new Err(new Error("sleep failed")));
+      }
+      const result = await ConversationSandboxAdapter.pauseSandboxForApproval(
+        authenticator,
+        conversation
+      );
 
-    expect(result.isOk()).toBe(true);
-    expectRunningDelta(-1, "conversation");
-  });
+      expect(result.isOk()).toBe(!sleepFails);
+      expect(runningDeltas()).toEqual([-1]);
+      const wake = await ConversationSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        conversation
+      );
+      expect(wake.isOk()).toBe(true);
+      expect(runningDeltas()).toEqual([-1, 1]);
+    }
+  );
 
   it("does not decrement when destroying an already-paused sandbox", async () => {
     await SandboxFactory.create(authenticator, conversation, {
