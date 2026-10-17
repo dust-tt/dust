@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 import {
+  acceptsAnyVerifiedEmail,
   generateFrameOtpChallenge,
   sendFrameOtpEmail,
 } from "@app/lib/api/share/frame_sharing";
@@ -43,15 +44,23 @@ app.post(
     }
 
     const { file, shareScope, workspace } = result.value;
+    const requiresGrant =
+      shareScope === "emails_only" || shareScope === "workspace_and_emails";
+    const acceptsAnyEmail = await acceptsAnyVerifiedEmail(file, {
+      shareScope,
+      workspace,
+    });
 
-    // Only email-based scopes require OTP — return 200 to prevent scope enumeration.
-    if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
+    // Only shares that verify emails require OTP — return 200 to prevent scope enumeration.
+    if (!requiresGrant && !acceptsAnyEmail) {
       return ctx.json({ success: true });
     }
 
     // Check if grant exists. If not, return 200 to prevent enumeration but don't send email.
-    const activeGrant = await SharingGrantResource.findForEmail(file, email);
-    if (!activeGrant) {
+    const activeGrant = requiresGrant
+      ? await SharingGrantResource.findForEmail(file, email)
+      : null;
+    if (requiresGrant && !activeGrant) {
       auditLog(
         { author: "no-author", email, shareToken: token },
         "Frame OTP requested for email without active grant"
@@ -76,7 +85,7 @@ app.post(
     const sendResult = await sendFrameOtpEmail({
       to: email,
       code: otpResult.value.code,
-      sharedByName: activeGrant.grantingUser?.fullName() ?? "Someone",
+      sharedByName: activeGrant?.grantingUser?.fullName() ?? "Someone",
       workspace,
     });
     if (sendResult.isErr()) {

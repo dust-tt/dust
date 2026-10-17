@@ -7,6 +7,7 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { makeTestPublicFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { frameContentType } from "@app/types/files";
@@ -186,6 +187,48 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     const response = await postVerifyCode(shareToken, {
       email: VIEWER_EMAIL,
       code: "123456",
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("sets a session for any email on a public Frame serving public functions", async () => {
+    const { token, workspace: publicWorkspace } =
+      await makeTestPublicFrameFunction();
+    const otpResult = await generateFrameOtpChallenge({
+      shareToken: token,
+      email: "anyone@example.com",
+    });
+    const code = otpResult.isOk() ? otpResult.value.code : "";
+
+    const response = await postVerifyCode(token, {
+      email: "anyone@example.com",
+      code,
+    });
+
+    expect(response.status).toBe(200);
+    expect(String(response.headers.get("Set-Cookie"))).toContain(
+      "dust_frame_session="
+    );
+    const sessions = await ExternalViewerSessionModel.findAll({
+      where: { workspaceId: publicWorkspace.id, email: "anyone@example.com" },
+    });
+    expect(sessions).toHaveLength(1);
+  });
+
+  it("returns 404 for a public Frame when public functions are disabled", async () => {
+    const { token } = await makeTestPublicFrameFunction({
+      enablePublicFunctions: false,
+    });
+    const otpResult = await generateFrameOtpChallenge({
+      shareToken: token,
+      email: "anyone@example.com",
+    });
+    const code = otpResult.isOk() ? otpResult.value.code : "";
+
+    const response = await postVerifyCode(token, {
+      email: "anyone@example.com",
+      code,
     });
 
     expect(response.status).toBe(404);

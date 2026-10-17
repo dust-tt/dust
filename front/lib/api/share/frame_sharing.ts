@@ -1,4 +1,5 @@
 import { runOnRedis } from "@app/lib/api/redis";
+import { frameServesPublicFunctions } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
@@ -12,6 +13,7 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -500,6 +502,35 @@ function notifyFrameSharingInvitations(
       },
       "Failed to send Frame sharing notifications"
     );
+  });
+}
+
+type AcceptsAnyVerifiedEmailInput = {
+  shareScope: FileShareScope;
+  workspace: LightWorkspaceType;
+};
+
+/**
+ * @cc [owner:achilleburah,label:security;product] any-email-only-for-public-functions
+ * True MUST be returned only for a `public` share of a Frame with active functions for which
+ * frameServesPublicFunctions holds. Only then MAY an email verify for the share without a grant.
+ */
+export async function acceptsAnyVerifiedEmail(
+  file: FileResource,
+  { shareScope, workspace }: AcceptsAnyVerifiedEmailInput
+): Promise<boolean> {
+  if (shareScope !== "public" || !(await file.hasActiveFrameFunctions())) {
+    return false;
+  }
+
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+
+  return frameServesPublicFunctions({
+    workspace,
+    plan: subscription.getPlan(),
+    frame: file,
   });
 }
 
