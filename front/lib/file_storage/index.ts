@@ -41,6 +41,7 @@ export const GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
 
 interface FileStorageOptions {
   useServiceAccount?: boolean;
+  requestTimeoutMs?: number;
 }
 
 type RawContentUpload = {
@@ -123,10 +124,12 @@ export class FileStorage {
 
   constructor(
     bucketKey: string,
-    { useServiceAccount }: FileStorageOptions = { useServiceAccount: true }
+    { useServiceAccount = true, requestTimeoutMs }: FileStorageOptions = {}
   ) {
     this.storage = new Storage({
       keyFilename: useServiceAccount ? config.getServiceAccount() : undefined,
+      // The SDK overwrites any per-call `timeout` option with this client-level one.
+      timeout: requestTimeoutMs,
       retryOptions: {
         maxRetries: GCS_MAX_RETRIES,
         retryableErrorFn: isRetryableGCSError,
@@ -564,14 +567,25 @@ export const GCS_COMPOSE_MAX_SOURCES = 32;
 
 const bucketInstances = new Map();
 
+/**
+ * @cc [owner:tdraier,label:performance] request-timeout-isolated-client
+ * When `requestTimeoutMs` is set, every simple (non-resumable) request made through the returned
+ * instance MUST fail once it exceeds `requestTimeoutMs`, and instances requested with a different
+ * `requestTimeoutMs` (or none) for the same bucket MUST NOT share its client.
+ */
 export const getBucketInstance: (
   bucketConfig: string,
   options?: FileStorageOptions
 ) => FileStorage = (bucketConfig, options) => {
-  if (!bucketInstances.has(bucketConfig)) {
-    bucketInstances.set(bucketConfig, new FileStorage(bucketConfig, options));
+  const requestTimeoutMs = options?.requestTimeoutMs;
+  const instanceKey =
+    requestTimeoutMs === undefined
+      ? bucketConfig
+      : `${bucketConfig}:timeout=${requestTimeoutMs}`;
+  if (!bucketInstances.has(instanceKey)) {
+    bucketInstances.set(instanceKey, new FileStorage(bucketConfig, options));
   }
-  return bucketInstances.get(bucketConfig);
+  return bucketInstances.get(instanceKey);
 };
 
 export const getPrivateUploadBucket = (options?: FileStorageOptions) =>

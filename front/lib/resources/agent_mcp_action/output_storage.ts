@@ -65,7 +65,9 @@ async function batchWriteContentsToGcsAtPaths(
   await concurrentExecutor(
     itemsWithPaths,
     async ({ content, gcsPath }) => {
-      const bucket = getPrivateUploadBucket();
+      const bucket = getPrivateUploadBucket({
+        requestTimeoutMs: GCS_WRITE_REQUEST_TIMEOUT_MS,
+      });
       const file = bucket.file(gcsPath);
       const json = JSON.stringify(content);
 
@@ -74,7 +76,6 @@ async function batchWriteContentsToGcsAtPaths(
         file.save(Buffer.from(json, "utf-8"), {
           contentType: "application/json",
           resumable: false,
-          timeout: GCS_WRITE_REQUEST_TIMEOUT_MS,
         })
       );
       heartbeatWithoutCancelCheck();
