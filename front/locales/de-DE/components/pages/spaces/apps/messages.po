@@ -1,0 +1,221 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Double checking"
+msgstr "Bestätigung"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Are you sure you want to delete this app?"
+msgstr "Möchten Sie diese App wirklich löschen?"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Failed to delete the app"
+msgstr "Die App konnte nicht gelöscht werden"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Failed to update the app"
+msgstr "Die App konnte nicht aktualisiert werden"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "App name"
+msgstr "App-Name"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Use only a-z, 0-9, - or _. Must be unique."
+msgstr "Nur a-z, 0-9, - oder _ verwenden. Muss eindeutig sein."
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Description"
+msgstr "Beschreibung"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Description needed to use in Agent Builder - helps agents understand when to use your app."
+msgstr "Beschreibung zur Verwendung im Agent-Editor: Sie hilft Agenten zu verstehen, wann Ihre App eingesetzt werden soll."
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Updating..."
+msgstr "Wird aktualisiert…"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+#: front/components/pages/spaces/apps/DatasetPage.tsx
+msgid "Update"
+msgstr "Aktualisieren"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Deleting..."
+msgstr "Wird gelöscht…"
+
+#: front/components/pages/spaces/apps/AppSettingsPage.tsx
+msgid "Delete"
+msgstr "Löschen"
+
+#: front/components/pages/spaces/apps/AppSpecificationPage.tsx
+msgid "Current specifications:"
+msgstr "Aktuelle Spezifikationen:"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Failed to cancel the run"
+msgstr "Die Ausführung konnte nicht abgebrochen werden"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Specification error: {runErrorMessage}"
+msgstr "Spezifikationsfehler: {runErrorMessage}"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Error: {runErrorMessage}"
+msgstr "Fehler: {runErrorMessage}"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Canceling..."
+msgstr "Wird abgebrochen…"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Running"
+msgstr "Läuft"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgctxt "button label, verb"
+msgid "Run"
+msgstr "Ausführen"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Secrets"
+msgstr "Secrets"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Documentation"
+msgstr "Dokumentation"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Welcome to your new Dust app."
+msgstr "Willkommen in Ihrer neuen Dust-App."
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "To get started, add your first block or:"
+msgstr "Fügen Sie zunächst Ihren ersten Block hinzu oder:"
+
+#: front/components/pages/spaces/apps/AppViewPage.tsx
+msgid "Follow the quickstart guide"
+msgstr "Folgen Sie der Schnellstartanleitung"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "Are you sure you want to delete this dataset entirely?"
+msgstr "Möchten Sie diesen Datensatz wirklich vollständig löschen?"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "New dataset"
+msgstr "Neuer Datensatz"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "No description"
+msgstr "Keine Beschreibung"
+
+#: front/components/pages/spaces/apps/DatasetsPage.tsx
+msgid "Datasets are used as input data to apps (<0/> block) or few-shot examples to prompt models (<1/> block)."
+msgstr "Datensätze dienen als Eingabedaten für Apps (Block <0/>) oder als Few-Shot-Beispiele für Modell-Prompts (Block <1/>)."
+
+#: front/components/pages/spaces/apps/NewDatasetPage.tsx
+msgid "Create"
+msgstr "Erstellen"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "This will revert the app specification to the state it was in when this run was saved ({restoredRunId}). Are you sure?"
+msgstr "Dadurch wird die App-Spezifikation auf den Stand zurückgesetzt, als diese Ausführung gespeichert wurde ({restoredRunId}). Möchten Sie fortfahren?"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Viewing run:"
+msgstr "Angezeigte Ausführung:"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Specification hash:"
+msgstr "Hash der Spezifikation:"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Restoring..."
+msgstr "Wird wiederhergestellt…"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Restore"
+msgstr "Wiederherstellen"
+
+#: front/components/pages/spaces/apps/RunPage.tsx
+msgid "Latest version"
+msgstr "Neueste Version"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "tab of the app runs"
+msgid "Design"
+msgstr "Design"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "tab of the app runs"
+msgid "API"
+msgstr "API"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "app run status"
+msgid "running"
+msgstr "läuft"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "app run status"
+msgid "succeeded"
+msgstr "erfolgreich"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "app run status"
+msgid "errored"
+msgstr "fehlgeschlagen"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Tabs"
+msgstr "Registerkarten"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "pagination button"
+msgid "Previous"
+msgstr "Zurück"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgctxt "pagination button"
+msgid "Next"
+msgstr "Weiter"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Showing runs {first} - {last} of {total, plural, one {# run} other {# runs}}"
+msgstr "Ausführungen {first} - {last} von {total, plural, one {#} other {#}}"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "({runInputCount, plural, one {# input} other {# inputs}})"
+msgstr "({runInputCount, plural, one {# Eingabe} other {# Eingaben}})"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "No runs found"
+msgstr "Keine Ausführungen gefunden"
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Runs triggered from Dust will appear here."
+msgstr "Über Dust gestartete Ausführungen werden hier angezeigt."
+
+#: front/components/pages/spaces/apps/RunsPage.tsx
+msgid "Runs triggered by API will appear here."
+msgstr "Über die API gestartete Ausführungen werden hier angezeigt."

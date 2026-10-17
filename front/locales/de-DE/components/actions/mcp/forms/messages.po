@@ -1,0 +1,64 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/actions/mcp/forms/mcpServerFormSchema.ts
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Name is required."
+msgstr "Der Name ist erforderlich."
+
+#: front/components/actions/mcp/forms/mcpServerFormSchema.ts
+#: front/components/actions/mcp/forms/utils.ts
+msgid "This name is already in use."
+msgstr "Dieser Name wird bereits verwendet."
+
+#: front/components/actions/mcp/forms/mcpServerFormSchema.ts
+msgid "Description is required."
+msgstr "Die Beschreibung ist erforderlich."
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "This name produces the tool \"{conflictingToolName}\", which already exists on the connection \"{conflictingServerName}\". Enter a different name."
+msgstr "Dieser Name ergibt das Tool „{conflictingToolName}“, das bereits in der Verbindung „{conflictingServerName}“ existiert. Geben Sie einen anderen Namen ein."
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "The default name \"{nameConflict}\" conflicts with an existing tool. Enter a different name."
+msgstr "Der Standardname „{nameConflict}“ steht im Konflikt mit einem vorhandenen Tool. Geben Sie einen anderen Namen ein."
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "This name conflicts with an existing tool. Enter a different name."
+msgstr "Dieser Name steht im Konflikt mit einem vorhandenen Tool. Geben Sie einen anderen Namen ein."
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Failed to create MCP server"
+msgstr "MCP-Server konnte nicht erstellt werden"
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Failed to discover OAuth metadata for MCP server"
+msgstr "OAuth-Metadaten des MCP-Servers konnten nicht ermittelt werden"
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Missing use case"
+msgstr "Anwendungsfall fehlt"
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Please select a use case"
+msgstr "Wählen Sie einen Anwendungsfall aus."
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Failed to connect {providerName}"
+msgstr "{providerName} konnte nicht verbunden werden"
+
+#: front/components/actions/mcp/forms/utils.ts
+msgid "Failed to connect OAuth provider"
+msgstr "Der OAuth-Anbieter konnte nicht verbunden werden."

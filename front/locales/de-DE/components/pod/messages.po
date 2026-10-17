@@ -1,0 +1,165 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pod/EditPodTitleDialog.tsx
+msgid "Failed to edit title"
+msgstr "Der Name konnte nicht geändert werden."
+
+#: front/components/pod/EditPodTitleDialog.tsx
+msgid "Title edited"
+msgstr "Name geändert"
+
+#: front/components/pod/EditPodTitleDialog.tsx
+msgid "Edit Pod name"
+msgstr "Pod-Namen bearbeiten"
+
+#: front/components/pod/EditPodTitleDialog.tsx
+msgid "Enter new name..."
+msgstr "Neuen Namen eingeben…"
+
+#: front/components/pod/EditPodTitleDialog.tsx
+msgid "A Pod or space with this name already exists."
+msgstr "Ein Pod oder Bereich mit diesem Namen existiert bereits."
+
+#: front/components/pod/EditPodTitleDialog.tsx
+#: front/components/pod/PodFileTabPreview.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/pod/EditPodTitleDialog.tsx
+#: front/components/pod/LeavePodDialog.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/pod/LeavePodDialog.tsx
+msgid "Leave this Pod?"
+msgstr "Diesen Pod verlassen?"
+
+#: front/components/pod/LeavePodDialog.tsx
+msgid "You will no longer have access to conversations and context in <0>{podName}</0>."
+msgstr "Sie haben dann keinen Zugriff mehr auf Unterhaltungen und Kontext in <0>{podName}</0>."
+
+#: front/components/pod/LeavePodDialog.tsx
+msgid "You can rejoin this Pod anytime."
+msgstr "Sie können diesem Pod jederzeit wieder beitreten."
+
+#: front/components/pod/LeavePodDialog.tsx
+#: front/components/pod/PodMenu.tsx
+msgid "Leave"
+msgstr "Verlassen"
+
+#: front/components/pod/MissingPodFileTabCallout.tsx
+msgid "Frame no longer available"
+msgstr "Frame nicht mehr verfügbar"
+
+#: front/components/pod/MissingPodFileTabCallout.tsx
+msgid "File no longer available"
+msgstr "Datei nicht mehr verfügbar"
+
+#: front/components/pod/MissingPodFileTabCallout.tsx
+msgid "This frame is missing or was renamed in Pod files ({relativePath}). Remove it from Tabs in Settings, or restore the file."
+msgstr "Dieses Frame fehlt oder wurde in den Pod-Dateien umbenannt ({relativePath}). Entfernen Sie es in den Einstellungen aus den Tabs oder stellen Sie die Datei wieder her."
+
+#: front/components/pod/MissingPodFileTabCallout.tsx
+msgid "This file is missing or was renamed in Pod files ({relativePath}). Remove it from Tabs in Settings, or restore the file."
+msgstr "Diese Datei fehlt oder wurde in den Pod-Dateien umbenannt ({relativePath}). Entfernen Sie sie in den Einstellungen aus den Tabs oder stellen Sie die Datei wieder her."
+
+#: front/components/pod/PodFileTabNavTrigger.tsx
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: front/components/pod/PodFileTabNavTrigger.tsx
+msgid "Remove"
+msgstr "Entfernen"
+
+#: front/components/pod/PodFileTabPreview.tsx
+msgid "Failed to save file"
+msgstr "Die Datei konnte nicht gespeichert werden."
+
+#: front/components/pod/PodFileTabPreview.tsx
+msgid "File saved"
+msgstr "Datei gespeichert"
+
+#: front/components/pod/PodFileTabPreview.tsx
+msgid "Revert"
+msgstr "Zurücksetzen"
+
+#: front/components/pod/PodFileTabPreview.tsx
+msgid "This file is too large to preview ({fileSize})."
+msgstr "Diese Datei ist zu groß für eine Vorschau ({fileSize})."
+
+#: front/components/pod/PodFileTabPreview.tsx
+msgid "Unable to preview this file."
+msgstr "Für diese Datei ist keine Vorschau möglich."
+
+#: front/components/pod/PodHeaderActions.tsx
+msgid "Pod options"
+msgstr "Pod-Optionen"
+
+#: front/components/pod/PodHeaderActions.tsx
+msgid "You are the last editor of this Pod and cannot leave it."
+msgstr "Sie sind der letzte Editor dieses Pods und können ihn nicht verlassen."
+
+#: front/components/pod/PodHeaderActions.tsx
+msgid "Leave the Pod"
+msgstr "Pod verlassen"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Link copied"
+msgstr "Link kopiert"
+
+#: front/components/pod/PodMenu.tsx
+msgid "My settings"
+msgstr "Meine Einstellungen"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Remove from starred"
+msgstr "Aus Favoriten entfernen"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Add to starred"
+msgstr "Zu Favoriten hinzufügen"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Pod"
+msgstr "Pod"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Rename"
+msgstr "Umbenennen"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Member list"
+msgstr "Mitgliederliste"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Archive"
+msgstr "Archivieren"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Share"
+msgstr "Teilen"
+
+#: front/components/pod/PodMenu.tsx
+msgid "Copy link"
+msgstr "Link kopieren"
+
+#: front/components/pod/PodNavAddFileTabButton.tsx
+msgid "A Pod can have at most {MAX_POD_FILE_TABS} custom tabs."
+msgstr "Ein Pod kann höchstens {MAX_POD_FILE_TABS} benutzerdefinierte Tabs haben."
+
+#: front/components/pod/PodNavAddFileTabButton.tsx
+msgid "Add file to Tabs"
+msgstr "Datei zu Tabs hinzufügen"

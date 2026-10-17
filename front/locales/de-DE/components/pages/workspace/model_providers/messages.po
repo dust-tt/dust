@@ -1,0 +1,117 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+msgid "Disable {providerName}?"
+msgstr "{providerName} deaktivieren?"
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+msgid "Agents using {providerName} models will stop responding until they are reconfigured to use another provider."
+msgstr "Agenten, die Modelle von {providerName} verwenden, antworten nicht mehr, bis sie für einen anderen Anbieter neu konfiguriert werden."
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
+msgid "Disable provider"
+msgstr "Anbieter deaktivieren"
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Embedding provider"
+msgstr "Embedding-Anbieter"
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Embedding models are used to create numerical representations of your data powering the semantic search capabilities of your agents."
+msgstr "Embedding-Modelle erstellen numerische Darstellungen Ihrer Daten, auf denen die semantische Suche Ihrer Agenten beruht."
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Please contact us if you want to change this setting."
+msgstr "Kontaktieren Sie uns, wenn Sie diese Einstellung ändern möchten."
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Provider"
+msgstr "Anbieter"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Documentation"
+msgstr "Dokumentation"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Configure {providerName} API key"
+msgstr "API-Schlüssel für {providerName} konfigurieren"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "API key"
+msgstr "API-Schlüssel"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Type an API key"
+msgstr "Geben Sie einen API-Schlüssel ein"
+
+#: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "Configure"
+msgstr "Konfigurieren"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgctxt "remove the API key"
+msgid "Remove"
+msgstr "Entfernen"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "Invalid API key"
+msgstr "Ungültiger API-Schlüssel"
+
+#: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
+msgid "This key is no longer valid. Update it to restore affected agents."
+msgstr "Dieser Schlüssel ist nicht mehr gültig. Aktualisieren Sie ihn, um die betroffenen Agenten wiederherzustellen."
+
+#: front/components/pages/workspace/model_providers/ProvidersToggleList.tsx
+msgid "Make all providers available"
+msgstr "Alle Anbieter verfügbar machen"
+
+#: front/components/pages/workspace/model_providers/RegionalModelsOnlyToggle.tsx
+msgid "EU-hosted models only"
+msgstr "Nur in der EU gehostete Modelle"
+
+#: front/components/pages/workspace/model_providers/RegionalModelsOnlyToggle.tsx
+msgid "Limit available models to EU-based ones. Useful for data residency requirements."
+msgstr "Verfügbare Modelle auf EU-basierte beschränken. Nützlich für Anforderungen an die Datenresidenz."
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "OpenAI powers your embedding model. Removing this key will not only disable all agents powered by OpenAI, but also search and data syncing across the entire workspace."
+msgstr "OpenAI betreibt Ihr Embedding-Modell. Wenn Sie diesen Schlüssel entfernen, werden nicht nur alle Agenten mit OpenAI-Modellen deaktiviert, sondern auch die Suche und die Datensynchronisierung im gesamten Workspace."
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Agents relying on this provider will stop responding immediately."
+msgstr "Agenten, die diesen Anbieter nutzen, antworten sofort nicht mehr."
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Remove this model provider API key?"
+msgstr "API-Schlüssel dieses Modellanbieters entfernen?"
+
+#: front/components/pages/workspace/model_providers/RemoveKeyDialog.tsx
+msgid "Remove key"
+msgstr "Schlüssel entfernen"

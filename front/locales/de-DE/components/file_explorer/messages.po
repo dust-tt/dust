@@ -1,0 +1,369 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/file_explorer/CoEditionBadge.tsx
+msgid "This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+msgstr "Dieser Editor für Markdown-Dateien ist eine instabile Alpha-Version der Co-edition-Initiative. Er ist nur im Dust-Workspace aktiviert, während wir ihn entwickeln."
+
+#: front/components/file_explorer/CoEditionBadge.tsx
+msgid "Co-edition · Unstable alpha"
+msgstr "Co-edition · Instabile Alpha"
+
+#: front/components/file_explorer/FileExplorer.tsx
+msgid "View source"
+msgstr "Quelle anzeigen"
+
+#: front/components/file_explorer/FileExplorer.tsx
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename"
+msgstr "Umbenennen"
+
+#: front/components/file_explorer/FileExplorer.tsx
+msgid "Delete"
+msgstr "Löschen"
+
+#: front/components/file_explorer/FileExplorer.tsx
+#: front/components/file_explorer/FileExplorerBreadcrumb.tsx
+msgid "Move to…"
+msgstr "Verschieben nach…"
+
+#: front/components/file_explorer/FileExplorer.tsx
+msgid "Remove"
+msgstr "Entfernen"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgctxt "file filter"
+msgid "All"
+msgstr "Alle"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Knowledge"
+msgstr "Wissen"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Tables"
+msgstr "Tabellen"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Frames"
+msgstr "Frames"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgid "Texts"
+msgstr "Texte"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgid "Folders"
+msgstr "Ordner"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Images"
+msgstr "Bilder"
+
+#: front/components/file_explorer/FileExplorerFilters.tsx
+msgctxt "file filter"
+msgid "Code"
+msgstr "Code"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgid "More options"
+msgstr "Weitere Optionen"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Downloading…"
+msgstr "Wird heruntergeladen…"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/FilePreviewDialog.tsx
+#: front/components/file_explorer/FilePreviewFallback.tsx
+msgid "Download"
+msgstr "Herunterladen"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgctxt "folder with no items"
+msgid "Empty"
+msgstr "Leer"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgid "{childCount, plural, one {# item} other {# items}}"
+msgstr "{childCount, plural, one {# Element} other {# Elemente}}"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+#: front/components/file_explorer/utils.ts
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
+msgid "Nothing to see here"
+msgstr "Hier gibt es nichts zu sehen"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Last modified"
+msgstr "Zuletzt geändert"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Name A → Z"
+msgstr "Name A → Z"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Name Z → A"
+msgstr "Name Z → A"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Layout"
+msgstr "Ansicht"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgctxt "file explorer layout"
+msgid "Grid"
+msgstr "Raster"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgctxt "file explorer layout"
+msgid "List"
+msgstr "Liste"
+
+#: front/components/file_explorer/FileExplorerToolbar.tsx
+msgid "Search files"
+msgstr "Dateien suchen"
+
+#: front/components/file_explorer/FilePreviewBody.tsx
+msgid "This file is too large to preview ({fileSize})."
+msgstr "Diese Datei ist zu groß für eine Vorschau ({fileSize})."
+
+#: front/components/file_explorer/FilePreviewBody.tsx
+msgid "Unable to preview this file."
+msgstr "Für diese Datei ist keine Vorschau möglich."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "File too long to save here"
+msgstr "Datei zu lang zum Speichern"
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "It grew too long to edit here. Copy your changes, then reopen the file."
+msgstr "Sie ist zu lang geworden, um hier bearbeitet zu werden. Kopieren Sie Ihre Änderungen und öffnen Sie die Datei dann erneut."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "No data to preview."
+msgstr "Keine Daten für die Vorschau."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Your browser does not support the audio element."
+msgstr "Ihr Browser unterstützt das Audioelement nicht."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Transcript"
+msgstr "Transkript"
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "No transcript available."
+msgstr "Kein Transkript verfügbar."
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Showing {displayed} of {total, plural, one {# record} other {# records}} (truncated)"
+msgstr "Anzeige: {displayed} von {total, plural, one {# Datensatz} other {# Datensätzen}} (gekürzt)"
+
+#: front/components/file_explorer/FilePreviewContent.tsx
+msgid "Showing {displayed} of {total, plural, one {# record} other {# records}}"
+msgstr "Anzeige: {displayed} von {total, plural, one {# Datensatz} other {# Datensätzen}}"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Preview data"
+msgstr "Datenvorschau"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Close"
+msgstr "Schließen"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Previous"
+msgstr "Vorherige"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Next"
+msgstr "Weiter"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Revert"
+msgstr "Zurücksetzen"
+
+#: front/components/file_explorer/MarkdownFilePreview.tsx
+msgctxt "markdown file view mode"
+msgid "Preview"
+msgstr "Vorschau"
+
+#: front/components/file_explorer/MarkdownFilePreview.tsx
+msgctxt "markdown file view mode"
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "{nodeName} (current location)"
+msgstr "{nodeName} (aktueller Speicherort)"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move \"{fileName}\""
+msgstr "„{fileName}“ verschieben"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move file"
+msgstr "Datei verschieben"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move to: {destinationLabel} (current location)"
+msgstr "Verschieben nach: {destinationLabel} (aktueller Speicherort)"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move to: {destinationLabel}"
+msgstr "Verschieben nach: {destinationLabel}"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "{rootFolderLabel} (current location)"
+msgstr "{rootFolderLabel} (aktueller Speicherort)"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+msgid "Move here"
+msgstr "Hierher verschieben"
+
+#: front/components/file_explorer/MoveFileToFolderDialog.tsx
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Unable to load file. You can download it instead."
+msgstr "Die Datei kann nicht geladen werden. Sie können sie stattdessen herunterladen."
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Page {currentPage} of {numPages}"
+msgstr "Seite {currentPage} von {numPages}"
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Zoom out"
+msgstr "Verkleinern"
+
+#: front/components/file_explorer/PDFViewer.tsx
+msgid "Zoom in"
+msgstr "Vergrößern"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename file"
+msgstr "Datei umbenennen"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename folder"
+msgstr "Ordner umbenennen"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Rename Frame"
+msgstr "Frame umbenennen"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Enter new name..."
+msgstr "Neuen Namen eingeben…"
+
+#: front/components/file_explorer/RenameFileDialog.tsx
+msgid "Enter new file name..."
+msgstr "Neuen Dateinamen eingeben…"
+
+#: front/components/file_explorer/useFileDownload.ts
+msgid "Failed to download the file."
+msgstr "Die Datei konnte nicht heruntergeladen werden."
+
+#: front/components/file_explorer/useFileDownload.ts
+#: front/components/file_explorer/useFileExplorerDownload.ts
+msgid "An error occurred while downloading. Please try again."
+msgstr "Beim Herunterladen ist ein Fehler aufgetreten. Versuchen Sie es erneut."
+
+#: front/components/file_explorer/useFileExplorerDownload.ts
+msgid "Failed to download the folder."
+msgstr "Der Ordner konnte nicht heruntergeladen werden."
+
+#: front/components/file_explorer/useMarkdownFileEditor.ts
+msgid "This file cannot be edited."
+msgstr "Diese Datei kann nicht bearbeitet werden."
+
+#: front/components/file_explorer/useMarkdownFileEditor.ts
+msgid "File saved"
+msgstr "Datei gespeichert"
+
+#: front/components/file_explorer/useMarkdownFileEditor.ts
+msgid "Failed to save file"
+msgstr "Die Datei konnte nicht gespeichert werden."
+
+#: front/components/file_explorer/utils.ts
+msgid "All files"
+msgstr "Alle Dateien"
+
+#: front/components/file_explorer/utils.ts
+msgid "Slideshow"
+msgstr "Präsentation"
+
+#: front/components/file_explorer/utils.ts
+msgid "Slideshows"
+msgstr "Präsentationen"
+
+#: front/components/file_explorer/utils.ts
+msgid "Image"
+msgstr "Bild"
+
+#: front/components/file_explorer/utils.ts
+msgid "Document"
+msgstr "Dokument"
+
+#: front/components/file_explorer/utils.ts
+msgid "Documents"
+msgstr "Dokumente"
+
+#: front/components/file_explorer/utils.ts
+msgid "PDF"
+msgstr "PDF"
+
+#: front/components/file_explorer/utils.ts
+msgid "PDFs"
+msgstr "PDFs"
+
+#: front/components/file_explorer/utils.ts
+msgid "Table"
+msgstr "Tabelle"
+
+#: front/components/file_explorer/utils.ts
+msgctxt "file category"
+msgid "Audio"
+msgstr "Audio"
+
+#: front/components/file_explorer/utils.ts
+msgctxt "file category, plural"
+msgid "Audio"
+msgstr "Audio"
+
+#: front/components/file_explorer/utils.ts
+msgid "File"
+msgstr "Datei"
+
+#: front/components/file_explorer/utils.ts
+msgctxt "file category"
+msgid "Other"
+msgstr "Sonstige"

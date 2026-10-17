@@ -11,6 +11,7 @@ export const VIZ_CATALOG_LOCALES = [
   VIZ_SOURCE_LOCALE,
   "en-GB",
   "fr-FR",
+  "de-DE",
 ] as const;
 
 export type VizCatalogLocale = (typeof VIZ_CATALOG_LOCALES)[number];

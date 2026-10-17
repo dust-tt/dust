@@ -1,0 +1,46 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/editor/input_bar/EmojiDropdown.tsx
+msgid "No emoji found"
+msgstr "Kein Emoji gefunden"
+
+#: front/components/editor/input_bar/MentionDropdown.tsx
+msgid "Member"
+msgstr "Mitglied"
+
+#: front/components/editor/input_bar/MentionDropdown.tsx
+msgid "No result"
+msgstr "Kein Ergebnis"
+
+#: front/components/editor/input_bar/PastedAttachmentComponent.tsx
+msgid "{title} (click to inline)"
+msgstr "{title} (klicken, um als Text einzufügen)"
+
+#: front/components/editor/input_bar/PastedAttachmentComponent.tsx
+msgid "Pasted attachment (click to inline)"
+msgstr "Eingefügter Anhang (klicken, um als Text einzufügen)"
+
+#: front/components/editor/input_bar/SkillNodeComponent.tsx
+msgid "This referenced skill is unavailable because its visibility or permissions changed."
+msgstr "Diese referenzierte Fähigkeit ist nicht verfügbar, da sich ihre Sichtbarkeit oder Berechtigungen geändert haben."
+
+#: front/components/editor/input_bar/SkillNodeComponent.tsx
+msgid "Unavailable skill"
+msgstr "Nicht verfügbare Fähigkeit"
+
+#: front/components/editor/input_bar/SkillNodeComponent.tsx
+msgid "Skill"
+msgstr "Fähigkeit"

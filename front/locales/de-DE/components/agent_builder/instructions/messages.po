@@ -1,0 +1,160 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Structured response format"
+msgstr "Strukturiertes Antwortformat"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Specify a JSON schema to get responses in a consistent structure."
+msgstr "Geben Sie ein JSON-Schema an, um Antworten mit einheitlicher Struktur zu erhalten."
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "See documentation"
+msgstr "Dokumentation ansehen"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Example:\n"
+"\n"
+"{RESPONSE_FORMAT_EXAMPLE}"
+msgstr "Beispiel:\n"
+"\n"
+"{RESPONSE_FORMAT_EXAMPLE}"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "JSON response"
+msgstr "JSON-Antwort"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Pick a specific model that supports structured response format (JSON schema)"
+msgstr "Wählen Sie ein Modell, das ein strukturiertes Antwortformat (JSON-Schema) unterstützt"
+
+#: front/components/agent_builder/instructions/AdvancedSettings.tsx
+msgid "Will constrain the model to a specific JSON schema"
+msgstr "Beschränkt das Modell auf ein bestimmtes JSON-Schema"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Instructions"
+msgstr "Anweisungen"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Command or guideline you provide to your agent to direct its responses."
+msgstr "Vorgaben, die Sie Ihrem Agenten geben, um seine Antworten zu steuern."
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Comparing current version with {compareVersionDate} at {compareVersionTime}"
+msgstr "Vergleich der aktuellen Version mit der Version vom {compareVersionDate} um {compareVersionTime}"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Leave comparison mode"
+msgstr "Vergleichsmodus verlassen"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
+msgid "Restore this version"
+msgstr "Diese Version wiederherstellen"
+
+#: front/components/agent_builder/instructions/AgentBuilderInstructionsEditor.tsx
+msgid "What is the purpose of the agent? How should it behave?"
+msgstr "Was ist der Zweck des Agenten? Wie soll er sich verhalten?"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgctxt "version number"
+msgid "v{version}"
+msgstr "v{version}"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgctxt "author of a version"
+msgid "System"
+msgstr "System"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "Compare with previous versions"
+msgstr "Mit früheren Versionen vergleichen"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "Choose version to compare"
+msgstr "Zu vergleichende Version auswählen"
+
+#: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
+msgid "by {authorName}"
+msgstr "von {authorName}"
+
+#: front/components/agent_builder/instructions/BlockInsertDropdown.tsx
+msgctxt "dropdown header, insert a block"
+msgid "Insert"
+msgstr "Einfügen"
+
+#: front/components/agent_builder/instructions/BlockInsertDropdown.tsx
+msgid "No matching blocks"
+msgstr "Keine passenden Blöcke"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+#: front/components/agent_builder/instructions/useBlockInsertDropdown.tsx
+msgid "Heading"
+msgstr "Überschrift"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Bold"
+msgstr "Fett"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Italic"
+msgstr "Kursiv"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Bulleted list"
+msgstr "Aufzählungsliste"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Ordered list"
+msgstr "Nummerierte Liste"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+#: front/components/agent_builder/instructions/useBlockInsertDropdown.tsx
+msgid "Code block"
+msgstr "Codeblock"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+#: front/components/agent_builder/instructions/useBlockInsertDropdown.tsx
+msgid "XML tag"
+msgstr "XML-Tag"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Reject all"
+msgstr "Alle ablehnen"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Reject all suggestions"
+msgstr "Alle Vorschläge ablehnen"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Accept all"
+msgstr "Alle annehmen"
+
+#: front/components/agent_builder/instructions/InstructionsMenuBar.tsx
+msgid "Accept all suggestions"
+msgstr "Alle Vorschläge annehmen"

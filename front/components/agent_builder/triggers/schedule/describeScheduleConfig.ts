@@ -11,6 +11,7 @@ import type { SupportedLocale } from "@app/types/locale";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import cronstrue from "cronstrue";
+import "cronstrue/locales/de";
 import "cronstrue/locales/fr";
 
 function formatWeekday(dayOfWeek: number, locale: SupportedLocale): string {

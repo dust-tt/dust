@@ -10,6 +10,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import cronstrue from "cronstrue";
+import "cronstrue/locales/de";
 import "cronstrue/locales/fr";
 
 type Translate = (descriptor: MessageDescriptor) => string;

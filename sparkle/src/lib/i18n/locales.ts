@@ -12,6 +12,7 @@ export const SPARKLE_CATALOG_LOCALES = [
   SPARKLE_SOURCE_LOCALE,
   "en-GB",
   "fr-FR",
+  "de-DE",
 ] as const;
 
 export type SparkleCatalogLocale = (typeof SPARKLE_CATALOG_LOCALES)[number];

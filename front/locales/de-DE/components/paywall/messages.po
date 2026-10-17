@@ -1,0 +1,54 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "{agentCount, plural, one {Your # custom agent} other {Your # custom agents}}"
+msgstr "{agentCount, plural, one {Ihr # benutzerdefinierter Agent} other {Ihre # benutzerdefinierten Agenten}}"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Your custom agents"
+msgstr "Ihre benutzerdefinierten Agenten"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Don't lose:"
+msgstr "Verlieren Sie nicht:"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "All the AI agents you've configured with your workflows"
+msgstr "Alle KI-Agenten, die Sie für Ihre Workflows konfiguriert haben"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Your conversation history & context"
+msgstr "Ihr Unterhaltungsverlauf und Kontext"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Everything your agents have learned from your interactions"
+msgstr "Alles, was Ihre Agenten aus Ihren Interaktionen gelernt haben"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Your connected company data"
+msgstr "Ihre verbundenen Unternehmensdaten"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "All your connected company data."
+msgstr "Alle Ihre verbundenen Unternehmensdaten."
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Your advanced AI models access"
+msgstr "Ihr Zugriff auf fortschrittliche KI-Modelle"
+
+#: front/components/paywall/DontLoseSection.tsx
+msgid "Access to GPT-5, Claude 4.5, Gemini, and Mistral"
+msgstr "Zugriff auf GPT-5, Claude 4.5, Gemini und Mistral"

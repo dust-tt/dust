@@ -1,0 +1,540 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pod/settings/AddPodFileMenu.tsx
+msgid "Search files"
+msgstr "Dateien suchen"
+
+#: front/components/pod/settings/AddPodFileMenu.tsx
+msgid "No files to add"
+msgstr "Keine Dateien zum Hinzufügen"
+
+#: front/components/pod/settings/AddPodFileMenu.tsx
+msgid "No files found"
+msgstr "Keine Dateien gefunden"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+msgctxt "keyword the user types to confirm a deletion"
+msgid "delete"
+msgstr "löschen"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+msgid "Delete Pod"
+msgstr "Pod löschen"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+msgid "Delete {podName}?"
+msgstr "{podName} löschen?"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+msgid "Type <0>{confirmKeyword}</0> below to confirm. This permanently removes all Pod content and cannot be undone."
+msgstr "Geben Sie unten <0>{confirmKeyword}</0> ein, um zu bestätigen. Dadurch werden alle Inhalte des Pods dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden."
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+msgid "Type {confirmKeyword} to confirm"
+msgstr "Geben Sie zur Bestätigung {confirmKeyword} ein"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
+msgid "Delete permanently"
+msgstr "Endgültig löschen"
+
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Editor"
+msgstr "Bearbeiter"
+
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Set as editor"
+msgstr "Als Bearbeiter festlegen"
+
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+msgid "Successfully updated Pod groups"
+msgstr "Pod-Gruppen aktualisiert"
+
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+msgid "The groups with access to this Pod were updated."
+msgstr "Die Gruppen mit Zugriff auf diesen Pod wurden aktualisiert."
+
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+msgid "Manage groups of {podName}"
+msgstr "Gruppen von {podName} verwalten"
+
+#: front/components/pod/settings/ManagePodGroupsPanel.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Save"
+msgstr "Speichern"
+
+#: front/components/pod/settings/PodDefaultSkillPicker.tsx
+msgid "Add a default skill"
+msgstr "Standardfähigkeit hinzufügen"
+
+#: front/components/pod/settings/PodDefaultSkillPicker.tsx
+msgid "Add skill"
+msgstr "Fähigkeit hinzufügen"
+
+#: front/components/pod/settings/PodDefaultSkillPicker.tsx
+msgid "Search skills"
+msgstr "Fähigkeiten suchen"
+
+#: front/components/pod/settings/PodDefaultSkillPicker.tsx
+msgid "No skills found"
+msgstr "Keine Fähigkeiten gefunden"
+
+#: front/components/pod/settings/PodDefaultSkillPicker.tsx
+msgid "No more skills to add"
+msgstr "Keine weiteren Fähigkeiten verfügbar"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+msgid "Successfully removed group"
+msgstr "Gruppe entfernt"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+msgid "The group no longer has access to this Pod."
+msgstr "Die Gruppe hat keinen Zugriff mehr auf diesen Pod."
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+msgid "Group name"
+msgstr "Gruppenname"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+msgid "Group type"
+msgstr "Gruppentyp"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Role"
+msgstr "Rolle"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Remove from Pod"
+msgstr "Aus Pod entfernen"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+msgid "Remove group"
+msgstr "Gruppe entfernen"
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+msgid "Are you sure you want to remove \"{name}\" from this Pod? Its members will lose access, unless they are members of the Pod some other way."
+msgstr "Möchten Sie „{name}“ wirklich aus diesem Pod entfernen? Ihre Mitglieder verlieren den Zugriff, sofern sie nicht auf anderem Weg Mitglieder des Pods sind."
+
+#: front/components/pod/settings/PodGroupMembersTable.tsx
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Remove"
+msgstr "Entfernen"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Pods must have at least one editor."
+msgstr "Ein Pod muss mindestens einen Bearbeiter haben."
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "You cannot remove the last editor."
+msgstr "Sie können den letzten Bearbeiter nicht entfernen."
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Successfully removed member"
+msgstr "Mitglied entfernt"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Pod member was successfully removed."
+msgstr "Das Pod-Mitglied wurde entfernt."
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Successfully added editor"
+msgstr "Bearbeiter hinzugefügt"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Successfully removed editor"
+msgstr "Bearbeiter entfernt"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Pod editor was successfully added."
+msgstr "Der Pod-Bearbeiter wurde hinzugefügt."
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Pod editor was successfully removed."
+msgstr "Der Pod-Bearbeiter wurde entfernt."
+
+#: front/components/pod/settings/PodMembersTable.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Email"
+msgstr "E-Mail"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Joined at"
+msgstr "Mitglied seit"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Remove from editors"
+msgstr "Als Bearbeiter entfernen"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Are you sure you want to remove \"{memberName}\" from editors?"
+msgstr "Möchten Sie „{memberName}“ wirklich als Bearbeiter entfernen?"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Are you sure you want to add \"{memberName}\" as an editor?"
+msgstr "Möchten Sie „{memberName}“ wirklich als Bearbeiter hinzufügen?"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Remove member"
+msgstr "Mitglied entfernen"
+
+#: front/components/pod/settings/PodMembersTable.tsx
+msgid "Are you sure you want to remove \"{memberName}\" from this Pod?"
+msgstr "Möchten Sie „{memberName}“ wirklich aus diesem Pod entfernen?"
+
+#: front/components/pod/settings/PodNetworkSection.tsx
+msgid "Failed to load"
+msgstr "Laden fehlgeschlagen"
+
+#: front/components/pod/settings/PodNetworkSection.tsx
+msgid "The Pod network settings could not be loaded."
+msgstr "Die Netzwerkeinstellungen des Pods konnten nicht geladen werden."
+
+#: front/components/pod/settings/PodNetworkSection.tsx
+msgid "Network"
+msgstr "Netzwerk"
+
+#: front/components/pod/settings/PodNetworkSection.tsx
+msgid "Computers in this Pod can reach the following domains, in addition to the workspace allowlist. Changes apply to every Computer running in the Pod within about a minute."
+msgstr "Computer in diesem Pod können zusätzlich zur Zulassungsliste des Workspace die folgenden Domains erreichen. Änderungen gelten innerhalb von etwa einer Minute für jeden Computer, der im Pod läuft."
+
+#: front/components/pod/settings/PodNetworkSection.tsx
+msgid "You can request additional domains; a workspace admin reviews each request."
+msgstr "Sie können weitere Domains anfordern. Ein Workspace-Administrator prüft jede Anfrage."
+
+#: front/components/pod/settings/PodNetworkSection.tsx
+msgid "No Pod-specific domains are currently allowed."
+msgstr "Derzeit sind keine Pod-spezifischen Domains zugelassen."
+
+#: front/components/pod/settings/PodNotificationMenu.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "All activity"
+msgstr "Alle Aktivitäten"
+
+#: front/components/pod/settings/PodNotificationMenu.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Only when mentioned"
+msgstr "Nur bei Erwähnung"
+
+#: front/components/pod/settings/PodNotificationMenu.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Don't notify me"
+msgstr "Nicht benachrichtigen"
+
+#: front/components/pod/settings/PodNotificationMenu.tsx
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Notifications"
+msgstr "Benachrichtigungen"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Warning"
+msgstr "Warnung"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "@Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?"
+msgstr "@Dust ist darauf ausgelegt, Ihren Mitgliedern standardmäßig die beste Erfahrung zu bieten. Ein eigener Standard-Agent bearbeitet möglicherweise nicht jede Anfrage so zuverlässig. Möchten Sie ihn trotzdem als Standard festlegen?"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Yes"
+msgstr "Ja"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "No"
+msgstr "Nein"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Default agent: {defaultAgentName} (workspace default)"
+msgstr "Standard-Agent: {defaultAgentName} (Workspace-Standard)"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Default agent: {defaultAgentName}"
+msgstr "Standard-Agent: {defaultAgentName}"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Workspace default"
+msgstr "Workspace-Standard"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "This Pod's default agent isn't available to you, so @Dust is used instead. Contact the editor of the Pod for more information."
+msgstr "Der Standard-Agent dieses Pods ist für Sie nicht verfügbar, daher wird stattdessen @Dust verwendet. Wenden Sie sich für weitere Informationen an den Bearbeiter des Pods."
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Pod instructions for agents"
+msgstr "Pod-Anweisungen für Agenten"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Seen by all agents in this Pod, stored as <0>{POD_AGENTS_MD_FILENAME}</0> in the Pod's files."
+msgstr "Für alle Agenten in diesem Pod sichtbar, gespeichert als <0>{POD_AGENTS_MD_FILENAME}</0> in den Dateien des Pods."
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Enter instructions for agents"
+msgstr "Anweisungen für Agenten eingeben"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Default agent"
+msgstr "Standard-Agent"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "The agent pre-selected when anyone starts a new conversation in this Pod."
+msgstr "Der Agent, der vorausgewählt ist, wenn jemand eine neue Unterhaltung in diesem Pod beginnt."
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "When unset, it inherits the workspace default agent."
+msgstr "Wenn nicht festgelegt, wird der Standard-Agent des Workspace übernommen."
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Reset to workspace default"
+msgstr "Auf Workspace-Standard zurücksetzen"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Default skills"
+msgstr "Standardfähigkeiten"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "The skills pre-selected when anyone starts a new conversation in this Pod. Members can still edit the skills in each conversation."
+msgstr "Die Fähigkeiten, die vorausgewählt sind, wenn jemand eine neue Unterhaltung in diesem Pod beginnt. Mitglieder können die Fähigkeiten in jeder Unterhaltung weiterhin bearbeiten."
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Default skill: {skillName}"
+msgstr "Standardfähigkeit: {skillName}"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "Remove {skillName}"
+msgstr "{skillName} entfernen"
+
+#: front/components/pod/settings/PodSettingsCustomizationTab.tsx
+msgid "No default skills configured."
+msgstr "Keine Standardfähigkeiten konfiguriert."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Update Pod name?"
+msgstr "Pod-Namen ändern?"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "The Pod name will be changed to \"{newPodName}\"."
+msgstr "Der Pod wird in „{newPodName}“ umbenannt."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Successfully updated Pod name"
+msgstr "Pod-Name aktualisiert"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Pod name was successfully updated."
+msgstr "Der Pod-Name wurde aktualisiert."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Enter Pod name"
+msgstr "Pod-Namen eingeben"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "A Pod or space with this name already exists."
+msgstr "Ein Pod oder Bereich mit diesem Namen existiert bereits."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Description"
+msgstr "Beschreibung"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Loading..."
+msgstr "Wird geladen…"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Describe what this Pod is about..."
+msgstr "Beschreiben Sie, worum es in diesem Pod geht…"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "How you get notified about activity in this Pod. Also available from the Pod menu."
+msgstr "Wie Sie über Aktivitäten in diesem Pod benachrichtigt werden. Auch über das Pod-Menü verfügbar."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Archive and delete"
+msgstr "Archivieren und löschen"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgctxt "section title"
+msgid "Archive"
+msgstr "Archivieren"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Archived on <0>{archivedDate}</0>."
+msgstr "Archiviert am <0>{archivedDate}</0>."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Unarchive"
+msgstr "Archivierung aufheben"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "This Pod is removed from your sidebar. Its content stays intact and agents can still use it as a data source. You can restore it at any time."
+msgstr "Dieser Pod wird aus Ihrer Seitenleiste entfernt. Seine Inhalte bleiben erhalten und Agenten können ihn weiterhin als Datenquelle nutzen. Sie können ihn jederzeit wiederherstellen."
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgctxt "button label"
+msgid "Archive"
+msgstr "Archivieren"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgctxt "section title"
+msgid "Delete"
+msgstr "Löschen"
+
+#: front/components/pod/settings/PodSettingsGeneralTab.tsx
+msgid "Deleting removes all content in this Pod: conversations, folders, websites, and data sources. Agents that use its tools will stop working. This cannot be undone."
+msgstr "Beim Löschen werden alle Inhalte dieses Pods entfernt: Unterhaltungen, Ordner, Websites und Datenquellen. Agenten, die seine Tools verwenden, funktionieren nicht mehr. Dies kann nicht rückgängig gemacht werden."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Switch to open?"
+msgstr "Auf offen umstellen?"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Switch to restricted?"
+msgstr "Auf eingeschränkt umstellen?"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
+msgstr "Alle Workspace-Mitglieder können beitreten und alles im Pod sehen, einschließlich bestehender Unterhaltungen und Dateien."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Access will be limited to invited members only."
+msgstr "Der Zugriff wird auf eingeladene Mitglieder beschränkt."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Successfully updated Pod visibility"
+msgstr "Sichtbarkeit des Pods aktualisiert"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Pod is now open."
+msgstr "Der Pod ist jetzt offen."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Pod is now restricted."
+msgstr "Der Pod ist jetzt eingeschränkt."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Open to everyone"
+msgstr "Für alle offen"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Anyone in the workspace can find and join the Pod."
+msgstr "Alle im Workspace können den Pod finden und ihm beitreten."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Open Pods are disabled by your workspace admin."
+msgstr "Offene Pods wurden vom Administrator Ihres Workspace deaktiviert."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Members"
+msgstr "Mitglieder"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Manage"
+msgstr "Verwalten"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Search (email)"
+msgstr "Suchen (E-Mail)"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "No members yet. Add people to give them access to this Pod."
+msgstr "Noch keine Mitglieder. Fügen Sie Personen hinzu, um ihnen Zugriff auf diesen Pod zu geben."
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "Groups"
+msgstr "Gruppen"
+
+#: front/components/pod/settings/PodSettingsParticipantsTab.tsx
+msgid "No groups yet. Add a group to give all of its members access at once."
+msgstr "Noch keine Gruppen. Fügen Sie eine Gruppe hinzu, um allen ihren Mitgliedern auf einmal Zugriff zu geben."
+
+#: front/components/pod/settings/PodSettingsSection.tsx
+msgid "General"
+msgstr "Allgemein"
+
+#: front/components/pod/settings/PodSettingsSection.tsx
+msgid "Customization"
+msgstr "Personalisierung"
+
+#: front/components/pod/settings/PodSettingsSection.tsx
+msgid "Participants"
+msgstr "Teilnehmer"
+
+#: front/components/pod/settings/PodSettingsSection.tsx
+msgid "Advanced"
+msgstr "Erweitert"
+
+#: front/components/pod/settings/PodSettingsSection.tsx
+msgid "This Pod has been archived."
+msgstr "Dieser Pod wurde archiviert."
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "A Pod can have at most {MAX_POD_FILE_TABS, plural, one {# custom tab} other {# custom tabs}}."
+msgstr "Ein Pod kann höchstens {MAX_POD_FILE_TABS, plural, one {# eigenen Tab} other {# eigene Tabs}} haben."
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Add file to Tabs"
+msgstr "Datei zu Tabs hinzufügen"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Pod customization"
+msgstr "Pod-Anpassung"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Tabs"
+msgstr "Registerkarten"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Files pinned to this Pod's Tabs. Drag to reorder, or pick a custom icon."
+msgstr "An die Tabs dieses Pods angeheftete Dateien. Ziehen Sie sie, um die Reihenfolge zu ändern, oder wählen Sie ein eigenes Symbol."
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "No files in the Tabs yet."
+msgstr "Noch keine Dateien in den Tabs."
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Add file"
+msgstr "Datei hinzufügen"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Change icon"
+msgstr "Symbol ändern"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Tab icon"
+msgstr "Tab-Symbol"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "File {filePath} missing or renamed"
+msgstr "Datei {filePath} fehlt oder wurde umbenannt"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Remove from Tabs"
+msgstr "Aus Tabs entfernen"

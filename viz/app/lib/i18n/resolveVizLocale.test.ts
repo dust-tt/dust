@@ -19,7 +19,7 @@ describe("resolveVizLocale", () => {
       resolveVizLocale({ localeParam: undefined, acceptLanguage: "fr-FR" })
     ).toBe("fr-FR");
     expect(
-      resolveVizLocale({ localeParam: "de-DE", acceptLanguage: "fr" })
+      resolveVizLocale({ localeParam: "es-ES", acceptLanguage: "fr" })
     ).toBe("fr-FR");
   });
 
@@ -27,7 +27,7 @@ describe("resolveVizLocale", () => {
     expect(
       resolveVizLocale({
         localeParam: undefined,
-        acceptLanguage: "de-DE,fr-CA;q=0.8,en;q=0.5",
+        acceptLanguage: "es-ES,fr-CA;q=0.8,en;q=0.5",
       })
     ).toBe("fr-FR");
   });
@@ -49,7 +49,7 @@ describe("resolveVizLocale", () => {
       resolveVizLocale({ localeParam: undefined, acceptLanguage: null })
     ).toBe("en-US");
     expect(
-      resolveVizLocale({ localeParam: "", acceptLanguage: "de-DE, ja" })
+      resolveVizLocale({ localeParam: "", acceptLanguage: "es-ES, ja" })
     ).toBe("en-US");
   });
 });

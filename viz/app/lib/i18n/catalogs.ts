@@ -1,5 +1,6 @@
 import type { Messages } from "@lingui/core";
 import type { VizCatalogLocale } from "@viz/app/lib/i18n/locales";
+import { messages as deDEMessages } from "@viz/locales/de-DE/messages";
 import { messages as enGBMessages } from "@viz/locales/en-GB/messages";
 import { messages as enUSMessages } from "@viz/locales/en-US/messages";
 import { messages as frFRMessages } from "@viz/locales/fr-FR/messages";
@@ -13,6 +14,7 @@ const MESSAGES_BY_LOCALE: Record<VizCatalogLocale, Messages> = {
   "en-US": enUSMessages,
   "en-GB": enGBMessages,
   "fr-FR": frFRMessages,
+  "de-DE": deDEMessages,
 };
 
 /**

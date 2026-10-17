@@ -1,0 +1,170 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pod/conversation/PodConversationListItem.tsx
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Today"
+msgstr "Heute"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Yesterday"
+msgstr "Gestern"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Last week"
+msgstr "Letzte 7 Tage"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Last month"
+msgstr "Letzte 30 Tage"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Last 12 months"
+msgstr "Letzte 12 Monate"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Older"
+msgstr "Älter"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "No conversations found."
+msgstr "Keine Unterhaltungen gefunden."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "No group conversations yet in this Pod."
+msgstr "Noch keine Gruppenunterhaltungen in diesem Pod."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "You are not a participant in any conversation yet."
+msgstr "Sie nehmen noch an keiner Unterhaltung teil."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+msgstr "Ziehen Sie Ihre Textdateien (txt, doc, pdf) und Bilddateien (jpg, png) hierher."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Attach files to the conversation"
+msgstr "Dateien an die Unterhaltung anhängen"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgctxt "Pod status"
+msgid "Archived"
+msgstr "Archiviert"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
+msgstr "Dieser Pod ist archiviert und erscheint nicht mehr in Ihrer Seitenleiste. Sie können weiterhin nach ihm suchen und frühere Unterhaltungen ansehen, aber keine neuen beginnen."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgctxt "conversation filter"
+msgid "Mine"
+msgstr "Meine"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Conversations where you have sent a message."
+msgstr "Unterhaltungen, in denen Sie eine Nachricht gesendet haben."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgctxt "conversation filter"
+msgid "Group"
+msgstr "Gruppe"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Conversations with more than one person"
+msgstr "Unterhaltungen mit mehr als einer Person"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgctxt "conversation filter"
+msgid "All"
+msgstr "Alle"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Every conversation in this Pod."
+msgstr "Alle Unterhaltungen in diesem Pod."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Show triggered"
+msgstr "Ausgelöste anzeigen"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Hide triggered"
+msgstr "Ausgelöste ausblenden"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Search..."
+msgstr "Suchen…"
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Failed to search conversations. Please try again."
+msgstr "Die Unterhaltungen konnten nicht durchsucht werden. Versuchen Sie es erneut."
+
+#: front/components/pod/conversation/PodConversationsTab.tsx
+msgid "Mark all as read"
+msgstr "Alle als gelesen markieren"
+
+#: front/components/pod/conversation/PodEmptyCallout.tsx
+msgid "It's quiet in here."
+msgstr "Hier ist es ruhig."
+
+#: front/components/pod/conversation/PodEmptyCallout.tsx
+msgid "Your Pod is ready but empty! Let us help you invite people, add key data, and more."
+msgstr "Ihr Pod ist bereit, aber leer! Wir helfen Ihnen, Personen einzuladen, wichtige Daten hinzuzufügen und mehr."
+
+#: front/components/pod/conversation/PodEmptyCallout.tsx
+msgid "Let's go"
+msgstr "Los geht’s"
+
+#: front/components/pod/conversation/PodJoinCTA.tsx
+msgid "You need to be invited to participate in this Pod."
+msgstr "Sie müssen eingeladen werden, um an diesem Pod teilzunehmen."
+
+#: front/components/pod/conversation/PodJoinCTA.tsx
+msgid "Join this Pod to participate in conversations."
+msgstr "Treten Sie diesem Pod bei, um an Unterhaltungen teilzunehmen."
+
+#: front/components/pod/conversation/PodJoinCTA.tsx
+msgid "Joining..."
+msgstr "Beitreten…"
+
+#: front/components/pod/conversation/PodJoinCTA.tsx
+msgid "Join the {podName} Pod"
+msgstr "Dem Pod {podName} beitreten"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Hide"
+msgstr "Ausblenden"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Unpin"
+msgstr "Lösen"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Exit full screen"
+msgstr "Vollbild beenden"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Open in full screen"
+msgstr "Im Vollbild öffnen"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Show"
+msgstr "Anzeigen"

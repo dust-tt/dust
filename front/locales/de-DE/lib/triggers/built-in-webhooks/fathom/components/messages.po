@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include transcript"
+msgstr "Transkript einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include meeting transcript with speaker attribution"
+msgstr "Besprechungstranskript mit Sprecherzuordnung einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include summary"
+msgstr "Zusammenfassung einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include AI-generated meeting summary"
+msgstr "KI-generierte Besprechungszusammenfassung einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include action items"
+msgstr "Aufgaben einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include extracted action items"
+msgstr "Extrahierte Aufgaben einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include CRM matches"
+msgstr "CRM-Treffer einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include linked CRM contacts and companies"
+msgstr "Verknüpfte CRM-Kontakte und -Unternehmen einbeziehen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Configure Fathom webhook"
+msgstr "Fathom-Webhook konfigurieren"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select which recordings should trigger webhooks and what content to include."
+msgstr "Wählen Sie aus, welche Aufzeichnungen Webhooks auslösen und welche Inhalte einbezogen werden."
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Recording types"
+msgstr "Aufzeichnungstypen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select at least one type of recording to receive"
+msgstr "Wählen Sie mindestens einen Aufzeichnungstyp aus, der empfangen werden soll."
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Content options"
+msgstr "Inhaltsoptionen"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select at least one type of content to include"
+msgstr "Wählen Sie mindestens einen Inhaltstyp aus, der einbezogen werden soll."
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Webhook configuration"
+msgstr "Webhook-Konfiguration"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "None configured"
+msgstr "Kein Typ konfiguriert"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Included content"
+msgstr "Einbezogene Inhalte"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Transcript"
+msgstr "Transkript"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgctxt "meeting summary"
+msgid "Summary"
+msgstr "Zusammenfassung"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Action items"
+msgstr "Aufgaben"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "CRM matches"
+msgstr "CRM-Treffer"

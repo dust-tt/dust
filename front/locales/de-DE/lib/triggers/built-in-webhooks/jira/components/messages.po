@@ -1,0 +1,46 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "Loading projects..."
+msgstr "Projekte werden geladen…"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "Projects"
+msgstr "Projekte"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "Select Jira projects to monitor for events"
+msgstr "Wählen Sie die Jira-Projekte aus, deren Ereignisse überwacht werden sollen"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "Add project"
+msgstr "Projekt hinzufügen"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "Search projects..."
+msgstr "Projekte suchen…"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "No projects found"
+msgstr "Keine Projekte gefunden"
+
+#: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
+msgid "Please select at least one project to create the webhook"
+msgstr "Wählen Sie mindestens ein Projekt aus, um den Webhook zu erstellen."
+
+#: front/lib/triggers/built-in-webhooks/jira/components/WebhookSourceJiraDetails.tsx
+msgid "Connected sources"
+msgstr "Verbundene Quellen"

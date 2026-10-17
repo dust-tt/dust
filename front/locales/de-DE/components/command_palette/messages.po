@@ -1,0 +1,228 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "New conversation in pod"
+msgstr "Neue Unterhaltung im Pod"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Open a new conversation in the active pod"
+msgstr "Neue Unterhaltung im aktiven Pod öffnen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "New conversation"
+msgstr "Neue Unterhaltung"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Open a new conversation"
+msgstr "Neue Unterhaltung öffnen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Details"
+msgstr "Details"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "View description and settings"
+msgstr "Beschreibung und Einstellungen ansehen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Change instructions and settings"
+msgstr "Anweisungen und Einstellungen ändern"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove from favorites"
+msgstr "Aus Favoriten entfernen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add to favorites"
+msgstr "Zu Favoriten hinzufügen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove this agent from your favorites"
+msgstr "Diesen Agenten aus Ihren Favoriten entfernen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this agent to your favorites"
+msgstr "Diesen Agenten zu Ihren Favoriten hinzufügen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "View profile"
+msgstr "Profil ansehen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Use skill"
+msgstr "Fähigkeit verwenden"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this skill to your message"
+msgstr "Diese Fähigkeit zu Ihrer Nachricht hinzufügen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Go"
+msgstr "Aufrufen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Open this Pod"
+msgstr "Diesen Pod öffnen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove from starred"
+msgstr "Aus Favoriten entfernen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add to starred"
+msgstr "Zu Favoriten hinzufügen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove this Pod from your starred list"
+msgstr "Diesen Pod aus Ihren Favoriten entfernen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this Pod to your starred list"
+msgstr "Diesen Pod zu Ihren Favoriten hinzufügen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Navigate"
+msgstr "Navigieren"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Select"
+msgstr "Auswählen"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Back"
+msgstr "Zurück"
+
+#: front/components/command_palette/CommandPaletteItems.tsx
+msgid "More actions"
+msgstr "Weitere Aktionen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "All"
+msgstr "Alle"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Conversations"
+msgstr "Unterhaltungen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Pods"
+msgstr "Pods"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Agents"
+msgstr "Agenten"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Members"
+msgstr "Mitglieder"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Skills"
+msgstr "Fähigkeiten"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation in pod"
+msgstr "Neue Unterhaltung im Pod erstellen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation"
+msgstr "Neue Unterhaltung erstellen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new Pod"
+msgstr "Neuen Pod erstellen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search."
+msgstr "Geben Sie einen Suchbegriff ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations."
+msgstr "Geben Sie einen Suchbegriff ein, um Unterhaltungen zu finden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search pods."
+msgstr "Geben Sie einen Suchbegriff ein, um Pods zu finden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search agents."
+msgstr "Geben Sie einen Suchbegriff ein, um Agenten zu finden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search members."
+msgstr "Geben Sie einen Suchbegriff ein, um Mitglieder zu finden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search skills."
+msgstr "Geben Sie einen Suchbegriff ein, um Fähigkeiten zu finden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search settings."
+msgstr "Geben Sie einen Suchbegriff ein, um Einstellungen zu finden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Search…"
+msgstr "Suchen…"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Suggestions"
+msgstr "Vorschläge"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "No results found."
+msgstr "Keine Ergebnisse gefunden."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More agents available. Type to filter."
+msgstr "Weitere Agenten verfügbar. Geben Sie einen Begriff zum Filtern ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More skills available. Type to filter."
+msgstr "Weitere Fähigkeiten verfügbar. Geben Sie einen Begriff zum Filtern ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More members available. Type to filter."
+msgstr "Weitere Mitglieder verfügbar. Geben Sie einen Begriff zum Filtern ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More pods available. Type to filter."
+msgstr "Weitere Pods verfügbar. Geben Sie einen Begriff zum Filtern ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More conversations available. Type to filter."
+msgstr "Weitere Unterhaltungen verfügbar. Geben Sie einen Begriff zum Filtern ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More settings available. Type to filter."
+msgstr "Weitere Einstellungen verfügbar. Geben Sie einen Begriff zum Filtern ein."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Actions"
+msgstr "Aktionen"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Close"
+msgstr "Schließen"

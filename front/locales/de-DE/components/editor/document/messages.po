@@ -1,0 +1,492 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Add a paragraph"
+msgstr "Absatz hinzufügen"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Back"
+msgstr "Zurück"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Loading files…"
+msgstr "Dateien werden geladen…"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "No matching files"
+msgstr "Keine passenden Dateien"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "No matching paragraphs"
+msgstr "Keine passenden Absätze"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Navigate"
+msgstr "Navigieren"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Insert"
+msgstr "Einfügen"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Close"
+msgstr "Schließen"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Suggested change"
+msgstr "Vorgeschlagene Änderung"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
+msgid "Suggest a change"
+msgstr "Änderung vorschlagen"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
+msgid "Sending"
+msgstr "Wird gesendet"
+
+#: front/components/editor/document/DocumentCommentInput.tsx
+msgid "Send"
+msgstr "Senden"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Comment by {authorName}"
+msgstr "Kommentar von {authorName}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show comment by {authorName}, {count, plural, one {# message} other {# messages}}"
+msgstr "Kommentar von {authorName} anzeigen, {count, plural, one {# Nachricht} other {# Nachrichten}}"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
+msgstr "Dust kann nicht bestätigen, wer diese Nachricht geschrieben hat. Sie kann von einem Agenten oder aus einer Bearbeitung außerhalb des Editors stammen."
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Unverified"
+msgstr "Nicht verifiziert"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Apply"
+msgstr "Anwenden"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Replaces:"
+msgstr "Ersetzt:"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "The commented text was removed."
+msgstr "Der kommentierte Text wurde entfernt."
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "With:"
+msgstr "Durch:"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Deletes the text."
+msgstr "Löscht den Text."
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "New comment"
+msgstr "Neuer Kommentar"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Comment"
+msgstr "Kommentieren"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Comment or @mention…"
+msgstr "Kommentieren oder @erwähnen…"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Reopen"
+msgstr "Wieder öffnen"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Resolve"
+msgstr "Erledigen"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Delete comment"
+msgstr "Kommentar löschen"
+
+#. placeholder {0}: replies.length
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "{0, plural, one {# reply} other {# replies}}"
+msgstr "{0, plural, one {# Antwort} other {# Antworten}}"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Commented text:"
+msgstr "Kommentierter Text:"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Reply"
+msgstr "Antworten"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Reply or @mention…"
+msgstr "Antworten oder @erwähnen…"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Comments"
+msgstr "Kommentare"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Comments, {unresolvedCount, plural, one {# unresolved} other {# unresolved}}"
+msgstr "Kommentare, {unresolvedCount, plural, one {# offen} other {# offen}}"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Close comments"
+msgstr "Kommentare schließen"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "No comments yet"
+msgstr "Noch keine Kommentare"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Select text to add a comment."
+msgstr "Wählen Sie Text aus, um einen Kommentar hinzuzufügen."
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Resolved ({resolvedCount})"
+msgstr "Erledigt ({resolvedCount})"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "All comments"
+msgstr "Alle Kommentare"
+
+#: front/components/editor/document/DocumentEditor.tsx
+msgid "Someone else changed this file while it was open here. Their version was saved as {conflictCopyName}."
+msgstr "Jemand anderes hat diese Datei geändert, während sie hier geöffnet war. Die andere Version wurde als {conflictCopyName} gespeichert."
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgctxt "toolbar over a hovered Frame embedded in a document"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgid "Frame height"
+msgstr "Frame-Höhe"
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr "{value} px"
+
+#: front/components/editor/document/DocumentFrameMenu.tsx
+msgid "Remove Frame"
+msgstr "Frame entfernen"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "toolbar over a hovered image"
+msgid "Image"
+msgstr "Bild"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Image width"
+msgstr "Bildbreite"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Original size"
+msgstr "Originalgröße"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Remove image"
+msgstr "Bild entfernen"
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here because a table row has more cells than its header."
+msgstr "Dieses Dokument kann hier nicht bearbeitet werden, da eine Tabellenzeile mehr Zellen als ihre Kopfzeile hat."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has HTML."
+msgstr "Dieses Dokument kann hier noch nicht bearbeitet werden, da es HTML enthält."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a task list."
+msgstr "Dieses Dokument kann hier noch nicht bearbeitet werden, da es eine Aufgabenliste enthält."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a code block fenced with ~~~."
+msgstr "Dieses Dokument kann hier noch nicht bearbeitet werden, da es einen mit ~~~ abgegrenzten Codeblock enthält."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has an indented code fence."
+msgstr "Dieses Dokument kann hier noch nicht bearbeitet werden, da es eine eingerückte Codeblock-Begrenzung enthält."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a reference link definition."
+msgstr "Dieses Dokument kann hier noch nicht bearbeitet werden, da es eine Referenzlink-Definition enthält."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
+msgstr "Dieses Dokument verwendet eine Formatierung, die der Editor noch nicht unterstützt, und kann daher hier nicht bearbeitet werden."
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Connecting…"
+msgstr "Wird verbunden…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Live"
+msgstr "Live"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Reconnecting…"
+msgstr "Wird neu verbunden…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Live editing unavailable"
+msgstr "Live-Bearbeitung nicht verfügbar"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "reading…"
+msgstr "liest…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "{name} is reading"
+msgstr "{name} liest"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "writing…"
+msgstr "schreibt…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "{name} is writing"
+msgstr "{name} schreibt"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Changes not saved"
+msgstr "Änderungen nicht gespeichert"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saving…"
+msgstr "Wird gespeichert…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saved"
+msgstr "Gespeichert"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Link"
+msgstr "Link"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Paste or type a link"
+msgstr "Link einfügen oder eingeben"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Remove link"
+msgstr "Link entfernen"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Bold"
+msgstr "Fett"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Italic"
+msgstr "Kursiv"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Underline"
+msgstr "Unterstrichen"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Strikethrough"
+msgstr "Durchgestrichen"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Inline code"
+msgstr "Inline-Code"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Format selection"
+msgstr "Auswahl formatieren"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Text style"
+msgstr "Textstil"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Lists"
+msgstr "Listen"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Edit link"
+msgstr "Link bearbeiten"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document paragraph style"
+msgid "Text"
+msgstr "Text"
+
+#: front/components/editor/document/blocks.ts
+msgid "Start writing with plain text"
+msgstr "Mit einfachem Text beginnen"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 1"
+msgstr "Überschrift 1"
+
+#: front/components/editor/document/blocks.ts
+msgid "A big section heading"
+msgstr "Eine große Abschnittsüberschrift"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 2"
+msgstr "Überschrift 2"
+
+#: front/components/editor/document/blocks.ts
+msgid "A medium section heading"
+msgstr "Eine mittlere Abschnittsüberschrift"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 3"
+msgstr "Überschrift 3"
+
+#: front/components/editor/document/blocks.ts
+msgid "A small section heading"
+msgstr "Eine kleine Abschnittsüberschrift"
+
+#: front/components/editor/document/blocks.ts
+msgid "Bulleted list"
+msgstr "Aufzählungsliste"
+
+#: front/components/editor/document/blocks.ts
+msgid "A simple list of ideas"
+msgstr "Eine einfache Liste von Ideen"
+
+#: front/components/editor/document/blocks.ts
+msgid "Numbered list"
+msgstr "Nummerierte Liste"
+
+#: front/components/editor/document/blocks.ts
+msgid "Keep things in order"
+msgstr "Elemente der Reihe nach ordnen"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document paragraph style"
+msgid "Quote"
+msgstr "Zitat"
+
+#: front/components/editor/document/blocks.ts
+msgid "Make a passage stand out"
+msgstr "Eine Passage hervorheben"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document paragraph style"
+msgid "Code"
+msgstr "Code"
+
+#: front/components/editor/document/blocks.ts
+msgid "A code snippet"
+msgstr "Ein Codeausschnitt"
+
+#: front/components/editor/document/blocks.ts
+msgid "Divider"
+msgstr "Trennlinie"
+
+#: front/components/editor/document/blocks.ts
+msgid "Separate sections"
+msgstr "Abschnitte trennen"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding a Frame"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr "Ein interaktives Frame aus den Dateien einbetten"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
+msgstr "Frame auswählen"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding an image"
+msgid "Image"
+msgstr "Bild"
+
+#: front/components/editor/document/blocks.ts
+msgid "Show an image from the files"
+msgstr "Ein Bild aus den Dateien anzeigen"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose an image"
+msgstr "Bild auswählen"
+
+#: front/components/editor/document/extensions.ts
+msgid "Untitled"
+msgstr "Ohne Titel"
+
+#: front/components/editor/document/extensions.ts
+msgid "Heading"
+msgstr "Überschrift"
+
+#: front/components/editor/document/extensions.ts
+msgid "Start writing, or type / for elements…"
+msgstr "Beginnen Sie zu schreiben oder tippen Sie / für Elemente…"
+
+#: front/components/editor/document/extensions.ts
+msgid "Type / for elements…"
+msgstr "Tippen Sie / für Elemente…"
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "Commenting is unavailable."
+msgstr "Kommentieren ist nicht verfügbar."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "The selected text can no longer take a comment. Select other text to comment."
+msgstr "Der ausgewählte Text kann keinen Kommentar mehr erhalten. Wählen Sie anderen Text zum Kommentieren aus."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This comment can't be saved in this document. Try shortening or simplifying it."
+msgstr "Dieser Kommentar kann in diesem Dokument nicht gespeichert werden. Kürzen oder vereinfachen Sie ihn."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "Suggestions can only replace text within one paragraph."
+msgstr "Vorschläge können nur Text innerhalb eines Absatzes ersetzen."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This suggestion can't replace the commented text. Another comment may cover part of it."
+msgstr "Dieser Vorschlag kann den kommentierten Text nicht ersetzen. Möglicherweise deckt ein anderer Kommentar einen Teil davon ab."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This comment was deleted."
+msgstr "Dieser Kommentar wurde gelöscht."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This thread changed while sending. Send again."
+msgstr "Diese Diskussion hat sich beim Senden geändert. Senden Sie Ihre Nachricht erneut."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This text is too long or complex to suggest a change to."
+msgstr "Dieser Text ist zu lang oder zu komplex, um eine Änderung dafür vorzuschlagen."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "This suggestion can't be saved in this document."
+msgstr "Dieser Vorschlag kann in diesem Dokument nicht gespeichert werden."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "The suggestion was applied, but the comment couldn't be resolved. {reason}"
+msgstr "Der Vorschlag wurde übernommen, aber der Kommentar konnte nicht als erledigt markiert werden. {reason}"
+
+#: front/components/editor/document/useDocumentEditor.ts
+msgid "Document content"
+msgstr "Dokumentinhalt"

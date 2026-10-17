@@ -1,0 +1,317 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "Search members"
+msgstr "Mitglieder suchen"
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "No members found"
+msgstr "Keine Mitglieder gefunden"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "The role defines the rights of a member for the workspace. {roleDescription}"
+msgstr "Die Rolle legt die Rechte eines Mitglieds im Workspace fest. {roleDescription}"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Edit invitation"
+msgstr "Einladung bearbeiten"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Invitation sent on {sentDate}"
+msgstr "Einladung gesendet am {sentDate}"
+
+#: front/components/members/EditInvitationModal.tsx
+#: front/components/members/InvitationsList.tsx
+msgid "(expired)"
+msgstr "(abgelaufen)"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Role:"
+msgstr "Rolle:"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Send invitation again"
+msgstr "Einladung erneut senden"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Revoke invitation"
+msgstr "Einladung widerrufen"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Update role"
+msgstr "Rolle ändern"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Invitation email"
+msgstr "Einladungs-E-Mail"
+
+#: front/components/members/InvitationsList.tsx
+#: front/components/members/MembersList.tsx
+msgid "Role"
+msgstr "Rolle"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Resend"
+msgstr "Erneut senden"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No pending invitations"
+msgstr "Keine ausstehenden Einladungen"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Send invitations to add new members to your workspace"
+msgstr "Senden Sie Einladungen, um neue Mitglieder zu Ihrem Workspace hinzuzufügen"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No invitations match your search"
+msgstr "Keine Einladungen entsprechen Ihrer Suche"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Try adjusting your search terms"
+msgstr "Versuchen Sie es mit anderen Suchbegriffen"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invalid email addresses: {invalidEmailsList}"
+msgstr "Ungültige E-Mail-Adressen: {invalidEmailsList}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{openCount, plural, one {# Available} other {# Available}}"
+msgstr "{openCount, plural, one {# verfügbar} other {# verfügbar}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "If eligible"
+msgstr "Falls berechtigt"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Too many invitations"
+msgstr "Zu viele Einladungen"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Your cannot send more than {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day."
+msgstr "Sie können nicht mehr als {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} Einladungen pro Tag senden."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{activeDifferentRoleCount, plural, one {The user below is already in your workspace with a different role. Moving forward will change their role to <0>{newRole}</0>.} other {The users below are already in your workspace with a different role. Moving forward will change their role to <1>{newRole}</1>.}}"
+msgstr "{activeDifferentRoleCount, plural, one {Das folgende Mitglied ist bereits mit einer anderen Rolle in Ihrem Workspace. Wenn Sie fortfahren, wird seine Rolle in <0>{newRole}</0> geändert.} other {Die folgenden Mitglieder sind bereits mit einer anderen Rolle in Ihrem Workspace. Wenn Sie fortfahren, wird ihre Rolle in <1>{newRole}</1> geändert.}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "- {fullName} ({email}, current role: {currentRole})"
+msgstr "- {fullName} ({email}, aktuelle Rolle: {currentRole})"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Do you want to proceed?"
+msgstr "Möchten Sie fortfahren?"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Some users are already in the workspace"
+msgstr "Einige Mitglieder sind bereits im Workspace"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Yes, proceed"
+msgstr "Ja, fortfahren"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite members"
+msgstr "Mitglieder einladen"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Choose a role and a seat for the new members."
+msgstr "Wählen Sie eine Rolle und einen Platz für die neuen Mitglieder."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Choose a role for the new members."
+msgstr "Wählen Sie eine Rolle für die neuen Mitglieder."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses"
+msgstr "E-Mail-Adressen"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses, comma separated"
+msgstr "E-Mail-Adressen, durch Kommas getrennt"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite"
+msgstr "Einladen"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Note"
+msgstr "Hinweis"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>yearly fee of {price} at the end of the trial period</0>."
+msgstr "Neuen Nutzern wird <0>am Ende des Testzeitraums eine Jahresgebühr von {price} berechnet</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
+msgstr "Neuen Nutzern wird <0>am Ende des Testzeitraums eine Monatsgebühr von {price} berechnet</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Next bill will be adjusted proportionally based on the members' sign-up date."
+msgstr "Die nächste Rechnung wird anteilig nach dem Anmeldedatum der Mitglieder angepasst."
+
+#: front/components/members/MemberSelectionTable.tsx
+#: front/components/members/MembersList.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Search users..."
+msgstr "Mitglieder suchen…"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Loading users..."
+msgstr "Mitglieder werden geladen…"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "This group has no members"
+msgstr "Diese Gruppe hat keine Mitglieder"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Add members to the group by searching for them above."
+msgstr "Fügen Sie der Gruppe Mitglieder hinzu, indem Sie oben nach ihnen suchen."
+
+#: front/components/members/MembersList.tsx
+msgid "Active"
+msgstr "Aktiv"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered"
+msgstr "Nicht registriert"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (provisioned)"
+msgstr "Aktiv (bereitgestellt)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (provisioned)"
+msgstr "Nicht registriert (bereitgestellt)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (invited)"
+msgstr "Aktiv (eingeladen)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (invited)"
+msgstr "Nicht registriert (eingeladen)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (auto-joined)"
+msgstr "Aktiv (automatisch beigetreten)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (auto-joined)"
+msgstr "Nicht registriert (automatisch beigetreten)"
+
+#: front/components/members/MembersList.tsx
+msgid "(you)"
+msgstr "(Sie)"
+
+#: front/components/members/MembersList.tsx
+msgid "Email"
+msgstr "E-Mail"
+
+#: front/components/members/MembersList.tsx
+msgid "Remove member"
+msgstr "Mitglied entfernen"
+
+#: front/components/members/MembersList.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/members/MembersList.tsx
+msgid "Groups"
+msgstr "Gruppen"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Admin"
+msgstr "Administrator"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Manager"
+msgstr "Manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Member"
+msgstr "Mitglied"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "None"
+msgstr "Keine"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "admin"
+msgstr "Administrator"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "manager"
+msgstr "Manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "member"
+msgstr "Mitglied"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "none"
+msgstr "keine"
+
+#: front/components/members/Roles.ts
+msgid "All roles"
+msgstr "Alle Rollen"
+
+#: front/components/members/Roles.ts
+msgid "Can use agents in conversations. Building permissions are set by admins."
+msgstr "Kann Agenten in Unterhaltungen verwenden. Berechtigungen zum Erstellen werden von Administratoren festgelegt."
+
+#: front/components/members/Roles.ts
+msgid "Can manage members, groups, roles, and workspace analytics."
+msgstr "Kann Mitglieder, Gruppen, Rollen und Statistiken des Workspace verwalten."
+
+#: front/components/members/Roles.ts
+msgid "Full administrative control, including settings, connections, billing, and governance."
+msgstr "Volle administrative Kontrolle, einschließlich Einstellungen, Verbindungen, Abrechnung und Governance."
+
+#: front/components/members/Roles.ts
+msgid "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
+msgstr "Rollen werden über Zuordnungen von Gruppen zu Rollen verwaltet, die unter „Einstellungen und Governance“ konfiguriert sind. Um eine Rolle zu ändern, passen Sie die Gruppenmitgliedschaft des Mitglieds an."
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Search"
+msgstr "Suchen"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Search members (email)"
+msgstr "Mitglieder suchen (E-Mail)"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Members"
+msgstr "Mitglieder"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Invitations"
+msgstr "Einladungen"

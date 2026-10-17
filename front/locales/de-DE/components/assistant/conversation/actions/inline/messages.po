@@ -1,0 +1,71 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-15 17:41+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de-DE\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Errored after {duration}, without tools."
+msgstr "Fehler nach {duration}, ohne Tools."
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Errored after {duration}"
+msgstr "Fehler nach {duration}"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Canceled after {duration}, without tools."
+msgstr "Abgebrochen nach {duration}, ohne Tools."
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Canceled after {duration}"
+msgstr "Abgebrochen nach {duration}"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Completed in {duration}, without tools."
+msgstr "Abgeschlossen in {duration}, ohne Tools."
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Completed in {duration}"
+msgstr "Abgeschlossen in {duration}"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Canceled, without tools."
+msgstr "Abgebrochen, ohne Tools."
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Canceled"
+msgstr "Abgebrochen"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Completed, without tools."
+msgstr "Abgeschlossen, ohne Tools."
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Completed"
+msgstr "Abgeschlossen"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "No tools used."
+msgstr "Keine Tools verwendet."
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Writing…"
+msgstr "Schreibt…"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgctxt "activity status"
+msgid "Done"
+msgstr "Fertig"
+
+#: front/components/assistant/conversation/actions/inline/InlineActivitySteps.tsx
+msgid "Thinking…"
+msgstr "Denkt nach…"
