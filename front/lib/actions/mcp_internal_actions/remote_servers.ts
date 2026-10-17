@@ -7584,6 +7584,38 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10059,
+    name: "MrScraper",
+    description:
+      "MrScraper tools to scrape any webpage as HTML, Markdown or a screenshot (with browser rendering and proxies), search Google, and check account usage.",
+    url: "https://mcp.mrscraper.com/mcp",
+    icon: "MrScraperLogo",
+    documentationUrl:
+      "https://docs.mrscraper.com/docs/getting-started/mcp-server",
+    connectionInstructions:
+      "MrScraper uses OAuth with dynamic client registration. Sign in with your MrScraper account to connect. Scrapes and searches consume tokens from your MrScraper plan, and the account status tool reports your remaining balance.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      scraperAPI: "never_ask",
+      webSearch: "never_ask",
+      status: "never_ask",
+    },
+    toolDisplayLabels: {
+      scraperAPI: {
+        running: "Scraping a webpage with MrScraper",
+        done: "Scraped a webpage with MrScraper",
+      },
+      webSearch: {
+        running: "Searching the web with MrScraper",
+        done: "Searched the web with MrScraper",
+      },
+      status: {
+        running: "Checking account status on MrScraper",
+        done: "Checked account status on MrScraper",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

@@ -83,6 +83,7 @@ import MistralLogo from "./Mistral";
 import ModjoLogo from "./Modjo";
 import MondayLogo from "./Monday";
 import MoonshotLogo from "./Moonshot";
+import MrScraperLogo from "./MrScraper";
 import N8NLogo from "./N8N";
 import NaptaLogo from "./Napta";
 import NetSuiteLogo from "./NetSuite";
@@ -218,6 +219,7 @@ export const PLATFORM_LOGOS = {
   ModjoLogo,
   MondayLogo,
   MoonshotLogo,
+  MrScraperLogo,
   N8NLogo,
   NaptaLogo,
   NetSuiteLogo,

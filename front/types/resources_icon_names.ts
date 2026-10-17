@@ -243,6 +243,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "MiroLogo",
   "ModjoLogo",
   "MondayLogo",
+  "MrScraperLogo",
   "N8NLogo",
   "NaptaLogo",
   "NetSuiteLogo",
