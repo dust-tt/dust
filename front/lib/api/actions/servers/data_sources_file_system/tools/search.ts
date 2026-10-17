@@ -59,6 +59,14 @@ export async function search(
     ? runContext.stepContext
     : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
 
+  // See the `excluded-retrieval-tags-honored` contract on `searchFunction`: the originating run may
+  // ask us to keep certain tags out of retrieval (e.g. the Slack bot excludes the thread that
+  // triggered the run). Applied to every data source; these tags only exist on documents that carry
+  // them, so excluding them elsewhere is a no-op.
+  const excludedRetrievalTags = isAgentLoopRunContext(runContext)
+    ? (runContext.userMessage.context.excludedRetrievalTags ?? [])
+    : [];
+
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);
 
@@ -103,6 +111,7 @@ export async function search(
       const finalTagsNot = [
         ...(args.filter.tags?.not ?? []),
         ...(tagsNot ?? []),
+        ...excludedRetrievalTags,
       ];
 
       return {

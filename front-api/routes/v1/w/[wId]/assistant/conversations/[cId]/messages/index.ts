@@ -219,6 +219,7 @@ app.post(
     const messageContext: UserMessageContext = {
       clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
       email: context.email?.toLowerCase() ?? null,
+      excludedRetrievalTags: context.excludedRetrievalTags ?? null,
       fullName: context.fullName ?? null,
       origin,
       profilePictureUrl: context.profilePictureUrl ?? null,
