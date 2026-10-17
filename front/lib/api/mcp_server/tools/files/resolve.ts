@@ -2,41 +2,18 @@ import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system";
+import { readAuthorizedMountPath } from "@app/lib/api/files/authorization";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
+import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
 import { getDustFileSystemForScope } from "./context";
 import type { FilesScope } from "./schemas";
 import { FILES_SCOPE_SCHEMA } from "./schemas";
-
-function gcsPathToCanonical(
-  workspace: LightWorkspaceType,
-  mountFilePath: string
-): string | null {
-  const base = `w/${workspace.sId}/`;
-  if (!mountFilePath.startsWith(base)) {
-    return null;
-  }
-
-  const rest = mountFilePath.slice(base.length);
-
-  const conv = rest.match(/^conversations\/([^/]+)\/files\/(.+)$/);
-  if (conv) {
-    return `${SCOPED_PREFIX_CONVERSATION}${conv[1]}/${conv[2]}`;
-  }
-
-  const pod =
-    rest.match(/^pods\/([^/]+)\/files\/(.+)$/) ??
-    rest.match(/^projects\/([^/]+)\/files\/(.+)$/);
-  if (pod) {
-    return `${SCOPED_PREFIX_POD}${pod[1]}/${pod[2]}`;
-  }
-
-  return null;
-}
 
 function scopeMatchesCanonicalPath(
   scope: FilesScope,
@@ -61,6 +38,60 @@ const inputSchema = {
     ),
 };
 
+/**
+ * @cc [owner:frankaloia,label:security] resolve-hides-foreign-mount
+ * When the caller cannot read the file, or the caller-supplied scope is not the file's mount,
+ * the error MUST NOT include the file's mount path, file name, conversation id, or pod id.
+ * The path MUST be returned only after `readAuthorizedMountPath` yields `ok` and the
+ * caller-supplied scope is that mount.
+ */
+export async function resolveScopedFilePath(
+  auth: Authenticator,
+  {
+    scope,
+    fileId,
+  }: {
+    scope: FilesScope;
+    fileId: string;
+  }
+): Promise<Result<{ path: string }, string>> {
+  const file = await FileResource.fetchById(auth, fileId);
+  if (!file) {
+    return new Err(`File not found: \`${fileId}\`.`);
+  }
+
+  const mount = await readAuthorizedMountPath(auth, file);
+  if (mount.status === "denied") {
+    return new Err(`File not found: \`${fileId}\`.`);
+  }
+  if (mount.status === "unmounted") {
+    return new Err(
+      `File \`${fileId}\` is not accessible through the file system.`
+    );
+  }
+
+  if (!scopeMatchesCanonicalPath(scope, mount.path)) {
+    return new Err(`File \`${fileId}\` does not belong to the given scope.`);
+  }
+
+  const fsResult = await getDustFileSystemForScope(auth, scope);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+
+  const statResult = await fsResult.value.stat(mount.path);
+  if (statResult.isErr()) {
+    return new Err(statResult.error.message);
+  }
+  if (!statResult.value) {
+    return new Err(
+      `File \`${fileId}\` is not accessible through the file system.`
+    );
+  }
+
+  return new Ok({ path: mount.path });
+}
+
 export function registerFilesResolveTool(server: McpServer) {
   registerDustMcpTool(
     server,
@@ -73,47 +104,15 @@ export function registerFilesResolveTool(server: McpServer) {
       inputSchema,
     },
     async (auth, { scope, file_id }) => {
-      const file = await FileResource.fetchById(auth, file_id);
-      if (!file) {
-        return mcpError(`File not found: \`${file_id}\`.`);
+      const result = await resolveScopedFilePath(auth, {
+        scope,
+        fileId: file_id,
+      });
+      if (result.isErr()) {
+        return mcpError(result.error);
       }
 
-      if (!file.mountFilePath) {
-        return mcpError(
-          `File \`${file_id}\` is not accessible through the file system.`
-        );
-      }
-
-      const workspace = auth.workspace();
-      const canonicalPath = gcsPathToCanonical(workspace, file.mountFilePath);
-      if (!canonicalPath) {
-        return mcpError(
-          `File \`${file_id}\` is not accessible through the file system (use case: ${file.useCase}).`
-        );
-      }
-
-      if (!scopeMatchesCanonicalPath(scope, canonicalPath)) {
-        return mcpError(
-          `File \`${file_id}\` does not belong to the given scope. Resolved path: \`${canonicalPath}\`.`
-        );
-      }
-
-      const fsResult = await getDustFileSystemForScope(auth, scope);
-      if (fsResult.isErr()) {
-        return mcpError(fsResult.error);
-      }
-
-      const statResult = await fsResult.value.stat(canonicalPath);
-      if (statResult.isErr()) {
-        return mcpError(statResult.error.message);
-      }
-      if (!statResult.value) {
-        return mcpError(
-          `File \`${file_id}\` is not accessible through the file system.`
-        );
-      }
-
-      return mcpJsonResponse({ path: canonicalPath });
+      return mcpJsonResponse({ path: result.value.path });
     }
   );
 }
