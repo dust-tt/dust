@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  attestations: read
 
 jobs:
   check-branch:
@@ -109,6 +110,32 @@ jobs:
         if: steps.check.outputs.has-missing == 'true'
         run: |
           echo '${{ secrets.SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT_JSON }}' > /tmp/service-account.json
+
+      - name: Verify the dsbx release
+        # The image checks dsbx against DSBX_CLI_SHA256. Take that hash from a
+        # binary whose provenance attestation was signed by release-dsbx-cli.yml
+        # running on main: a dispatch from any other branch fails here.
+        if: steps.check.outputs.has-missing == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eo pipefail
+          VERSION=$(sed -n 's/^export const DSBX_CLI_VERSION = "\(.*\)";$/\1/p' front/lib/api/sandbox/image/registry.ts)
+          if [ -z "$VERSION" ]; then
+            echo "::error::could not read DSBX_CLI_VERSION from front/lib/api/sandbox/image/registry.ts"
+            exit 1
+          fi
+          mkdir -p /tmp/dsbx-release
+          gh release download "dsbx-v$VERSION" --repo "${{ github.repository }}" \
+            --pattern dsbx-linux-x86_64 --dir /tmp/dsbx-release
+          gh attestation verify /tmp/dsbx-release/dsbx-linux-x86_64 \
+            --repo "${{ github.repository }}" \
+            --cert-identity "https://github.com/${{ github.repository }}/.github/workflows/release-dsbx-cli.yml@refs/heads/main" \
+            --source-ref refs/heads/main \
+            --deny-self-hosted-runners
+          SHA256=$(sha256sum /tmp/dsbx-release/dsbx-linux-x86_64 | cut -d" " -f1)
+          echo "dsbx v$VERSION: $SHA256"
+          echo "DSBX_CLI_SHA256=$SHA256" >> "$GITHUB_ENV"
 
       - name: Build missing sandbox images
         if: steps.check.outputs.has-missing == 'true'

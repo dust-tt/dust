@@ -5,6 +5,9 @@ on:
 
 permissions:
   contents: write
+  # Build provenance attestation for the dsbx binary.
+  id-token: write
+  attestations: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -65,6 +68,13 @@ jobs:
           sha256sum dsbx-linux-x86_64 > checksums-sha256.txt
           echo "sha256=$(cut -d" " -f1 checksums-sha256.txt)" >> "$GITHUB_OUTPUT"
 
+      - name: Attest build provenance
+        # The sandbox image registry workflow verifies this attestation (signed by
+        # this workflow on main) instead of a hash pinned in the repository.
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: artifacts/dsbx-linux-x86_64
+
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
@@ -75,7 +85,7 @@ jobs:
 
             **Commit**: ${{ github.sha }}
 
-            **SHA-256** (`dsbx-linux-x86_64`): `${{ steps.artifacts.outputs.sha256 }}`. Pin it as `DSBX_CLI_SHA256` in `front/lib/api/sandbox/image/registry.ts`.
+            **SHA-256** (`dsbx-linux-x86_64`): `${{ steps.artifacts.outputs.sha256 }}` (build provenance attested).
 
             ### Download
 

@@ -44,6 +44,23 @@ cargo build
 
 (If the bundle is missing, `build.rs` fails the build with this instruction.)
 
+## Release
+
+Run the "Release dsbx CLI" workflow on `main`. It publishes `dsbx-v<version>`
+with a build provenance attestation. Sandbox images install the release named by
+`DSBX_CLI_VERSION` in `front/lib/api/sandbox/image/registry.ts`; the "Sandbox
+Image Registry" workflow verifies the attestation and passes the binary's
+SHA-256 to the build as `DSBX_CLI_SHA256`. To build an image locally, do the
+same:
+
+```sh
+gh release download dsbx-v<version> --repo dust-tt/dust --pattern dsbx-linux-x86_64 --dir /tmp/dsbx-release
+gh attestation verify /tmp/dsbx-release/dsbx-linux-x86_64 --repo dust-tt/dust \
+  --cert-identity https://github.com/dust-tt/dust/.github/workflows/release-dsbx-cli.yml@refs/heads/main \
+  --source-ref refs/heads/main
+export DSBX_CLI_SHA256=$(shasum -a 256 /tmp/dsbx-release/dsbx-linux-x86_64 | cut -d" " -f1)
+```
+
 ## Functions
 
 Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
@@ -76,8 +93,8 @@ export const schema = {
   publicly shared Frame.
 
 Adding a policy requires a runner-first rollout. Publish a `dsbx` release that
-parses the policy, then update `DSBX_CLI_VERSION` and `DSBX_CLI_SHA256` (printed
-in the release body) in `front/lib/api/sandbox/image/registry.ts` before exposing the policy to Frame
+parses the policy, then update `DSBX_CLI_VERSION` in
+`front/lib/api/sandbox/image/registry.ts` before exposing the policy to Frame
 authors. During a mixed-version rollout, servers deny unknown persisted
 policies, so invocation fails closed until all revisions understand the policy.
 

@@ -5,6 +5,7 @@ import {
   formatSandboxImageId,
   getSandboxImageFromRegistry,
 } from "@app/lib/api/sandbox/image";
+import { DSBX_CLI_VERSION } from "@app/lib/api/sandbox/image/registry";
 import {
   buildSandboxImage,
   createGCPRegistryFactory,
@@ -127,6 +128,16 @@ async function buildImage(args: BuildArgs): Promise<void> {
     process.exit(1);
   }
   const sandboxImage = sandboxImageResult.value;
+
+  // The image checks the dsbx binary against this hash, so fail early instead
+  // of midway through the E2B build.
+  if (!config.getDsbxCliSha256()) {
+    logger.error(
+      { imageName, dsbxCliVersion: DSBX_CLI_VERSION },
+      "Please set DSBX_CLI_SHA256 to the attested SHA-256 of dsbx-linux-x86_64 (see cli/dust-sandbox/README.md)"
+    );
+    process.exit(1);
+  }
 
   logger.info(
     { imageName, tag },
