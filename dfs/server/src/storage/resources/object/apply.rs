@@ -121,10 +121,10 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] apply-group-by-targets
      * Batches MUST merge operation target overlaps transitively and merge all batches containing a
-     * Move into one batch. Every operation MUST be moved into exactly one batch, unchanged and without
-     * cloning its payload. Each batch MUST contain operations with their original indexes in
-     * request order and the unique union of its targets. Batches MUST follow their first
-     * operation's order.
+     * Move into one batch (critical to prevent cycles). Every operation MUST be moved into exactly
+     * one batch, unchanged and without cloning its payload. Each batch MUST contain operations with
+     * their original indexes in request order and the unique union of its targets. Batches MUST
+     * follow their first operation's order.
      */
     pub fn group_by_targets(operations: Vec<Operation>) -> Vec<ApplyGroup> {
         // Index both directions of the operation/target graph. For n operations with at most three
