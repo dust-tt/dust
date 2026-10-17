@@ -400,7 +400,7 @@ pub(crate) async fn apply_move_rejections_leave_no_staged_writes() -> Result<()>
     let tx = fdb::database()?.create_trx()?;
     let mut root = fetch_directory(&tx, tenant, &tenant.root_id).await?;
     let file = create_child(&tx, &mut root, "file", ObjectKind::File).await?;
-    create_child(&tx, &mut root, "occupied", ObjectKind::File).await?;
+    let occupied = create_child(&tx, &mut root, "occupied", ObjectKind::File).await?;
     let directory = create_child(&tx, &mut root, "directory", ObjectKind::Directory).await?;
     let nonempty = create_child(&tx, &mut root, "nonempty", ObjectKind::Directory).await?;
     let mut nonempty = DirectoryResource::try_from(nonempty)?;
@@ -561,6 +561,16 @@ pub(crate) async fn apply_move_rejections_leave_no_staged_writes() -> Result<()>
     for operation in [
         MoveOperation {
             parent_id: directory.object_id,
+            ..operation.clone()
+        },
+        // A file used as the source parent is a binding mismatch, not a directory-kind error.
+        MoveOperation {
+            parent_id: occupied.object_id,
+            ..operation.clone()
+        },
+        MoveOperation {
+            parent_id: occupied.object_id,
+            target_id: Some(tenant.root_id),
             ..operation.clone()
         },
         MoveOperation {

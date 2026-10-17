@@ -125,16 +125,19 @@ impl DirectoryResource {
         {
             return Err(Error::Forbidden.into());
         }
-        let mut source = Self::try_from(source)?;
-        let mut target = Self::try_from(target)?;
-        Self::supported_kind(object.kind.into())?;
 
-        // Check the source binding and reserve shared under the tenant root.
-        if object.parent_id != Some(operation.parent_id)
-            || source.lookup(tx, &object.name).await? != Some(object.object_id)
-        {
+        // Check the source binding before validating directory kinds.
+        if object.parent_id != Some(operation.parent_id) {
             return Err(Error::Object(object::Error::NotFound).into());
         }
+        let mut source = Self::try_from(source)?;
+        if source.lookup(tx, &object.name).await? != Some(object.object_id) {
+            return Err(Error::Object(object::Error::NotFound).into());
+        }
+
+        // Validate the target and reserve shared under the tenant root.
+        let mut target = Self::try_from(target)?;
+        Self::supported_kind(object.kind.into())?;
         if target.is_tenant_root() && operation.name == VIRTUAL_SHARED_NAME {
             return Err(Error::AlreadyExists.into());
         }
