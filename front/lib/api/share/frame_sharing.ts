@@ -1,6 +1,6 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import { frameServesPublicFunctions } from "@app/lib/api/sandbox_functions/workspace_user";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import type { EmailRecipient } from "@app/lib/notifications/transactional_emails";
@@ -13,7 +13,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -523,13 +522,19 @@ export async function acceptsAnyVerifiedEmail(
     return false;
   }
 
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
+  const auth = await Authenticator.fromJSON({
+    authMethod: "anonymous",
+    workspaceId: workspace.sId,
+    userId: null,
+    role: "none",
+    groupIds: [],
+    subscriptionId: null,
+    isByok: false,
+  });
 
   return frameServesPublicFunctions({
-    workspace,
-    plan: subscription.getPlan(),
+    workspace: auth.getNonNullableWorkspace(),
+    plan: auth.plan(),
     frame: file,
   });
 }

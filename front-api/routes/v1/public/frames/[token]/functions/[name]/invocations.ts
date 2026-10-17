@@ -5,13 +5,11 @@ import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
 } from "@app/lib/api/share/frame_session";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -84,23 +82,25 @@ async function invokeAsExternalViewer(
   workspace: WorkspaceResource,
   { frame, functionName, body }: InvokeFromShareInput
 ): Promise<Result<SandboxFunctionInvocationResource, Error> | null> {
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  const caller = {
-    workspace: renderLightWorkspaceType({ workspace }),
-    plan: subscription.getPlan(),
-  };
+  const auth = await Authenticator.fromJSON({
+    authMethod: "anonymous",
+    workspaceId: workspace.sId,
+    userId: null,
+    role: "none",
+    groupIds: [],
+    subscriptionId: null,
+    isByok: false,
+  });
 
   const sandboxFunction = await SandboxFunctionResource.fetchActiveForAnonymous(
-    caller,
+    auth,
     { frame, slug: functionName }
   );
   if (!sandboxFunction) {
     return null;
   }
 
-  return sandboxFunction.invokeAnonymously(caller, {
+  return sandboxFunction.invokeAnonymously(auth, {
     body,
     viewerEmail: await resolveExternalViewerEmail(ctx, workspace),
   });
