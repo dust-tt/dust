@@ -434,6 +434,115 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(result.isErr() && result.error.code).toBe("no_billed_credits");
   });
 
+  it("attributes a failed message against the bill it kept", async () => {
+    const {
+      auth,
+      billedCreditAmountMicro,
+      workspace,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId,
+      status: "failed",
+    });
+
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId, conversationId }
+    );
+
+    expect(result).toEqual(
+      new Ok({ costCredits: billedCreditAmountMicro / 1_000_000 })
+    );
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(items.map((item) => item.itemType).sort()).toEqual([
+      "input",
+      "output",
+      "reasoning",
+    ]);
+    expect(
+      items.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(billedCreditAmountMicro);
+  });
+
+  it("writes nothing for a failed message that was never billed", async () => {
+    const {
+      auth,
+      workspace,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId,
+      costCredits: null,
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId,
+      status: "failed",
+    });
+
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId, conversationId }
+    );
+
+    expect(result).toEqual(new Ok(undefined));
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(items).toHaveLength(0);
+  });
+
+  it("fails when a failed message ran a model call after its last bill", async () => {
+    const {
+      auth,
+      runs,
+      workspace,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage({
+      outputTokens: OUTPUT_TOKENS_COUNT_ABOVE_ONE_DEFAULT_TIER_CREDIT,
+      runCount: 2,
+    });
+    await billMessageFromBillingPlan(auth, {
+      agentMessageModelId,
+      runs: runs.slice(0, 1),
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId,
+      status: "failed",
+    });
+
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId, conversationId }
+    );
+
+    expect(result.isErr() && result.error.code).toBe("llm_bill_mismatch");
+  });
+
   it("keeps the amounts of the last reconciliation when a later pass does not reconcile", async () => {
     const {
       auth,

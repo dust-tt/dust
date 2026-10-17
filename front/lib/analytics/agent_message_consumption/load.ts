@@ -193,13 +193,14 @@ async function loadAnalyticsUser({
  * @cc [owner:sfriquet,label:product;backend] unbilled-execution-snapshot
  * A terminal message whose status is not tracked for billing (`failed`) MUST return null when its
  * `costCredits` is null. Otherwise it MUST be loaded like any other message: the indexed snapshot
- * is restricted to its reconciled attribution items, which only cover the executions billed before
- * the message failed.
+ * is restricted to its reconciled attribution items, whose amounts add up to the bill of the
+ * executions finalized before the message failed.
  */
 /**
  * @cc [owner:sfriquet,label:product;backend] unbilled-unavailable-calls-not-indexed
  * A message whose `costCredits` is null and whose billed run usages are all `unavailable` MUST
- * return null. A null `costCredits` alongside a reported billed run usage MUST NOT return null.
+ * return null. For a message with a tracked status, a null `costCredits` alongside a reported
+ * billed run usage MUST NOT return null.
  */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
