@@ -55,6 +55,7 @@ import GoogleDocLogo from "./GoogleDoc";
 import GooglePdfLogo from "./GooglePdf";
 import GoogleSlideLogo from "./GoogleSlide";
 import GoogleSpreadsheetLogo from "./GoogleSpreadsheet";
+import GrafanaLogo from "./Grafana";
 import GranolaLogo from "./Granola";
 import GrokLogo from "./Grok";
 import GuruLogo from "./Guru";
@@ -190,6 +191,7 @@ export const PLATFORM_LOGOS = {
   GooglePdfLogo,
   GoogleSlideLogo,
   GoogleSpreadsheetLogo,
+  GrafanaLogo,
   GranolaLogo,
   GrokLogo,
   GuruLogo,
