@@ -367,6 +367,11 @@ export async function getInternalMCPServer(
         auth,
         toolContext
       );
+    case "temporal":
+      return (await import("@app/lib/api/actions/servers/temporal")).default(
+        auth,
+        toolContext
+      );
     case "ask_user_question":
       return (
         await import("@app/lib/api/actions/servers/ask_user_question")

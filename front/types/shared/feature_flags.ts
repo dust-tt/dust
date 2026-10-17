@@ -292,6 +292,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
+  temporal_mcp: {
+    description:
+      "Enable the Temporal MCP server to inspect Dust's own workflows while debugging incidents.",
+    stage: "dust_only",
+    owner: "tdraier",
+  },
   legacy_billing: {
     description:
       "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",

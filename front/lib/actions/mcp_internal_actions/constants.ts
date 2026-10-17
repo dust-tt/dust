@@ -86,6 +86,7 @@ import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadat
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { TEMPORAL_SERVER } from "@app/lib/api/actions/servers/temporal/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { TRIGGERS_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
@@ -243,6 +244,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "pod_manager",
   "pod_tasks",
   "poke",
+  "temporal",
   "sandbox",
   "ask_user_question",
   "wakeups",
@@ -1274,6 +1276,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SELF_CONFIGURATION_SERVER,
+  },
+  temporal: {
+    id: 1053,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("temporal_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: TEMPORAL_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

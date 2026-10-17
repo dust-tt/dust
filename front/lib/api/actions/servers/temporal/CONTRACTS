@@ -1,0 +1,8 @@
+@cc [owner:tdraier,label:security;mcp] temporal-tools-gated
+Every tool handler of the `temporal` MCP server MUST call `enforceTemporalSecurityGates` and return
+its `Err` before obtaining a Temporal client or reading any Temporal data.
+
+@cc [owner:tdraier,label:security;mcp] temporal-tools-read-only
+Tools of the `temporal` MCP server MUST NOT change Temporal state: no starting, signaling,
+updating, canceling, terminating, resetting, pausing, or rescheduling workflows or activities, and
+no schedule or task queue changes.

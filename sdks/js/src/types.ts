@@ -914,6 +914,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "plan_mode"
   | "admin_can_see_private_entities"
   | "poke_mcp"
+  | "temporal_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
