@@ -37,6 +37,12 @@ async fn sweep() -> Result<()> {
     SystemRandom::new()
         .fill(&mut random)
         .map_err(|_| anyhow::anyhow!("storage cleanup jitter generation failed"))?;
+
+    // TODO(spolu): Move this mechanism to our future queue (search indexing) once it exists to avoid
+    // this brittle jitter approach. Concurrent sweeping should not cause problems, but it is still
+    // unsatisfactory not to have a centralized queue. We could also expose these as endpoints and
+    // run them from an external system.
+
     let jitter_ms = u64::from_le_bytes(random)
         % (STORAGE_SWEEP_MAX_INTERVAL_MS - STORAGE_SWEEP_MIN_INTERVAL_MS + 1);
     sleep(Duration::from_millis(jitter_ms)).await;
