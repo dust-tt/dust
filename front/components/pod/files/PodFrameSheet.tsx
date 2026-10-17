@@ -124,12 +124,16 @@ function PodFrameSheetWithFile({
   );
   const isV2 = functionReferenceKind === "v2";
 
-  const { canWriteFrameSource, hasFrameFunctions, isFramePermissionsLoading } =
-    useFramePermissions({
-      owner,
-      frameId: fileId,
-      disabled: !isOpen || !isV2,
-    });
+  const {
+    canWriteFrameSource,
+    hasFrameFunctions,
+    isFramePermissionsLoading,
+    mutateFramePermissions,
+  } = useFramePermissions({
+    owner,
+    frameId: fileId,
+    disabled: !isOpen || !isV2,
+  });
 
   const frameSourceBaseUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
@@ -151,6 +155,7 @@ function PodFrameSheetWithFile({
     conversationId: undefined,
     iframeRef,
     mutateFileContent,
+    onSaved: mutateFramePermissions,
   });
 
   const framePackageRoot =
