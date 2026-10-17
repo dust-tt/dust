@@ -7,7 +7,7 @@ use super::{
     apply::{create, writer},
     *,
 };
-use crate::object::{allow, deny};
+use crate::object::deny;
 
 pub(crate) async fn apply_move_preserves_records_and_updates_versions() -> Result<()> {
     let session = writer().await?;
@@ -47,7 +47,6 @@ pub(crate) async fn apply_move_preserves_records_and_updates_versions() -> Resul
             parent_id: tenant.root_id,
             target_id: Some(target.object_id),
             name: "moved".to_owned(),
-            replace: false,
         },
     )
     .await?;
@@ -131,14 +130,12 @@ async fn cycle_fixture() -> Result<(SessionResource, MoveOperation, MoveOperatio
         parent_id: p.object().object_id,
         target_id: Some(y.object_id),
         name: "a".to_owned(),
-        replace: false,
     };
     let second = MoveOperation {
         object_id: b.object().object_id,
         parent_id: q.object().object_id,
         target_id: Some(x.object_id),
         name: "b".to_owned(),
-        replace: false,
     };
     Ok((session, first, second))
 }
@@ -208,7 +205,6 @@ pub(crate) async fn apply_move_receipt_preserves_per_operation_results() -> Resu
             object_id: file.object_id,
             target_id: Some(directory.object_id),
             name: "moved".to_owned(),
-            replace: false,
         }),
         // A rename to the current name still advances versions, returning its parent only once.
         Operation::Move(MoveOperation {
@@ -216,7 +212,6 @@ pub(crate) async fn apply_move_receipt_preserves_per_operation_results() -> Resu
             object_id: file.object_id,
             target_id: None,
             name: "moved".to_owned(),
-            replace: false,
         }),
     ];
     let calls = AtomicUsize::new(0);
@@ -279,127 +274,122 @@ pub(crate) async fn apply_move_receipt_preserves_per_operation_results() -> Resu
     clear_tenant(tenant).await
 }
 
-pub(crate) async fn apply_move_replaces_files_and_empty_directories() -> Result<()> {
-    let session = writer().await?;
-    let tenant = &session.tenant;
+pub(crate) async fn apply_move_collisions_preserve_destinations_and_concurrent_children()
+-> Result<()> {
     for kind in [ObjectKind::File, ObjectKind::Directory] {
+        let session = writer().await?;
+        let tenant = &session.tenant;
         let tx = fdb::database()?.create_trx()?;
         let mut root = fetch_directory(&tx, tenant, &tenant.root_id).await?;
         let source = create_child(&tx, &mut root, "source", kind).await?;
-        let mut destination = root
-            .create_child(
-                &tx,
-                ObjectId::new_v7(),
-                "destination".to_owned(),
-                kind,
-                None,
-                HashMap::from([("user.tag".to_owned(), b"remove".to_vec())]),
-            )
-            .await?;
-        destination.update_grants(
-            &tx,
-            &[
-                GrantUpdate {
-                    grant: allow("reader", 0o4),
-                    remove: false,
-                },
-                GrantUpdate {
-                    grant: deny(0o6),
-                    remove: false,
-                },
-            ],
-        )?;
-        let prefix = tenant_subspace(&tenant.tenant_id);
-        if kind == ObjectKind::File {
-            tx.set(
-                &prefix.pack(&("block", destination.object_id.as_bytes().as_slice(), 0u64)),
-                b"remove",
-            );
-        }
+        let destination = create_child(&tx, &mut root, "destination", kind).await?;
         tx.commit().await?;
 
+        let operation = MoveOperation {
+            parent_id: tenant.root_id,
+            object_id: source.object_id,
+            target_id: None,
+            name: "destination".to_owned(),
+        };
         let tx = fdb::database()?.create_trx()?;
-        let result = DirectoryResource::apply_move(
-            &tx,
-            &session,
-            MoveOperation {
-                parent_id: tenant.root_id,
-                object_id: source.object_id,
-                target_id: None,
-                name: "destination".to_owned(),
-                replace: true,
-            },
-        )
-        .await?;
-        assert_eq!(
-            result.object.context("missing replacement")?.id,
-            source.object_id.into()
-        );
-        assert_eq!(result.related.len(), 1);
-        assert_eq!(
-            result.related[0].attr_version,
-            root.object().attr_version + 1
-        );
-        assert_eq!(
-            result.related[0].content_version,
-            root.object().content_version + 1
-        );
+        let before = tenant_records(&tx, tenant).await?;
+        assert!(matches!(
+            DirectoryResource::apply_move(&tx, &session, operation.clone()).await,
+            Err(storage::Error::Resource(directory::Error::AlreadyExists))
+        ));
+        assert_eq!(tenant_records(&tx, tenant).await?, before);
         tx.commit().await?;
 
-        let tx = fdb::database()?.create_trx()?;
-        let root = fetch_directory(&tx, tenant, &tenant.root_id).await?;
-        assert!(root.lookup(&tx, "source").await?.is_none());
-        assert_eq!(
-            root.lookup(&tx, "destination").await?,
-            Some(source.object_id)
-        );
-        assert!(
-            ObjectResource::fetch(&tx, tenant, &destination.object_id)
-                .await?
-                .is_none()
-        );
-        for family in ["object-grant", "metadata", "block"] {
-            let range = RangeOption::from(
-                prefix
-                    .subspace(&(family, destination.object_id.as_bytes().as_slice()))
-                    .range(),
+        if kind == ObjectKind::Directory {
+            // The destination ID is not a Move target, so Create runs in a separate batch.
+            let child = create(destination.object_id, "child", ObjectKind::File);
+            let operations = vec![Operation::Move(operation), Operation::Create(child.clone())];
+            assert_eq!(
+                ObjectResource::group_by_targets(operations.clone()).len(),
+                2
             );
-            assert!(tx.get_range(&range, 1, false).await?.is_empty());
+            let tx = fdb::database()?.create_trx()?;
+            let results = ObjectResource::apply(&tx, &session, operations).await?;
+            assert!(
+                matches!(results[0], Err(object::Error::Directory(ref error))
+                if matches!(**error, directory::Error::AlreadyExists))
+            );
+            assert!(results[1].is_ok());
+            tx.commit().await?;
+
+            let tx = fdb::database()?.create_trx()?;
+            let root = fetch_directory(&tx, tenant, &tenant.root_id).await?;
+            assert_eq!(root.lookup(&tx, "source").await?, Some(source.object_id));
+            assert_eq!(
+                root.lookup(&tx, "destination").await?,
+                Some(destination.object_id)
+            );
+            let destination = fetch_directory(&tx, tenant, &destination.object_id).await?;
+            assert_eq!(
+                destination.lookup(&tx, "child").await?,
+                Some(child.object_id)
+            );
+            let (stored, mode) =
+                ObjectResource::modes_for_session(&tx, &session, &[child.object_id])
+                    .await?
+                    .pop()
+                    .flatten()
+                    .context("missing child")?;
+            assert_eq!(stored.parent_id, Some(destination.object().object_id));
+            assert!(mode.can_read());
         }
-        assert!(
-            tx.get(
-                &prefix.pack(&("metadata", destination.object_id.as_bytes().as_slice())),
-                false
-            )
-            .await?
-            .is_none()
-        );
-        assert!(
-            tx.get(
-                &prefix.pack(&(
-                    "grant-object",
-                    "ALLOW",
-                    "reader",
-                    destination.object_id.as_bytes().as_slice(),
-                    0o4u32
-                )),
-                false
-            )
-            .await?
-            .is_none()
-        );
-        // Free the name before exercising the other kind.
-        DirectoryResource::apply_remove(
-            &tx,
-            &session,
-            dfs_protocol::rpc::RemoveOperation {
-                parent_id: tenant.root_id,
-                object_id: source.object_id,
-                kind: kind.into(),
-            },
-        )
-        .await?;
-        tx.commit().await?;
+        clear_tenant(tenant).await?;
+    }
+    Ok(())
+}
+
+pub(crate) async fn apply_remove_then_move_serializes_destination_operations() -> Result<()> {
+    let session = writer().await?;
+    let tenant = &session.tenant;
+    let tx = fdb::database()?.create_trx()?;
+    let mut root = fetch_directory(&tx, tenant, &tenant.root_id).await?;
+    let source = create_child(&tx, &mut root, "source", ObjectKind::Directory).await?;
+    let destination = create_child(&tx, &mut root, "destination", ObjectKind::Directory).await?;
+    tx.commit().await?;
+
+    let child = create(destination.object_id, "child", ObjectKind::File);
+    let operations = vec![
+        Operation::Remove(dfs_protocol::rpc::RemoveOperation {
+            parent_id: tenant.root_id,
+            object_id: destination.object_id,
+            kind: ObjectKind::Directory.into(),
+        }),
+        Operation::Move(MoveOperation {
+            parent_id: tenant.root_id,
+            object_id: source.object_id,
+            target_id: None,
+            name: "destination".to_owned(),
+        }),
+        Operation::Create(child.clone()),
+    ];
+    assert_eq!(
+        ObjectResource::group_by_targets(operations.clone()).len(),
+        1
+    );
+    let tx = fdb::database()?.create_trx()?;
+    let results = ObjectResource::apply(&tx, &session, operations).await?;
+    assert!(results[0].is_ok());
+    assert!(results[1].is_ok());
+    assert!(
+        matches!(results[2], Err(object::Error::Directory(ref error))
+        if matches!(**error, directory::Error::Object(object::Error::NotFound)))
+    );
+    tx.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    let root = fetch_directory(&tx, tenant, &tenant.root_id).await?;
+    assert!(root.lookup(&tx, "source").await?.is_none());
+    assert_eq!(
+        root.lookup(&tx, "destination").await?,
+        Some(source.object_id)
+    );
+    for id in [destination.object_id, child.object_id] {
+        assert!(ObjectResource::fetch(&tx, tenant, &id).await?.is_none());
     }
     clear_tenant(tenant).await
 }
@@ -449,7 +439,6 @@ pub(crate) async fn apply_move_rejections_leave_no_staged_writes() -> Result<()>
         object_id: file.object_id,
         target_id: None,
         name: "renamed".to_owned(),
-        replace: false,
     };
     let tx = fdb::database()?.create_trx()?;
     let before = tenant_records(&tx, tenant).await?;
@@ -509,19 +498,17 @@ pub(crate) async fn apply_move_rejections_leave_no_staged_writes() -> Result<()>
         (
             MoveOperation {
                 name: "directory".to_owned(),
-                replace: true,
                 ..operation.clone()
             },
-            directory::Error::InvalidKind,
+            directory::Error::AlreadyExists,
         ),
         (
             MoveOperation {
                 object_id: directory.object_id,
                 name: "nonempty".to_owned(),
-                replace: true,
                 ..operation.clone()
             },
-            directory::Error::NotEmpty,
+            directory::Error::AlreadyExists,
         ),
         (
             MoveOperation {
@@ -561,12 +548,6 @@ pub(crate) async fn apply_move_rejections_leave_no_staged_writes() -> Result<()>
             ) | (
                 storage::Error::Resource(directory::Error::AlreadyExists),
                 directory::Error::AlreadyExists
-            ) | (
-                storage::Error::Resource(directory::Error::InvalidKind),
-                directory::Error::InvalidKind
-            ) | (
-                storage::Error::Resource(directory::Error::NotEmpty),
-                directory::Error::NotEmpty
             ) | (
                 storage::Error::Resource(directory::Error::InvalidMove),
                 directory::Error::InvalidMove
