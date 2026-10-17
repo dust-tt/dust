@@ -132,6 +132,17 @@ describe("POST /api/v1/public/frames/:token/functions/:name/invocations", () => 
     });
   });
 
+  it("refuses a viewer without a verified email even for an unknown function", async () => {
+    const { token } = await makeTestPublicFrameFunction();
+
+    const response = await invoke(token, "unknown-function");
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: { type: "user_authentication_required" },
+    });
+  });
+
   it("refuses an email verified in another workspace", async () => {
     const { token } = await makeTestPublicFrameFunction();
     const { workspace: otherWorkspace } = await createResourceTest({

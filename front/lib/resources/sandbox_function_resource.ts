@@ -7,6 +7,7 @@ import {
   authorizePublicFrameFunctionCall,
   authorizeSandboxFunctionInvocation,
 } from "@app/lib/api/sandbox_functions/workspace_user";
+import type { ExternalViewer } from "@app/lib/api/share/external_viewer";
 import { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -37,13 +38,11 @@ import {
   DEFAULT_SANDBOX_FUNCTION_STAKE,
   isValidSandboxFunctionSlug,
 } from "@app/types/api/sandbox_functions";
-import type { PlanType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -66,11 +65,6 @@ export interface FramePublicationFunctionDefinition {
 
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 
-type AnonymousCallerInput = {
-  workspace: LightWorkspaceType;
-  plan: PlanType;
-};
-
 type FetchActiveForAnonymousInput = {
   frame: FileResource;
   slug: string;
@@ -78,7 +72,6 @@ type FetchActiveForAnonymousInput = {
 
 type InvokeAnonymouslyInput = {
   body: PostSandboxFunctionInvocationRequestBody;
-  viewerEmail: string | null;
 };
 
 // A `findAll` carrying an aggregate attribute returns plain rows rather than model instances, so
@@ -705,9 +698,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
    * token, since the viewer holds no permission on it.
    */
   static async fetchActiveForAnonymous(
-    { workspace }: AnonymousCallerInput,
+    viewer: ExternalViewer,
     { frame, slug }: FetchActiveForAnonymousInput
   ): Promise<SandboxFunctionResource | null> {
+    const workspace = viewer.workspace();
     const publicationId = frame.useCaseMetadata?.activePublicationId;
     if (
       frame.workspaceId !== workspace.id ||
@@ -770,19 +764,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * @cc [owner:achilleburah,label:security] anonymous-needs-verified-email
-   * A null `viewerEmail` MUST be refused before any invocation is created.
-   */
-  /**
    * @cc [owner:achilleburah,label:security] anonymous-call-runs-as-frame-owner
    * The denial of authorizePublicFrameFunctionCall MUST be returned before any invocation is
    * created. Only once it passes MAY the internal admin Authenticator be built, and it MUST only
    * start this function's invocation with the `external_session` origin.
    */
   async invokeAnonymously(
-    { workspace, plan }: AnonymousCallerInput,
-    { body, viewerEmail }: InvokeAnonymouslyInput
+    viewer: ExternalViewer,
+    { body }: InvokeAnonymouslyInput
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    const workspace = viewer.workspace();
     if (workspace.id !== this.workspaceId) {
       return new Err(
         new SandboxFunctionInvocationError(
@@ -790,16 +781,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         )
       );
     }
-    if (viewerEmail === null) {
-      return new Err(
-        new SandboxFunctionInvocationError(
-          "This Frame function requires a verified email."
-        )
-      );
-    }
     const authorization = await authorizePublicFrameFunctionCall({
       workspace,
-      plan,
+      plan: viewer.plan(),
       userIdentity: this.userIdentity,
       frame: this.frame,
     });

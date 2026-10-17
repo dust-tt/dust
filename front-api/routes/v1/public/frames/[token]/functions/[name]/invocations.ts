@@ -1,6 +1,10 @@
 import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
-import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import {
+  isSandboxFunctionInvocationError,
+  SandboxFunctionInvocationError,
+} from "@app/lib/api/sandbox_functions/errors";
 import { resolveActiveFrameFunctionForUse } from "@app/lib/api/sandbox_functions/frame_share_capability";
+import { ExternalViewer } from "@app/lib/api/share/external_viewer";
 import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
@@ -9,14 +13,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import {
   FrameFunctionInvocationParamsSchema,
   PostFrameFunctionInvocationBodySchema,
@@ -84,26 +87,28 @@ async function invokeAsExternalViewer(
   workspace: WorkspaceResource,
   { frame, functionName, body }: InvokeFromShareInput
 ): Promise<Result<SandboxFunctionInvocationResource, Error> | null> {
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  const caller = {
-    workspace: renderLightWorkspaceType({ workspace }),
-    plan: subscription.getPlan(),
-  };
+  const viewerEmail = await resolveExternalViewerEmail(ctx, workspace);
+  if (viewerEmail === null) {
+    return new Err(
+      new SandboxFunctionInvocationError(
+        "This Frame function requires a verified email."
+      )
+    );
+  }
+
+  const viewer = await ExternalViewer.fromVerifiedEmail(workspace, {
+    email: viewerEmail,
+  });
 
   const sandboxFunction = await SandboxFunctionResource.fetchActiveForAnonymous(
-    caller,
+    viewer,
     { frame, slug: functionName }
   );
   if (!sandboxFunction) {
     return null;
   }
 
-  return sandboxFunction.invokeAnonymously(caller, {
-    body,
-    viewerEmail: await resolveExternalViewerEmail(ctx, workspace),
-  });
+  return sandboxFunction.invokeAnonymously(viewer, { body });
 }
 
 // Mounted at /api/v1/public/frames/:token/functions/:name/invocations.
