@@ -91,7 +91,7 @@ FDB is authoritative for [exclusive locks](API.md#exclusive-locks-proposed).
 
 | Key | Value | Rationale |
 | --- | --- | --- |
-| `dfs-v1-{env}/tenant/<tenantId>/lock/<objectId>` | FDB tuple `(session_id, lock_id_bytes, expires_at_ms)`. | Stores the holder, its single random 16-byte lock ID, and expiry. |
+| `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>/lock` | FDB tuple `(session_id, lock_id_bytes, expires_at_ms)`. | Keeps the lock holder, its single random 16-byte ID, and expiry under the object. |
 | `dfs-v1-{env}/lock-expiry/<expiresAtMs>/<tenantId>/<objectId>/<lockId>` | Empty value. | Finds expired locks across tenants without scanning objects. |
 
 Lock acquisition conflict-reads the key, including absence, and replaces only an absent or expired
