@@ -27,6 +27,7 @@ pub(crate) mod lookup;
 pub(crate) mod read;
 pub(crate) mod read_files;
 pub(crate) mod session;
+pub(crate) mod shared;
 pub(crate) mod stat;
 
 fn allow(subject: &str, mode: u32) -> Grant {

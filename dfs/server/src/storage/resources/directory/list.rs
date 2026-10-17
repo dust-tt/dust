@@ -19,18 +19,20 @@ impl DirectoryResource {
      * Listing MUST require read on the directory in the caller's transaction; a missing directory
      * MUST fail with Object(NotFound) and an unreadable one with Object(NotAuthorized), before
      * checking its kind. Only readable children MUST be returned, with Stat's Attr. The virtual root
-     * needs no read on the stored root; its children do.
+     * needs no read on the stored root; its children do. Virtual shared checks entry eligibility
+     * and effective read without requiring readable parents.
      */
     /**
      * @cc [owner:pmilliotte,label:backend] list-page-cursor
-     * A page MUST hold at most `limit` entries in name order. Hidden children MAY shorten a page,
-     * even to zero entries; next_after MUST be absent only once the listing is complete.
+     * A page MUST hold at most `limit` entries in name order, or object-ID order for shared.
+     * Hidden children or bounded shared scans MAY shorten a page, even to zero entries;
+     * next_after MUST be absent only once the listing is complete.
      */
     /**
      * @cc [owner:pmilliotte,label:product] list-virtual-directories
      * Listing virtual root MUST include virtual shared as an entry named `shared`, in name order
-     * among the stored root's children. Listing the contents of virtual shared MUST fail with
-     * SharedUnsupported.
+     * among the stored root's children. Virtual shared MUST list readable explicit ALLOW entry
+     * points with unique name--<object-id> aliases.
      */
     pub async fn list_for_session(
         tx: &Transaction,
@@ -45,7 +47,9 @@ impl DirectoryResource {
         let directory_id = match directory_ref {
             ObjectRef::Object(id) => id,
             ObjectRef::Root => session.tenant.root_id,
-            ObjectRef::Shared => return Err(Error::SharedUnsupported.into()),
+            ObjectRef::Shared => {
+                return Self::list_shared_for_session(tx, session, after, limit).await;
+            }
             ObjectRef::Invalid => return Err(Error::Object(object::Error::InvalidId).into()),
         };
         let is_virtual_root = directory_ref == ObjectRef::Root;

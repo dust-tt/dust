@@ -287,7 +287,9 @@ message LookupRequest {
 
 // @cc [owner:spolu,label:api] dfs-lookup-name-limit
 // For real directories and virtual root, names MUST satisfy Attr's stored-basename limits.
-// For virtual shared, names MUST match the projected listing names from Entry.name.
+// For virtual shared, names MUST use <name>--<object-id>, split at the last --. The name is a
+// decorative stored basename (empty for the tenant root); the suffix is lowercase UUIDv7 hex.
+// The basename limit excludes the suffix. Lookup MUST enforce shared membership and effective read.
 message LookupTarget {
   required ObjectRef parent_id = 1;
   required string name = 2;

@@ -134,9 +134,9 @@ impl From<directory::Error> for ErrorCode {
             directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
             directory::Error::NotEmpty => ErrorCode::NotEmpty,
             directory::Error::Forbidden => ErrorCode::Forbidden,
-            directory::Error::UnsupportedKind
-            | directory::Error::UnsupportedOperation
-            | directory::Error::SharedUnsupported => ErrorCode::Unsupported,
+            directory::Error::UnsupportedKind | directory::Error::UnsupportedOperation => {
+                ErrorCode::Unsupported
+            }
             directory::Error::Object(error) => error.into(),
             directory::Error::TimestampGeneration => {
                 tracing::error!(%error, "directory operation failed");

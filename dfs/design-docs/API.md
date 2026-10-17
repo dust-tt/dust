@@ -491,8 +491,10 @@ through an ALLOW attached to it; such entry points are reached through `shared`.
 only returned for a readable parent that is a file. Invalid names fail their own result with
 `INVALID_INPUT` or `NAME_TOO_LONG`; an invalid parent reference fails the whole request with
 `INVALID_INPUT`. Under virtual `root`, the stored root's read access is not required, each child is
-still checked, and the name `shared` resolves to virtual `shared`. Lookups under virtual `shared`
-currently fail with `UNSUPPORTED`.
+still checked, and the name `shared` resolves to virtual `shared`. Under virtual `shared`, lookup
+parses the ID after the last `--` and requires the same eligibility as listing. The basename prefix
+is decorative and may be stale after a rename; its 255-byte limit excludes the suffix. The stored
+tenant root has an empty prefix (`--<id>`). Attributes retain the object's real ID and current name.
 
 ### List
 
@@ -523,8 +525,9 @@ Entry {
 ```
 
 Pages obey both the entry limit and a 4 MiB response budget. Pass `next_after` unchanged into the
-next request. Ordinary directories are ordered by basename; `shared` uses object-ID cursors.
-Continue until `next_after` is absent, even after an empty page.
+next request. Ordinary directories are ordered by basename; `shared` uses object-ID cursors scoped
+to the session. Bounded scans may shorten shared pages. Continue until `next_after` is absent, even
+after an empty page.
 
 Clients refresh cached pages through `List`. For real directories and virtual `root`,
 `Attr.content_version` from `Stat` identifies topology changes to entry names and object IDs.
@@ -546,8 +549,7 @@ operations.
 A missing or unreadable directory fails with `NOT_FOUND`; `NOT_DIRECTORY` is only returned for a
 readable file. Unreadable children are left out, so a page can hold fewer entries than `limit`, or
 none. Under virtual `root`, the stored root's read access is not required, each child is still
-checked, and `shared` appears in name order among the stored root's children. Listing virtual
-`shared` currently fails with `UNSUPPORTED`.
+checked, and `shared` appears in name order among the stored root's children.
 
 ### Read
 

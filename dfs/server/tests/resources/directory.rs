@@ -21,6 +21,7 @@ mod apply;
 mod apply_move;
 mod list;
 mod lookup;
+mod shared;
 pub(crate) use apply::{
     apply_create_conflicts_with_grant_revocation,
     apply_create_receipt_preserves_per_operation_results,
@@ -44,6 +45,11 @@ pub(crate) use list::{
     virtual_root_pages_keep_shared_within_the_limit,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
+pub(crate) use shared::{
+    shared_lists_explicit_readable_entries_and_resolves_duplicate_names,
+    shared_lookup_rechecks_membership_and_accepts_stale_names,
+    shared_pages_merge_subjects_without_duplicates_or_skipped_entries,
+};
 
 async fn create_child(
     tx: &Transaction,

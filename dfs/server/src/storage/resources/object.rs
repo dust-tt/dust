@@ -25,6 +25,7 @@ use crate::{
 mod apply;
 mod hints;
 mod modes;
+mod shared;
 mod stat;
 pub use apply::ApplyGroup;
 pub use hints::TreeHints;

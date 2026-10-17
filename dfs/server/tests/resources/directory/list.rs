@@ -112,12 +112,6 @@ pub(crate) async fn list_for_session_returns_readable_children_only() -> Result<
         list(&tx, &reader, notes.object_id, None, 1).await,
         Err(storage::Error::Resource(directory::Error::NotDirectory))
     ));
-    assert!(matches!(
-        list(&tx, &reader, ObjectRef::Shared, None, 1).await,
-        Err(storage::Error::Resource(
-            directory::Error::SharedUnsupported
-        ))
-    ));
 
     let (guest, _) = SessionResource::new(&tenant, vec!["guest".to_owned()])?;
     let guest_root = list(&tx, &guest, ObjectRef::Root, None, 4_096).await?;
