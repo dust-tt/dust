@@ -257,9 +257,28 @@ impl Dfs for API {
         Ok(Response::new(within_message_budget(batch)?))
     }
 
+    /**
+     * @cc [owner:pmilliotte,label:api;security] list-entry-page
+     * List MUST return only entries the session can read, each with its Attr, and pass next_after
+     * through unchanged. Missing or unreadable directories MUST fail with NOT_FOUND. Pages larger
+     * than the encoded message budget MUST fail with CAPACITY.
+     */
     async fn list(&self, request: Request<ListRequest>) -> Result<Response<EntryPage>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let ListRequest {
+            directory_id,
+            after,
+            limit,
+        } = request.into_inner();
+        let page = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let after = after.as_deref();
+            async move {
+                DirectoryResource::list_for_session(&tx, session, directory_id, after, limit).await
+            }
+        })
+        .await?;
+        Ok(Response::new(within_message_budget(page)?))
     }
 
     /**

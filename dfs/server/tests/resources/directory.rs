@@ -11,11 +11,15 @@ use dfs_api::storage::{
         tenant::TenantResource,
     },
 };
-use dfs_protocol::{ObjectId, rpc::ObjectKind};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{Grant, GrantUpdate, ObjectKind},
+};
 use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpack};
 
 mod apply;
 mod apply_move;
+mod list;
 mod lookup;
 pub(crate) use apply::{
     apply_create_conflicts_with_grant_revocation,
@@ -33,6 +37,11 @@ pub(crate) use apply_move::{
     apply_moves_in_separate_transactions_conflict_on_ancestry,
     apply_moves_with_disjoint_targets_cannot_create_a_cycle,
     apply_remove_then_move_serializes_destination_operations,
+};
+pub(crate) use list::{
+    list_for_session_returns_readable_children_only,
+    list_rejects_invalid_references_before_reading,
+    virtual_root_pages_keep_shared_within_the_limit,
 };
 pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
 
@@ -74,6 +83,25 @@ async fn fetch_directory(
         .await?
         .context("missing directory")?;
     Ok(DirectoryResource::try_from(object)?)
+}
+
+async fn attach(
+    tx: &Transaction,
+    tenant: &TenantResource,
+    object_id: ObjectId,
+    grant: Grant,
+) -> Result<()> {
+    let mut object = ObjectResource::fetch(tx, tenant, &object_id)
+        .await?
+        .context("missing object")?;
+    object.update_grants(
+        tx,
+        &[GrantUpdate {
+            grant,
+            remove: false,
+        }],
+    )?;
+    Ok(())
 }
 
 async fn tenant_records(tx: &Transaction, tenant: &TenantResource) -> Result<Vec<Vec<u8>>> {

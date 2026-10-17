@@ -142,7 +142,7 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
             let attr = mutation.object.context("missing updated file")?;
             assert_eq!(attr.id, file.into());
             assert_eq!((attr.size, attr.mtime), (3, Some(42)));
-            assert_eq!((attr.attr_version, attr.content_version), (2, 2));
+            assert_eq!((attr.attr_version, attr.content_version), (3, 2));
             assert_eq!(Some(attr.store_version), commit_version);
             assert!(attr.metadata.is_none());
             assert!(mutation.related.is_empty());

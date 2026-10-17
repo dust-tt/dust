@@ -3,19 +3,17 @@ use dfs_api::storage::{
     self, fdb,
     resources::{
         directory::{self, DirectoryResource},
-        object::{self, ObjectResource},
+        object,
         session::SessionResource,
-        tenant::TenantResource,
     },
 };
 use dfs_protocol::{
     ObjectId, ObjectRef,
-    rpc::{Attr, Grant, GrantUpdate, LookupTarget, ObjectKind},
+    rpc::{Attr, LookupTarget, ObjectKind},
 };
-use foundationdb::Transaction;
 use futures::future::try_join_all;
 
-use super::{clear_tenant, create_child, create_tenant_root, fetch_directory};
+use super::{attach, clear_tenant, create_child, create_tenant_root, fetch_directory};
 use crate::object::{allow, deny};
 
 fn target(parent_id: impl Into<ObjectRef>, name: &str) -> LookupTarget {
@@ -23,25 +21,6 @@ fn target(parent_id: impl Into<ObjectRef>, name: &str) -> LookupTarget {
         parent_id: parent_id.into(),
         name: name.to_owned(),
     }
-}
-
-async fn attach(
-    tx: &Transaction,
-    tenant: &TenantResource,
-    object_id: ObjectId,
-    grant: Grant,
-) -> Result<()> {
-    let mut object = ObjectResource::fetch(tx, tenant, &object_id)
-        .await?
-        .context("missing object")?;
-    object.update_grants(
-        tx,
-        &[GrantUpdate {
-            grant,
-            remove: false,
-        }],
-    )?;
-    Ok(())
 }
 
 fn found(result: &Result<Attr, directory::Error>) -> Result<&Attr> {

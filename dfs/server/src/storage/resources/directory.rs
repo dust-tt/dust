@@ -19,6 +19,7 @@ use crate::{
 };
 
 mod apply;
+mod list;
 mod lookup;
 
 const FAMILY: &str = "child";
@@ -231,6 +232,17 @@ impl DirectoryResource {
             entries,
             next_after: page.next_after,
         })
+    }
+
+    fn name_from_cursor(&self, after: &str) -> Result<String, Error> {
+        let children = self.children_subspace();
+        page::decode_cursor(&children, after, |_| true)
+            .and_then(|key| children.unpack(&key).ok())
+            .ok_or(Error::InvalidCursor)
+    }
+
+    fn cursor_for(&self, name: &str) -> String {
+        page::encode_cursor(&self.child_key(name))
     }
 
     fn is_tenant_root(&self) -> bool {

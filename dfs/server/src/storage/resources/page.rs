@@ -15,6 +15,10 @@ pub(crate) fn decode_cursor(
     (subspace.is_start_of(&key) && is_well_formed_entry(&key)).then_some(key)
 }
 
+pub(crate) fn encode_cursor(key: &[u8]) -> String {
+    URL_SAFE_NO_PAD.encode(key)
+}
+
 pub(crate) async fn read_page(
     tx: &Transaction,
     subspace: &Subspace,
@@ -28,7 +32,7 @@ pub(crate) async fn read_page(
     if let Some(after) = after {
         range.begin = KeySelector::first_greater_than(after);
     }
-    let mut entries = Vec::new();
+    let mut entries: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     let mut next_range = Some(range);
     let mut iteration = 1;
     // Each batch's range continues from the previous batch, so reads stay sequential.
@@ -37,7 +41,7 @@ pub(crate) async fn read_page(
         next_range = range.next_range(&batch);
         for entry in &batch {
             if entries.len() == limit {
-                let next_after = entries.last().map(|(key, _)| URL_SAFE_NO_PAD.encode(key));
+                let next_after = entries.last().map(|(key, _)| encode_cursor(key));
                 return Ok(RawPage {
                     entries,
                     next_after,
