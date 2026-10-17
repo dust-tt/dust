@@ -154,11 +154,73 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         return `run-usage:${record.runUsageModelId}:${record.itemType}`;
 
       case "tool":
-        return `tool-action:${record.action.id}`;
+        return this.toolItemKey(record.action.id);
 
       default:
         return assertNever(record);
     }
+  }
+
+  private static toolItemKey(actionModelId: ModelId): string {
+    return `tool-action:${actionModelId}`;
+  }
+
+  /**
+   * Keeps the records and pending tools that would change a stored row, mirroring the write shapes
+   * of `recordItemsIdempotently`: a missing row, a pending tool row completed by a final tool, or a
+   * completed tool row whose result footprint a terminal pass removes. A value that differs on an
+   * existing completed row is not a change, since the first write wins.
+   */
+  private static async selectChangingItems(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      attributionVersion,
+      records,
+      pendingToolItems,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      attributionVersion: number;
+      records: CompletedAgentMessageConsumptionItem[];
+      pendingToolItems: PendingToolConsumptionItem[];
+      transaction?: Transaction;
+    }
+  ): Promise<{
+    records: CompletedAgentMessageConsumptionItem[];
+    pendingToolItems: PendingToolConsumptionItem[];
+  }> {
+    const existingRows = await this.model.findAll({
+      attributes: ["itemKey", "completedAt", "inputTokensCount"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageModelId,
+        attributionVersion,
+      },
+      transaction,
+    });
+    const existingRowByItemKey = new Map(
+      existingRows.map((row) => [row.itemKey, row])
+    );
+
+    return {
+      records: records.filter((record) => {
+        const existingRow = existingRowByItemKey.get(this.itemKey(record));
+        if (!existingRow) {
+          return true;
+        }
+
+        return (
+          record.itemType === "tool" &&
+          (existingRow.completedAt === null ||
+            (record.inputTokensCount === 0 &&
+              (existingRow.inputTokensCount ?? 0) > 0))
+        );
+      }),
+      pendingToolItems: pendingToolItems.filter(
+        (item) => !existingRowByItemKey.has(this.toolItemKey(item.action.id))
+      ),
+    };
   }
 
   private static evidenceAttributes(
@@ -263,7 +325,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       runUsageId: item.runUsageModelId,
       agentMCPActionId: item.action.id,
       attributedSkillIds: item.attributedSkillIds,
-      itemKey: `tool-action:${item.action.id}`,
+      itemKey: this.toolItemKey(item.action.id),
       itemType: "tool",
       attributionVersion,
       inputTokensCount: null,
@@ -282,11 +344,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
    * so the following lookup sees settled state without a separate lock.
    *
    * // TODO(2026-08-01 flav): Revisit based on how often it happens.
-   * A resumed approval pass resubmits facts from earlier passes. PostgreSQL allocates sequence
-   * values before detecting conflicts, so this can leave gaps in the primary key sequence. We
-   * accept that tradeoff to keep this write race-safe without a pre-read. The agent loop resumes
-   * only after every tool awaiting approval has been approved, so parallel approvals produce one
-   * resumed pass rather than one pass per tool.
+   * Completing a pending row goes through the insert's conflict. PostgreSQL allocates sequence
+   * values before detecting conflicts, so this can leave gaps in the primary key sequence. Rows that
+   * would not change are filtered out before, so only completions, footprint removals and racing
+   * passes reach the conflict. The agent loop resumes only after every tool awaiting approval has
+   * been approved, so parallel approvals produce one resumed pass rather than one pass per tool.
    */
   private static async insertOrCompleteToolRecords(
     auth: Authenticator,
@@ -443,6 +505,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
    * - A terminal pass may remove a completed tool's result footprint. This transition is one-way.
    * - A still-blocked tool is inserted pending and never overwrites an existing row, so a completed
    *   row from a concurrent pass is not regressed to pending.
+   *
+   * The stored rows are read first, so a pass that would change none of them writes nothing. The
+   * writes stay race-safe on their own for a concurrent pass that lands after that read.
+   */
+  /**
+   * @cc [owner:sfriquet,label:performance;backend] noop-pass-writes-nothing
+   * When no record or pending tool would insert a row, complete a pending tool row, or remove a
+   * completed tool's result footprint, the call MUST NOT issue any insert or update.
    */
   static async recordItemsIdempotently(
     auth: Authenticator,
@@ -482,9 +552,25 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       "Pending tool consumption items must have the same agent message ID as the owning agent message"
     );
 
+    const changingItems = await this.selectChangingItems(auth, {
+      agentMessageModelId,
+      attributionVersion,
+      records,
+      pendingToolItems,
+      transaction,
+    });
+    if (
+      changingItems.records.length === 0 &&
+      changingItems.pendingToolItems.length === 0
+    ) {
+      return;
+    }
+
     const now = new Date();
-    const modelRecords = records.filter((record) => record.itemType !== "tool");
-    const completedToolRecords = records.filter(
+    const modelRecords = changingItems.records.filter(
+      (record) => record.itemType !== "tool"
+    );
+    const completedToolRecords = changingItems.records.filter(
       (record) => record.itemType === "tool"
     );
 
@@ -522,11 +608,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         });
       }
 
-      if (pendingToolItems.length > 0) {
+      if (changingItems.pendingToolItems.length > 0) {
         // Blocked tools: record the pending row only if none exists, never overwriting a completed
         // one, so a racing final pass keeps precedence.
         await this.model.bulkCreate(
-          pendingToolItems.map((item) =>
+          changingItems.pendingToolItems.map((item) =>
             this.pendingToolCreationAttributes(auth, {
               conversationModelId: conversation.id,
               attributionVersion,
