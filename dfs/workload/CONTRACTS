@@ -1,0 +1,9 @@
+@cc [owner:spolu,label:testing;architecture] workload-through-grpc
+Workloads MUST exercise the running server through gRPC only, without server resources, direct FDB
+access, or mocks. Expected contents, namespace, metadata, and versions MUST be computed independently
+from the operations issued. Unexpected errors or mismatches MUST fail the process with context.
+
+@cc [owner:spolu,label:testing;security] workload-isolated-fixtures
+Each run MUST create its own uniquely named tenants and mutate only objects it creates. Bearer keys
+MUST NOT be logged. Mutations with unknown outcomes MUST NOT be automatically replayed. Random
+workloads MUST report their seed, worker, and step on failure so the operation sequence is reproducible.
