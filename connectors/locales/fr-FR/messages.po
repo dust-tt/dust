@@ -291,6 +291,16 @@ msgstr "Vous ne pouvez appeler qu’un seul agent à la fois depuis Slack."
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
+msgid "Only one model at a time can be selected through Slack."
+msgstr "Vous ne pouvez sélectionner qu’un seul modèle à la fois depuis Slack."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Unknown model selection: {token}. Use a model id such as +claude-opus-5-5 or +claude-opus-5-5/high."
+msgstr "Sélection de modèle inconnue : {token}. Utilisez un identifiant de modèle tel que +claude-opus-5-5 ou +claude-opus-5-5/high."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
 msgid "Cannot find selected agent."
 msgstr "Impossible de trouver l’agent sélectionné."
 
