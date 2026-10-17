@@ -9,6 +9,10 @@ import { Err, Ok } from "@app/types/shared/result";
 // See `CreateSession` in `dfs/design-docs/API.md`.
 const MAX_SESSION_SUBJECTS = 512;
 
+// Virtual subject that bypasses all grants in its session's tenant (see `v:master` in
+// `dfs/design-docs/API.md`).
+export const DFS_MASTER_SUBJECT = "v:master";
+
 export function createUserSubject(user: UserResource): string {
   return `u:${user.sId}`;
 }
@@ -60,6 +64,36 @@ export async function createDfsSession(
       )
     );
   }
+  return openSession(auth, { tenantClient, subjects });
+}
+
+/**
+ * Creates a dfs session holding only `DFS_MASTER_SUBJECT`, which bypasses all grants in the
+ * authenticated workspace's tenant, and returns it with a client authenticated with its session
+ * key. `tenantClient` MUST be authenticated with the tenant key of the authenticated workspace (see
+ * `getDfsTenantClient`).
+ */
+/**
+ * @cc [owner:fabiencelier,label:security] master-session-subjects
+ * The session MUST hold `DFS_MASTER_SUBJECT` and no other subject, and MUST belong to the
+ * workspace's tenant: a session whose `tenantId` is not the workspace sId MUST fail with
+ * `invalid_response`.
+ */
+export async function createDfsMasterSession(
+  auth: Authenticator,
+  { tenantClient }: { tenantClient: DfsClient }
+): Promise<
+  Result<{ session: DfsSession; sessionClient: DfsClient }, DfsError>
+> {
+  return openSession(auth, { tenantClient, subjects: [DFS_MASTER_SUBJECT] });
+}
+
+async function openSession(
+  auth: Authenticator,
+  { tenantClient, subjects }: { tenantClient: DfsClient; subjects: string[] }
+): Promise<
+  Result<{ session: DfsSession; sessionClient: DfsClient }, DfsError>
+> {
   const session = await tenantClient.createSession({ subjects });
   if (session.isErr()) {
     return session;

@@ -1,6 +1,8 @@
 // @vitest-environment node
 import {
+  createDfsMasterSession,
   createDfsSession,
+  DFS_MASTER_SUBJECT,
   getDfsSessionSubjects,
 } from "@app/lib/api/dfs/sessions";
 import { Authenticator } from "@app/lib/auth";
@@ -105,6 +107,58 @@ describe("createDfsSession", () => {
     });
 
     const res = await createDfsSession(authenticator, {
+      tenantClient: new DfsClient(transport, TENANT_KEY),
+    });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+});
+
+describe("createDfsMasterSession", () => {
+  it("creates a session holding only the master subject and returns a client using its key", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const session = DfsWireFactory.session({
+      tenantId: workspace.sId,
+      subjects: [DFS_MASTER_SUBJECT],
+      sessionKey: SESSION_KEY,
+    });
+    const transport = new FakeDfsTransport({
+      CreateSession: new Ok(session),
+      CurrentSession: new Ok({ ...session, sessionKey: "" }),
+    });
+
+    const res = await createDfsMasterSession(authenticator, {
+      tenantClient: new DfsClient(transport, TENANT_KEY),
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isOk()) {
+      await res.value.sessionClient.currentSession();
+    }
+    expect(transport.calls).toEqual([
+      {
+        method: "CreateSession",
+        request: { subjects: ["v:master"] },
+        key: TENANT_KEY,
+      },
+      { method: "CurrentSession", request: {}, key: SESSION_KEY },
+    ]);
+  });
+
+  it("refuses a session created in another tenant", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const transport = new FakeDfsTransport({
+      CreateSession: new Ok(
+        DfsWireFactory.session({
+          tenantId: "another-workspace",
+          sessionKey: SESSION_KEY,
+        })
+      ),
+    });
+
+    const res = await createDfsMasterSession(authenticator, {
       tenantClient: new DfsClient(transport, TENANT_KEY),
     });
 
