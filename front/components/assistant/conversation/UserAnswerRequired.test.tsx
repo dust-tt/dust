@@ -221,14 +221,17 @@ function makeBlockedAction({
     question: {
       question: "Choose an option",
       multiSelect,
+      format: "list",
       options: [
         {
           label: "Alpha",
           description: "First option",
+          preview: null,
         },
         {
           label: "Beta",
           description: "Second option",
+          preview: null,
         },
       ],
     },

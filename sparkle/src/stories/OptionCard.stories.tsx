@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { OptionCard } from "../index_with_tw_base";
+import { Markdown, OptionCard } from "../index_with_tw_base";
 
 const meta = {
   title: "Product/Conversation/OptionCard",
@@ -18,6 +18,8 @@ const meta = {
 - Provide \`onClick\` to make the card interactive; without it the card is display-only.
 - Use \`counterValue\` to convey ordering or quantity, and \`selected\` to reflect the current choice (it sets \`aria-pressed\`).
 - Use \`selectionIndicator="radio"\` for single-select lists and \`selectionIndicator="checkbox"\` for multi-select lists, so the selection mode is visually unambiguous.
+- Set \`selectionIndicatorPosition="start"\` to put the radio or checkbox before the label, e.g. when the list sits next to other content on its right.
+- Pass \`preview\` (e.g. a rendered **Markdown** sample) to show what the option would produce below its label, so the user can compare alternatives side by side.
 - Set \`type="input"\` for a free-text "type something else" option; OptionCard renders the field itself (pass \`value\`/\`onChange\`) and keeps the same chrome and counter.
 - Stack multiple cards in a column; for one-tap suggested prompts that send immediately, use **QuickReplyBlock** instead.`,
       },
@@ -212,6 +214,68 @@ export const MultiSelect: StoryObj = {
         description="Events that overlap with your focus blocks."
         counterValue={3}
         selectionIndicator="checkbox"
+      />
+    </div>
+  ),
+};
+
+/**
+ * `preview` renders a sample of what each option would produce below its
+ * label, full width, so alternatives can be compared side by side.
+ * @summary Options with previews laid out as columns.
+ */
+export const WithPreview: StoryObj = {
+  render: () => (
+    <div className="grid w-full max-w-2xl grid-cols-2 gap-2">
+      <OptionCard
+        label="By country"
+        description="One row per country. Shows where growth comes from."
+        counterValue={1}
+        selectionIndicator="radio"
+        selected
+        preview={
+          <Markdown
+            content={
+              "| Country | Q3 | vs Q2 |\n|---|---|---|\n| France | €1.9M | +18% |\n| Germany | €1.2M | +9% |"
+            }
+            forcedTextSize="text-sm"
+          />
+        }
+      />
+      <OptionCard
+        label="Single total"
+        description="One number with the change vs Q2. Fits a summary."
+        counterValue={2}
+        selectionIndicator="radio"
+        preview={
+          <Markdown
+            content={"**Q3 revenue:** €4.2M (+12% vs Q2)"}
+            forcedTextSize="text-sm"
+          />
+        }
+      />
+    </div>
+  ),
+};
+
+/**
+ * `selectionIndicatorPosition="start"` puts the radio before the label, which
+ * keeps the right edge of the list clear when content sits next to it.
+ * @summary Leading radio indicators.
+ */
+export const LeadingIndicator: StoryObj = {
+  render: () => (
+    <div className="flex w-full max-w-sm flex-col gap-2">
+      <OptionCard
+        label="Short and direct"
+        selectionIndicator="radio"
+        selectionIndicatorPosition="start"
+        selected
+      />
+      <OptionCard
+        label="Detailed recap"
+        selectionIndicator="radio"
+        selectionIndicatorPosition="start"
       />
     </div>
   ),

@@ -188,8 +188,8 @@ function constructToolsSection({
       "from, so always provide relevant options. Never pass an empty " +
       "options array to ask_user_question. " +
       "Prefer omitting option descriptions. Only include them when labels " +
-      "alone are not clear enough, and then include a description for every " +
-      "option.\n";
+      "alone are not clear enough or when using the compare format, and then " +
+      "include a description for every option.\n";
   }
 
   return toolsSection;

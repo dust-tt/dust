@@ -2,12 +2,23 @@ import { useBlockedActionsContext } from "@app/components/assistant/conversation
 import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
 import { useUserAnswerDraft } from "@app/hooks/useUserAnswerDraft";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
-import type { UserQuestionAnswer } from "@app/lib/actions/types";
+import type {
+  UserQuestion,
+  UserQuestionAnswer,
+  UserQuestionOption,
+} from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isEditableTarget } from "@app/lib/utils/dom";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowUp,
+  Button,
+  cn,
+  Markdown,
+  OptionCard,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
@@ -27,12 +38,75 @@ type SubmissionState = {
   phase: "pending" | "exiting";
 } | null;
 
+type QuestionLayout = "list" | "columns" | "preview_pane";
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] compare-layout
+ * A `compare` question MUST render as columns with exactly 2 options, and as an option list with
+ * a preview pane with 3 or more. Any other question, including a `compare` one with `multiSelect`
+ * or fewer than 2 options, or one without a `format` at all (stored before the field existed),
+ * MUST render as the default list.
+ */
+function getQuestionLayout(question: UserQuestion): QuestionLayout {
+  if (
+    question.format !== "compare" ||
+    question.multiSelect ||
+    question.options.length < 2
+  ) {
+    return "list";
+  }
+
+  return question.options.length === 2 ? "columns" : "preview_pane";
+}
+
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   return (
     e.key.length === 1 && e.key !== " " && !e.altKey && !e.ctrlKey && !e.metaKey
   );
 }
 
+// Columns lay options out side by side, so left and right arrows also move between them.
+function getArrowKeyDirection(
+  key: string,
+  layout: QuestionLayout
+): 1 | -1 | null {
+  if (key === "ArrowDown" || (layout === "columns" && key === "ArrowRight")) {
+    return 1;
+  }
+  if (key === "ArrowUp" || (layout === "columns" && key === "ArrowLeft")) {
+    return -1;
+  }
+  return null;
+}
+
+function OptionPreviewPane({ option }: { option: UserQuestionOption }) {
+  if (!option.description && !option.preview) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-2 rounded-2xl bg-muted-background px-4 py-3">
+      {option.description && (
+        <div className="text-sm text-muted-foreground">
+          {option.description}
+        </div>
+      )}
+      {option.preview && (
+        <div className="max-h-64 overflow-y-auto">
+          <Markdown content={option.preview} forcedTextSize="text-sm" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] preview-pane-explicit-submit
+ * In the preview pane layout, picking an option MUST select it without submitting the answer, so
+ * that users without hover (touch devices) can preview every option first. The selected option is
+ * then submitted with the send button or Cmd/Ctrl+Enter. In the other single-select layouts,
+ * picking an option submits it right away.
+ */
 export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
@@ -56,6 +130,9 @@ export function UserAnswerRequired({
   const shouldReduceMotion = useReducedMotion();
 
   const { question } = blockedAction;
+  const layout = getQuestionLayout(question);
+  const requiresExplicitSubmit =
+    question.multiSelect || layout === "preview_pane";
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
     parentUserId: blockedAction.userId,
     currentUserId: user?.sId,
@@ -124,7 +201,7 @@ export function UserAnswerRequired({
 
     const answer = answerDraft.selectOption(index);
 
-    if (answer !== null) {
+    if (answer !== null && !requiresExplicitSubmit) {
       void submitAnswer(answer);
     }
   }
@@ -207,7 +284,11 @@ export function UserAnswerRequired({
       return;
     }
 
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && question.multiSelect) {
+    if (
+      (e.metaKey || e.ctrlKey) &&
+      e.key === "Enter" &&
+      requiresExplicitSubmit
+    ) {
       e.preventDefault();
       e.stopPropagation();
       setIsKeyboardNavigating(true);
@@ -227,21 +308,17 @@ export function UserAnswerRequired({
       return;
     }
 
+    const arrowKeyDirection = getArrowKeyDirection(e.key, layout);
+    if (arrowKeyDirection !== null) {
+      e.preventDefault();
+      setIsKeyboardNavigating(true);
+      setIsCustomResponseFocused(false);
+      moveActiveOption(arrowKeyDirection);
+      containerRef.current?.focus();
+      return;
+    }
+
     switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setIsKeyboardNavigating(true);
-        setIsCustomResponseFocused(false);
-        moveActiveOption(1);
-        containerRef.current?.focus();
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setIsKeyboardNavigating(true);
-        setIsCustomResponseFocused(false);
-        moveActiveOption(-1);
-        containerRef.current?.focus();
-        break;
       case "Enter":
       case " ":
         if (e.currentTarget === e.target) {
@@ -274,6 +351,37 @@ export function UserAnswerRequired({
     );
   }
 
+  const optionCards = question.options.map((option, index) => (
+    <OptionCard
+      key={index}
+      label={option.label}
+      // The preview pane shows the active option's description next to the list.
+      description={layout === "preview_pane" ? null : option.description}
+      preview={
+        layout === "columns" && option.preview ? (
+          <Markdown content={option.preview} forcedTextSize="text-sm" />
+        ) : undefined
+      }
+      // In the preview pane, leading radios keep the list visually apart from the pane.
+      counterValue={layout === "preview_pane" ? undefined : index + 1}
+      selected={answerDraft.selectedOptions.includes(index)}
+      disableHover={isKeyboardNavigating}
+      selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
+      selectionIndicatorPosition={layout === "preview_pane" ? "start" : "end"}
+      onFocusCapture={() => activateOption(index)}
+      onMouseEnter={() => activateOption(index)}
+      className={cn(
+        activeOptionIndex === index &&
+          !isCustomResponseActive &&
+          !answerDraft.selectedOptions.includes(index) &&
+          "bg-primary-100",
+        isKeyboardNavigating && "cursor-none"
+      )}
+      onClick={() => handleOptionClick(index)}
+      disabled={isSubmitting}
+    />
+  ));
+
   return (
     <div
       ref={containerRef}
@@ -305,34 +413,24 @@ export function UserAnswerRequired({
         <div
           aria-hidden={isSubmitting}
           className={cn(
-            "flex flex-col gap-2 transition-opacity ease-enter motion-reduce:transition-none",
+            "flex flex-col gap-2 @container transition-opacity ease-enter motion-reduce:transition-none",
             isSubmitting
               ? "opacity-0 duration-exit"
               : "opacity-100 duration-enter"
           )}
         >
-          {question.options.map((option, index) => (
-            <OptionCard
-              key={index}
-              label={option.label}
-              description={option.description}
-              counterValue={index + 1}
-              selected={answerDraft.selectedOptions.includes(index)}
-              disableHover={isKeyboardNavigating}
-              selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
-              onFocusCapture={() => activateOption(index)}
-              onMouseEnter={() => activateOption(index)}
-              className={cn(
-                activeOptionIndex === index &&
-                  !isCustomResponseActive &&
-                  !answerDraft.selectedOptions.includes(index) &&
-                  "bg-primary-100",
-                isKeyboardNavigating && "cursor-none"
-              )}
-              onClick={() => handleOptionClick(index)}
-              disabled={isSubmitting}
-            />
-          ))}
+          {layout === "list" && optionCards}
+          {layout === "columns" && (
+            <div className="grid grid-cols-1 gap-2 @lg:grid-cols-2">
+              {optionCards}
+            </div>
+          )}
+          {layout === "preview_pane" && (
+            <div className="grid grid-cols-1 gap-3 @lg:grid-cols-[2fr_3fr]">
+              <div className="flex flex-col gap-2">{optionCards}</div>
+              <OptionPreviewPane option={question.options[activeOptionIndex]} />
+            </div>
+          )}
           <OptionCard
             type="input"
             selected={isCustomResponseActive}

@@ -647,9 +647,11 @@ export const UserQuestionItemSchema = z.object({
     z.object({
       label: z.string(),
       description: z.string().nullable(),
+      preview: z.string().nullable().default(null),
     })
   ),
   multiSelect: z.boolean(),
+  format: z.enum(["list", "compare"]).default("list"),
 });
 
 export type UserQuestionItemType = z.infer<typeof UserQuestionItemSchema>;
