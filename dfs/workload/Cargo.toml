@@ -1,0 +1,24 @@
+[package]
+name = "dfs-workload"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+dfs-protocol = { path = "../protocol" }
+futures = "0.3"
+prost = "0.14"
+rand = "0.10"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tonic = "0.14"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+expect_used = "deny"
+unwrap_used = "deny"
