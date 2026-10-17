@@ -55,6 +55,7 @@ import {
   NotionDatabaseModel,
   NotionPageModel,
 } from "@connectors/lib/models/notion";
+import { NotionWebhookRegistrationModel } from "@connectors/lib/models/notion_webhook_registration";
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
@@ -112,6 +113,7 @@ async function main(): Promise<void> {
   await NotionPageModel.sync({ alter: true });
   await NotionDatabaseModel.sync({ alter: true });
   await NotionConnectorStateModel.sync({ alter: true });
+  await NotionWebhookRegistrationModel.sync({ alter: true });
   await GithubConnectorStateModel.sync({ alter: true });
   await GithubIssueModel.sync({ alter: true });
   await GithubDiscussionModel.sync({ alter: true });
