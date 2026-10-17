@@ -102,8 +102,6 @@ impl ObjectResource {
      * optional destination parent. Each target MUST appear only once.
      */
     pub fn targets_for_operation(operation: &Operation) -> Vec<ObjectId> {
-        // These are grouping targets available from the request. Move replacements still require
-        // stored state when validating mutations.
         let mut targets = match operation {
             Operation::Create(operation) => vec![operation.parent_id, operation.object_id],
             Operation::Update(operation) => vec![operation.object_id],

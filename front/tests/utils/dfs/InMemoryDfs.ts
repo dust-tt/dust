@@ -426,21 +426,9 @@ export class InMemoryDfs implements DfsFileSystemClient {
             throw new OperationError("invalid_input");
           }
         }
-        const replacedId = destination.children.get(op.name);
-        if (replacedId && replacedId !== node.id) {
-          const replaced = this.node(replacedId);
-          if (!op.replace) {
-            throw new OperationError("already_exists");
-          }
-          if (replaced.kind !== node.kind) {
-            throw new OperationError(
-              replaced.kind === "directory" ? "is_directory" : "not_directory"
-            );
-          }
-          if (replaced.children.size > 0) {
-            throw new OperationError("not_empty");
-          }
-          this.nodes.delete(replacedId);
+        const destinationId = destination.children.get(op.name);
+        if (destinationId && destinationId !== node.id) {
+          throw new OperationError("already_exists");
         }
         if (node.parentId) {
           const source = this.node(node.parentId);

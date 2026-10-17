@@ -31,7 +31,6 @@ fn operation_targets_include_all_affected_objects_once() {
             parent_id: parent,
             target_id: Some(destination),
             name: "renamed".to_owned(),
-            ..Default::default()
         }),
         Operation::Remove(RemoveOperation {
             object_id: file,
@@ -54,7 +53,6 @@ fn operation_targets_include_all_affected_objects_once() {
             parent_id: parent,
             target_id: Some(destination),
             name: "invalid-self-move".to_owned(),
-            ..Default::default()
         }),
         Operation::Create(CreateOperation {
             parent_id: parent,
@@ -124,7 +122,6 @@ fn grouping_merges_overlaps_preserves_order_and_keeps_unrelated_operations_separ
             parent_id: child,
             target_id: Some(third),
             name: "moved".to_owned(),
-            ..Default::default()
         }),
         Operation::Write(WriteOperation {
             object_id: second,

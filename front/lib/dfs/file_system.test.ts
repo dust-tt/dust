@@ -488,7 +488,7 @@ describe("DfsFileSystem", () => {
     }
   });
 
-  it("moves a file keeping its id and refuses to overwrite unless asked", async () => {
+  it("moves a file keeping its id and refuses to overwrite", async () => {
     const { dfs, fs, at } = setup();
     const original = await fs.write(at("a.txt"), "a");
     await fs.write(at("b.txt"), "b");
@@ -518,15 +518,13 @@ describe("DfsFileSystem", () => {
         parentId: dfs.rootId,
         targetId: directory.value.attr.id,
         name: "renamed.txt",
-        replace: false,
       },
     ]);
 
-    const replaced = await fs.move(at("b.txt"), at("dir/renamed.txt"), {
-      replace: true,
-    });
-    expect(replaced.isOk()).toBe(true);
-    expect(await readText(fs, at("dir/renamed.txt"))).toBe("b");
+    const occupied = await fs.move(at("b.txt"), at("dir/renamed.txt"));
+    expect(occupied.isErr() && occupied.error.code).toBe("already_exists");
+    expect(await readText(fs, at("b.txt"))).toBe("b");
+    expect(await readText(fs, at("dir/renamed.txt"))).toBe("a");
   });
 
   it("renames within the source directory without a target id", async () => {
@@ -547,7 +545,6 @@ describe("DfsFileSystem", () => {
           parentId,
           targetId: undefined,
           name: "new.txt",
-          replace: false,
         },
       ],
     ]);

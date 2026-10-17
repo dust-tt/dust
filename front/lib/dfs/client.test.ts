@@ -300,7 +300,6 @@ describe("DfsClient", () => {
           objectId: FILE_ID,
           parentId: ROOT_ID,
           name: "new.txt",
-          replace: false,
         },
         { type: "remove", objectId: FILE_ID, parentId: ROOT_ID, kind: "file" },
       ],
@@ -330,7 +329,6 @@ describe("DfsClient", () => {
             objectId: wireId(FILE_ID),
             parentId: wireId(ROOT_ID),
             name: "new.txt",
-            replace: false,
           },
         },
         {
@@ -374,7 +372,6 @@ describe("DfsClient", () => {
             parentId: ROOT_ID,
             targetId,
             name: "renamed.txt",
-            replace: false,
           },
         ],
       });
@@ -388,7 +385,6 @@ describe("DfsClient", () => {
               parentId: wireId(ROOT_ID),
               targetId: targetId === undefined ? undefined : wireId(targetId),
               name: "renamed.txt",
-              replace: false,
             },
           },
         ],
