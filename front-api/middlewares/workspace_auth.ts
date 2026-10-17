@@ -9,6 +9,10 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import {
+  applyPrivateNoStoreCacheHeader,
+  ensurePrivateNoStoreCache,
+} from "@front-api/middlewares/private_no_store_cache";
 import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
@@ -108,18 +112,20 @@ export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
 
     const wId = ctx.req.param("wId");
     if (!wId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
-      });
+      return ensurePrivateNoStoreCache(
+        apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "The workspace was not found.",
+          },
+        })
+      );
     }
 
     const sessionResult = await resolveSession(ctx);
     if (sessionResult instanceof Response) {
-      return sessionResult;
+      return ensurePrivateNoStoreCache(sessionResult);
     }
 
     const auth = await Authenticator.fromSession(sessionResult, wId);
@@ -136,7 +142,9 @@ export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
     if (opts.allowMissingWorkspace && (!auth.workspace() || !auth.plan())) {
       ctx.set("auth", auth);
       ctx.set("session", sessionResult);
-      return next();
+      await next();
+      applyPrivateNoStoreCacheHeader(ctx);
+      return;
     }
 
     const workspaceError = validateWorkspaceAccess(auth, {
@@ -147,27 +155,33 @@ export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
       ),
     });
     if (workspaceError) {
-      return apiError(ctx, workspaceAccessErrorToApiError(workspaceError));
+      return ensurePrivateNoStoreCache(
+        apiError(ctx, workspaceAccessErrorToApiError(workspaceError))
+      );
     }
 
     if (!auth.user()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_user_not_found",
-          message: "Could not find the user of the current session.",
-        },
-      });
+      return ensurePrivateNoStoreCache(
+        apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_user_not_found",
+            message: "Could not find the user of the current session.",
+          },
+        })
+      );
     }
 
     if (!auth.isUser()) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Only users of the workspace can access this content.",
-        },
-      });
+      return ensurePrivateNoStoreCache(
+        apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only users of the workspace can access this content.",
+          },
+        })
+      );
     }
 
     if (
@@ -189,4 +203,5 @@ export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
     ctx.set("auth", auth);
     ctx.set("session", sessionResult);
     await next();
+    applyPrivateNoStoreCacheHeader(ctx);
   });

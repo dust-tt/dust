@@ -38,6 +38,7 @@ describe("GET /api/w/:wId/auth-context group management", () => {
     const url = `/api/w/${workspace.sId}/auth-context`;
     const response = await honoApp.request(url);
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     const { groupManagement } = await response.json();
     expect(groupManagement.write).toEqual({
       kind: "ids",
