@@ -117,9 +117,8 @@ describe("buildLlmConsumptionDocuments", () => {
     }
     const allocationResult = buildLatestMessageConsumptionAllocation({
       actions: input.actions,
-      billedCredits: input.billedCredits,
+      billedCredits: 5,
       dustRunIds: input.dustRunIds,
-      hasUnbilledExecution: input.hasUnbilledExecution,
       items: input.items,
       runs: input.runs,
       usages: input.usages,

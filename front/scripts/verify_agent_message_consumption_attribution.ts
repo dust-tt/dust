@@ -215,12 +215,17 @@ makeScript(
       return;
     }
 
-    const consumptionUpdate =
+    const attributionResult =
       await computeAndStoreAgentMessageConsumptionAttribution(auth, {
         agentMessageId,
         conversationId: analyticsContext.conversation.conversationId,
       });
-    console.log("\nAttribution result", consumptionUpdate ?? "incomplete");
+    console.log(
+      "\nAttribution result",
+      attributionResult.isOk()
+        ? (attributionResult.value ?? "skipped")
+        : attributionResult.error
+    );
 
     const after = await getCoverageSnapshot(auth, { agentMessageId });
     printCoverage("After attribution", after);

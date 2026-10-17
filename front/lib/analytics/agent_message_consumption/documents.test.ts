@@ -16,6 +16,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
+import { AgentMessageConsumptionItemFactory } from "@app/tests/utils/AgentMessageConsumptionItemFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -229,6 +230,9 @@ async function setupLlmAndToolConsumptionScenario(
 async function buildDocuments(
   context: SettledMessageContext
 ): Promise<AgentMessageConsumptionAnalyticsData[] | null> {
+  await AgentMessageConsumptionItemFactory.reconcileStoredItems(context.auth, {
+    agentMessageId: context.agentMessage.sId,
+  });
   const input = await loadAgentMessageConsumptionAnalyticsInput(context.auth, {
     agentMessageId: context.agentMessage.sId,
   });
@@ -644,6 +648,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       }
     );
 
+    await AgentMessageConsumptionItemFactory.reconcileStoredItems(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
+
     const { run: unbilledRun } = await RunFactory.createWithUsage(
       context.auth,
       {
@@ -690,6 +701,151 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
     ).toBe(5_000_000);
+  });
+
+  it("indexes the reconciled snapshot when the bill grew after its reconciliation", async () => {
+    const { billedMessageCreditMicro, context } =
+      await setupLlmAndToolConsumptionScenario();
+    await AgentMessageConsumptionItemFactory.reconcileStoredItems(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
+
+    // A later model call is reported and billed, but no attribution pass has reconciled it yet.
+    const { run: laterRun } = await RunFactory.createWithUsage(context.auth, {
+      inputTokens: INPUT,
+      outputTokens: OUTPUT,
+      modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+    });
+    await AgentMessageModel.update(
+      { runIds: [context.run.dustRunId, laterRun.dustRunId] },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    await ConversationResource.updateAgentMessageCostCredits(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      costCredits: billedMessageCreditMicro / 1_000_000 + 2,
+    });
+
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+
+    expect(documents).toHaveLength(2);
+    expect(
+      documents.every(
+        (document) =>
+          document.run_usage_id === context.runUsageModelId.toString()
+      )
+    ).toBe(true);
+    expect(
+      documents.reduce((total, document) => total + document.credit_micro, 0)
+    ).toBe(billedMessageCreditMicro);
+  });
+
+  it("indexes only the newest attribution version", async () => {
+    const { billedMessageCreditMicro, context } =
+      await setupLlmAndToolConsumptionScenario();
+    const olderAttributionVersion =
+      AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: olderAttributionVersion,
+        records: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: INPUT,
+            grossAttributedCreditAmountMicro: 9_000_000,
+          },
+        ],
+        pendingToolItems: [],
+      }
+    );
+    const olderItems = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        context.auth,
+        {
+          agentMessageModelIds: [context.agentMessageModelId],
+          maxAttributionVersion: olderAttributionVersion,
+        }
+      )
+    ).filter((item) => item.attributionVersion === olderAttributionVersion);
+    await AgentMessageConsumptionItemResource.setReconciledCreditAmounts(
+      context.auth,
+      {
+        reconciledCreditAmountByItem: new Map(
+          olderItems.map((item) => [item, 9_000_000])
+        ),
+      }
+    );
+
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+
+    expect(documents).toHaveLength(2);
+    expect(
+      documents.every(
+        (document) =>
+          document.attribution_version ===
+          AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION
+      )
+    ).toBe(true);
+    expect(
+      documents.reduce((total, document) => total + document.credit_micro, 0)
+    ).toBe(billedMessageCreditMicro);
+  });
+
+  it("fails when only part of the newest attribution version is reconciled", async () => {
+    const { context } = await setupLlmAndToolConsumptionScenario();
+    await AgentMessageConsumptionItemFactory.reconcileStoredItems(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+      }
+    );
+    // Evidence written by a later pass that did not reconcile.
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "reasoning",
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: OUTPUT,
+            grossAttributedCreditAmountMicro: 100_000,
+          },
+        ],
+        pendingToolItems: [],
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+    if (!input) {
+      throw new Error("Consumption analytics input was not loaded");
+    }
+
+    expect(() => buildAgentMessageConsumptionAnalyticsDocuments(input)).toThrow(
+      "Only part of the newest attribution version is reconciled"
+    );
   });
 
   it("associates a tool with every skill that exposes its server", async () => {

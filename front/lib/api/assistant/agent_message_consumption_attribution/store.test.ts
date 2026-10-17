@@ -206,9 +206,9 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         conversationId,
       });
 
-    expect(consumptionUpdate).toEqual({
-      costCredits: billedCreditAmountMicro / 1_000_000,
-    });
+    expect(consumptionUpdate).toEqual(
+      new Ok({ costCredits: billedCreditAmountMicro / 1_000_000 })
+    );
 
     const items =
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
@@ -265,7 +265,9 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
           agentMessageId: message.agentMessageId,
           conversationId: message.conversationId,
         })
-      ).toEqual({ costCredits: message.billedCreditAmountMicro / 1_000_000 });
+      ).toEqual(
+        new Ok({ costCredits: message.billedCreditAmountMicro / 1_000_000 })
+      );
 
       const items =
         await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
@@ -344,6 +346,83 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       "output",
       "reasoning",
     ]);
+  });
+
+  it("returns the skip reason and keeps the evidence when the bill does not reconcile", async () => {
+    const { auth, conversationId, agentMessageId, agentMessageModelId } =
+      await setupSettledMessageWithUsage({ billedCredits: 100 });
+
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId, conversationId }
+    );
+
+    expect(result.isErr() && result.error.code).toBe("llm_bill_mismatch");
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(items.map((item) => item.itemType).sort()).toEqual([
+      "input",
+      "output",
+      "reasoning",
+    ]);
+    expect(
+      items.every((item) => item.reconciledCreditAmountMicro === null)
+    ).toBe(true);
+  });
+
+  it("keeps the amounts of the last reconciliation when a later pass does not reconcile", async () => {
+    const {
+      auth,
+      billedCreditAmountMicro,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+    const listItems = async () =>
+      (
+        await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+          auth,
+          {
+            agentMessageModelIds: [agentMessageModelId],
+            maxAttributionVersion:
+              AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          }
+        )
+      ).sort((left, right) => left.id - right.id);
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    const reconciledAmounts = (await listItems()).map((item) => [
+      item.id,
+      item.reconciledCreditAmountMicro,
+    ]);
+
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId,
+      costCredits: billedCreditAmountMicro / 1_000_000 + 50,
+    });
+    const result = await computeAndStoreAgentMessageConsumptionAttribution(
+      auth,
+      { agentMessageId, conversationId }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(
+      (await listItems()).map((item) => [
+        item.id,
+        item.reconciledCreditAmountMicro,
+      ])
+    ).toEqual(reconciledAmounts);
+    expect(
+      reconciledAmounts.reduce((total, [, amount]) => total + (amount ?? 0), 0)
+    ).toBe(billedCreditAmountMicro);
   });
 
   it("rejects an action added after its run usage was attributed", async () => {
@@ -1321,7 +1400,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         conversationId: conversation.sId,
       });
 
-    expect(consumptionUpdate).toBeUndefined();
+    expect(consumptionUpdate).toEqual(new Ok(undefined));
 
     const items =
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(

@@ -187,7 +187,6 @@ async function allocateMessage({
     actions,
     billedCredits,
     dustRunIds,
-    hasUnbilledExecution: false,
     items,
     runs,
     usages: await RunResource.listRunUsagesForRuns(auth, {

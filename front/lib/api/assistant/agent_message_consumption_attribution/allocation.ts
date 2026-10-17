@@ -554,12 +554,10 @@ function hasCompleteToolAttribution({
   actions,
   items,
   dustRunIdsWithUsage,
-  hasUnbilledExecution,
 }: {
   actions: AgentMCPActionResource[];
   items: AgentMessageConsumptionItemResource[];
   dustRunIdsWithUsage: Set<string>;
-  hasUnbilledExecution: boolean;
 }): boolean {
   const toolItemByActionModelId = new Map<
     ModelId,
@@ -589,7 +587,6 @@ function hasCompleteToolAttribution({
       return false;
     }
     if (
-      !hasUnbilledExecution &&
       isToolExecutionStatusFinal(action.status) &&
       item.completedAt === null
     ) {
@@ -607,7 +604,6 @@ function buildMessageConsumptionAllocationForVersion<
   attributionVersion,
   billedCredits,
   dustRunIds,
-  hasUnbilledExecution,
   items,
   runs,
   usages,
@@ -616,7 +612,6 @@ function buildMessageConsumptionAllocationForVersion<
   attributionVersion: number;
   billedCredits: number;
   dustRunIds: string[];
-  hasUnbilledExecution: boolean;
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
@@ -669,7 +664,6 @@ function buildMessageConsumptionAllocationForVersion<
       actions,
       items,
       dustRunIdsWithUsage,
-      hasUnbilledExecution,
     });
 
   if (!completeModel || !completeTool) {
@@ -717,10 +711,9 @@ function buildMessageConsumptionAllocationForVersion<
 
 /** Selects and allocates the newest self-consistent attribution stored for a message. */
 /**
- * @cc [owner:sfriquet,label:product;backend] unbilled-execution-tool-completion
- * When `hasUnbilledExecution` is set, a pending tool item whose action has since reached a final
- * status MUST NOT make the attribution incomplete: that completion happened in an execution that
- * was never billed. Without `hasUnbilledExecution`, it MUST make the attribution incomplete.
+ * @cc [owner:sfriquet,label:product;backend] final-action-needs-completed-tool-item
+ * A pending tool item whose action has since reached a final status MUST make the attribution
+ * incomplete.
  */
 export function buildLatestMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
@@ -728,7 +721,6 @@ export function buildLatestMessageConsumptionAllocation<
   actions,
   billedCredits,
   dustRunIds,
-  hasUnbilledExecution,
   items,
   runs,
   usages,
@@ -736,7 +728,6 @@ export function buildLatestMessageConsumptionAllocation<
   actions: AgentMCPActionResource[];
   billedCredits: number | null;
   dustRunIds: string[];
-  hasUnbilledExecution: boolean;
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
@@ -766,7 +757,6 @@ export function buildLatestMessageConsumptionAllocation<
       attributionVersion,
       billedCredits,
       dustRunIds,
-      hasUnbilledExecution,
       items: itemsByAttributionVersion.get(attributionVersion) ?? [],
       runs,
       usages,
