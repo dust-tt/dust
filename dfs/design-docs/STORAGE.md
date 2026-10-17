@@ -85,6 +85,36 @@ of at most 100 entries. Each batch rechecks session state with conflict tracking
 protecting refreshed sessions and allowing concurrent sweepers to retry safely. Stale and orphaned
 index entries are also removed. Authentication rejects expired sessions independently of cleanup.
 
+## Exclusive locks (proposed)
+
+FDB is authoritative for [exclusive locks](API.md#exclusive-locks-proposed).
+
+| Key | Value | Rationale |
+| --- | --- | --- |
+| `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>/lock` | FDB tuple `(lock_id_bytes, expires_at_ms)`. | Stores the object's ownership token and expiry. |
+| `dfs-v1-{env}/lock-expiry/<expiresAtMs>/<tenantId>/<objectId>` | Empty value. | Finds expired locks across tenants without scanning objects. |
+
+Acquisition conflict-reads the lock key and replaces only an absent or expired lock. Refresh
+requires the matching ID and unexpired state. Both set expiry to server time plus one minute;
+unlock clears only a matching ID. State and expiry index change atomically: replacement or refresh
+removes the old expiry entry, and unlock or object removal clears both records. Moves preserve them.
+Acquisition, refresh, and unlock use `with_idempotent_transaction`; receipt replay retains the
+committed absolute expiry. Each transaction attempt uses current server time for expiry checks.
+
+One common helper checks every Apply operation's batching targets after permission checks and
+before staging writes. Lock reads use conflict tracking in the mutation transaction, never a cache.
+Session authentication uses the existing cache; no session ID is stored or checked in lock state.
+
+Cleanup joins `sweep_expired_storage`, sharing its jitter and pass timestamp and running independently
+of other cleanup failures. Each pass drains entries expired for at least one minute in fresh
+transactions of at most 100 entries, using one fixed cutoff. Expiry keys use session expiry's
+timestamp encoding.
+
+The sweeper conflict-reads each lock and clears it only if its expiry matches the indexed timestamp
+and is past the cutoff. Stale or orphaned index entries are cleared alone. A replacement sharing
+that timestamp is also expired, so the index needs no lock ID. Locks stop blocking at expiry,
+independently of cleanup. These keys and checks remain proposed until lock enforcement is implemented.
+
 ## Transaction receipts
 
 All resource writes use `fdb::with_idempotent_transaction`, protecting the whole transaction and its

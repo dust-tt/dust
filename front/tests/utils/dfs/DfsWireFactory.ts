@@ -38,4 +38,12 @@ export class DfsWireFactory {
       ...overrides,
     };
   }
+
+  static lockState(overrides: DfsWireMessage = {}): DfsWireMessage {
+    return {
+      lockId: Buffer.alloc(16, 1),
+      expiresAt: "1700000060000",
+      ...overrides,
+    };
+  }
 }

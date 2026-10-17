@@ -32,6 +32,8 @@ export type DfsErrorCode =
   | "unavailable"
   | "unsupported"
   | "name_too_long"
+  | "would_block"
+  | "lock_lost"
   // Client-side only: the server answered with a message the client cannot decode.
   | "invalid_response"
   // Client-side only: a file changed between the chunks of a multi-chunk read (`DfsFileSystem`).
@@ -168,6 +170,18 @@ export type DfsFileResult =
 // One result per input; files that do not fit the reply budget get a `capacity` error.
 export interface DfsFilesBatch {
   results: DfsFileResult[];
+}
+
+// Enforced locks.
+
+export interface DfsLockState {
+  lockId: Uint8Array;
+  expiresAtMs: number;
+}
+
+export interface DfsObjectLock {
+  objectId: DfsObjectId;
+  lockId: Uint8Array;
 }
 
 // Filesystem mutations.

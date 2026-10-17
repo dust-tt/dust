@@ -11,6 +11,7 @@ import type {
   DfsErrorCode,
   DfsExtendedMetadata,
   DfsFileResult,
+  DfsLockState,
   DfsGrant,
   DfsGrantPage,
   DfsObjectId,
@@ -53,6 +54,8 @@ const WIRE_ERROR_CODES = {
   UNAVAILABLE: "unavailable",
   UNSUPPORTED: "unsupported",
   NAME_TOO_LONG: "name_too_long",
+  WOULD_BLOCK: "would_block",
+  LOCK_LOST: "lock_lost",
 } as const satisfies Record<string, DfsErrorCode>;
 
 type WireErrorCode = keyof typeof WIRE_ERROR_CODES;
@@ -243,6 +246,30 @@ export const WireAttrSchema = z
     grantsVersion: a.grantsVersion,
     storeVersion: a.storeVersion,
     metadata: a.metadata,
+  }));
+
+// Enforced locks.
+
+const LOCK_ID_BYTES = 16;
+
+export function encodeLockId(id: Uint8Array): Uint8Array {
+  if (id.byteLength !== LOCK_ID_BYTES) {
+    throw new DfsError(
+      "invalid_input",
+      `lockId must contain ${LOCK_ID_BYTES} bytes.`
+    );
+  }
+  return id;
+}
+
+export const WireLockStateSchema = z
+  .object({
+    lockId: WireBytesSchema.refine((id) => id.byteLength === LOCK_ID_BYTES),
+    expiresAt: WireNumberUint64Schema,
+  })
+  .transform((lock): DfsLockState => ({
+    lockId: lock.lockId,
+    expiresAtMs: lock.expiresAt,
   }));
 
 // Grants.

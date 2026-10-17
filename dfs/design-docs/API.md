@@ -208,6 +208,8 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | `Lookup` | `r` on the parent and returned child. |
 | `List` | `r` on the directory; only children with `r` are returned. |
 | `Search` | `r` on each hit and supplied scope directory. |
+| `Lock` | `r+w` on the target, for acquisition and refresh. |
+| `Unlock` | Matching lock ID; no object permission required. |
 | create | `r+w` on the parent. |
 | update, write | `r+w` on the target. |
 | move | `r+w` on the source and target directories; `r` on the moved object. |
@@ -610,6 +612,59 @@ the 4 MiB encoded reply budget receive individual `CAPACITY` errors without bein
 reply budget reserves conservative overhead for every result, including errors. Attributes and
 contents share one FDB snapshot. All returned attributes carry the same `object.store_version`.
 
+## Exclusive locks (proposed)
+
+A collaboration channel locks an object while coordinating edits. Other writers receive
+`WOULD_BLOCK`; the app resolves the channel using the object ID. Locks protect all Apply mutations,
+including content, metadata, move, and removal. Reads and grant management remain available.
+
+Lock IDs are secret ownership tokens within a tenant and object, independent of session identity.
+Callers still supply a session key and use normal authentication, including its 30-second revocation
+window. Lock RPCs and Apply with nonempty `locks` currently return `UNSUPPORTED`.
+
+```text
+Lock(LockRequest) -> LockState
+Unlock(ObjectLock) -> Empty
+
+LockRequest {
+  object_id: ObjectId
+  lock_id?: bytes                // Omit to acquire; supply to refresh.
+}
+
+LockState {
+  lock_id: bytes                 // Random 16-byte ownership token.
+  expires_at: Timestamp          // Server time + 1 minute.
+}
+
+ObjectLock {
+  object_id: ObjectId
+  lock_id: bytes
+}
+```
+
+Acquiring fails immediately with `WOULD_BLOCK` if an active lock exists. Refresh extends only the
+matching unexpired lock; an absent, expired, or mismatched ID returns `LOCK_LOST`, never reacquires.
+Both require `r+w`; missing objects return `NOT_FOUND`, missing permissions `FORBIDDEN`.
+Unlock clears only the matching ID; absent or mismatched IDs are successful no-ops. It requires no
+object permission, allowing cleanup after access loss. Moves preserve locks; removal clears them.
+Lock maintenance does not change object attributes or versions.
+
+Refresh about every 20 seconds and include the ID when saving. On `LOCK_LOST`, stop the old editing
+session. A lost acquisition response may leave a lock until expiry. Internal receipt replay returns
+the original expiry; session refresh never extends a lock. Expired locks stop blocking immediately
+and the storage sweep reclaims their records.
+
+`Apply.locks` supplies object/lock ID pairs, at most one per object. Each operation checks locks
+transactionally after authorization and before staging writes. An active lock with no supplied ID
+gives `WOULD_BLOCK`; a supplied stale or mismatched ID gives `LOCK_LOST`, even when unlocked. No lock
+and no supplied ID allows mutation. Normal permissions still apply. Malformed IDs or duplicate
+objects fail the request with `INVALID_INPUT`.
+
+Checks use the existing batching targets: Create's parent and proposed object; Update/Write's object;
+Move's object and both parents; Remove's object and parent. Directory locks are not recursive.
+A blocked operation changes nothing; later operations continue. Retry only blocked operations or
+route edits through the channel; do not replay successful operations or unknown write outcomes.
+
 ## Filesystem mutations
 
 ### Apply
@@ -622,6 +677,7 @@ Requires a **session key**.
 ```text
 ApplyRequest {
   operations: Operation[]        // Nonempty; subject to the 4 MiB RPC request limit.
+  locks: ObjectLock[]            // Held locks; currently UNSUPPORTED if nonempty.
 }
 
 Operation = create(CreateOperation)
@@ -896,7 +952,9 @@ Application failures, including authentication rejections, carry a gRPC status w
 Clients handle any failure using the gRPC status when details are absent. Individual batch failures
 always carry `ErrorDetails`. Stable protocol codes are `INTERNAL`,
 `INVALID_INPUT`, `NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`,
-`IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.
+`IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, `NAME_TOO_LONG`, `WOULD_BLOCK`,
+and `LOCK_LOST`. Lock contention uses gRPC `ABORTED` and maps to `EWOULDBLOCK` in the mount;
+`LOCK_LOST` uses `FAILED_PRECONDITION` and maps to `EIO`.
 
 ## Future work
 

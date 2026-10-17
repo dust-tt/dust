@@ -214,6 +214,10 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
                 })),
             },
         ],
+        locks: vec![rpc::ObjectLock {
+            object_id,
+            lock_id: vec![1; 16],
+        }],
     };
     assert_eq!(request.operations.len(), 3);
     assert_eq!(
@@ -440,6 +444,8 @@ fn grpc_status_details_preserve_protocol_errors() -> Result<()> {
             tonic::Code::Unauthenticated,
         ),
         (rpc::ErrorCode::Capacity, tonic::Code::ResourceExhausted),
+        (rpc::ErrorCode::WouldBlock, tonic::Code::Aborted),
+        (rpc::ErrorCode::LockLost, tonic::Code::FailedPrecondition),
     ] {
         let status = error::status(code);
         assert_eq!(rpc::ErrorDetails::decode(status.details())?.code(), code);

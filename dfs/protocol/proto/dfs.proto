@@ -69,6 +69,10 @@ service Dfs {
   rpc Read(ReadRequest) returns (ReadData);
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
+  // Proposed exclusive locks; returns UNSUPPORTED until storage support is implemented.
+  rpc Lock(LockRequest) returns (LockState);
+  rpc Unlock(ObjectLock) returns (Empty);
+
   rpc Apply(ApplyRequest) returns (OperationBatch);
   rpc Search(SearchRequest) returns (SearchResults);
 }
@@ -356,12 +360,71 @@ message FileResult {
   optional ErrorDetails error = 4;
 }
 
+// @cc [owner:spolu,label:api;concurrency] dfs-lock-acquisition
+// When implemented, Lock without lock_id MUST acquire an exclusive lock on a real file or
+// directory within the authenticated tenant. After authorization, any active lock MUST return
+// WOULD_BLOCK without waiting or changing state. Each acquisition MUST generate a fresh, random
+// 16-byte lock_id that is unguessable and scoped to the tenant and object, with expiry at server
+// time plus one minute, independent of sessions. Expired locks MUST stop conflicting independently
+// of cleanup.
+
+// @cc [owner:spolu,label:api;security] dfs-lock-refresh
+// When implemented, Lock with lock_id MUST extend only the matching unexpired lock,
+// preserving its ID and using the same expiry bound as acquisition. It MUST NOT reacquire.
+// Acquisition and refresh MUST require read and write permission; missing objects MUST return
+// NOT_FOUND and missing permissions FORBIDDEN. After authorization, an absent, expired, or
+// mismatched ID MUST return LOCK_LOST. Malformed IDs MUST return INVALID_INPUT.
+message LockRequest {
+  required ObjectId object_id = 1;
+  // Omit to acquire; supply the current ID to refresh.
+  optional bytes lock_id = 2;
+}
+
+// @cc [owner:spolu,label:api;backend] dfs-lock-state
+// When implemented, lock maintenance MUST NOT change object attributes or versions. Moves MUST
+// preserve locks; object removal MUST clear its lock. Responses MUST retain the original absolute
+// expiry after idempotency receipt replay, never imply an extension that did not commit.
+message LockState {
+  required bytes lock_id = 1;
+  // Unix milliseconds.
+  required uint64 expires_at = 2;
+}
+
+// @cc [owner:spolu,label:api;security] dfs-lock-release
+// When implemented, Unlock MUST remove only the matching lock on object_id and succeed if absent
+// or mismatched. A stale ID MUST NOT remove a newer lock. The lock_id proves ownership within the
+// authenticated tenant, independently of session identity. Unlock MUST require no object permission
+// or existence check. Lock and Unlock MUST use normal session authentication and its cache bounds.
+// All supplied lock IDs MUST contain exactly 16 bytes; malformed IDs MUST return INVALID_INPUT.
+message ObjectLock {
+  required ObjectId object_id = 1;
+  required bytes lock_id = 2;
+}
+
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
 // Operations MUST be nonempty. Exceeding FDB's transaction size limit MUST fail the request with
 // CAPACITY without committing any changes, even when it fits the RPC request limit. The server MAY
 // rely on FDB's size check and translate transaction_too_large after the retry runner returns.
+
+// @cc [owner:spolu,label:api;security;concurrency] dfs-apply-lock-enforcement
+// When implemented, each operation MUST check its targets' locks in the mutation's transaction,
+// after permission checks and before staging writes, even without supplied lock IDs. Targets are
+// Create's parent and proposed object; Update/Write's object; Move's object and both parents;
+// Remove's object and parent. Locks MUST NOT extend recursively to descendants.
+// An active lock with no supplied ID MUST return per-operation WOULD_BLOCK. A supplied ID without
+// a matching active lock MUST return per-operation LOCK_LOST, even if unlocked. Without an active
+// lock or supplied ID, mutation MAY proceed. Ordinary session authentication and permission checks
+// MUST still apply; lock IDs MUST NOT bypass either.
+// Lock checks MUST use conflict-tracked reads, never a cache. Malformed lock IDs or duplicate
+// object IDs in locks MUST fail the request with INVALID_INPUT; unused entries MAY be ignored.
+
+// @cc [owner:spolu,label:api;security] dfs-apply-lock-rollout
+// Until enforcement is implemented, otherwise valid requests with nonempty locks MUST fail with
+// UNSUPPORTED before any operation runs. Lock acquisition MUST remain unsupported until Apply
+// checks are implemented.
 message ApplyRequest {
   repeated Operation operations = 1;
+  repeated ObjectLock locks = 2;
 }
 
 message Operation {
@@ -559,6 +622,8 @@ enum ErrorCode {
   UNAVAILABLE = 10;
   UNSUPPORTED = 11;
   NAME_TOO_LONG = 12;
+  WOULD_BLOCK = 13;
+  LOCK_LOST = 14;
 }
 
 message ErrorDetails {

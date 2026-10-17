@@ -1,5 +1,6 @@
 import {
   decodeWireResponse,
+  encodeLockId,
   encodeGrant,
   encodeObjectId,
   encodeObjectRef,
@@ -12,6 +13,7 @@ import {
   WireGrantPageSchema,
   WireEntryPageSchema,
   WireFilesBatchSchema,
+  WireLockStateSchema,
   WireReadDataSchema,
   WireSearchResultsSchema,
   WireSessionSchema,
@@ -33,6 +35,8 @@ import type {
   DfsOperation,
   DfsEntryPage,
   DfsFilesBatch,
+  DfsLockState,
+  DfsObjectLock,
   DfsReadData,
   DfsSearchRequest,
   DfsSearchResults,
@@ -218,6 +222,42 @@ export class DfsClient {
     return this.call("RefreshSession", () => ({}), WireSessionSchema);
   }
 
+  // Enforced locks. Require the session key; storage support is not implemented yet.
+
+  async lock({
+    objectId,
+    lockId,
+  }: {
+    objectId: DfsObjectId;
+    lockId?: Uint8Array;
+  }): Promise<Result<DfsLockState, DfsError>> {
+    return this.callMatching(
+      "Lock",
+      () => ({
+        objectId: encodeObjectId(objectId),
+        lockId: lockId === undefined ? undefined : encodeLockId(lockId),
+      }),
+      WireLockStateSchema,
+      (lock) =>
+        lockId === undefined ||
+        lock.lockId.every((byte, index) => byte === lockId[index])
+    );
+  }
+
+  async unlock({
+    objectId,
+    lockId,
+  }: DfsObjectLock): Promise<Result<void, DfsError>> {
+    return this.call(
+      "Unlock",
+      () => ({
+        objectId: encodeObjectId(objectId),
+        lockId: encodeLockId(lockId),
+      }),
+      WireEmptySchema
+    );
+  }
+
   // Grants. Require the tenant key, which also determines the tenant.
 
   async listGrants({
@@ -373,12 +413,20 @@ export class DfsClient {
    */
   async apply({
     operations,
+    locks,
   }: {
     operations: DfsOperation[];
+    locks?: DfsObjectLock[];
   }): Promise<Result<DfsOperationBatch, DfsError>> {
     return this.callMatching(
       "Apply",
-      () => ({ operations: operations.map(encodeOperation) }),
+      () => ({
+        operations: operations.map(encodeOperation),
+        locks: locks?.map(({ objectId, lockId }) => ({
+          objectId: encodeObjectId(objectId),
+          lockId: encodeLockId(lockId),
+        })),
+      }),
       WireOperationBatchSchema,
       // The primary object, when returned, is the operation's object.
       ({ results }) =>

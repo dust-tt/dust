@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { DfsClient } from "@app/lib/dfs/client";
-import { MAX_UINT64 } from "@app/lib/dfs/codec";
+import { dfsErrorCodeFromWire, MAX_UINT64 } from "@app/lib/dfs/codec";
 import { newDfsObjectId } from "@app/lib/dfs/object_id";
 import type { DfsMethod } from "@app/lib/dfs/proto";
 import { DfsWireFactory } from "@app/tests/utils/dfs/DfsWireFactory";
@@ -22,6 +22,122 @@ function setup(answers: Partial<Record<DfsMethod, FakeDfsAnswer>>) {
 }
 
 describe("DfsClient", () => {
+  it("acquires a lock and decodes its ID and expiry", async () => {
+    const { client, transport } = setup({
+      Lock: new Ok(DfsWireFactory.lockState()),
+    });
+    const result = await client.lock({ objectId: FILE_ID });
+
+    expect(result.isOk() && result.value).toEqual({
+      lockId: Buffer.alloc(16, 1),
+      expiresAtMs: 1700000060000,
+    });
+    expect(transport.calls).toEqual([
+      {
+        method: "Lock",
+        key: SESSION_KEY,
+        request: {
+          objectId: wireId(FILE_ID),
+        },
+      },
+    ]);
+  });
+
+  it("refreshes and releases the exact lock, rejecting a replacement ID in the response", async () => {
+    const { client, transport } = setup({
+      Lock: new Ok(DfsWireFactory.lockState()),
+      Unlock: new Ok({}),
+    });
+    const lockId = Buffer.alloc(16, 1);
+    const request = { objectId: FILE_ID, lockId };
+    const refreshed = await client.lock(request);
+    expect(refreshed.isOk() && refreshed.value.lockId).toEqual(lockId);
+    expect((await client.unlock(request)).isOk()).toBe(true);
+    expect(
+      transport.calls.map(({ method, request }) => [method, request])
+    ).toEqual([
+      ["Lock", { objectId: wireId(FILE_ID), lockId }],
+      ["Unlock", { objectId: wireId(FILE_ID), lockId }],
+    ]);
+
+    const wrongLock = await client.lock({
+      objectId: FILE_ID,
+      lockId: Buffer.alloc(16, 2),
+    });
+    expect(wrongLock.isErr() && wrongLock.error.code).toBe("invalid_response");
+  });
+
+  it("rejects malformed lock IDs before calling the server", async () => {
+    const { client, transport } = setup({});
+    const badId = Buffer.alloc(15);
+    const results = [
+      await client.lock({ objectId: FILE_ID, lockId: badId }),
+      await client.unlock({ objectId: FILE_ID, lockId: badId }),
+      await client.apply({
+        operations: [],
+        locks: [{ objectId: FILE_ID, lockId: badId }],
+      }),
+    ];
+    for (const result of results) {
+      expect(result.isErr() && result.error.code).toBe("invalid_input");
+    }
+    expect(transport.calls).toHaveLength(0);
+  });
+
+  it.each([{ lockId: Buffer.alloc(15) }, { expiresAt: MAX_UINT64.toString() }])(
+    "rejects malformed lock responses: %j",
+    async (overrides) => {
+      const { client } = setup({
+        Lock: new Ok(DfsWireFactory.lockState(overrides)),
+      });
+      const result = await client.lock({
+        objectId: FILE_ID,
+      });
+      expect(result.isErr() && result.error.code).toBe("invalid_response");
+    }
+  );
+
+  it("preserves lock error codes from the wire", () => {
+    expect(dfsErrorCodeFromWire("WOULD_BLOCK")).toBe("would_block");
+    expect(dfsErrorCodeFromWire("LOCK_LOST")).toBe("lock_lost");
+  });
+
+  it("sends lock IDs with Apply and preserves per-operation lock conflicts", async () => {
+    const { client, transport } = setup({
+      Apply: new Ok({ results: [{ error: { code: "WOULD_BLOCK" } }] }),
+    });
+    const lockId = Buffer.alloc(16, 1);
+    const result = await client.apply({
+      operations: [
+        {
+          type: "write",
+          objectId: FILE_ID,
+          offset: 0,
+          data: Buffer.from("hello"),
+          append: false,
+        },
+      ],
+      locks: [{ objectId: FILE_ID, lockId }],
+    });
+
+    expect(result.isOk() && result.value.results).toEqual([
+      { status: "error", errorCode: "would_block" },
+    ]);
+    expect(transport.calls[0].request).toEqual({
+      operations: [
+        {
+          write: {
+            objectId: wireId(FILE_ID),
+            offset: "0",
+            data: Buffer.from("hello"),
+            append: false,
+          },
+        },
+      ],
+      locks: [{ objectId: wireId(FILE_ID), lockId }],
+    });
+  });
+
   it("creates a session and decodes ids and timestamps", async () => {
     const { client, transport } = setup({
       CreateSession: new Ok(
@@ -306,6 +422,7 @@ describe("DfsClient", () => {
     });
 
     expect(transport.calls[0].request).toEqual({
+      locks: [],
       operations: [
         {
           create: {
@@ -378,6 +495,7 @@ describe("DfsClient", () => {
 
       expect(res.isOk()).toBe(true);
       expect(transport.calls[0].request).toEqual({
+        locks: [],
         operations: [
           {
             move: {
@@ -420,6 +538,7 @@ describe("DfsClient", () => {
     });
 
     expect(transport.calls[0].request).toEqual({
+      locks: [],
       operations: [
         {
           update: {
