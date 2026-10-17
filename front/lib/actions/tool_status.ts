@@ -1,6 +1,13 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import {
+  getInternalMCPServerNameFromSId,
+  resolveInternalMCPServerToolCallStakeLevel,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { StepContext } from "@app/lib/actions/types";
+import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 
@@ -12,6 +19,42 @@ type StakeCheckConfiguration = Pick<
   MCPToolConfigurationType,
   "permission" | "toolServerId" | "name" | "argumentsRequiringApproval"
 >;
+
+// The tool configuration with the stake level its internal server sets for this agent loop call
+// (`toolCallStakeLevelCallback`), so the approval decision and the approval request both use it.
+export function withToolCallStakeLevel<T extends MCPToolConfigurationType>(
+  actionConfiguration: T,
+  {
+    toolInputs,
+    modelInfo,
+    stepContext,
+  }: {
+    toolInputs: Record<string, unknown>;
+    modelInfo: StreamModelInfo;
+    stepContext: StepContext;
+  }
+): T {
+  if (!isInternalServerSideMCPToolConfiguration(actionConfiguration)) {
+    return actionConfiguration;
+  }
+  const serverName = getInternalMCPServerNameFromSId(
+    actionConfiguration.internalMCPServerId
+  );
+  if (!serverName) {
+    return actionConfiguration;
+  }
+
+  return {
+    ...actionConfiguration,
+    permission: resolveInternalMCPServerToolCallStakeLevel(serverName, {
+      toolName: actionConfiguration.originalName,
+      toolInputs,
+      modelInfo,
+      stepContext,
+      configuredStakeLevel: actionConfiguration.permission,
+    }),
+  };
+}
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,

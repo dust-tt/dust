@@ -5,6 +5,7 @@ import type {
   ServerMetadata,
   ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { StepContext } from "@app/lib/actions/types";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import {
   AGENT_DELEGATION_SERVER,
@@ -112,6 +113,7 @@ import type {
 } from "@app/lib/api/mcp";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import type { StreamModelInfo } from "@app/types/assistant/agent_run";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1297,6 +1299,18 @@ type RuntimeToolStakeLevelCallback = (
   params: RuntimeToolStakeLevelCallbackParams
 ) => MCPToolStakeLevelType;
 
+type ToolCallStakeLevelCallbackParams = {
+  toolName: string;
+  toolInputs: Record<string, unknown>;
+  modelInfo: StreamModelInfo;
+  stepContext: StepContext;
+  configuredStakeLevel: MCPToolStakeLevelType;
+};
+
+type ToolCallStakeLevelCallback = (
+  params: ToolCallStakeLevelCallbackParams
+) => MCPToolStakeLevelType;
+
 type InternalMCPServerEntry<
   K extends InternalMCPServerNameType = InternalMCPServerNameType,
 > = {
@@ -1306,6 +1320,9 @@ type InternalMCPServerEntry<
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
   runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
+  // Sets the stake level of a single agent loop call from its inputs and the run, e.g. to ask for
+  // approval only for some calls. Evaluated once, when the call's action is created.
+  toolCallStakeLevelCallback?: ToolCallStakeLevelCallback;
   // Defines which argument values scope approval for "medium" stake tools.
   // The user must approve each specific combination before the tool can execute.
   tools_arguments_requiring_approval: Record<string, string[]> | undefined;
@@ -1514,6 +1531,17 @@ export function resolveInternalMCPServerToolStakeLevel(
   return (
     server.runtimeToolStakeLevelCallback?.(params) ??
     params.configuredStakeLevel
+  );
+}
+
+export function resolveInternalMCPServerToolCallStakeLevel(
+  name: InternalMCPServerNameType,
+  params: ToolCallStakeLevelCallbackParams
+): MCPToolStakeLevelType {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return (
+    server.toolCallStakeLevelCallback?.(params) ?? params.configuredStakeLevel
   );
 }
 
