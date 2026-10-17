@@ -522,6 +522,64 @@ export async function getMessagesFromConversation(
 }
 
 /**
+ * Fetches a single channel message via the Microsoft Graph API. Used to
+ * retrieve a thread's root message: the thread replies collection does not
+ * contain the root message itself.
+ */
+export async function getChannelMessage(
+  logger: LoggerInterface,
+  client: Client,
+  {
+    teamId,
+    channelId,
+    messageId,
+  }: { teamId: string; channelId: string; messageId: string }
+): Promise<ChatMessage> {
+  return clientApiGet(
+    logger,
+    client,
+    `/teams/${teamId}/channels/${channelId}/messages/${messageId}`
+  );
+}
+
+/**
+ * Lists the replies of a channel message (a thread). Channel messages do not
+ * support $orderby; callers must not rely on the response order. The thread's
+ * root message is not part of this collection. Pass `nextLink` to fetch the
+ * next page of a previous response.
+ */
+export async function getChannelMessageReplies(
+  logger: LoggerInterface,
+  client: Client,
+  {
+    teamId,
+    channelId,
+    messageId,
+    nextLink,
+  }: {
+    teamId: string;
+    channelId: string;
+    messageId: string;
+    nextLink?: string;
+  }
+): Promise<{ results: ChatMessage[]; nextLink?: string }> {
+  const res = await clientApiGet(
+    logger,
+    client,
+    nextLink ??
+      `/teams/${teamId}/channels/${channelId}/messages/${messageId}/replies?$top=50`
+  );
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+  return { results: res.value };
+}
+
+/**
  * Given a getter function with a single nextLink optional parameter, this function
  * fetches all items by following nextLinks
  */

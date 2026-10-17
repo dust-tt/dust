@@ -1,6 +1,16 @@
 import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
+import {
+  getChannelThreadLocation,
+  getRootMessageIdFromConversationId,
+  selectThreadHistoryMessages,
+  sortMessagesByCreatedDateTimeDesc,
+} from "@connectors/api/webhooks/teams/thread_history";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
-import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
+import {
+  getChannelMessage,
+  getChannelMessageReplies,
+  getMessagesFromConversation,
+} from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { annotateCitations } from "@connectors/lib/bot/citations";
@@ -575,7 +585,12 @@ const sendTeamsResponse = async (
   }
 };
 
-async function makeContentFragments(
+// Bounds for fetching channel thread history: at most 4 pages of 50 replies
+// are scanned, and the 50 newest replies are kept (plus the thread root).
+const MAX_THREAD_HISTORY_PAGES = 4;
+const MAX_THREAD_HISTORY_MESSAGES = 50;
+
+export async function makeContentFragments(
   context: TurnContext,
   dustAPI: DustAPI,
   connector: ConnectorResource,
@@ -620,14 +635,114 @@ async function makeContentFragments(
   // This can fail with InsufficientPrivileges if the connector admin user is
   // not a member of the chat/channel. In that case, gracefully continue
   // without conversation history (the bot can still respond to the current message).
+  const rootMessageId = getRootMessageIdFromConversationId(teamsConversationId);
+  const { teamId, channelId } = getChannelThreadLocation(
+    context.activity.channelData
+  );
+
   let messages: ChatMessage[] = [];
   try {
-    const conversationHistory = await getMessagesFromConversation(
-      localLogger,
-      client,
-      teamsConversationId
-    );
-    messages = conversationHistory.results || [];
+    if (rootMessageId && teamId && channelId) {
+      // The activity is a reply in a channel thread. Channel threads are not
+      // exposed through the chat messages endpoint used below, and the
+      // thread replies collection never contains the root message itself, so
+      // use the channel messages endpoints and add the root message
+      // explicitly: it often carries the request the agent must answer.
+      //
+      // A failure to fetch the root message (deleted message, permissions)
+      // must not drop the replies.
+      const rootMessagePromise = getChannelMessage(localLogger, client, {
+        teamId,
+        channelId,
+        messageId: rootMessageId,
+      }).catch((error) => {
+        localLogger.warn(
+          { error, rootMessageId },
+          "Failed to fetch Teams thread root message, continuing without it"
+        );
+        return null;
+      });
+
+      // Channel messages do not support $orderby, so the first page is not
+      // guaranteed to hold the newest replies. Page until the reply being
+      // answered (the newest one) is included or the last page is reached,
+      // capped to bound latency on very long threads. If the replies fetch
+      // fails, fall back to the root message only.
+      let threadMessages: ChatMessage[] = [];
+      let currentMessageIncluded = false;
+      let reachedLastPage = false;
+      let repliesError: unknown;
+      try {
+        let nextLink: string | undefined;
+        for (let page = 0; page < MAX_THREAD_HISTORY_PAGES; page++) {
+          const replies = await getChannelMessageReplies(localLogger, client, {
+            teamId,
+            channelId,
+            messageId: rootMessageId,
+            nextLink,
+          });
+          threadMessages.push(...(replies.results || []));
+          nextLink = replies.nextLink;
+          currentMessageIncluded = threadMessages.some(
+            (msg) => msg.id === context.activity.id
+          );
+          reachedLastPage = !nextLink;
+          if (currentMessageIncluded || reachedLastPage) {
+            break;
+          }
+        }
+      } catch (error) {
+        repliesError = error;
+        localLogger.warn(
+          { error, rootMessageId },
+          "Failed to fetch Teams thread replies, falling back to the root message only"
+        );
+        threadMessages = [];
+      }
+
+      const rootMessage = await rootMessagePromise;
+
+      if (threadMessages.length === 0) {
+        if (!rootMessage) {
+          // Nothing could be fetched: preserve the existing graceful
+          // fallback (respond without conversation history).
+          throw repliesError ?? new Error("Failed to fetch thread history");
+        }
+        // No replies fetched: the root message alone is still the most
+        // valuable context.
+        messages = [rootMessage];
+      } else if (currentMessageIncluded || reachedLastPage) {
+        // The fetched set provably contains the newest end of the thread:
+        // keep the newest replies (bounded) and make sure the root message
+        // is part of the history even on threads longer than that.
+        messages = sortMessagesByCreatedDateTimeDesc(threadMessages).slice(
+          0,
+          MAX_THREAD_HISTORY_MESSAGES
+        );
+        if (
+          rootMessage &&
+          !messages.some((msg) => msg.id === rootMessage.id)
+        ) {
+          messages.push(rootMessage);
+        }
+      } else {
+        // The newest end of the thread was not reached within the page cap:
+        // the fetched replies may be arbitrarily old, so pass the root
+        // message only instead of possibly-stale replies as recent context.
+        localLogger.warn(
+          { rootMessageId },
+          "Could not reach the newest Teams thread replies within the page cap; sending the root message only"
+        );
+        messages = rootMessage ? [rootMessage] : [];
+      }
+    } else {
+      const conversationHistory = await getMessagesFromConversation(
+        localLogger,
+        client,
+        teamsConversationId
+      );
+      messages = conversationHistory.results || [];
+    }
   } catch (error) {
     localLogger.warn(
       { error, teamsConversationId },
@@ -649,26 +764,14 @@ async function makeContentFragments(
     );
   }
 
-  const startIndex =
-    messages.findIndex((msg) => msg.id === context.activity.id) + 1;
-  // Filter for new user messages since last bot interaction (excluded) or root message (included)
-  const lastBotMessageId = lastMicrosoftBotMessage?.agentActivityId;
-  const rootMessageId =
-    teamsConversationId.match(/;messageid=([^;]+)/i)?.[1] || undefined;
-
-  const endIndex = lastMicrosoftBotMessage
-    ? messages.findIndex((msg) => msg.id === lastBotMessageId)
-    : messages.findIndex((msg) => msg.id === rootMessageId) + 1;
-
-  // Get only messages that come after the last bot message (or all if no previous bot message)
-  const messagesToConsider =
-    endIndex >= 0
-      ? messages.slice(startIndex, endIndex)
-      : messages.slice(startIndex);
-
-  const newMessages = messagesToConsider.filter(
-    (message) => message.from?.user
-  );
+  // Filter for new user messages since last bot interaction (excluded) or
+  // root message (included).
+  const newMessages = selectThreadHistoryMessages({
+    messages,
+    currentMessageId: context.activity.id,
+    lastBotMessageId: lastMicrosoftBotMessage?.agentActivityId,
+    rootMessageId,
+  });
 
   const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
 
