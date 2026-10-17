@@ -1,0 +1,12 @@
+@cc [owner:id13,label:backend] backfill-missing-shard-mappings
+The shard-key backfill MUST only fill missing mappings for the main and shadow-write clusters,
+using the collection's actual key count through the new-source assignment helper. It MUST preserve
+existing mappings and unrelated config fields. Each added key MUST exist in the cluster's main and
+any shadow embedder collection; otherwise the batch MUST fail without writes. It MUST NOT move or
+modify Qdrant points.
+
+@cc [owner:id13,label:backend;concurrency] guarded-backfill-writes
+Without --execute, the backfill MUST NOT write to PostgreSQL. Execution MUST compare each row's
+current config and internal ID with the values read for planning. If any row changed or disappeared,
+the entire batch MUST roll back. Successful earlier batches may remain committed and reruns MUST
+preserve their stored mappings.
