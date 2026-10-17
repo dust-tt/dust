@@ -3424,6 +3424,7 @@ const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "vaasfc4.tk",
   "vaati.org",
   "valemail.net",
+  "valerakek.space",
   "valhalladev.com",
   "vankin.de",
   "vasteron.com",
