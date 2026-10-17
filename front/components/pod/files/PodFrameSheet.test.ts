@@ -70,6 +70,13 @@ vi.mock(
   })
 );
 
+vi.mock(
+  "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate",
+  () => ({
+    FrameToolConsentGate: () => createElement("div", null, "tool-consent-gate"),
+  })
+);
+
 vi.mock("@app/components/pod/files/PinPodBannerButton", () => ({
   PinPodBannerButton: () => null,
 }));
@@ -126,8 +133,12 @@ vi.mock("@app/lib/swr/frames", () => ({
     return {
       canWriteFrameSource: mocks.canWriteFrameSource,
       hasFrameFunctions: mocks.hasFrameFunctions,
+      requiredTools: [],
+      isLastPublisher: false,
+      hasAuthorizedRequiredTools: true,
       isFramePermissionsLoading: false,
       packageRoot: null,
+      mutateFramePermissions: vi.fn(),
     };
   },
 }));

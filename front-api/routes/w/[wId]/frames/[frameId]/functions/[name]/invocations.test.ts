@@ -1,4 +1,6 @@
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
+import { FrameToolAuthorizationResource } from "@app/lib/resources/frame_tool_authorization_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -90,6 +92,87 @@ describe("POST /api/w/:wId/frames/:frameId/functions/:name/invocations", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({
       error: { type: "frame_runtime_unavailable" },
+    });
+  });
+
+  it("denies invoke when required tools are not authorized", async () => {
+    const { adminAuth, workspace, frame } = await makeTestFrameFunction();
+    await FramePublicationResource.makeNew(adminAuth, {
+      frame,
+      publicationId: "publication-1",
+      requiredTools: [["slack", "post_message"]],
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/frames/${frame.sId}/functions/run-function/invocations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "frame_tool_authorization_required" },
+    });
+  });
+
+  it("allows invoke after the viewer stores matching tool consent", async () => {
+    const { adminAuth, auth, workspace, frame, sandboxFunction } =
+      await makeTestFrameFunction();
+    await FramePublicationResource.makeNew(adminAuth, {
+      frame,
+      publicationId: "publication-1",
+      requiredTools: [["slack", "post_message"]],
+    });
+    await FrameToolAuthorizationResource.upsertForUserAndFrame(auth, {
+      frame,
+      authorizedTools: [["slack", "post_message"]],
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/frames/${frame.sId}/functions/run-function/invocations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      invocation: {
+        functionId: sandboxFunction.sId,
+        status: "created",
+      },
+    });
+  });
+
+  it("allows the last publisher to invoke without stored consent", async () => {
+    const { auth, workspace, frame, sandboxFunction } =
+      await makeTestFrameFunction();
+    await FramePublicationResource.makeNew(auth, {
+      frame,
+      publicationId: "publication-1",
+      requiredTools: [["slack", "post_message"]],
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/frames/${frame.sId}/functions/run-function/invocations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      invocation: {
+        functionId: sandboxFunction.sId,
+        status: "created",
+      },
     });
   });
 });

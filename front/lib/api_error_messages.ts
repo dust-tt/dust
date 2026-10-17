@@ -166,6 +166,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   sandbox_function_not_found: msg`Sandbox function not found.`,
   sandbox_function_invocation_not_found: msg`Sandbox function call not found.`,
   frame_runtime_unavailable: msg`The frame runtime is unavailable.`,
+  frame_tool_authorization_required: msg`This Frame requires authorization before its tools can be used.`,
   frame_manifest_not_movable: msg`A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead.`,
   fast_function_called_tools: msg`A fast function can't call tools.`,
   project_metadata_not_found: msg`Project details not found.`,

@@ -1,8 +1,9 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
 import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
-import { usePublicFrame } from "@app/lib/swr/frames";
+import { useFramePermissions, usePublicFrame } from "@app/lib/swr/frames";
 import { useUser } from "@app/lib/swr/user";
 import type {
   ScopedWorkspaceUserIdentity,
@@ -81,6 +82,7 @@ export function PublicFrameRenderer({
     isPodEditor,
     framePath,
     hasFrameFunctions,
+    mutateFrame,
   } = usePublicFrame({
     shareToken,
   });
@@ -111,9 +113,28 @@ export function PublicFrameRenderer({
       ? { owner: viewerWorkspace, user }
       : null;
 
+  // Consent is only available to signed-in workspace members (same APIs as in-app).
+  // Anonymous share viewers cannot authorize tools and already have canInvokeFunctions=false.
+  const canCheckToolConsent = Boolean(viewerWorkspace && frameId);
+  const {
+    requiredTools,
+    hasAuthorizedRequiredTools,
+    isFramePermissionsLoading,
+    mutateFramePermissions,
+  } = useFramePermissions({
+    owner: viewerWorkspace ?? null,
+    frameId: frameId ?? "",
+    disabled: !canCheckToolConsent,
+  });
+  const needsToolConsent =
+    canCheckToolConsent &&
+    !isFramePermissionsLoading &&
+    !hasAuthorizedRequiredTools;
+
   if (
     isFrameLoading ||
-    (isAuthenticatedMember && hasSession && isUserLoading)
+    (isAuthenticatedMember && hasSession && isUserLoading) ||
+    (canCheckToolConsent && isFramePermissionsLoading)
   ) {
     return (
       <CenteredState>
@@ -152,28 +173,42 @@ export function PublicFrameRenderer({
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full">
-          <VisualizationActionIframe
-            agentConfigurationId={null}
-            conversationId={null}
-            workspaceId={workspaceId}
-            vizUrl={vizUrl}
-            visualization={{
-              accessToken,
-              complete: true,
-              identifier: `viz-${fileId}`,
-            }}
-            key={`viz-${fileId}`}
-            canInvokeFunctions={publicUserIdentity !== undefined}
-            scopedUserIdentity={publicUserIdentity}
-            viewer={viewer}
-            framePackageRoot={
-              framePath && framePath.includes("/")
-                ? framePath.slice(0, framePath.lastIndexOf("/"))
-                : null
-            }
-            frameId={frameId}
-            isInDrawer
-          />
+          {needsToolConsent && viewerWorkspace && frameId ? (
+            <FrameToolConsentGate
+              owner={viewerWorkspace}
+              frameId={frameId}
+              requiredTools={requiredTools}
+              onAuthorized={async () => {
+                // Viz JWTs expire in 1 minute. Refresh before flipping off consent so
+                // the iframe does not mount with a token issued when this page loaded.
+                await mutateFrame();
+                await mutateFramePermissions();
+              }}
+            />
+          ) : (
+            <VisualizationActionIframe
+              agentConfigurationId={null}
+              conversationId={null}
+              workspaceId={workspaceId}
+              vizUrl={vizUrl}
+              visualization={{
+                accessToken,
+                complete: true,
+                identifier: `viz-${fileId}`,
+              }}
+              key={`viz-${fileId}`}
+              canInvokeFunctions={publicUserIdentity !== undefined}
+              scopedUserIdentity={publicUserIdentity}
+              viewer={viewer}
+              framePackageRoot={
+                framePath && framePath.includes("/")
+                  ? framePath.slice(0, framePath.lastIndexOf("/"))
+                  : null
+              }
+              frameId={frameId}
+              isInDrawer
+            />
+          )}
         </div>
       </div>
     </div>

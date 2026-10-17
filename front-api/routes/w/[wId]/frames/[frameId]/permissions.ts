@@ -3,6 +3,8 @@ import { authorizedToolsCoverRequired } from "@app/lib/api/frames/tool_authoriza
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { FrameToolAuthorizationResource } from "@app/lib/resources/frame_tool_authorization_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -37,28 +39,42 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       FrameToolAuthorizationResource.fetchForUserAndFrame(auth, frame),
     ]);
 
+  const packageRoot = frame.getFrameV2SourceDirectoryPath(auth);
+  const frameName =
+    (frame.mountFilePath
+      ? getFrameV2NameFromManifestPath(frame.mountFilePath)
+      : null) ??
+    packageRoot?.split("/").pop() ??
+    null;
+
+  const publisherUserId = activePublication?.publishedByUserId ?? null;
+  const [publisher] = publisherUserId
+    ? await UserResource.fetchByModelIds([publisherUserId])
+    : [];
+  const lastPublisherName = publisher?.fullName() || null;
+
   const requiredTools = activePublication?.requiredTools ?? [];
+  const authorizedTools = authorization?.authorizedTools ?? [];
   const user = auth.user();
   const isLastPublisher = Boolean(
-    user &&
-    activePublication?.publishedByUserId !== null &&
-    activePublication?.publishedByUserId === user.id
+    user && publisherUserId !== null && publisherUserId === user.id
   );
   const hasAuthorizedRequiredTools =
     requiredTools.length === 0 ||
     isLastPublisher ||
-    (authorization
-      ? authorization.coversRequiredTools(requiredTools)
-      : authorizedToolsCoverRequired([], requiredTools));
+    authorizedToolsCoverRequired(authorizedTools, requiredTools);
 
   return ctx.json<GetFramePermissionsResponseBody>({
     canWriteFrameSource,
     // Temporary alias for mobile / open clients still decoding the old field name.
     isFrameAuthor: canWriteFrameSource,
-    packageRoot: frame.getFrameV2SourceDirectoryPath(auth),
+    packageRoot,
+    frameName,
     hasFunctions,
     requiredTools,
+    authorizedTools,
     isLastPublisher,
+    lastPublisherName,
     hasAuthorizedRequiredTools,
   });
 });

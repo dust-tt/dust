@@ -4,6 +4,7 @@ import { ConversationSidePanelHeader } from "@app/components/assistant/conversat
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
+import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -171,12 +172,19 @@ export function FrameRenderer({
     canWriteFrameSource,
     packageRoot,
     hasFrameFunctions,
+    requiredTools,
+    hasAuthorizedRequiredTools,
     isFramePermissionsLoading,
+    mutateFramePermissions,
   } = useFramePermissions({
     owner,
     frameId: fileId,
     disabled: renderMode !== "v2",
   });
+  const needsToolConsent =
+    renderMode === "v2" &&
+    !isFramePermissionsLoading &&
+    !hasAuthorizedRequiredTools;
   const framePackageRoot =
     framePath && framePath.includes("/")
       ? framePath.slice(0, framePath.lastIndexOf("/"))
@@ -407,6 +415,15 @@ export function FrameRenderer({
       <div className="flex-1 overflow-hidden">
         {isLoading || isFramePathPending || isFileContentLoading ? (
           <Spinner />
+        ) : needsToolConsent ? (
+          <FrameToolConsentGate
+            owner={owner}
+            frameId={fileId}
+            requiredTools={requiredTools}
+            onAuthorized={async () => {
+              await mutateFramePermissions();
+            }}
+          />
         ) : showCode ? (
           <FrameCodeView
             code={

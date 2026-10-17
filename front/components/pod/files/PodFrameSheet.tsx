@@ -1,6 +1,7 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { FrameCodeView } from "@app/components/assistant/conversation/interactive_content/frame/FrameCodeView";
 import { FrameToolbar } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolbar";
+import { FrameToolConsentGate } from "@app/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
@@ -124,12 +125,20 @@ function PodFrameSheetWithFile({
   );
   const isV2 = functionReferenceKind === "v2";
 
-  const { canWriteFrameSource, hasFrameFunctions, isFramePermissionsLoading } =
-    useFramePermissions({
-      owner,
-      frameId: fileId,
-      disabled: !isOpen || !isV2,
-    });
+  const {
+    canWriteFrameSource,
+    hasFrameFunctions,
+    requiredTools,
+    hasAuthorizedRequiredTools,
+    isFramePermissionsLoading,
+    mutateFramePermissions,
+  } = useFramePermissions({
+    owner,
+    frameId: fileId,
+    disabled: !isOpen || !isV2,
+  });
+  const needsToolConsent =
+    isV2 && !isFramePermissionsLoading && !hasAuthorizedRequiredTools;
 
   const frameSourceBaseUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
   const {
@@ -244,6 +253,15 @@ function PodFrameSheetWithFile({
             <div className="flex h-full items-center justify-center">
               <Spinner />
             </div>
+          ) : needsToolConsent && fileId ? (
+            <FrameToolConsentGate
+              owner={owner}
+              frameId={fileId}
+              requiredTools={requiredTools}
+              onAuthorized={async () => {
+                await mutateFramePermissions();
+              }}
+            />
           ) : showCode ? (
             <FrameCodeView
               code={isV2 ? (frameSource ?? undefined) : fileContent}

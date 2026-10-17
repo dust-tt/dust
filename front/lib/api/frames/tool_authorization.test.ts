@@ -1,4 +1,4 @@
-import { authorizedToolsCoverRequired } from "@app/lib/api/frames/tool_authorization";
+import { authorizedToolsCoverRequired } from "@app/lib/api/frames/tool_authorization_coverage";
 import { describe, expect, it } from "vitest";
 
 describe("authorizedToolsCoverRequired", () => {

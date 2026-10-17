@@ -23,7 +23,7 @@ msgstr "Bêta"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameCodeView.tsx
 msgid "Error loading the Frame source."
-msgstr "Erreur lors du chargement de la source du Frame."
+msgstr "Impossible de charger le code source du Frame."
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
 msgid "Save"
@@ -260,6 +260,38 @@ msgstr "Dernière consultation {timeAgo}"
 #: front/components/assistant/conversation/interactive_content/frame/FrameSharingViewers.tsx
 msgid "Last viewed {exactTime}"
 msgstr "Dernière consultation : {exactTime}"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
+msgstr "Autoriser le Frame «{frameName}» de {lastPublisherName} à utiliser des outils ?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” to use tools?"
+msgstr "Autoriser le Frame «{frameName}» à utiliser des outils ?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame by {lastPublisherName} to use tools?"
+msgstr "Autoriser ce Frame de {lastPublisherName} à utiliser des outils ?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame to use tools?"
+msgstr "Autoriser ce Frame à utiliser des outils ?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New tools were added since you last allowed access. Review the list before continuing."
+msgstr "De nouveaux outils ont été ajoutés depuis votre dernier accès. Vérifiez la liste avant de continuer."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "This Frame can call the tools below on your behalf. Review them before continuing."
+msgstr "Ce Frame peut appeler les outils ci-dessous en votre nom. Vérifiez-les avant de continuer."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New"
+msgstr "Nouveau"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow access"
+msgstr "Autoriser l’accès"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
 msgid "Switch to rendering"

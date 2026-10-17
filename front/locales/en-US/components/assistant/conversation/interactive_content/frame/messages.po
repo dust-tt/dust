@@ -261,6 +261,38 @@ msgstr "Last viewed {timeAgo}"
 msgid "Last viewed {exactTime}"
 msgstr "Last viewed {exactTime}"
 
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
+msgstr "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” to use tools?"
+msgstr "Allow Frame “{frameName}” to use tools?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame by {lastPublisherName} to use tools?"
+msgstr "Allow this Frame by {lastPublisherName} to use tools?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame to use tools?"
+msgstr "Allow this Frame to use tools?"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New tools were added since you last allowed access. Review the list before continuing."
+msgstr "New tools were added since you last allowed access. Review the list before continuing."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "This Frame can call the tools below on your behalf. Review them before continuing."
+msgstr "This Frame can call the tools below on your behalf. Review them before continuing."
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New"
+msgstr "New"
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow access"
+msgstr "Allow access"
+
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
 msgid "Switch to rendering"
 msgstr "Switch to rendering"

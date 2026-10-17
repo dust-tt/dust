@@ -261,6 +261,38 @@ msgstr ""
 msgid "Last viewed {exactTime}"
 msgstr ""
 
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” by {lastPublisherName} to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow Frame “{frameName}” to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame by {lastPublisherName} to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow this Frame to use tools?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New tools were added since you last allowed access. Review the list before continuing."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "This Frame can call the tools below on your behalf. Review them before continuing."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "New"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/frame/FrameToolConsentGate.tsx
+msgid "Allow access"
+msgstr ""
+
 #: front/components/assistant/conversation/interactive_content/frame/FrameToolbar.tsx
 msgid "Switch to rendering"
 msgstr ""
