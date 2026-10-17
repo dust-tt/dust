@@ -3,6 +3,8 @@ import { updateConversationRequirements } from "@app/lib/api/assistant/conversat
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
+import type { AutoTierRouting } from "@app/lib/api/assistant/tier_routing";
+import { applyAutoTierRouting } from "@app/lib/api/assistant/tier_routing";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -293,17 +295,20 @@ export async function createUserMessage(
 export interface AgentMessageModelResolution {
   resolvedModel: ResolvedRequestedModel;
   modelResolutionMethod: ModelResolutionMethodType;
+  // Run of the tier routing decision that picked the stream, billed with the agent message.
+  decisionRunId?: string;
 }
+
+export type ResolveModelForMentionedAgentParams = {
+  agent: AgentResource;
+  selection?: ModelSelectionType;
+  // When set, an auto agent's message may be routed to a lower tier.
+  routing?: AutoTierRouting;
+};
 
 export async function resolveModelForMentionedAgent(
   auth: Authenticator,
-  {
-    agent,
-    selection,
-  }: {
-    agent: AgentResource;
-    selection?: ModelSelectionType;
-  }
+  { agent, selection, routing }: ResolveModelForMentionedAgentParams
 ): Promise<AgentMessageModelResolution> {
   const featureFlags = await getFeatureFlags(auth);
 
@@ -323,11 +328,21 @@ export async function resolveModelForMentionedAgent(
     effectiveSelection = undefined;
   }
 
-  return resolveModel(auth, {
+  const route =
+    routing && !effectiveSelection
+      ? await applyAutoTierRouting(auth, agent, routing)
+      : null;
+
+  const resolution = await resolveModel(auth, {
     selection: effectiveSelection,
     agent,
     featureFlags,
+    streamOverride: route?.streamId,
   });
+
+  return route
+    ? { ...resolution, decisionRunId: route.decisionRunId }
+    : resolution;
 }
 
 export const createAgentMessages = async (
@@ -556,7 +571,8 @@ export const createAgentMessages = async (
           resolution,
           `Missing model resolution for agent configuration ${configuration.sId}`
         );
-        const { resolvedModel, modelResolutionMethod } = resolution;
+        const { resolvedModel, modelResolutionMethod, decisionRunId } =
+          resolution;
 
         const agentMessageRow = await AgentMessageModel.create(
           {
@@ -570,6 +586,7 @@ export const createAgentMessages = async (
             resolvedModelId: resolvedModel.modelId,
             resolvedReasoningEffort: resolvedModel.reasoningEffort,
             modelResolutionMethod,
+            runIds: decisionRunId ? [decisionRunId] : null,
           },
           { transaction }
         );

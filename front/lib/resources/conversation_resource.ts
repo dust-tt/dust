@@ -5144,6 +5144,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await this.update({ memoryFilePath });
   }
 
+  // Merges into the metadata this resource was fetched with: a concurrent write to the same key
+  // between the fetch and this update is overwritten.
+  async mergeMetadata(
+    auth: Authenticator,
+    metadata: Partial<ConversationMetadata>
+  ) {
+    await this.update({ metadata: { ...this.metadata, ...metadata } });
+  }
+
   async updateRequirements(
     auth: Authenticator,
     requestedSpaceIds: number[],

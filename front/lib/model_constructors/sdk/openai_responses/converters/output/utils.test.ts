@@ -140,6 +140,7 @@ function completedResponse(
 ): Response {
   return {
     id: "resp_1",
+    access_programs: null,
     created_at: 0,
     output_text: "",
     error: null,

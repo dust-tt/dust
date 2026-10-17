@@ -12,17 +12,32 @@ import type {
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
 
+export type RoutedAgentDecision = {
+  agentConfigurationId: string;
+  decisionRunId: string;
+};
+
+export type RunAgentLoopWorkflowParams = {
+  auth: Authenticator;
+  agentMessages: AgentMessageType[];
+  conversation: ConversationWithoutContentType;
+  userMessage: UserMessageTypeWithoutMentions;
+  // Billed with the first execution of that agent's message.
+  routedAgentDecision?: RoutedAgentDecision;
+};
+
+/**
+ * @cc [owner:pmilliotte,label:product] routing-decision-billed-once
+ * A routing decision run MUST be launched as `dustRunIds` of the first execution of its agent
+ * message only, so Metronome and credits bill it exactly once with that message.
+ */
 export const runAgentLoopWorkflow = async ({
   auth,
   agentMessages,
   conversation,
   userMessage,
-}: {
-  auth: Authenticator;
-  agentMessages: AgentMessageType[];
-  conversation: ConversationWithoutContentType;
-  userMessage: UserMessageTypeWithoutMentions;
-}) => {
+  routedAgentDecision,
+}: RunAgentLoopWorkflowParams) => {
   return concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
@@ -62,6 +77,10 @@ export const runAgentLoopWorkflow = async ({
           userMessageId: userMessage.sId,
           userMessageVersion: userMessage.version,
           userMessageOrigin: userMessage.context.origin,
+          ...(routedAgentDecision?.agentConfigurationId ===
+          agentMessage.configuration.sId
+            ? { dustRunIds: [routedAgentDecision.decisionRunId] }
+            : {}),
         },
         // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
         canInitializeConsumption: true,

@@ -319,6 +319,7 @@ function responseErrorToErrorEvent(
       });
     case "bio_policy":
     case "image_content_policy_violation":
+    case "misalignment_policy_violation":
       return buildErrorEvent({
         errorSource: "unknown",
         metadata,
@@ -340,6 +341,7 @@ function responseErrorToErrorEvent(
     case "empty_image_file":
     case "failed_to_download_image":
     case "image_file_not_found":
+    case "data_residency_mismatch":
       return buildErrorEvent({
         errorSource: "dust",
         metadata,
@@ -621,6 +623,12 @@ export async function* rawOutputToEvents(
       case "response.queued":
       case "response.custom_tool_call_input.delta":
       case "response.custom_tool_call_input.done":
+      case "response.compaction.compacting":
+      case "response.shell_call_command.added":
+      case "response.shell_call_command.delta":
+      case "response.shell_call_command.done":
+      case "response.shell_call_output_content.delta":
+      case "response.shell_call_output_content.done":
         outputEvents = [];
         break;
       default:

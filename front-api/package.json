@@ -49,7 +49,7 @@
     "jsonwebtoken": "^9.0.0",
     "marked": "^17.0.6",
     "mdast-util-from-markdown": "^2.0.3",
-    "openai": "^6.46.0",
+    "openai": "^7.30.0",
     "peggy": "^5.1.0",
     "snowflake-sdk": "2.3.4",
     "swagger-jsdoc": "^6.2.8",

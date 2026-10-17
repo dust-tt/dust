@@ -15,6 +15,7 @@ import type {
   ToolCallEvent as OldToolCallEvent,
   ReasoningGeneratedEvent,
   TextGeneratedEvent,
+  TokenUsage,
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
@@ -72,6 +73,7 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
   PassthroughLab,
+  TokenUsageContent,
 } from "@app/lib/model_constructors/types/output/events";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import { isInputTransformations } from "@app/lib/model_constructors/utils/input_transformation";
@@ -407,7 +409,7 @@ function convertAggregatedItem(
 /**
  * Maps new model ErrorType to old LLMErrorType with correct retryability.
  */
-function mapErrorType(errorType: ErrorType): {
+export function mapErrorType(errorType: ErrorType): {
   type: LLMErrorType;
   isRetryable: boolean;
 } {
@@ -445,6 +447,44 @@ function mapErrorType(errorType: ErrorType): {
     default:
       assertNever(errorType);
   }
+}
+
+export function tokenUsageContentToTokenUsage({
+  standardInput,
+  totalOutput,
+  cacheHit,
+  cacheCreated,
+  longCacheCreated,
+  shortCacheCreated,
+  reasoning,
+  serviceTier,
+}: TokenUsageContent): TokenUsage {
+  // `cacheCreated` is only set when the provider reports a flat total with
+  // no per-duration breakdown. Otherwise the split lives in long/short.
+  const hasDurationBreakdown = cacheCreated === 0;
+  const totalCacheCreated = hasDurationBreakdown
+    ? longCacheCreated + shortCacheCreated
+    : cacheCreated;
+  const inputTokens = standardInput + cacheHit + totalCacheCreated;
+  if (reasoning !== undefined && (reasoning < 0 || reasoning > totalOutput)) {
+    throw new Error("reasoning must be a non-negative subset of totalOutput");
+  }
+  return {
+    inputTokens,
+    totalOutputTokens: totalOutput,
+    ...(reasoning !== undefined ? { reasoningTokens: reasoning } : {}),
+    totalTokens: inputTokens + totalOutput,
+    cachedTokens: cacheHit,
+    cacheCreationTokens: totalCacheCreated,
+    ...(hasDurationBreakdown
+      ? {
+          longCacheCreationTokens: longCacheCreated,
+          shortCacheCreationTokens: shortCacheCreated,
+        }
+      : {}),
+    uncachedInputTokens: standardInput,
+    ...(serviceTier !== undefined ? { serviceTier } : {}),
+  };
 }
 
 /**
@@ -536,53 +576,12 @@ export function convertToOldEvent(
         },
       };
 
-    case "token_usage": {
-      const {
-        standardInput,
-        totalOutput,
-        cacheHit,
-        cacheCreated,
-        longCacheCreated,
-        shortCacheCreated,
-        reasoning,
-        serviceTier,
-      } = event.content;
-      // `cacheCreated` is only set when the provider reports a flat total with
-      // no per-duration breakdown. Otherwise the split lives in long/short.
-      const hasDurationBreakdown = cacheCreated === 0;
-      const totalCacheCreated = hasDurationBreakdown
-        ? longCacheCreated + shortCacheCreated
-        : cacheCreated;
-      const inputTokens = standardInput + cacheHit + totalCacheCreated;
-      if (
-        reasoning !== undefined &&
-        (reasoning < 0 || reasoning > totalOutput)
-      ) {
-        throw new Error(
-          "reasoning must be a non-negative subset of totalOutput"
-        );
-      }
+    case "token_usage":
       return {
         type: "token_usage",
-        content: {
-          inputTokens,
-          totalOutputTokens: totalOutput,
-          ...(reasoning !== undefined ? { reasoningTokens: reasoning } : {}),
-          totalTokens: inputTokens + totalOutput,
-          cachedTokens: cacheHit,
-          cacheCreationTokens: totalCacheCreated,
-          ...(hasDurationBreakdown
-            ? {
-                longCacheCreationTokens: longCacheCreated,
-                shortCacheCreationTokens: shortCacheCreated,
-              }
-            : {}),
-          uncachedInputTokens: standardInput,
-          ...(serviceTier !== undefined ? { serviceTier } : {}),
-        },
+        content: tokenUsageContentToTokenUsage(event.content),
         metadata,
       };
-    }
 
     case "success": {
       const aggregated = event.content.aggregated.map((item) =>

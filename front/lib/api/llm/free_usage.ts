@@ -38,16 +38,27 @@ const makeFreeUsageCostRateLimitKeyForUser = (
   return `workspace:${owner.id}:user:${userId}:free_usage_cost:v2_microcredits`;
 };
 
+// Operations billed as part of the agent message they serve.
+const AGENT_MESSAGE_OPERATION_TYPES: LLMTraceContext["operationType"][] = [
+  "agent_conversation",
+  "auto_tier_routing",
+];
+
 // Whether an LLM call is free (unbilled). Two cases:
-//   - Utility operations (title/skill suggestions, etc.) — anything other than
-//     the agent conversation itself. They carry no userMessageOrigin, so they
-//     are keyed off operationType.
-//   - Agent conversations triggered by a free origin (e.g. sidekick).
+//   - Utility operations (title/skill suggestions, etc.) — anything not billed
+//     as part of an agent message. They carry no userMessageOrigin, so they are
+//     keyed off operationType.
+//   - Agent message operations triggered by a free origin (e.g. sidekick).
 // This is the single source of truth for classifying free usage at the LLM call
 // site (used for both usage-type tagging and the free-usage cost cap).
+/**
+ * @cc [owner:pmilliotte,label:product] tier-routing-billed-like-its-message
+ * An `auto_tier_routing` call MUST be classified exactly like the `agent_conversation` call of the
+ * agent message it routes: free iff the triggering user message origin is free.
+ */
 export function isFreeUsageContext(context: LLMTraceContext): boolean {
   return (
-    context.operationType !== "agent_conversation" ||
+    !AGENT_MESSAGE_OPERATION_TYPES.includes(context.operationType) ||
     isFreeOrigin(context.userMessageOrigin ?? null)
   );
 }
