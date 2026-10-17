@@ -116,7 +116,8 @@ metadata in the same transaction. An occupied ID fails with `AlreadyExists`. Eac
 separate tuple component. An empty value denotes a present xattr with empty bytes; a missing key
 denotes an absent xattr. Extended metadata reads combine the base entry and xattr entries from the
 same transaction. Xattr changes preserve the 32 KiB limit on combined xattr name/value bytes. Object
-deletion clears both the base metadata entry and all xattr entries.
+deletion clears attributes, base metadata, xattrs, blocks, and attached grants atomically with the
+parent binding.
 
 The MIME type in base metadata is optional (`Option<String>`); `None` is encoded as FDB tuple null.
 Create leaves it unset when omitted.

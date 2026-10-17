@@ -774,7 +774,8 @@ RemoveOperation {
 
 **Successful result:** `mutation` is present, with no `object` attributes. Its `related` field
 includes the parent's attributes after removal. Nonempty directories fail with `NOT_EMPTY`;
-recursive deletion requires explicitly removing descendants first.
+recursive deletion requires explicitly removing descendants first. Removing the tenant root fails
+with `FORBIDDEN`.
 The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
 
 ## Search
