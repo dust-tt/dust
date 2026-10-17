@@ -449,7 +449,8 @@ impl ObjectResource {
         file::FileResource::clear_blocks(tx, self);
 
         // Hints re-read object existence. Reusing an ID could match an old grants_version, but
-        // populating nonempty grants requires the tenant key, which already controls authorization.
+        // populating nonempty grants requires the tenant key, which already controls
+        // authorization.
         Ok(())
     }
 
