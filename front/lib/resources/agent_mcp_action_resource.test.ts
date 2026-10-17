@@ -13,6 +13,7 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
   gcsContentCacheKey,
+  getGcsWriteRequestTimeoutMs,
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -21,6 +22,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { heartbeatWithoutCancelCheck } from "@app/lib/temporal";
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -45,6 +47,8 @@ import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
 let gcsSaveFailureMarker: string | null = null;
+const gcsFileRequestTimeoutsMs: Array<number | undefined> = [];
+const gcsDeleteRequestTimeoutsMs: Array<number | undefined> = [];
 
 vi.mock("@app/lib/file_storage", async (importOriginal) => {
   const original =
@@ -53,27 +57,34 @@ vi.mock("@app/lib/file_storage", async (importOriginal) => {
   return {
     ...original,
     getPrivateUploadBucket: vi.fn(() => ({
-      file: vi.fn((path: string) => ({
-        copy: vi.fn().mockResolvedValue(undefined),
-        save: vi.fn(async (data: Buffer) => {
-          if (
-            gcsSaveFailureMarker &&
-            data.toString("utf-8").includes(gcsSaveFailureMarker)
-          ) {
-            throw new Error("Simulated GCS write failure");
-          }
-          gcsStore.set(path, data);
-        }),
-        download: vi.fn(async () => {
-          const buf = gcsStore.get(path);
-          if (!buf) {
-            throw new Error(`GCS file not found: ${path}`);
-          }
-          return [buf];
-        }),
-      })),
+      file: vi.fn((path: string, options?: { requestTimeoutMs?: number }) => {
+        gcsFileRequestTimeoutsMs.push(options?.requestTimeoutMs);
+        return {
+          copy: vi.fn().mockResolvedValue(undefined),
+          save: vi.fn(async (data: Buffer) => {
+            if (
+              gcsSaveFailureMarker &&
+              data.toString("utf-8").includes(gcsSaveFailureMarker)
+            ) {
+              throw new Error("Simulated GCS write failure");
+            }
+            gcsStore.set(path, data);
+          }),
+          download: vi.fn(async () => {
+            const buf = gcsStore.get(path);
+            if (!buf) {
+              throw new Error(`GCS file not found: ${path}`);
+            }
+            return [buf];
+          }),
+        };
+      }),
       delete: vi.fn(
-        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+        async (
+          path: string,
+          opts?: { ignoreNotFound?: boolean; requestTimeoutMs?: number }
+        ) => {
+          gcsDeleteRequestTimeoutsMs.push(opts?.requestTimeoutMs);
           if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
             throw new Error(`GCS file not found: ${path}`);
           }
@@ -706,6 +717,8 @@ describe("Output items with GCS storage", () => {
   beforeEach(async () => {
     gcsStore.clear();
     gcsSaveFailureMarker = null;
+    gcsFileRequestTimeoutsMs.length = 0;
+    gcsDeleteRequestTimeoutsMs.length = 0;
 
     const setup = await createResourceTest({});
     workspace = setup.workspace;
@@ -837,6 +850,39 @@ describe("Output items with GCS storage", () => {
       true
     );
     expect(gcsStore.size).toBe(0);
+  });
+
+  it("heartbeats after each failed GCS write attempt and bounds the cleanup deletes", async () => {
+    const action = await createAction();
+    gcsSaveFailureMarker = "fail-this-write";
+    vi.mocked(heartbeatWithoutCancelCheck).mockClear();
+
+    const result = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "fail-this-write" } },
+    ]);
+
+    expect(result.isErr()).toBe(true);
+    // 3 write attempts, then 1 cleanup delete.
+    expect(heartbeatWithoutCancelCheck).toHaveBeenCalledTimes(4);
+    expect(gcsDeleteRequestTimeoutsMs).toHaveLength(1);
+    expect(gcsDeleteRequestTimeoutsMs[0]).toBeGreaterThan(0);
+  });
+
+  it("gives larger GCS writes a longer request timeout", async () => {
+    await createActionWithOutputItems([
+      { type: "text", text: "small" },
+      { type: "text", text: "x".repeat(2_000_000) },
+    ]);
+
+    const [smallMs, largeMs] = gcsFileRequestTimeoutsMs;
+    assert(smallMs && largeMs, "Writes should have a request timeout.");
+    expect(largeMs).toBeGreaterThan(smallMs);
+  });
+
+  it("caps the GCS write request timeout below the tool activity heartbeat timeout", () => {
+    expect(getGcsWriteRequestTimeoutMs(1_000_000_000)).toBeLessThan(
+      TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS
+    );
   });
 
   it("creates no GCS objects when DB row insert fails", async () => {
