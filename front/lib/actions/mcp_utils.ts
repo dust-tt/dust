@@ -119,6 +119,8 @@ export function rewriteContentForModel(
       snippet: content.resource.snippet,
       isInProjectContext: content.resource.isInProjectContext ?? false,
       hideFromUser: false, // Model do not care.
+      isInCurrentConversationMount:
+        content.resource.isInCurrentConversationMount ?? true,
       capabilities,
     });
     const xml = renderAttachmentXml({

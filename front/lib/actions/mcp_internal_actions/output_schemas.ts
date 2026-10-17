@@ -66,6 +66,9 @@ const ToolGeneratedFileSchema = z.object({
   isInProjectContext: z.boolean().optional(),
   // DEPRECATED, only kept for backwards compatibility. Optional UI hint to hide file from generic generated files sections.
   hidden: z.boolean().optional(),
+  // False when the file lives outside the current conversation's file mount (e.g. a file
+  // returned by run_agent from a sub-conversation). Omitted means true.
+  isInCurrentConversationMount: z.boolean().optional(),
 });
 
 export const TOOL_GENERATED_FILE_MIME_TYPE =

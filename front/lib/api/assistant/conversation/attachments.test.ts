@@ -99,6 +99,43 @@ describe("makeFileAttachment", () => {
     expect(attachment.isSearchable).toBe(false);
   });
 
+  it("keeps out-of-mount files readable in the new file explorer", () => {
+    const attachment = makeFileAttachment({
+      ...baseArgs,
+      capabilities: capabilities({ isNewFileExplorer: true }),
+      isInCurrentConversationMount: false,
+    });
+
+    expect(attachment.isIncludable).toBe(true);
+    expect(attachment.isQueryable).toBe(false); // text/plain is not tabular
+    expect(attachment.isSearchable).toBe(true);
+  });
+
+  it("keeps out-of-mount tabular files queryable in the new file explorer", () => {
+    const attachment = makeFileAttachment({
+      ...baseArgs,
+      contentType: "text/csv",
+      capabilities: capabilities({ isNewFileExplorer: true }),
+      isInCurrentConversationMount: false,
+    });
+
+    expect(attachment.isIncludable).toBe(true);
+    expect(attachment.isQueryable).toBe(true);
+  });
+
+  it("still disables all flags for in-mount files in the new file explorer", () => {
+    const attachment = makeFileAttachment({
+      ...baseArgs,
+      contentType: "text/csv",
+      capabilities: capabilities({ isNewFileExplorer: true }),
+      // isInCurrentConversationMount defaults to true.
+    });
+
+    expect(attachment.isIncludable).toBe(false);
+    expect(attachment.isQueryable).toBe(false);
+    expect(attachment.isSearchable).toBe(false);
+  });
+
   it("disables queryable when sandbox tools are available", () => {
     const attachment = makeFileAttachment({
       ...baseArgs,
