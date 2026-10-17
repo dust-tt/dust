@@ -34,6 +34,7 @@ pub enum SqlDialect {
     DustSqlite,
     Snowflake,
     Bigquery,
+    Databricks,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
