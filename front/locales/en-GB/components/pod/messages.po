@@ -116,6 +116,18 @@ msgstr ""
 msgid "Leave the Pod"
 msgstr ""
 
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Publishing your changes..."
+msgstr ""
+
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Done"
+msgstr ""
+
+#: front/components/pod/PodHoverFrameViewer.tsx
+msgid "Frame actions"
+msgstr ""
+
 #: front/components/pod/PodMenu.tsx
 msgid "Link copied"
 msgstr ""

@@ -146,15 +146,11 @@ msgid "Join the {podName} Pod"
 msgstr ""
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
-msgid "Hide"
+msgid "Frame"
 msgstr ""
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
-msgid "Unpin"
-msgstr ""
-
-#: front/components/pod/conversation/PodPinnedBanner.tsx
-msgid "Exit full screen"
+msgid "Show"
 msgstr ""
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
@@ -162,9 +158,9 @@ msgid "Open in full screen"
 msgstr ""
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
-msgid "Frame"
+msgid "Hide"
 msgstr ""
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
-msgid "Show"
+msgid "Unpin"
 msgstr ""
