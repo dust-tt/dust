@@ -4,6 +4,7 @@ import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_ac
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -837,6 +838,24 @@ describe("Output items with GCS storage", () => {
       true
     );
     expect(gcsStore.size).toBe(0);
+  });
+
+  it("heartbeats after each failed GCS write attempt and bounds the cleanup deletes", async () => {
+    const action = await createAction();
+    gcsSaveFailureMarker = "fail-this-write";
+    vi.mocked(heartbeatWithoutCancelCheck).mockClear();
+    vi.mocked(getPrivateUploadBucket).mockClear();
+
+    const result = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "fail-this-write" } },
+    ]);
+
+    expect(result.isErr()).toBe(true);
+    // 3 write attempts, then 1 cleanup delete.
+    expect(heartbeatWithoutCancelCheck).toHaveBeenCalledTimes(4);
+    for (const [options] of vi.mocked(getPrivateUploadBucket).mock.calls) {
+      expect(options?.requestTimeoutMs).toBeGreaterThan(0);
+    }
   });
 
   it("creates no GCS objects when DB row insert fails", async () => {

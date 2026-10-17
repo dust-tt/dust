@@ -16,7 +16,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
-const GCS_WRITE_REQUEST_TIMEOUT_MS = 15_000;
+const GCS_REQUEST_TIMEOUT_MS = 15_000;
 
 export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -51,9 +51,9 @@ function getGcsPath(
  */
 /**
  * @cc [owner:tdraier,label:performance] bounded-gcs-write-attempt
- * Each object write attempt MUST be bounded by `GCS_WRITE_REQUEST_TIMEOUT_MS`, so that a request
- * stuck on a dead connection fails and is retried instead of stalling past the activity heartbeat
- * timeout.
+ * Each object write attempt, and each cleanup delete after a failed write, MUST be bounded by
+ * `GCS_REQUEST_TIMEOUT_MS`, so that a request stuck on a dead connection fails instead of stalling
+ * past the activity heartbeat timeout.
  */
 async function batchWriteContentsToGcsAtPaths(
   action: AgentMCPActionResource,
@@ -66,19 +66,22 @@ async function batchWriteContentsToGcsAtPaths(
     itemsWithPaths,
     async ({ content, gcsPath }) => {
       const bucket = getPrivateUploadBucket({
-        requestTimeoutMs: GCS_WRITE_REQUEST_TIMEOUT_MS,
+        requestTimeoutMs: GCS_REQUEST_TIMEOUT_MS,
       });
       const file = bucket.file(gcsPath);
       const json = JSON.stringify(content);
 
-      // Resumable uploads (the SDK default) ignore `timeout`.
-      const writeResult = await withRetry(() =>
-        file.save(Buffer.from(json, "utf-8"), {
-          contentType: "application/json",
-          resumable: false,
-        })
-      );
-      heartbeatWithoutCancelCheck();
+      const writeResult = await withRetry(async () => {
+        try {
+          // Resumable uploads (the SDK default) ignore `timeout`.
+          await file.save(Buffer.from(json, "utf-8"), {
+            contentType: "application/json",
+            resumable: false,
+          });
+        } finally {
+          heartbeatWithoutCancelCheck();
+        }
+      });
 
       if (writeResult.isErr()) {
         if (!firstError) {
@@ -278,11 +281,14 @@ export async function deleteContentsFromGcs(
   }
 
   try {
-    const bucket = getPrivateUploadBucket();
+    const bucket = getPrivateUploadBucket({
+      requestTimeoutMs: GCS_REQUEST_TIMEOUT_MS,
+    });
     await concurrentExecutor(
       gcsPaths,
       async (gcsPath) => {
         await bucket.delete(gcsPath, { ignoreNotFound: true });
+        heartbeatWithoutCancelCheck();
       },
       { concurrency: GCS_CONCURRENCY }
     );
