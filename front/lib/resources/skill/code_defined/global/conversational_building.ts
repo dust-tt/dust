@@ -165,7 +165,7 @@ Whenever you name an entity in your response, write it as a mention directive ra
 \`\`\`
 The label between brackets is the entity's exact name, and the \`sId\` is the id of the entity. Both are required: a mention without a resolved id does not render.
 Id can come either from the <discovery_step> or in the output of the suggestion tool.
-In a message that carries suggestion directives, mention edited entities only where a sentence needs them. NEVER enumerate every edited entity, inside or outside a sentence.
+In a message that carries suggestion directives, NEVER list every edited entity, even inside one sentence: the suggestion cards already show each of them. Describe them as a group, e.g. "the four onboarding agents", and mention one only when the sentence is about it alone.
 Exception: an agent or a skill created by a suggestion has no id yet. Name it in plain text, NEVER with a mention directive.
 NEVER invent an id, and NEVER mention an entity you have not resolved.
 Mention directives only render in your response text. In tool inputs, such as the question and options of \`ask_user_question\`, name the entity in plain text, NEVER with a mention directive.
