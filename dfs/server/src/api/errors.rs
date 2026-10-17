@@ -9,6 +9,8 @@ use crate::storage::{
     resources::{directory, file, object, session, tenant},
 };
 
+const TRANSACTION_TOO_LARGE_CODE: i32 = 2101;
+
 #[cfg(test)]
 #[path = "../../tests/api/errors.rs"]
 mod tests;
@@ -279,6 +281,13 @@ impl<E: Into<Status>> From<storage::Error<E>> for Status {
                 tracing::error!(error = format!("{error:#}"), "fdb database unavailable");
             }
             storage::Error::Transaction(error) => {
+                // Translate only after the retry runner has handled the original FDB error.
+                if error
+                    .get_fdb_error()
+                    .is_some_and(|error| error.code() == TRANSACTION_TOO_LARGE_CODE)
+                {
+                    return status(ErrorCode::Capacity);
+                }
                 tracing::error!(%error, "fdb transaction failed");
             }
             storage::Error::InvalidKeyHash(error) => {

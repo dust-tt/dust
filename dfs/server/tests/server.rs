@@ -61,6 +61,7 @@ fn server() -> Result<()> {
         api::read_files::read_files_budgets_all_results_before_reading_blocks().await?;
         api::lookup::lookup_resolves_readable_children_and_conceals_the_rest().await?;
         api::apply::apply_returns_per_operation_errors_and_rejects_invalid_requests().await?;
+        api::capacity::oversized_transactions_return_capacity_without_committing().await?;
         api::create_session::creates_durable_sessions_for_authenticated_tenants().await?;
         api::session::session_rpcs_enforce_credentials_and_preserve_identity().await?;
         api::session::session_authentication_requires_and_caches_existing_tenants().await?;
