@@ -6,7 +6,7 @@ fn hint(parent_id: Option<ObjectId>) -> Hint {
     Hint {
         parent_id,
         grants_version: 1,
-        grants: Arc::from([]),
+        grants: Some(Arc::from([])),
     }
 }
 
@@ -134,7 +134,7 @@ async fn cached_grants_require_matching_tenant_and_version() -> Result<()> {
             [(
                 id,
                 Hint {
-                    grants: Arc::clone(&grants),
+                    grants: Some(Arc::clone(&grants)),
                     ..hint(None)
                 },
             )],
@@ -191,4 +191,115 @@ async fn grant_cache_reads_refresh_recency_before_eviction() {
         .await;
     assert!(grants.contains_key(&older));
     assert!(!grants.contains_key(&newer));
+}
+
+#[tokio::test]
+async fn parent_hints_preserve_only_matching_cached_grants() -> Result<()> {
+    let hints = TreeHints::new(4);
+    let id = ObjectId::new_v7();
+    let parent = ObjectId::new_v7();
+    hints
+        .remember(
+            "tenant",
+            [(
+                id,
+                Hint {
+                    grants: None,
+                    ..hint(None)
+                },
+            )],
+            [],
+        )
+        .await;
+    // An ancestry-only hint is not evidence of an empty grant set.
+    assert!(hints.cached_grants("tenant", [(id, 1)]).await.is_empty());
+
+    let grants: Arc<[Grant]> = Arc::from([Grant {
+        kind: Some(grant::Kind::Allow(AllowGrant {
+            subject: "reader".to_owned(),
+            mode: 4,
+        })),
+    }]);
+    hints
+        .remember(
+            "tenant",
+            [(
+                id,
+                Hint {
+                    grants: Some(Arc::clone(&grants)),
+                    ..hint(None)
+                },
+            )],
+            [],
+        )
+        .await;
+    hints
+        .remember(
+            "tenant",
+            [(
+                id,
+                Hint {
+                    grants: None,
+                    ..hint(Some(parent))
+                },
+            )],
+            [],
+        )
+        .await;
+    assert_eq!(
+        hints.predict("tenant", &[id]).await,
+        HashSet::from([id, parent])
+    );
+    assert_eq!(
+        hints
+            .cached_grants("tenant", [(id, 1)])
+            .await
+            .get(&id)
+            .context("missing grants")?,
+        &grants
+    );
+
+    hints
+        .remember(
+            "tenant",
+            [(
+                id,
+                Hint {
+                    grants_version: 2,
+                    grants: None,
+                    ..hint(None)
+                },
+            )],
+            [],
+        )
+        .await;
+    assert!(
+        hints
+            .cached_grants("tenant", [(id, 1), (id, 2)])
+            .await
+            .is_empty()
+    );
+    // A complete empty grant set still counts as a hit.
+    hints
+        .remember(
+            "tenant",
+            [(
+                id,
+                Hint {
+                    grants_version: 2,
+                    ..hint(None)
+                },
+            )],
+            [],
+        )
+        .await;
+    assert!(
+        hints
+            .cached_grants("tenant", [(id, 2)])
+            .await
+            .get(&id)
+            .context("missing empty grants")?
+            .is_empty()
+    );
+    Ok(())
 }

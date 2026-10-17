@@ -49,6 +49,8 @@ fn resources() -> Result<()> {
         object::modes_for_session_evaluate_full_paths_and_all_grants().await?;
         object::grant_cache_skips_matching_versions_and_preserves_session_snapshots().await?;
         object::tree_hints_follow_moves_and_recheck_grants().await?;
+        object::ancestry_reads_follow_stale_hints_without_reading_grants().await?;
+        object::ancestry_reads_validate_paths_and_conflict_with_reparenting().await?;
         object::modes_for_session_isolate_tenants_and_reject_invalid_ancestry().await?;
         object::permission_reads_conflict_with_changes_and_retry().await?;
         object::stat_distinguishes_object_errors_and_preserves_transaction_failures().await?;

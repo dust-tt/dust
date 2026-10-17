@@ -4,9 +4,20 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use dfs_protocol::{ObjectId, rpc::Grant};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{Grant, ObjectKind},
+};
+use foundationdb::{FdbBindingError, Transaction};
+use futures::{StreamExt, TryStreamExt, stream};
 use lru::LruCache;
 use tokio::sync::Mutex;
+
+use super::{Error, ObjectResource};
+use crate::storage::{
+    self,
+    resources::{CONCURRENT_READS, tenant::TenantResource},
+};
 
 const TREE_HINTS_MAX_ENTRIES: usize = 100_000;
 static TREE_HINTS: OnceLock<Arc<TreeHints>> = OnceLock::new();
@@ -20,7 +31,8 @@ type Key = (String, ObjectId);
 pub(super) struct Hint {
     pub parent_id: Option<ObjectId>,
     pub grants_version: u64,
-    pub grants: Arc<[Grant]>,
+    // None means grants have not been loaded, rather than an empty grant set.
+    pub grants: Option<Arc<[Grant]>>,
 }
 
 /**
@@ -51,6 +63,121 @@ impl TreeHints {
         Self {
             entries: Mutex::new(NonZeroUsize::new(capacity_entries).map(LruCache::sparse)),
         }
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] tree-hints-fetch-ancestry
+     * The result MUST contain each existing requested object and its actual ancestors through the
+     * tenant root, keyed by ID and without metadata. Missing requested objects MUST be omitted.
+     * Every returned object MUST be read in the caller's transaction with conflict tracking;
+     * hints MUST only schedule reads. Changed parents MUST be followed, and obsolete hinted
+     * records MUST NOT be decoded or returned. Missing, non-directory, or cyclic ancestry MUST
+     * fail with InvalidAncestry. Invalid requested IDs MUST fail with InvalidId.
+     */
+    /**
+     * @cc [owner:spolu,label:backend;performance] tree-hints-ancestry-cache
+     * Successful ancestry reads MUST refresh parent hints without reading grants. A missing grant
+     * cache entry MUST remain distinct from a cached empty grant set. Existing cached grants MAY
+     * survive a parent refresh only when their grants_version matches the freshly read object.
+     */
+    pub async fn fetch_ancestry(
+        &self,
+        tx: &Transaction,
+        tenant: &TenantResource,
+        object_ids: &[ObjectId],
+    ) -> Result<HashMap<ObjectId, ObjectResource>, storage::Error<Error>> {
+        for id in object_ids {
+            id.validate().map_err(|_| Error::InvalidId)?;
+        }
+        let mut pending = object_ids.to_vec();
+        let mut prefetched = HashMap::new();
+        let mut objects = HashMap::new();
+        let mut missing = HashSet::new();
+
+        while !pending.is_empty() {
+            let predicted = self.predict(&tenant.tenant_id, &pending).await;
+            let reads = stream::iter(predicted.into_iter().filter(|id| {
+                !prefetched.contains_key(id) && !objects.contains_key(id) && !missing.contains(id)
+            }))
+            .map(|id| async move {
+                let value = tx
+                    .get(&ObjectResource::object_key(&tenant.tenant_id, &id), false)
+                    .await
+                    .map_err(FdbBindingError::from)?;
+                Ok::<_, storage::Error<Error>>((id, value))
+            })
+            .buffer_unordered(CONCURRENT_READS)
+            .try_collect::<Vec<_>>()
+            .await?;
+            prefetched.extend(reads);
+
+            let mut next = HashSet::new();
+            while let Some(id) = pending.pop() {
+                if objects.contains_key(&id) || missing.contains(&id) {
+                    continue;
+                }
+                let Some(value) = prefetched.remove(&id) else {
+                    next.insert(id);
+                    continue;
+                };
+                let Some(value) = value else {
+                    missing.insert(id);
+                    continue;
+                };
+                // Decode only actual ancestors; obsolete hints may point to unrelated records.
+                let object = ObjectResource::from_value(tenant, &id, &value)?;
+                if let Some(parent_id) = object.parent_id {
+                    pending.push(parent_id);
+                }
+                objects.insert(id, object);
+            }
+            pending.extend(next);
+        }
+
+        // Validate every path once, sharing the validated suffixes of overlapping paths.
+        let mut validated = HashSet::new();
+        for id in object_ids {
+            if !objects.contains_key(id) {
+                continue;
+            }
+            let mut path = HashSet::new();
+            let mut current = *id;
+            while !validated.contains(&current) {
+                if !path.insert(current) {
+                    return Err(Error::InvalidAncestry.into());
+                }
+                let object = objects.get(&current).ok_or(Error::InvalidAncestry)?;
+                if current == tenant.root_id {
+                    if object.parent_id.is_some() || object.kind != ObjectKind::Directory {
+                        return Err(Error::InvalidAncestry.into());
+                    }
+                    break;
+                }
+                let parent_id = object.parent_id.ok_or(Error::InvalidAncestry)?;
+                let parent = objects.get(&parent_id).ok_or(Error::InvalidAncestry)?;
+                if parent.kind != ObjectKind::Directory {
+                    return Err(Error::InvalidAncestry.into());
+                }
+                current = parent_id;
+            }
+            validated.extend(path);
+        }
+        self.remember(
+            &tenant.tenant_id,
+            objects.values().map(|object| {
+                (
+                    object.object_id,
+                    Hint {
+                        parent_id: object.parent_id,
+                        grants_version: object.grants_version,
+                        grants: None,
+                    },
+                )
+            }),
+            missing,
+        )
+        .await;
+        Ok(objects)
     }
 
     pub(super) async fn predict(
@@ -91,7 +218,8 @@ impl TreeHints {
             .into_iter()
             .filter_map(|(id, version)| {
                 let hint = cache.get(&(tenant_id.to_owned(), id))?;
-                (hint.grants_version == version).then(|| (id, Arc::clone(&hint.grants)))
+                let grants = hint.grants.as_ref()?;
+                (hint.grants_version == version).then(|| (id, Arc::clone(grants)))
             })
             .collect()
     }
@@ -110,7 +238,14 @@ impl TreeHints {
             cache.pop(&(tenant_id.to_owned(), id));
         }
         for (id, hint) in hints {
-            cache.put((tenant_id.to_owned(), id), hint);
+            let key = (tenant_id.to_owned(), id);
+            let grants = hint.grants.or_else(|| {
+                cache
+                    .peek(&key)
+                    .filter(|cached| cached.grants_version == hint.grants_version)
+                    .and_then(|cached| cached.grants.clone())
+            });
+            cache.put(key, Hint { grants, ..hint });
         }
     }
 }
