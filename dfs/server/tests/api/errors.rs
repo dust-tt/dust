@@ -24,6 +24,7 @@ where
 fn resource_errors_share_codes_across_api_conversions() {
     assert_api_codes(|| file::Error::Capacity, ErrorCode::Capacity);
     assert_api_codes(|| file::Error::InvalidBlock, ErrorCode::Internal);
+    assert_api_codes(|| file::Error::InvalidRange, ErrorCode::InvalidInput);
     assert_api_codes(
         || file::Error::Object(object::Error::NotAuthorized),
         ErrorCode::NotFound,

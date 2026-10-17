@@ -745,6 +745,8 @@ WriteOperation {
 
 **Successful result:** `mutation.object` contains the file's attributes after the write.
 Sparse gaps read as zeroes. Append observes earlier successful operations in the same request.
+An overflowing end offset fails with `INVALID_INPUT`. Empty writes leave size unchanged but still
+advance versions and timestamps as specified in [VERSIONS.md](VERSIONS.md).
 
 ### move operation
 
