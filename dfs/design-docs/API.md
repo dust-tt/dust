@@ -749,14 +749,13 @@ MoveOperation {
   parent_id: ObjectId            // Source directory.
   target_id?: ObjectId           // Destination directory; defaults to parent_id.
   name: string                  // Destination basename.
-  replace: bool                 // Whether an existing destination may be replaced.
 }
 ```
 
 **Successful result:** `mutation.object` contains the moved object's attributes after the move.
 The object's current parent must match `parent_id` in the transaction, otherwise `NOT_FOUND`.
-Replacement requires the same kind; a destination directory must be empty. Moving a directory into
-itself or a descendant is rejected.
+An occupied destination fails with `ALREADY_EXISTS`, except when renaming an object to its current
+name. Moving a directory into itself or a descendant is rejected.
 
 ### remove operation
 

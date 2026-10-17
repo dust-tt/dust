@@ -277,7 +277,6 @@ fn move_preserves_source_parent_and_optional_destination() -> Result<()> {
             parent_id,
             target_id,
             name: "renamed".into(),
-            replace: false,
         };
         assert_eq!(
             rpc::MoveOperation::decode(operation.encode_to_vec().as_slice())?,

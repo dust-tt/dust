@@ -216,7 +216,6 @@ export interface DfsMoveOperation {
   // The destination directory; defaults to parentId.
   targetId?: DfsObjectId;
   name: string;
-  replace: boolean;
 }
 
 export interface DfsRemoveOperation {

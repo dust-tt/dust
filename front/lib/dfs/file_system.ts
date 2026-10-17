@@ -934,8 +934,7 @@ export class DfsFileSystem {
    */
   async move(
     src: string,
-    dest: string,
-    { replace = false }: { replace?: boolean } = {}
+    dest: string
   ): Promise<Result<DfsResolvedObject, DfsError>> {
     const destination = parseDfsUri(dest);
     if (destination.isErr()) {
@@ -989,7 +988,6 @@ export class DfsFileSystem {
         targetId:
           targetId.value === parentId.value ? undefined : targetId.value,
         name,
-        replace,
       },
     ]);
   }

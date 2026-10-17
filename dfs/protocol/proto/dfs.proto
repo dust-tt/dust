@@ -443,14 +443,17 @@ message WriteOperation {
 // @cc [owner:spolu,label:api;security] dfs-move-parents
 // The server MUST verify that parent_id is the object's current parent in the transaction and
 // return NOT_FOUND on mismatch. The destination MUST be target_id when present, otherwise parent_id.
+
+// @cc [owner:spolu,label:api;security] dfs-move-no-replacement
+// An otherwise valid Move MUST fail with ALREADY_EXISTS when its destination is occupied by another
+// object. Renaming an object to its current name MUST NOT fail as a collision.
 message MoveOperation {
   required ObjectId object_id = 1;
   // The source directory.
   required ObjectId parent_id = 2;
   required string name = 3;
-  required bool replace = 4;
   // The destination directory; omitted for a rename within the source directory.
-  optional ObjectId target_id = 5;
+  optional ObjectId target_id = 4;
 }
 
 // @cc [owner:spolu,label:api;security] dfs-remove-parent

@@ -427,7 +427,6 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
               ? undefined
               : encodeObjectId(operation.targetId),
           name: operation.name,
-          replace: operation.replace,
         },
       };
     case "remove":
