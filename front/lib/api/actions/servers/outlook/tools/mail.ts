@@ -21,6 +21,7 @@ import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mai
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import sanitizeHtml from "sanitize-html";
@@ -59,6 +60,59 @@ async function fetchAttachment(
   }
 
   return new Ok({ buffer, filename, contentType });
+}
+
+type OutlookAttachment = {
+  buffer: Buffer;
+  filename: string;
+  contentType: string;
+};
+
+export const MAX_ATTACHMENTS_PER_EMAIL = 10;
+// Microsoft Graph limits write requests to 4 MB. When several attachments are
+// inlined in a single sendMail request, the serialized JSON (including base64
+// inflation, body and metadata) must stay under this conservative budget.
+export const MAX_SEND_MAIL_REQUEST_BYTES = 3.5 * 1024 * 1024;
+
+// Merges the legacy single-file parameter with the multi-file one, dropping
+// duplicates while preserving order.
+export function collectAttachmentFilePaths({
+  attachmentFilePath,
+  attachmentFilePaths,
+}: {
+  attachmentFilePath?: string;
+  attachmentFilePaths?: string[];
+}): Result<string[], MCPError> {
+  const paths = [
+    ...new Set([
+      ...(attachmentFilePath ? [attachmentFilePath] : []),
+      ...(attachmentFilePaths ?? []),
+    ]),
+  ];
+  if (paths.length > MAX_ATTACHMENTS_PER_EMAIL) {
+    return new Err(
+      new MCPError(
+        `Too many attachments: ${paths.length} (maximum is ${MAX_ATTACHMENTS_PER_EMAIL}).`
+      )
+    );
+  }
+  return new Ok(paths);
+}
+
+async function fetchAttachments(
+  auth: ToolHandlerExtra["auth"],
+  attachmentFilePaths: string[],
+  runContext: AgentLoopRunContext
+): Promise<Result<OutlookAttachment[], MCPError>> {
+  const attachments: OutlookAttachment[] = [];
+  for (const attachmentFilePath of attachmentFilePaths) {
+    const result = await fetchAttachment(auth, attachmentFilePath, runContext);
+    if (result.isErr()) {
+      return result;
+    }
+    attachments.push(result.value);
+  }
+  return new Ok(attachments);
 }
 
 // Builds the Microsoft Graph fileAttachment payload shared by the direct-send
@@ -425,7 +479,7 @@ async function createOutlookDraft({
   bcc,
   replyTo,
   sharedMailboxAddress,
-  attachment,
+  attachments,
 }: {
   basePath: string;
   accessToken: string;
@@ -440,7 +494,7 @@ async function createOutlookDraft({
   bcc?: string[];
   replyTo?: string[];
   sharedMailboxAddress?: string;
-  attachment: { buffer: Buffer; filename: string; contentType: string } | null;
+  attachments: OutlookAttachment[];
 }): Promise<Ok<{ draftId: string; conversationId?: string }> | Err<MCPError>> {
   let draftId: string;
   let conversationId: string | undefined;
@@ -577,26 +631,52 @@ async function createOutlookDraft({
     conversationId = result.conversationId;
   }
 
-  if (attachment) {
+  if (attachments.length > 0) {
     const encodedDraftId = encodeURIComponent(draftId);
-    const attachmentResponse = await fetchFromOutlook(
-      `${basePath}/messages/${encodedDraftId}/attachments`,
-      accessToken,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildFileAttachmentPayload(attachment)),
+    for (const [index, attachment] of attachments.entries()) {
+      let failure: string | null = null;
+      try {
+        const attachmentResponse = await fetchFromOutlook(
+          `${basePath}/messages/${encodedDraftId}/attachments`,
+          accessToken,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(buildFileAttachmentPayload(attachment)),
+          }
+        );
+        if (!attachmentResponse.ok) {
+          failure = await getErrorText(attachmentResponse);
+        }
+      } catch (err) {
+        failure = normalizeError(err).message;
       }
-    );
 
-    if (!attachmentResponse.ok) {
-      void fetchFromOutlook(
-        `${basePath}/messages/${encodedDraftId}`,
-        accessToken,
-        { method: "DELETE" }
-      );
-      const errorText = await getErrorText(attachmentResponse);
-      return new Err(new MCPError(`Failed to add attachment: ${errorText}`));
+      if (failure !== null) {
+        // Only the draft created by this call is deleted (draftId is never a
+        // user-provided message id), so no pre-existing draft can be removed.
+        // Don't leave a draft with only some of the requested attachments.
+        let deleted = false;
+        try {
+          deleted = (
+            await fetchFromOutlook(
+              `${basePath}/messages/${encodedDraftId}`,
+              accessToken,
+              { method: "DELETE" }
+            )
+          ).ok;
+        } catch {
+          deleted = false;
+        }
+        const cleanupNote = deleted
+          ? "The incomplete draft was deleted."
+          : `The incomplete draft could not be deleted and may still exist (draft id: ${draftId}).`;
+        return new Err(
+          new MCPError(
+            `Failed to add attachment ${index + 1} of ${attachments.length} (${attachment.filename}): ${failure}. ${cleanupNote}`
+          )
+        );
+      }
     }
   }
 
@@ -616,7 +696,8 @@ async function sendDirectMail({
   importance,
   saveToSentItems,
   sharedMailboxAddress,
-  attachment,
+  attachments,
+  enforceRequestBudget,
 }: {
   basePath: string;
   accessToken: string;
@@ -630,7 +711,8 @@ async function sendDirectMail({
   importance?: string;
   saveToSentItems: boolean;
   sharedMailboxAddress?: string;
-  attachment: { buffer: Buffer; filename: string; contentType: string } | null;
+  attachments: OutlookAttachment[];
+  enforceRequestBudget: boolean;
 }): Promise<Ok<null> | Err<MCPError>> {
   const message: Record<string, unknown> = {
     subject,
@@ -658,14 +740,30 @@ async function sendDirectMail({
       emailAddress: { address: email },
     }));
   }
-  if (attachment) {
-    message.attachments = [buildFileAttachmentPayload(attachment)];
+  if (attachments.length > 0) {
+    message.attachments = attachments.map(buildFileAttachmentPayload);
+  }
+
+  const requestBody = JSON.stringify({ message, saveToSentItems });
+  // Requests that use the legacy single attachmentFilePath alone keep their
+  // historical behavior (per-file limit only, no aggregate check). Any request
+  // that uses attachmentFilePaths, or ends up with several attachments, has its
+  // real serialized size (base64, body and metadata) checked before sending.
+  if (
+    enforceRequestBudget &&
+    Buffer.byteLength(requestBody) > MAX_SEND_MAIL_REQUEST_BYTES
+  ) {
+    return new Err(
+      new MCPError(
+        `The email with its ${attachments.length} attachments is too large to send in one request (limit ${MAX_SEND_MAIL_REQUEST_BYTES / (1024 * 1024)}MB after encoding). Nothing was sent. Use create_draft to attach these files instead, or send fewer or smaller files.`
+      )
+    );
   }
 
   const response = await fetchFromOutlook(`${basePath}/sendMail`, accessToken, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, saveToSentItems }),
+    body: requestBody,
   });
 
   if (!response.ok) {
@@ -1490,11 +1588,21 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       replyAll = false,
       sharedMailboxAddress,
       attachmentFilePath,
+      attachmentFilePaths,
     },
     { authInfo, auth, runContext }
   ) => {
+    const attachmentPathsResult = collectAttachmentFilePaths({
+      attachmentFilePath,
+      attachmentFilePaths,
+    });
+    if (attachmentPathsResult.isErr()) {
+      return attachmentPathsResult;
+    }
+    const attachmentPaths = attachmentPathsResult.value;
+
     let attachmentRunContext: AgentLoopRunContext | undefined;
-    if (attachmentFilePath) {
+    if (attachmentPaths.length > 0) {
       assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
       attachmentRunContext = runContext;
     }
@@ -1504,17 +1612,17 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    let attachment = null;
-    if (attachmentFilePath && attachmentRunContext) {
-      const attachmentResult = await fetchAttachment(
+    let attachments: OutlookAttachment[] = [];
+    if (attachmentPaths.length > 0 && attachmentRunContext) {
+      const attachmentsResult = await fetchAttachments(
         auth,
-        attachmentFilePath,
+        attachmentPaths,
         attachmentRunContext
       );
-      if (attachmentResult.isErr()) {
-        return attachmentResult;
+      if (attachmentsResult.isErr()) {
+        return attachmentsResult;
       }
-      attachment = attachmentResult.value;
+      attachments = attachmentsResult.value;
     }
 
     const validationError = validateMailParams({
@@ -1543,7 +1651,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       bcc,
       replyTo,
       sharedMailboxAddress,
-      attachment,
+      attachments,
     });
     if (result.isErr()) {
       return result;
@@ -1613,11 +1721,21 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       replyToMessageId,
       replyAll = false,
       attachmentFilePath,
+      attachmentFilePaths,
     },
     { authInfo, auth, runContext }
   ) => {
+    const attachmentPathsResult = collectAttachmentFilePaths({
+      attachmentFilePath,
+      attachmentFilePaths,
+    });
+    if (attachmentPathsResult.isErr()) {
+      return attachmentPathsResult;
+    }
+    const attachmentPaths = attachmentPathsResult.value;
+
     let attachmentRunContext: AgentLoopRunContext | undefined;
-    if (attachmentFilePath) {
+    if (attachmentPaths.length > 0) {
       assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
       attachmentRunContext = runContext;
     }
@@ -1637,17 +1755,17 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       return validationError;
     }
 
-    let attachment = null;
-    if (attachmentFilePath && attachmentRunContext) {
-      const attachmentResult = await fetchAttachment(
+    let attachments: OutlookAttachment[] = [];
+    if (attachmentPaths.length > 0 && attachmentRunContext) {
+      const attachmentsResult = await fetchAttachments(
         auth,
-        attachmentFilePath,
+        attachmentPaths,
         attachmentRunContext
       );
-      if (attachmentResult.isErr()) {
-        return attachmentResult;
+      if (attachmentsResult.isErr()) {
+        return attachmentsResult;
       }
-      attachment = attachmentResult.value;
+      attachments = attachmentsResult.value;
     }
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
@@ -1666,7 +1784,9 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         importance,
         saveToSentItems,
         sharedMailboxAddress,
-        attachment,
+        attachments,
+        enforceRequestBudget:
+          (attachmentFilePaths?.length ?? 0) > 0 || attachments.length > 1,
       });
       if (result.isErr()) {
         return result;
@@ -1677,8 +1797,8 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     }
 
     // Reply with an attachment: the /reply endpoint doesn't support inline
-    // attachments, so create a reply draft (with the attachment) then send it.
-    if (attachment) {
+    // attachments, so create a reply draft (with the attachments) then send it.
+    if (attachments.length > 0) {
       const draftResult = await createOutlookDraft({
         basePath,
         accessToken,
@@ -1691,7 +1811,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         bcc,
         replyTo,
         sharedMailboxAddress,
-        attachment,
+        attachments,
       });
       if (draftResult.isErr()) {
         return draftResult;
