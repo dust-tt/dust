@@ -4,13 +4,16 @@ use dfs_protocol::{
     ObjectId,
     rpc::{Mutation, UpdateOperation, operation::Operation},
 };
-use foundationdb::Transaction;
+use foundationdb::{Transaction, tuple::pack};
 use futures::future::try_join_all;
 
-use super::{Error, ObjectResource};
-use crate::storage::{
-    self,
-    resources::{directory::DirectoryResource, file::FileResource, session::SessionResource},
+use super::{Error, Metadata, ObjectResource};
+use crate::{
+    clock,
+    storage::{
+        self,
+        resources::{directory::DirectoryResource, file::FileResource, session::SessionResource},
+    },
 };
 
 #[cfg(test)]
@@ -87,12 +90,108 @@ impl ObjectResource {
         }
     }
 
+    /**
+     * @cc [owner:spolu,label:backend;security] object-apply-update-authorization
+     * Update MUST evaluate modes in the caller's transaction and require read and write on the
+     * object. Missing objects MUST return NotFound; missing either permission MUST return Forbidden
+     * before inspecting metadata or kind. All validation MUST finish before staging any writes.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] object-apply-update-patch
+     * Unmentioned MIME types and xattrs MUST remain unchanged. Empty MIME types MUST store None.
+     * Xattr changes MUST apply in order, preserving empty values and removing keys with absent
+     * values. Every change's name, including removals, MUST be valid. The resulting metadata MUST
+     * satisfy creation's MIME and xattr limits. Creation time MUST remain unchanged. Size MUST apply
+     * only to files. Shrinking MUST discard bytes beyond EOF, and growing MUST expose zeroes.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] object-apply-update-attributes
+     * Every successful Update, including an empty patch, MUST advance attr_version once and set
+     * ctime. A supplied size MUST also advance content_version once and set mtime, even if unchanged.
+     * Explicit atime and mtime MUST take precedence over automatic timestamps. Unspecified atime
+     * MUST stay unchanged; unspecified mtime MUST stay unchanged unless size is supplied. Grants
+     * and parent attributes MUST remain unchanged. The result MUST contain the object's immediate
+     * attributes without metadata and have no related attributes.
+     */
     pub async fn apply_update(
-        _tx: &Transaction,
-        _session: &SessionResource,
-        _operation: UpdateOperation,
+        tx: &Transaction,
+        session: &SessionResource,
+        operation: UpdateOperation,
     ) -> Result<Mutation, storage::Error<Error>> {
-        Err(Error::UnsupportedOperation.into())
+        // Check permissions and reuse the object fetched during authorization.
+        let (mut object, mode) = Self::modes_for_session(tx, session, &[operation.object_id])
+            .await?
+            .pop()
+            .flatten()
+            .ok_or(Error::NotFound)?;
+        if !mode.can_read() || !mode.can_write() {
+            return Err(Error::Forbidden.into());
+        }
+        object.attr_mode(mode)?;
+
+        // Prepare and validate the full metadata patch before changing stored state.
+        let metadata = if operation.mime_type.is_some() || !operation.xattrs.is_empty() {
+            object.load_metadata(tx).await?;
+            let mut metadata = object.metadata.take().ok_or(Error::MissingMetadata)?;
+            if let Some(mime_type) = &operation.mime_type {
+                metadata.mime_type = (!mime_type.is_empty()).then(|| mime_type.clone());
+            }
+            for change in &operation.xattrs {
+                Metadata::validate_xattr_name(&change.name)?;
+                match &change.value {
+                    Some(value) => {
+                        metadata.xattrs.insert(change.name.clone(), value.clone());
+                    }
+                    None => {
+                        metadata.xattrs.remove(&change.name);
+                    }
+                }
+            }
+            metadata.validate()?;
+            Some(metadata)
+        } else {
+            None
+        };
+        let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
+
+        // Resize first: reading a partial block can still fail without staging any writes.
+        if let Some(size) = operation.size {
+            FileResource::try_from(object.clone())
+                .map_err(storage::Error::from)?
+                .resize_blocks(tx, size)
+                .await?;
+            object.size = size;
+            object.content_version += 1;
+            object.mtime_ms = Some(now_ms);
+        }
+        if let Some(metadata) = metadata {
+            if operation.mime_type.is_some() {
+                tx.set(
+                    &Self::metadata_key(&object.tenant.tenant_id, &object.object_id),
+                    &pack(&(metadata.created_at_ms, metadata.mime_type.as_deref())),
+                );
+            }
+            for change in &operation.xattrs {
+                let key =
+                    Self::xattr_key(&object.tenant.tenant_id, &object.object_id, &change.name);
+                match &change.value {
+                    Some(value) => tx.set(&key, value),
+                    None => tx.clear(&key),
+                }
+            }
+        }
+        if let Some(atime_ms) = operation.atime {
+            object.atime_ms = Some(atime_ms);
+        }
+        if let Some(mtime_ms) = operation.mtime {
+            object.mtime_ms = Some(mtime_ms);
+        }
+        object.record_attr_change(tx, now_ms);
+
+        Ok(Mutation {
+            object: Some(object.attr(tx, mode).await?),
+            related: vec![],
+        })
     }
 
     /**

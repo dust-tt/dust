@@ -31,16 +31,14 @@ fn resource_errors_share_codes_across_api_conversions() {
 
     assert_api_codes(|| object::Error::InvalidId, ErrorCode::InvalidInput);
     assert_api_codes(|| object::Error::InvalidMimeType, ErrorCode::InvalidInput);
+    assert_api_codes(|| object::Error::Forbidden, ErrorCode::Forbidden);
     assert_api_codes(|| directory::Error::Forbidden, ErrorCode::Forbidden);
     assert_api_codes(|| directory::Error::NotEmpty, ErrorCode::NotEmpty);
     assert_api_codes(|| directory::Error::InvalidKind, ErrorCode::InvalidInput);
     assert_api_codes(|| receipt::Error::Expired, ErrorCode::Unavailable);
     assert_api_codes(|| receipt::Error::MissingResult, ErrorCode::Internal);
     assert_api_codes(|| receipt::Error::InvalidVersion, ErrorCode::Internal);
-    assert_api_codes(
-        || object::Error::UnsupportedOperation,
-        ErrorCode::Unsupported,
-    );
+    assert_api_codes(|| object::Error::UnsupportedKind, ErrorCode::Unsupported);
     assert_api_codes(
         || object::Error::Directory(Box::new(directory::Error::NameTooLong)),
         ErrorCode::NameTooLong,

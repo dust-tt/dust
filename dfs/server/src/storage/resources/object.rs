@@ -58,6 +58,7 @@ pub enum Error {
     InvalidId,
     NotFound,
     NotAuthorized,
+    Forbidden,
     InvalidGrant,
     TooManyGrants,
     DuplicateGrant,
@@ -66,7 +67,6 @@ pub enum Error {
     InvalidStoredGrant,
     InvalidAncestry,
     UnsupportedKind,
-    UnsupportedOperation,
     // Boxed because directory and file errors can themselves wrap object errors.
     Directory(Box<directory::Error>),
     File(Box<file::Error>),
@@ -84,6 +84,7 @@ impl fmt::Display for Error {
             Self::InvalidId => f.write_str("invalid object ID"),
             Self::NotFound => f.write_str("object not found"),
             Self::NotAuthorized => f.write_str("object access not authorized"),
+            Self::Forbidden => f.write_str("object operation forbidden"),
             Self::InvalidGrant => f.write_str("invalid grant"),
             Self::TooManyGrants => f.write_str("too many grants"),
             Self::DuplicateGrant => f.write_str("duplicate grant change"),
@@ -92,7 +93,6 @@ impl fmt::Display for Error {
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
-            Self::UnsupportedOperation => f.write_str("unsupported object operation"),
             Self::Directory(error) => error.fmt(f),
             Self::File(error) => error.fmt(f),
         }
@@ -168,6 +168,32 @@ pub struct Metadata {
     pub created_at_ms: u64,
     pub mime_type: Option<String>,
     pub xattrs: HashMap<String, Vec<u8>>,
+}
+
+impl Metadata {
+    fn validate(&self) -> Result<(), Error> {
+        if let Some(mime_type) = &self.mime_type
+            && (mime_type.len() > MIME_TYPE_MAX_BYTES || mime_type.parse::<mime::Mime>().is_err())
+        {
+            return Err(Error::InvalidMimeType);
+        }
+        let mut xattrs_bytes = 0;
+        for (name, value) in &self.xattrs {
+            Self::validate_xattr_name(name)?;
+            xattrs_bytes += name.len() + value.len();
+            if xattrs_bytes > XATTRS_MAX_BYTES {
+                return Err(Error::XattrsTooLarge);
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_xattr_name(name: &str) -> Result<(), Error> {
+        if name.is_empty() || name.len() > XATTR_NAME_MAX_BYTES || name.contains('\0') {
+            return Err(Error::InvalidXattrName);
+        }
+        Ok(())
+    }
 }
 
 type StoredAttributes = (
@@ -384,21 +410,7 @@ impl ObjectResource {
         }
 
         let metadata = self.metadata.as_ref().ok_or(Error::MissingMetadata)?;
-        if let Some(mime_type) = &metadata.mime_type
-            && (mime_type.len() > MIME_TYPE_MAX_BYTES || mime_type.parse::<mime::Mime>().is_err())
-        {
-            return Err(Error::InvalidMimeType.into());
-        }
-        let mut xattrs_bytes = 0;
-        for (name, value) in &metadata.xattrs {
-            if name.is_empty() || name.len() > XATTR_NAME_MAX_BYTES || name.contains('\0') {
-                return Err(Error::InvalidXattrName.into());
-            }
-            xattrs_bytes += name.len() + value.len();
-            if xattrs_bytes > XATTRS_MAX_BYTES {
-                return Err(Error::XattrsTooLarge.into());
-            }
-        }
+        metadata.validate()?;
 
         let unique_grants: HashSet<&Grant> = grants.iter().collect();
         if unique_grants.len() > GRANTS_MAX_COUNT {

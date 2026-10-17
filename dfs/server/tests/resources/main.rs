@@ -39,6 +39,10 @@ fn resources() -> Result<()> {
         directory::child_listing_pages_through_entries_in_name_order().await?;
         directory::child_listing_rejects_invalid_limits_and_cursors().await?;
         object::root_creation_persists_isolated_records().await?;
+        object::updates_patch_metadata_and_preserve_receipt_results().await?;
+        object::updates_reject_invalid_patches_without_staging_writes().await?;
+        object::updates_resize_files_without_restoring_discarded_bytes().await?;
+        object::updates_conflict_with_grant_revocation().await?;
         object::object_collisions_preserve_records_and_abort_staged_writes().await?;
         object::invalid_xattr_names_fail_before_staging_writes().await?;
         object::xattr_size_limit_counts_all_names_and_values().await?;
