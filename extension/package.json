@@ -9,6 +9,8 @@
     "package:chrome:production": "tsx run/build.ts --platform=chrome",
     "package:front:production": "tsx run/build.ts --platform=front",
     "dev:excel": "tsx run/watch.ts --platform=excel --mode=development",
+    "package:excel:production": "tsx run/build.ts --platform=excel",
+    "build:office": "npm run package:excel:production && cp office/_headers office/dist/_headers",
     "dev:firefox": "tsx run/watch.ts --platform=firefox --mode=development",
     "package:firefox:production": "tsx run/build.ts --platform=firefox",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",

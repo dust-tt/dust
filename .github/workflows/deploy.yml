@@ -59,6 +59,11 @@ on:
         required: false
         default: true
         type: boolean
+      deploy_office_addins:
+        description: "Deploy Office add-ins (front only)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read # the deploy card lists in-flight deploy runs
@@ -254,6 +259,7 @@ jobs:
         build-once,
         deploy-app,
         deploy-poke,
+        upload-office-addins,
         verify-sandbox-images,
       ]
     if: ${{ !failure() && !cancelled() && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
@@ -286,6 +292,7 @@ jobs:
           DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
           SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
           SPA_POKE_VERSION_ID: ${{ needs.deploy-poke.outputs.version_id }}
+          OFFICE_ADDINS_VERSION_ID: ${{ needs.upload-office-addins.outputs.version_id }}
           PLAYWRIGHT_SHA: ${{ github.sha }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
@@ -295,6 +302,7 @@ jobs:
             const isFront = component === 'front';
             const deploySpaApp = process.env.DEPLOY_SPA_APP === 'true';
             const deploySpaAppPoke = process.env.DEPLOY_SPA_POKE === 'true';
+            const officeAddinsVersionId = process.env.OFFICE_ADDINS_VERSION_ID;
 
             const payload = {
               cells: process.env.CELLS,
@@ -306,12 +314,13 @@ jobs:
               playwright_sha: process.env.PLAYWRIGHT_SHA,
             };
 
-            // When deploying front (production) with SPA enabled, tell dust-infra to dispatch back
-            // after a successful rollout so the SPA is deployed to production only once the API
-            // is live.
-            if (isFront && (deploySpaApp || deploySpaAppPoke)) {
+            // When deploying front (production) with SPA or Office add-ins enabled, tell
+            // dust-infra to dispatch back after a successful rollout so they are deployed to
+            // production only once the API is live.
+            if (isFront && (deploySpaApp || deploySpaAppPoke || officeAddinsVersionId)) {
+              // No app when only the Office add-ins are deployed.
               const app = deploySpaApp && deploySpaAppPoke ? 'all'
-                : deploySpaApp ? 'app' : 'poke';
+                : deploySpaApp ? 'app' : deploySpaAppPoke ? 'poke' : undefined;
 
               payload.on_success_dispatch = JSON.stringify({
                 owner: process.env.OWNER,
@@ -325,6 +334,7 @@ jobs:
                   slack_channel: process.env.SLACK_CHANNEL,
                   spa_app_version_id: process.env.SPA_APP_VERSION_ID,
                   spa_poke_version_id: process.env.SPA_POKE_VERSION_ID,
+                  office_addins_version_id: officeAddinsVersionId,
                 },
               });
             }
@@ -360,6 +370,60 @@ jobs:
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit
 
+  # Upload an Office add-ins version to CF Workers (not yet promoted to production), in parallel
+  # with the Docker build. Production only: the Worker has no preview URLs, so never front-edge.
+  upload-office-addins:
+    if: inputs.component == 'front' && inputs.deploy_office_addins
+    needs: [prepare, notify-start]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version_id: ${{ steps.extract_version.outputs.version_id }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
+
+      - name: Build Office add-ins
+        working-directory: extension
+        env:
+          NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+          COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        run: |
+          set -a
+          source ../.github/configs/us-central1/.env.prod
+          set +a
+          npm run build:office
+
+      - name: Upload version
+        id: upload_version
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: extension/office
+          # Tagging with the commit lets a rollback find the version to promote.
+          command: versions upload --config wrangler.toml --tag ${{ needs.prepare.outputs.short_sha }}
+          wranglerVersion: "4.80.0"
+
+      - name: Extract version ID
+        id: extract_version
+        env:
+          UPLOAD_OUTPUT: ${{ steps.upload_version.outputs.command-output }}
+        run: |
+          VERSION_ID=$(printf '%s\n' "$UPLOAD_OUTPUT" | sed -n 's/.*Worker Version ID: *\([0-9a-f-]*\).*/\1/p')
+          if ! [[ "$VERSION_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+            echo "::error::Failed to extract a Worker version ID from the upload output."
+            exit 1
+          fi
+          echo "version_id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
+
   notify-failure:
     needs:
       [
@@ -370,6 +434,7 @@ jobs:
         create-matrix,
         build-once,
         build,
+        upload-office-addins,
         deploy,
       ]
     if: ${{ failure() && needs.notify-start.outputs.thread_ts }}

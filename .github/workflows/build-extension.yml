@@ -27,3 +27,12 @@ jobs:
       - name: Typecheck
         working-directory: extension
         run: npm run tsgo
+      - name: Build Office add-ins
+        working-directory: extension
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        run: |
+          set -a
+          source ../.github/configs/us-central1/.env.prod
+          set +a
+          npm run build:office

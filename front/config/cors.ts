@@ -14,6 +14,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Microsoft Power Automate.
   "https://make.powerautomate.com",
   "https://office-addins.dust.tt",
+  // Shared Office add-ins (Excel, PowerPoint, Word).
+  "https://addins.dust.tt",
   // Poke SPA (backoffice).
   "https://poke.dust.tt",
   // Main app (front-spa).

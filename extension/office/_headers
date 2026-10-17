@@ -1,0 +1,14 @@
+# Office on the web embeds the task pane: do not add X-Frame-Options: DENY/SAMEORIGIN.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex
+
+# HTML and manifests use Cloudflare's default max-age=0, must-revalidate.
+# Only content-hashed bundles/fonts get an immutable browser cache.
+/excel/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Never cache the auth callback (its query string contains a one-time code).
+/excel/auth.html
+  Cache-Control: no-store

@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import CopyPlugin from "copy-webpack-plugin";
 import dotenv from "dotenv";
 import DotenvPlugin from "dotenv-webpack";
 import fs from "fs";
@@ -23,6 +24,18 @@ import {
 const rootDir = path.resolve(__dirname);
 
 const DEV_SERVER_PORT = 3014;
+
+const PUBLIC_PATH = "/excel/";
+const DEV_ORIGIN = `https://localhost:${DEV_SERVER_PORT}`;
+const PROD_ORIGIN = "https://addins.dust.tt";
+
+const toProdManifest = (content: Buffer) => {
+  const manifest = content.toString();
+  if (!manifest.includes(DEV_ORIGIN)) {
+    throw new Error(`manifest.xml no longer points at ${DEV_ORIGIN}.`);
+  }
+  return manifest.replaceAll(DEV_ORIGIN, PROD_ORIGIN);
+};
 
 // `npx office-addin-dev-certs install` writes these files. It also adds its CA to the keychain.
 const DEV_CERTS_DIR = path.join(os.homedir(), ".office-addin-dev-certs");
@@ -68,7 +81,10 @@ export const getConfig = async ({
   );
   const version = packageJson.version;
 
-  const buildDirPath = resolvePath("./build");
+  // Production builds go straight into the shared Office origin, served under `/excel/`.
+  const buildDirPath = isDevelopment
+    ? resolvePath("./build")
+    : resolvePath("../../office/dist/excel");
 
   const envPath = resolvePath(
     isDevelopment ? "../../.env.development" : "../../.env.production"
@@ -104,9 +120,15 @@ export const getConfig = async ({
     },
     output: {
       path: buildDirPath,
-      filename: "[name].js",
-      chunkFilename: "[id].chunk.js",
-      publicPath: "/",
+      clean: true,
+      filename: isDevelopment ? "[name].js" : "assets/[name].[contenthash].js",
+      chunkFilename: isDevelopment
+        ? "[id].chunk.js"
+        : "assets/[id].[contenthash].chunk.js",
+      assetModuleFilename: isDevelopment
+        ? "[hash][ext][query]"
+        : "assets/[hash][ext][query]",
+      publicPath: PUBLIC_PATH,
     },
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
@@ -180,7 +202,9 @@ export const getConfig = async ({
           test: /\.woff2$/i,
           type: "asset/resource",
           generator: {
-            filename: "static/fonts/[name][ext]",
+            filename: isDevelopment
+              ? "static/fonts/[name][ext]"
+              : "assets/[name].[contenthash][ext]",
           },
         },
       ],
@@ -232,6 +256,19 @@ export const getConfig = async ({
         filename: "auth.html",
         chunks: ["auth"],
       }),
+      ...(isDevelopment
+        ? []
+        : [
+            new CopyPlugin({
+              patterns: [
+                {
+                  from: resolvePath("./manifest.xml"),
+                  to: "manifest.xml",
+                  transform: toProdManifest,
+                },
+              ],
+            }),
+          ]),
     ],
     devServer: {
       port: DEV_SERVER_PORT,
@@ -248,6 +285,7 @@ export const getConfig = async ({
       },
       static: {
         directory: buildDirPath,
+        publicPath: PUBLIC_PATH,
       },
     },
   };

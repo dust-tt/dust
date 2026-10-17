@@ -5,7 +5,7 @@
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
   xsi:type="TaskPaneApp">
   <Id>2e7ea4d8-8dea-4d0a-b674-c783bf76c981</Id>
-  <Version>1.0</Version>
+  <Version>1.0.0.0</Version>
   <ProviderName>Dust</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Dust"/>
@@ -14,7 +14,7 @@
     <Host Name="Workbook"/>
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3014/taskpane.html"/>
+    <SourceLocation DefaultValue="https://localhost:3014/excel/taskpane.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -58,7 +58,7 @@
         <bt:Image id="Dust.Icon80" DefaultValue="https://dust.tt/static/favicon@3x.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Dust.Taskpane" DefaultValue="https://localhost:3014/taskpane.html"/>
+        <bt:Url id="Dust.Taskpane" DefaultValue="https://localhost:3014/excel/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Dust.Label" DefaultValue="Dust"/>
