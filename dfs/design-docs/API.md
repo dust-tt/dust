@@ -1,6 +1,7 @@
 # dfs:// API proposal
 
-This document proposes the dfs:// server API as a gRPC service named `Dfs`. All calls are unary.
+This document proposes the dfs:// server API as a gRPC service named `Dfs`. Calls are unary except
+`Search`, which streams responses from the server.
 Requests authenticate through gRPC metadata: `authorization: Bearer <key>`.
 
 The schemas below describe the API's logical types, rather than literal protobuf syntax.
@@ -780,7 +781,7 @@ The object's current parent must match `parent_id` in the transaction, otherwise
 
 ### Search
 
-Searches visible files and directories. Requires a **session key**.
+Streams search results for visible files and directories. Requires a **session key**.
 
 **Arguments**
 
@@ -796,8 +797,7 @@ SearchRequest {
 SearchField = NAME | CONTENT
 
 SearchScope {
-  directory_id: ObjectId         // Must be an authorized real directory.
-  recursive?: bool              // Defaults to true; false selects immediate children only.
+  directory_id: ObjectId         // Authorized real directory; searches descendants recursively.
 }
 
 SearchFilter {
@@ -814,15 +814,20 @@ SearchFilter {
 
 SearchXattr {
   name: string
-  value?: bytes                 // Omitted means existence; present means byte-exact equality.
+  value?: bytes                 // Omitted means existence; present means indexed UTF-8 equality.
 }
 ```
 
-**Returns**
+**Returns a stream of `SearchResponse` messages**
 
 ```text
+SearchResponse = results(SearchResults) | complete(SearchCompletion)
+
 SearchResults {
-  hits: SearchHit[]              // At most limit hits.
+  hits: SearchHit[]              // Nonempty batch; at most limit hits across the entire stream.
+}
+
+SearchCompletion {
   partial: bool                 // Whether bounded evaluation stopped before finishing.
 }
 
@@ -849,23 +854,34 @@ hits expose a `store_version`: the search index's state is independent of the st
 Search attributes also omit mode and attribute, content, and grants versions and cannot validate cached
 attributes or permissions. Use `Stat` to fetch full attributes and versions.
 
+Emit ranked, authorized batches as they become ready, followed by exactly one completion message
+on success. An empty result sends only completion. Emitted hits keep their order. Respect client
+backpressure and cancel outstanding work when the client disconnects. Target p95 of 350 ms to the
+first useful batch, including retrieval, rescoring, and permission checks.
+
 An empty or whitespace-only query searches metadata only. Nonempty text matches any normalized
 token in the selected fields, combined with OR. Content-only selection excludes directories.
-Directories match their own name and metadata. Scope excludes the directory itself; virtual
-projections are not indexed.
+Directories match their own name and metadata. Folder scope is always recursive and excludes the
+directory itself; virtual projections and private extracted-text objects are not search results.
 
 Filter fields combine with AND. MIME/size predicates select files and cannot be combined with
 `kind=DIRECTORY`. A present empty xattr value matches empty bytes, rather than testing existence.
+Xattr equality supports UTF-8 values. Encode keys and values as described in
+[SEARCH.md](SEARCH.md#xattr), truncating values at a UTF-8 boundary to fit the 32,766-byte keyword
+limit. Apply the same encoding to queries; values sharing the retained prefix compare equal.
+Binary xattrs support existence checks only.
 
 Search uses Elasticsearch and returns `UNAVAILABLE` when it is disabled or unavailable. Indexing is
 asynchronous; deleted objects and stale indexed content or metadata are suppressed before results
 are returned, and every hit is permission-checked. The server checks indexed names and metadata
-separately from indexed content freshness. Unsupported content formats remain searchable by
-name/metadata. Results have no public cursor, score, or total-hit count.
+separately from indexed content freshness. Binary formats are searchable by content once extraction
+completes; hits retain the original file's identity and metadata. Files without extracted text remain
+searchable by name/metadata. Results have no public cursor, score, or total-hit count.
 
-Evaluation is bounded to 4,096 candidates, a ten-second retrieval budget, and a 1 MiB response.
-`partial` indicates bounded evaluation, not whether indexing is current. Backend failures are errors,
-not successful empty results.
+Evaluation is bounded to 4,096 candidates, a ten-second retrieval budget, and 1 MiB across all response
+messages. Completion's `partial` indicates bounded evaluation, not whether indexing is current.
+Backend failures terminate the RPC with a gRPC error, even after batches have been emitted; they
+do not produce a successful completion message.
 
 ## Errors
 

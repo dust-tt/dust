@@ -196,6 +196,10 @@ writes need not maintain them. Background workers could share an internal tenant
 
 ### Search
 
+[SEARCH.md](SEARCH.md) develops the newer search proposal: indexed grants and filters, chunking,
+capacity planning, and a compacted FDB feed with consumer groups. It replaces the queue sketch below
+as the proposed direction; API behavior differences are called out there for reconciliation.
+
 Search would use an asynchronous Elasticsearch projection with a durable FDB work queue:
 
 | Key | Value | Rationale |
