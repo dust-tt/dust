@@ -204,19 +204,32 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "connection") {
-      // Accept either empty config or config with all required Slack app credentials
-      const keys = Object.keys(extraConfig);
-      if (keys.length === 0) {
-        return true;
-      }
-      return !!(
-        extraConfig.client_id &&
-        extraConfig.client_secret &&
-        extraConfig.signing_secret
-      );
+    const keys = Object.keys(extraConfig);
+    switch (useCase) {
+      case "connection":
+        // Accept either empty config or config with all required Slack app credentials
+        if (keys.length === 0) {
+          return true;
+        }
+        return !!(
+          extraConfig.client_id &&
+          extraConfig.client_secret &&
+          extraConfig.signing_secret
+        );
+      case "platform_actions":
+        // The MCP server connect/refresh form sends `mcp_server_id`.
+        return (
+          keys.length === 0 ||
+          (keys.length === 1 && "mcp_server_id" in extraConfig)
+        );
+      case "bot":
+      case "personal_actions":
+      case "labs_transcripts":
+      case "webhooks":
+        return keys.length === 0;
+      default:
+        assertNever(useCase);
     }
-    return Object.keys(extraConfig).length === 0;
   }
 
   checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
