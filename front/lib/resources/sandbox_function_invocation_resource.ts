@@ -22,6 +22,7 @@ import {
   resolveSpilledResult,
 } from "@app/lib/api/sandbox_functions/result_delivery";
 import {
+  authorizePublicFrameFunctionCall,
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
 } from "@app/lib/api/sandbox_functions/workspace_user";
@@ -632,6 +633,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     this.lastSettledOutcome = { status: "succeeded", result };
     return true;
   }
+
+  /**
+   * @cc [owner:achilleburah,label:security] external-session-origin-runs-without-credentials
+   * For an invocation whose persisted origin is `external_session`, `execute()` MUST return the
+   * denial of authorizePublicFrameFunctionCall before any call that can create, wake or recreate
+   * the sandbox, MUST run that check again once the sandbox is ready, MUST NOT mint a sandbox
+   * token and MUST send a null user identity.
+   */
   /**
    * Run the invocation on its owner's sandbox and record its outcome.
    *
@@ -697,7 +706,24 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!persistedFunction) {
           return null;
         }
-        // Frame invocations always require a workspace member. This scope-independent check
+        if (this.origin === "external_session") {
+          const publicCall = await authorizePublicFrameFunctionCall({
+            workspace: auth.getNonNullableWorkspace(),
+            plan: auth.plan(),
+            userIdentity: persistedFunction.userIdentity,
+            frame,
+          });
+          return {
+            persistedFunction,
+            error: publicCall.authorized
+              ? null
+              : {
+                  code: publicCall.errorCode,
+                  message: publicCall.errorMessage,
+                },
+          };
+        }
+        // Other Frame invocations always require a workspace member. This scope-independent check
         // gates the paid wakeup; Pod membership and token scope are evaluated below from the
         // lifecycle-locked scope, after a concurrent move can no longer change it.
         const user = await getAuthenticatedWorkspaceUser(auth);
@@ -795,18 +821,21 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // version behind the outcome.
       this.executedBundleSha256 = persistedFunction.bundleSha256 ?? undefined;
       const mintStartedAtMs = Date.now();
-      const token = await generateSandboxFunctionInvocationToken(auth, {
-        sandbox,
-        sandboxFunction,
-        owner: {
-          kind: "frame",
-          frameId: frame.sId,
-          spaceId: authorization.runtimeSpaceId,
-        },
-        invocationId: this.sId,
-        execId,
-        noTools,
-      });
+      const token =
+        authorization.kind === "anonymous"
+          ? ""
+          : await generateSandboxFunctionInvocationToken(auth, {
+              sandbox,
+              sandboxFunction,
+              owner: {
+                kind: "frame",
+                frameId: frame.sId,
+                spaceId: authorization.runtimeSpaceId,
+              },
+              invocationId: this.sId,
+              execId,
+              noTools,
+            });
       mintTokenMs = Date.now() - mintStartedAtMs;
 
       const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);

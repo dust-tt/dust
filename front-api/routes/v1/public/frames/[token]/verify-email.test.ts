@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { makeTestPublicFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import type { FileShareScope } from "@app/types/files";
@@ -141,6 +142,30 @@ describe("verify-email endpoint", () => {
 
     const response = await postVerifyEmail(token, {
       email: "test@example.com",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(notifyFrameLoginCode)).not.toHaveBeenCalled();
+  });
+
+  it("sends OTP without a grant for a public Frame serving public functions", async () => {
+    const { token } = await makeTestPublicFrameFunction();
+
+    const response = await postVerifyEmail(token, {
+      email: "anyone@example.com",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(notifyFrameLoginCode)).toHaveBeenCalledOnce();
+  });
+
+  it("does not send OTP for a public Frame when public functions are disabled", async () => {
+    const { token } = await makeTestPublicFrameFunction({
+      enablePublicFunctions: false,
+    });
+
+    const response = await postVerifyEmail(token, {
+      email: "anyone@example.com",
     });
 
     expect(response.status).toBe(200);
