@@ -103,6 +103,7 @@ function PodFileTabVisualization({
           isPodEditor={podInfo.isEditor}
           isPodMember={podInfo.isMember}
           frameId={frame.frameId}
+          frameFileId={frame.fileId}
           framePath={framePath}
         />
       </div>

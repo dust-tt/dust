@@ -78,6 +78,7 @@ export async function fetchShareableFileAllowlistState(
   frameFile: FileResource
 ): Promise<{
   shareScope: FileShareScope;
+  allowlist: AuthorizedFileAccessAllowlist | null;
   refs: AuthorizedFileRef[];
 } | null> {
   const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -87,11 +88,12 @@ export async function fetchShareableFileAllowlistState(
     return null;
   }
 
-  const active = await frameFile.getActiveAuthorizedFileAccessAllowlist();
+  const allowlist = await frameFile.getActiveAuthorizedFileAccessAllowlist();
 
   return {
     shareScope: shareableFile.shareScope,
-    refs: active?.refs ?? [],
+    allowlist,
+    refs: allowlist?.refs ?? [],
   };
 }
 
