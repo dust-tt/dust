@@ -11,7 +11,7 @@ import type { Attributes, Transaction } from "sequelize";
 
 export interface DfsUserFolderResource extends ReadonlyAttributesType<DfsUserFolderModel> {}
 
-/** The dfs folder of a user (`users/<email>`) in the authenticated workspace's tenant. */
+/** The dfs folder of a user (`users/<userSId>`) in the authenticated workspace's tenant. */
 export class DfsUserFolderResource extends BaseResource<DfsUserFolderModel> {
   static model: ModelStaticWorkspaceAware<DfsUserFolderModel> =
     DfsUserFolderModel;
