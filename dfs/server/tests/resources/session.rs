@@ -170,7 +170,7 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
                     .collect();
                 assert_eq!(subjects, expected);
 
-                // Simulate a later refresh so retrying creation must preserve the newer expiry.
+                // Simulate a later refresh; duplicate creation must preserve the newer expiry.
                 tx.set(
                     &session_subspace.pack(&"state"),
                     &pack(&(owner.key_hash.as_slice(), expires_at_ms)),
@@ -182,11 +182,15 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
         })
         .await?;
 
-    fdb::with_transaction(|tx| {
+    let result = fdb::with_transaction(|tx| {
         let owner = &owner;
         async move { owner.create(&tx).await }
     })
-    .await?;
+    .await;
+    assert!(matches!(
+        result,
+        Err(storage::Error::Resource(session::Error::AlreadyExists))
+    ));
 
     let tx = fdb::database()?.create_trx()?;
     let state = tx
@@ -228,7 +232,10 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
         }
     })
     .await;
-    assert!(matches!(result, Err(storage::Error::InvalidKeyHash(_))));
+    assert!(matches!(
+        result,
+        Err(storage::Error::Resource(session::Error::AlreadyExists))
+    ));
 
     for tenant in [&tenant, &other_tenant] {
         let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
@@ -237,93 +244,6 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
     }
     tx.clear(&lookup);
     tx.clear(&refreshed_expiry);
-    tx.commit().await?;
-    Ok(())
-}
-
-pub(crate) async fn session_creation_retry_succeeds_without_changes() -> Result<()> {
-    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
-    let (session, _) = SessionResource::new(&tenant, vec!["u:retry".to_owned()])?;
-    let session_subspace =
-        tenant_subspace(&tenant.tenant_id).subspace(&("session", session.session_id.as_str()));
-    let lookup_key = namespace_subspace().pack(&("session-key", session.key_hash.as_slice()));
-    let expiry = expiry_key(&session, session.expires_at_ms);
-    let create = || {
-        fdb::with_transaction(|tx| {
-            let session = &session;
-            async move { session.create(&tx).await }
-        })
-    };
-    create().await?;
-    let tx = fdb::database()?.create_trx()?;
-    let records = read_prefix(&tx, &session_subspace).await?;
-    let lookup = tx
-        .get(&lookup_key, false)
-        .await?
-        .context("missing lookup")?;
-    assert!(tx.get(&expiry, false).await?.is_some());
-
-    // A retry after an unknown commit result runs `create` again in a new transaction.
-    create().await?;
-
-    let tx = fdb::database()?.create_trx()?;
-    assert_eq!(read_prefix(&tx, &session_subspace).await?, records);
-    assert_eq!(
-        tx.get(&lookup_key, false).await?.as_deref(),
-        Some(lookup.as_ref())
-    );
-    assert!(tx.get(&expiry, false).await?.is_some());
-    let (begin, end) = session_subspace.range();
-    tx.clear_range(&begin, &end);
-    tx.clear(&lookup_key);
-    tx.clear(&expiry);
-    tx.commit().await?;
-    Ok(())
-}
-
-pub(crate) async fn session_refresh_retry_keeps_the_session_and_one_expiry_entry() -> Result<()> {
-    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
-    fdb::with_transaction(|tx| {
-        let tenant = &tenant;
-        async move { tenant.create(&tx).await }
-    })
-    .await?;
-    let (session, _) = SessionResource::new(&tenant, vec!["u:retry".to_owned()])?;
-    fdb::with_transaction(|tx| {
-        let session = &session;
-        async move { session.create(&tx).await }
-    })
-    .await?;
-    let refresh = || {
-        fdb::with_transaction(|tx| {
-            let key_hash = &session.key_hash;
-            async move { SessionResource::refresh(&tx, key_hash).await }
-        })
-    };
-    let refreshed = refresh().await?;
-
-    // A retry after an unknown commit result runs `refresh` again in a new transaction.
-    let retried = refresh().await?;
-
-    assert_eq!(retried.session_id, refreshed.session_id);
-    assert_eq!(retried.tenant.tenant_id, refreshed.tenant.tenant_id);
-    assert_eq!(retried.subjects, refreshed.subjects);
-    assert_eq!(retried.key_hash, refreshed.key_hash);
-    assert!(retried.expires_at_ms >= refreshed.expires_at_ms);
-    let tx = fdb::database()?.create_trx()?;
-    let retried_expiry = expiry_key(&session, retried.expires_at_ms);
-    let refreshed_expiry = expiry_key(&session, refreshed.expires_at_ms);
-    assert!(tx.get(&retried_expiry, false).await?.is_some());
-    assert_eq!(
-        tx.get(&refreshed_expiry, false).await?.is_some(),
-        retried.expires_at_ms == refreshed.expires_at_ms
-    );
-    let (begin, end) = tenant_subspace(&tenant.tenant_id)
-        .subspace(&("session", session.session_id.as_str()))
-        .range();
-    tx.clear_range(&begin, &end);
-    tx.clear(&namespace_subspace().pack(&("session-key", session.key_hash.as_slice())));
-    tx.clear(&retried_expiry);
     tx.commit().await?;
     Ok(())
 }

@@ -55,8 +55,7 @@ pub struct TenantResource {
 }
 
 impl TenantResource {
-    /// A new tenant with its bearer key, the only time the key is visible. Build it before the
-    /// transaction, so retries store the same key and root.
+    /// A new tenant with its bearer key, the only time the key is visible.
     pub fn new(tenant_id: String) -> Result<(Self, String), Error> {
         if !Self::is_valid_id(&tenant_id) {
             return Err(Error::InvalidId);
@@ -71,41 +70,35 @@ impl TenantResource {
     }
 
     /**
-     * @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
-     * An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
-     * the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
-     * stored record unchanged.
+     * @cc [owner:spolu,label:backend;error-handling] tenant-create-collision
+     * An existing tenant MUST return AlreadyExists without staging any writes, even when its root
+     * and key hash match. Stored-data decoding failures MUST propagate as storage failures.
      */
     /**
      * @cc [owner:spolu,label:backend;security] tenant-key-index-consistency
      * A new tenant's record and key-hash lookup MUST be written in the caller's transaction. For a
      * new tenant ID, an occupied lookup MUST return KeyCollision before staging either write.
-     * Existing tenants MUST leave the lookup unchanged, including on retries and duplicate-ID
-     * failures.
+     * Existing tenants MUST leave the lookup unchanged.
      */
     pub async fn create(&self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
-        match Self::fetch(tx, &self.tenant_id).await? {
-            // A retry after an unknown commit result finds our own record.
-            Some(existing) if existing.root_id == self.root_id => Ok(()),
-            Some(_) => Err(Error::AlreadyExists.into()),
-            None => {
-                if tx
-                    .get(&Self::key_hash_key(&self.key_hash), false)
-                    .await
-                    .map_err(FdbBindingError::from)?
-                    .is_some()
-                {
-                    return Err(Error::KeyCollision.into());
-                }
-                let value = pack(&(self.root_id.as_bytes().as_slice(), self.key_hash.as_slice()));
-                tx.set(&Self::tenant_key(&self.tenant_id), &value);
-                tx.set(
-                    &Self::key_hash_key(&self.key_hash),
-                    &pack(&self.tenant_id.as_str()),
-                );
-                Ok(())
-            }
+        if Self::fetch(tx, &self.tenant_id).await?.is_some() {
+            return Err(Error::AlreadyExists.into());
         }
+        if tx
+            .get(&Self::key_hash_key(&self.key_hash), false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .is_some()
+        {
+            return Err(Error::KeyCollision.into());
+        }
+        let value = pack(&(self.root_id.as_bytes().as_slice(), self.key_hash.as_slice()));
+        tx.set(&Self::tenant_key(&self.tenant_id), &value);
+        tx.set(
+            &Self::key_hash_key(&self.key_hash),
+            &pack(&self.tenant_id.as_str()),
+        );
+        Ok(())
     }
 
     /**

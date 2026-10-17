@@ -243,9 +243,8 @@ message GrantPage {
 // Changes MUST contain at most 512 elements, with no repeated grant value.
 
 // @cc [owner:spolu,label:api] dfs-update-grants-version
-// Each successful request MUST advance only the object's grants_version, including empty or no-op
-// changes. Other versions and timestamps MUST remain unchanged. An unknown-commit retry MAY advance
-// grants_version again.
+// Each successful request MUST advance only the object's grants_version once, including empty or
+// no-op changes. Other versions and timestamps MUST remain unchanged.
 message UpdateGrantsRequest {
   required ObjectId object_id = 1;
   repeated GrantUpdate changes = 2;
@@ -374,8 +373,9 @@ message Operation {
 }
 
 // @cc [owner:spolu,label:api;backend;performance] dfs-operation-batch-size
-// All required operation results and final attributes MUST fit within the 4 MiB encoded response
-// budget. If they cannot fit, Apply MUST fail with CAPACITY before committing any changes.
+// Apply MUST check all required results and attributes against the 4 MiB encoded response budget
+// before substituting the commit store_version. If they cannot fit, Apply MUST fail with CAPACITY
+// before committing any changes.
 message OperationBatch {
   repeated OperationResult results = 1;
 }

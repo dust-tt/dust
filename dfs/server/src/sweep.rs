@@ -50,7 +50,7 @@ async fn sweep() -> Result<()> {
     let mut processed_entries = 0;
     let mut revoked_sessions = 0;
     loop {
-        let (processed, revoked) = fdb::with_transaction(|tx| async move {
+        let ((processed, revoked), _) = fdb::with_idempotent_transaction(|tx| async move {
             SessionResource::revoke_expired(&tx, cutoff_ms).await
         })
         .await?;

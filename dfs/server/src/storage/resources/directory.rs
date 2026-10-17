@@ -110,6 +110,11 @@ impl DirectoryResource {
      * An invalid child object ID MUST return Object(InvalidId) without staging writes.
      */
     /**
+     * @cc [owner:spolu,label:backend;error-handling] directory-create-collision
+     * For valid creation inputs, an occupied name MUST return AlreadyExists without staging
+     * writes, even when it points at the requested object ID.
+     */
+    /**
      * @cc [owner:pmilliotte,label:product] root-reserves-shared-name
      * Under the tenant root, a child named `shared` MUST fail with AlreadyExists without writing,
      * so it never collides with virtual `shared` at virtual root. Other directories MUST accept it.
@@ -134,12 +139,13 @@ impl DirectoryResource {
             return Err(Error::UnsupportedKind.into());
         }
         let entry_key = self.child_key(&name);
-        let entry = tx
+        if tx
             .get(&entry_key, false)
             .await
-            .map_err(FdbBindingError::from)?;
-        if let Some(entry) = entry {
-            return self.committed_child(tx, &entry, &object_id).await;
+            .map_err(FdbBindingError::from)?
+            .is_some()
+        {
+            return Err(Error::AlreadyExists.into());
         }
 
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
@@ -158,23 +164,6 @@ impl DirectoryResource {
         self.object
             .record_content_change(tx, now_ms)
             .map_err(Error::Object)?;
-        Ok(child)
-    }
-
-    async fn committed_child(
-        &self,
-        tx: &Transaction,
-        entry: &[u8],
-        object_id: &ObjectId,
-    ) -> Result<ObjectResource, storage::Error<Error>> {
-        // A retry after an unknown commit result finds the entry pointing at its own object.
-        if Self::decode_child_id(entry)? != *object_id {
-            return Err(Error::AlreadyExists.into());
-        }
-        let mut child = ObjectResource::fetch(tx, &self.object.tenant, object_id)
-            .await?
-            .ok_or(Error::Object(object::Error::NotFound))?;
-        child.load_metadata(tx).await?;
         Ok(child)
     }
 

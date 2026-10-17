@@ -112,8 +112,6 @@ impl SessionResource {
      * @cc [owner:spolu,label:backend;security] session-creation-state
      * A new session MUST retain the supplied tenant and expire one hour after construction.
      * The plaintext bearer key MUST be returned separately and MUST NOT be stored in the resource.
-     * Callers MUST construct the resource outside retrying transactions so its ID, key, subjects,
-     * and expiry remain stable across attempts.
      */
     pub fn new(tenant: &TenantResource, subjects: Vec<String>) -> Result<(Self, String), Error> {
         if subjects
@@ -144,9 +142,9 @@ impl SessionResource {
     }
 
     /**
-     * @cc [owner:spolu,label:backend;error-handling] session-create-idempotency
-     * An existing session ID with the same key hash MUST succeed without rewriting stored state
-     * or indexes. A different hash MUST return AlreadyExists without changing that session.
+     * @cc [owner:spolu,label:backend;error-handling] session-create-collision
+     * An existing session ID MUST return AlreadyExists without staging any writes, even when the
+     * key hash matches.
      */
     /**
      * @cc [owner:spolu,label:backend;security] session-index-consistency
@@ -156,18 +154,12 @@ impl SessionResource {
      */
     pub async fn create(&self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
         let session_key = Self::session_key(&self.tenant.tenant_id, &self.session_id);
-        if let Some(value) = tx
+        if tx
             .get(&session_key, false)
             .await
             .map_err(FdbBindingError::from)?
+            .is_some()
         {
-            let (key_hash, _expires_at_ms): (Vec<u8>, u64) =
-                unpack(&value).map_err(FdbBindingError::PackError)?;
-            let key_hash = auth::key_hash_from_bytes(&key_hash)?;
-            if key_hash == self.key_hash {
-                // A retry after an unknown commit result finds our own record.
-                return Ok(());
-            }
             return Err(Error::AlreadyExists.into());
         }
         if tx

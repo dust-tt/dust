@@ -67,8 +67,7 @@ persisted in plaintext. Subjects have separate keys because the set can exceed F
 [100,000-byte value limit](https://apple.github.io/foundationdb/known-limitations.html).
 
 Creation atomically writes state, subjects, credential lookup, and expiry entry, rejecting ID or key
-collisions. IDs and keys are generated before the retrying transaction; an existing ID with the same
-hash succeeds without rewriting state, allowing retries to recognize their own commit.
+collisions.
 
 Authentication checks the lookup, hash, and expiry, and loads the required tenant in one transaction.
 The session and tenant share a per-instance cache deadline: 30 seconds from lookup start, capped by
@@ -88,7 +87,8 @@ index entries are also removed. Authentication rejects expired sessions independ
 
 ## Transaction receipts
 
-`fdb::with_idempotent_transaction` protects any transaction body across FDB retries within one call.
+All resource writes use `fdb::with_idempotent_transaction`, protecting the whole transaction and its
+result across FDB retries within one call. Reads use `fdb::with_transaction`.
 Receipts use `dfs-v1-{env}/idempotency-receipt/<createdAtMs>/<receiptId>` and store the attempt ID
 and commit versionstamp. One in-memory receipt retains each attempt's result across FDB retries;
 a marker skips the body. Success spawns receipt deletion in a separate transaction without delaying
@@ -111,8 +111,7 @@ enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null f
 Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, and an empty name.
 
 Object creation validates all xattrs before staging writes and stores them with attributes and base
-metadata in the same transaction. A retry that finds exactly the attributes it would write succeeds
-without writing; any other occupant of the ID fails with `AlreadyExists`. Each xattr name is a
+metadata in the same transaction. An occupied ID fails with `AlreadyExists`. Each xattr name is a
 separate tuple component. An empty value denotes a present xattr with empty bytes; a missing key
 denotes an absent xattr. Extended metadata reads combine the base entry and xattr entries from the
 same transaction. Xattr changes preserve the 32 KiB limit on combined xattr name/value bytes. Object

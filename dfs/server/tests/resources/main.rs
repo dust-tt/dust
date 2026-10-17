@@ -24,7 +24,6 @@ fn resources() -> Result<()> {
         file::reads_validate_kind_length_blocks_and_handle_maximum_offsets().await?;
         file::block_reads_conflict_with_concurrent_writes().await?;
         directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
-        directory::child_creation_retry_returns_the_committed_child().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;
         directory::shared_name_is_only_reserved_under_the_tenant_root().await?;
         directory::child_lookup_resolves_names_within_each_directory().await?;
@@ -32,12 +31,10 @@ fn resources() -> Result<()> {
         directory::child_listing_pages_through_entries_in_name_order().await?;
         directory::child_listing_rejects_invalid_limits_and_cursors().await?;
         object::root_creation_persists_isolated_records().await?;
-        object::object_creation_retry_succeeds_without_changes().await?;
         object::object_collisions_preserve_records_and_abort_staged_writes().await?;
         object::invalid_xattr_names_fail_before_staging_writes().await?;
         object::xattr_size_limit_counts_all_names_and_values().await?;
         object::grant_listing_and_updates_preserve_indexes_and_attributes().await?;
-        object::grant_update_retry_only_advances_grants_version().await?;
         object::grant_versions_advance_for_no_ops_and_reject_overflow().await?;
         object::grant_creation_and_update_validation_preserve_state().await?;
         object::grant_pagination_handles_full_pages_and_object_deletion().await?;
@@ -51,15 +48,13 @@ fn resources() -> Result<()> {
         object::metadata_reads_preserve_snapshot_and_tenant_scope().await?;
         session::subjects_are_exact_deduplicated_and_bounded()?;
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
-        session::session_creation_retry_succeeds_without_changes().await?;
-        session::session_refresh_retry_keeps_the_session_and_one_expiry_entry().await?;
         session::authentication_and_refresh_require_active_matching_state().await?;
         session::refresh_and_revocation_conflict_in_both_orders().await?;
         session::expiry_cleanup_is_bounded_and_preserves_live_sessions().await?;
         session::expiry_cleanup_conflicts_with_concurrent_changes().await?;
         tenant::tenant_key_collisions_preserve_the_existing_owner().await?;
         tenant::decoding_errors_abort_creation_and_retain_their_type().await?;
-        tenant::tenant_creation_retry_succeeds_without_changes().await?;
+        tenant::duplicate_tenant_creation_preserves_records().await?;
         tenant::authentication_requires_a_matching_index_and_tenant_record().await
     })
 }
