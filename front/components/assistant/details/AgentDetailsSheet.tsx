@@ -1,9 +1,7 @@
-import { AgentDetailsBody } from "@app/components/assistant/details/AgentDetailsBody";
+import { LazyAgentDetailsBody } from "@app/components/assistant/details/LazyAgentDetailsBody";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Sheet, SheetContent, SheetTitle } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-
-export { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsBody";
 
 type AgentDetailsSheetProps = {
   owner: WorkspaceType;
@@ -24,7 +22,7 @@ export function AgentDetailsSheet({
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        <AgentDetailsBody agentId={agentId} owner={owner} user={user} />
+        <LazyAgentDetailsBody agentId={agentId} owner={owner} user={user} />
       </SheetContent>
     </Sheet>
   );

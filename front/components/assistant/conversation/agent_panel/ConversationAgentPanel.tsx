@@ -3,7 +3,7 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
-import { AgentDetailsBody } from "@app/components/assistant/details/AgentDetailsBody";
+import { LazyAgentDetailsBody } from "@app/components/assistant/details/LazyAgentDetailsBody";
 import {
   AgentSuggestionPreviewProvider,
   isPreviewedSuggestion,
@@ -99,7 +99,7 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
             suggestions={previewSuggestions}
             isApplied={isApplied}
           >
-            <AgentDetailsBody
+            <LazyAgentDetailsBody
               agentId={agentId}
               owner={owner}
               user={user}

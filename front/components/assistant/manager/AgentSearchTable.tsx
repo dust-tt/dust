@@ -1,4 +1,4 @@
-import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SCOPE_INFO } from "@app/components/assistant/details/agentScopeInfo";
 import { AgentSearchActionsMenu } from "@app/components/assistant/manager/AgentSearchActionsMenu";
 import { DefaultAgentToggle } from "@app/components/assistant/manager/DefaultAgentToggle";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
