@@ -371,7 +371,7 @@ impl Dfs for API {
             let operations = operations.clone();
             async move {
                 let results = ObjectResource::apply(&tx, session, operations).await?;
-                let mut response = OperationBatch {
+                let response = OperationBatch {
                     results: results
                         .into_iter()
                         .map(|result| match result {
@@ -386,13 +386,19 @@ impl Dfs for API {
                         })
                         .collect(),
                 };
-                // Reserve the largest version encoding before committing.
-                set_mutation_store_version(&mut response, i64::MAX);
                 within_message_budget(response).map_err(storage::Error::Resource)
             }
         })
         .await?;
-        set_mutation_store_version(&mut response, commit_version);
+        for mutation in response
+            .results
+            .iter_mut()
+            .filter_map(|result| result.mutation.as_mut())
+        {
+            for attr in mutation.object.iter_mut().chain(&mut mutation.related) {
+                attr.store_version = commit_version;
+            }
+        }
         Ok(Response::new(response))
     }
 
@@ -402,18 +408,6 @@ impl Dfs for API {
     ) -> Result<Response<SearchResults>, Status> {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
-    }
-}
-
-fn set_mutation_store_version(response: &mut OperationBatch, version: i64) {
-    for mutation in response
-        .results
-        .iter_mut()
-        .filter_map(|result| result.mutation.as_mut())
-    {
-        for attr in mutation.object.iter_mut().chain(&mut mutation.related) {
-            attr.store_version = version;
-        }
     }
 }
 

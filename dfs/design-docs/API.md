@@ -644,9 +644,9 @@ Mutation {
 Operations with overlapping targets run in request order; disjoint batches run concurrently within
 one FDB transaction. Later operations in a batch see earlier successful changes, allowing a request
 to create a directory, create a file within it, and write that file. Transaction write budgets may
-reject the request with `CAPACITY` even when its input fits. All required results and final attributes
-must fit within the 4 MiB encoded response budget. If either budget cannot be met, `Apply` fails with
-`CAPACITY` before committing any changes.
+reject the request with `CAPACITY` even when its input fits. All required results and attributes are
+checked against the 4 MiB encoded response budget before substituting the commit `store_version`.
+If either budget is exceeded, `Apply` fails with `CAPACITY` before committing any changes.
 
 Each operation must finish filesystem validation before staging any writes. A validation failure
 records that operation's error without changing state; later operations continue. All successful
