@@ -661,6 +661,60 @@ export async function loadFramePublicationDescriptor(
   return descriptor;
 }
 
+/**
+ * Re-runs the publish-time `checkPublicFrameFunction` on every function of a stored publication,
+ * against the workspace's current flags and the publication's stored bundles.
+ */
+export async function checkStoredFramePublicationPublicFunctions(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    descriptor,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    descriptor: FramePublicationDescriptor;
+  }
+): Promise<Result<undefined, FramePublicationError>> {
+  // Only a public function reads its bundle, so skip the archive read when there is none.
+  if (!descriptor.functions.some((fn) => fn.userIdentity === "public")) {
+    return new Ok(undefined);
+  }
+
+  const bundles = await loadFramePublicationFunctionBundles(auth, {
+    frame,
+    publicationId,
+  });
+  if (bundles.isErr()) {
+    return bundles;
+  }
+  const definitions = functionDefinitionsFromBundles({
+    descriptor,
+    bundles: bundles.value,
+  });
+  if (definitions.isErr()) {
+    return definitions;
+  }
+
+  const publicFunctionsEnabled = isFramesV2PublicFunctionsEnabled(
+    await getFeatureFlags(auth)
+  );
+  for (const definition of definitions.value) {
+    const publicCheck = checkPublicFrameFunction({
+      name: definition.name,
+      userIdentity: definition.userIdentity,
+      executionMode: definition.executionMode,
+      bundleCode: definition.bundleCode,
+      publicFunctionsEnabled,
+    });
+    if (publicCheck.isErr()) {
+      return publicCheck;
+    }
+  }
+  return new Ok(undefined);
+}
+
 function functionDefinitionsFromBundles({
   descriptor,
   bundles,
@@ -1013,6 +1067,34 @@ export async function publishFramePublication(
           publicationId: livePublicationId,
           status: "live" as const,
         });
+      }
+
+      const pendingDraftId = freshFrame.pendingDraftPublicationId;
+      if (pendingDraftId) {
+        const pending = await withFramePublishTimingResult(
+          "compare",
+          timingContext,
+          () =>
+            loadFramePublicationDescriptor(auth, {
+              frame: freshFrame,
+              publicationId: pendingDraftId,
+            })
+        );
+        // A pending draft whose publication is gone is never the same content: this publish
+        // replaces it.
+        if (pending.isErr() && pending.error.code !== "publication_not_found") {
+          return pending;
+        }
+        // Republishing the same draft keeps its id, so a Make live click on it does not 409.
+        if (
+          pending.isOk() &&
+          isSameFramePublicationContent(pending.value, descriptor)
+        ) {
+          return new Ok({
+            publicationId: pendingDraftId,
+            status: "draft" as const,
+          });
+        }
       }
     }
 

@@ -1114,6 +1114,18 @@ msgid "The Frame text couldn't be updated."
 msgstr "The Frame text couldn't be updated."
 
 #: front/lib/api_error_messages.ts
+msgid "This Frame changed or is being updated. Refresh it and try again."
+msgstr "This Frame changed or is being updated. Refresh it and try again."
+
+#: front/lib/api_error_messages.ts
+msgid "These changes couldn't be made live."
+msgstr "These changes couldn't be made live."
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame isn't in this conversation's files."
+msgstr "This Frame isn't in this conversation's files."
+
+#: front/lib/api_error_messages.ts
 msgid "This file is used by a skill and can't be deleted."
 msgstr "This file is used by a skill and can't be deleted."
 

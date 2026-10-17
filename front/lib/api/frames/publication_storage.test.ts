@@ -44,6 +44,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
@@ -1344,6 +1345,60 @@ describe("publishFramePublication modes", () => {
     });
     expect((await metadataOf(auth, frame))?.latestPublicationId).toBe(
       live.isOk() && live.value.publicationId
+    );
+  });
+
+  it("keeps the pending draft when a draft republish matches it", async () => {
+    const { auth, frame } = await setupFrame();
+    await publishBundle(auth, frame, "export default function A() {}", "live");
+    const first = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+
+    const again = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+
+    assert(first.isOk() && again.isOk(), "both draft publishes succeed");
+    expect(again.value).toEqual({
+      publicationId: first.value.publicationId,
+      status: "draft",
+    });
+    expect((await metadataOf(auth, frame))?.latestPublicationId).toBe(
+      first.value.publicationId
+    );
+  });
+
+  it("replaces a pending draft whose publication is missing", async () => {
+    const { auth, frame } = await setupFrame();
+    await publishBundle(auth, frame, "export default function A() {}", "live");
+    const fresh = await frame.fetchFreshFrameV2(auth);
+    assert(fresh, "Frame exists");
+    await fresh.setLatestFramePublication({
+      publicationId: "missing-draft-publication",
+    });
+    fileStorageMock.setFetchFileContentNotFound((path) =>
+      path.includes("missing-draft-publication")
+    );
+
+    const draft = await publishBundle(
+      auth,
+      frame,
+      "export default function B() {}",
+      "draft"
+    );
+
+    assert(draft.isOk(), "draft publish succeeds");
+    expect(draft.value.status).toBe("draft");
+    expect(draft.value.publicationId).not.toBe("missing-draft-publication");
+    expect((await metadataOf(auth, frame))?.latestPublicationId).toBe(
+      draft.value.publicationId
     );
   });
 

@@ -10,6 +10,13 @@ export class FeatureFlagFactory {
     );
   }
 
+  static async disable(auth: Authenticator, featureName: WhitelistableFeature) {
+    await FeatureFlagResource.disable(
+      auth.getNonNullableWorkspace(),
+      featureName
+    );
+  }
+
   // Insert a flag row whose name is no longer declared in
   // WHITELISTABLE_FEATURES_CONFIG. The cast is the point of the factory: it creates the exact
   // state the type system forbids, so that code handling leftover rows can be tested.
