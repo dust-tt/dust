@@ -158,7 +158,7 @@ AgentMCPServerConfigurationModel.init(
       allowNull: true,
     },
     singleToolDescriptionOverride: {
-      type: DataTypes.STRING,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },
