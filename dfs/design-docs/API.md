@@ -655,6 +655,7 @@ Unlock clears only the session's matching lock; absent or mismatched IDs are suc
 It requires no object permission, allowing cleanup after access loss. Moves preserve the lock;
 removal clears it. Expiry takes effect without cleanup; session refresh does not extend locks.
 Revoked sessions cannot refresh; their locks expire within one minute.
+The storage sweep reclaims expired locks even when their clients never return.
 
 The holder should refresh about every 20 seconds and include its ID when saving through Apply.
 On `LOCK_LOST`, it must stop the old editing session. An acquisition timeout can leave a lock until

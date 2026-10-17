@@ -87,16 +87,20 @@ index entries are also removed. Authentication rejects expired sessions independ
 
 ## Exclusive locks (proposed)
 
-FDB is authoritative for [exclusive locks](API.md#exclusive-locks-proposed). One key per object:
+FDB is authoritative for [exclusive locks](API.md#exclusive-locks-proposed).
 
 | Key | Value | Rationale |
 | --- | --- | --- |
 | `dfs-v1-{env}/tenant/<tenantId>/lock/<objectId>` | FDB tuple `(session_id, lock_id_bytes, expires_at_ms)`. | Stores the holder, its single random 16-byte lock ID, and expiry. |
+| `dfs-v1-{env}/lock-expiry/<expiresAtMs>/<tenantId>/<objectId>/<lockId>` | Empty value. | Finds expired locks across tenants without scanning objects. |
 
 Lock acquisition conflict-reads the key, including absence, and replaces only an absent or expired
 lock. Refresh requires the matching session/ID and unexpired state. Both set expiry to server time
 plus one minute, capped by session expiry. Unlock clears only a matching session/ID. These writes
 use `with_idempotent_transaction`; receipt replay retains the committed absolute expiry.
+State and expiry entries change atomically: acquisition replaces any expired lock's index entry,
+refresh replaces the old expiry entry, and unlock or object removal clears both records. Expiry
+keys use the same timestamp encoding as session expiry.
 
 Every Apply operation uses one common lock-check helper for its batching targets, after permission
 checks and before staging writes. Conflict-tracked reads in the mutation transaction reject active
@@ -104,10 +108,16 @@ locks without the session's matching ID (`WOULD_BLOCK`) and supplied stale IDs (
 lock and no supplied ID permits mutation. Lock RPCs and used Apply locks check sessions directly
 in storage; lock state is never cached. All Apply mutations are covered; reads and grants are not.
 
-Moves keep the key; object removal clears it. Expired records do not block and are replaced on the
-next acquisition. Storage is bounded to one record per object, so no expiry index or sweeper is
-needed initially. Lock maintenance does not change object attributes or versions. This is a proposal:
-lock RPCs and Apply requests carrying locks remain unsupported until enforcement is implemented.
+Moves preserve locks. Expired records stop blocking immediately. Cleanup joins the existing
+`sweep_expired_storage` loop, sharing its jitter and pass timestamp and running independently of
+session/receipt cleanup failures. Each pass drains entries expired for at least one minute in fresh
+transactions of at most 100 entries, using one fixed cutoff.
+
+Before clearing a lock, the sweeper conflict-reads its state and verifies the indexed lock ID and
+expiry still match and are past the cutoff. Stale or orphaned index entries are cleared alone;
+refreshed or replacement locks survive. This reclaims abandoned records even if no client returns.
+Lock maintenance does not change object attributes or versions. This is a proposal: lock RPCs and
+Apply requests carrying locks remain unsupported until enforcement is implemented.
 
 ## Transaction receipts
 
