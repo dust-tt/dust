@@ -24,7 +24,9 @@ runs:
 
         EOF
         )
-        npm run knip -- --workspace ${{ inputs.workspace }} --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
+        npm run knip -- --workspace "${INPUTS_WORKSPACE}" --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
+      env:
+        INPUTS_WORKSPACE: ${{ inputs.workspace }}
     - name: Knip - unused dependencies & dev dependencies
       shell: bash
       run: |
@@ -38,7 +40,9 @@ runs:
 
         EOF
         )
-        npm run knip -- --workspace ${{ inputs.workspace }} --include dependencies,devDependencies,binaries,catalog || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
+        npm run knip -- --workspace "${INPUTS_WORKSPACE}" --include dependencies,devDependencies,binaries,catalog || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
+      env:
+        INPUTS_WORKSPACE: ${{ inputs.workspace }}
     - name: Knip - unused files
       shell: bash
       run: |
@@ -52,4 +56,6 @@ runs:
 
         EOF
         )
-        npm run knip -- --workspace ${{ inputs.workspace }} --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
+        npm run knip -- --workspace "${INPUTS_WORKSPACE}" --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
+      env:
+        INPUTS_WORKSPACE: ${{ inputs.workspace }}

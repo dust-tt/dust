@@ -43,11 +43,12 @@ jobs:
       - name: Checkout codex repo at pinned commit
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           repository: openai/codex
           ref: ${{ inputs.codex_commit }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
+        uses: dtolnay/rust-toolchain@3f004e7c9fe9026f3384e581eb4a157ada8ef5b8 # 1.94.1
 
       - name: Install cross
         # Pinned to a cross-rs/cross commit (main as of 2026-09-24; the last release,

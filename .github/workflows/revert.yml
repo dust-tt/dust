@@ -48,8 +48,10 @@ jobs:
     if: ${{ !inputs.enforce_main || github.ref == 'refs/heads/main' }}
     steps:
       - name: Check branch condition
+        env:
+          ENFORCE_MAIN: ${{ inputs.enforce_main }}
         run: |
-          if [[ "${{ inputs.enforce_main }}" == "true" && "${{ github.ref }}" != "refs/heads/main" ]]; then
+          if [[ "${ENFORCE_MAIN}" == "true" && "${GITHUB_REF}" != "refs/heads/main" ]]; then
             echo "Reverts are only allowed from the main branch"
             exit 1
           fi
@@ -61,6 +63,8 @@ jobs:
       card: ${{ steps.card.outputs.card }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Generate infra token
         id: infra-token
@@ -92,6 +96,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - id: "auth"
         name: "Authenticate to Google Cloud"
@@ -114,10 +120,10 @@ jobs:
           esac
           IMAGE_REPO="us-central1-docker.pkg.dev/dust-infra/dust-images/${IMAGE}"
 
-          echo "Validating image tag ${{ inputs.image_tag }} exists in ${IMAGE_REPO}"
+          echo "Validating image tag ${INPUTS_IMAGE_TAG} exists in ${IMAGE_REPO}"
 
-          if ! gcloud container images describe "${IMAGE_REPO}:${{ inputs.image_tag }}" --quiet >/dev/null 2>&1; then
-            echo "❌ Image tag '${{ inputs.image_tag }}' not found in registry ${IMAGE_REPO}"
+          if ! gcloud container images describe "${IMAGE_REPO}:${INPUTS_IMAGE_TAG}" --quiet >/dev/null 2>&1; then
+            echo "❌ Image tag '${INPUTS_IMAGE_TAG}' not found in registry ${IMAGE_REPO}"
             echo "Available tags:"
             gcloud container images list-tags "${IMAGE_REPO}" \
               --limit=10 \
@@ -126,7 +132,9 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${IMAGE_REPO}" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Image tag '${INPUTS_IMAGE_TAG}' exists in ${IMAGE_REPO}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          INPUTS_IMAGE_TAG: ${{ inputs.image_tag }}
 
       - name: Notify Failure
         if: failure()
@@ -146,6 +154,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Generate token
         id: generate-token
@@ -158,20 +168,29 @@ jobs:
 
       - name: Trigger dust-infra workflow
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          OWNER: ${{ github.repository_owner }}
+          CELLS: ${{ inputs.cells }}
+          COMPONENT: ${{ inputs.component }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          SLACK_THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          CARD: ${{ needs.notify-start.outputs.card }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             await github.rest.repos.createDispatchEvent({
-              owner: '${{ github.repository_owner }}',
+              owner: process.env.OWNER,
               repo: 'dust-infra',
               event_type: 'trigger-component-revert',
               client_payload: {
-                cells: '${{ inputs.cells }}',
-                component: '${{ inputs.component }}',
-                image_tag: '${{ inputs.image_tag }}',
-                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
-                card: ${{ toJSON(needs.notify-start.outputs.card) }},
-                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
+                cells: process.env.CELLS,
+                component: process.env.COMPONENT,
+                image_tag: process.env.IMAGE_TAG,
+                slack_thread_ts: process.env.SLACK_THREAD_TS,
+                # Keep card as a string (matches prior toJSON(...) embedding).
+                card: process.env.CARD,
+                slack_channel: process.env.SLACK_CHANNEL,
                 run_playwright: false,
               }
             })

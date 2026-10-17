@@ -2,48 +2,98 @@ name: Claude Code
 
 on:
   issue_comment:
-    types: [ created ]
+    types: [created]
   pull_request_review_comment:
-    types: [ created ]
+    types: [created]
   issues:
-    types: [ opened, assigned ]
+    types: [opened]
   pull_request_review:
-    types: [ submitted ]
+    types: [submitted]
+
+permissions: {}
+
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  claude:
-    if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
-        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
-        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR') &&
-        github.event.pull_request.head.repo.fork == false) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') &&
-        (github.event.review.author_association == 'OWNER' || github.event.review.author_association == 'MEMBER' || github.event.review.author_association == 'COLLABORATOR') &&
-        github.event.pull_request.head.repo.fork == false) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
-        (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
+  # issue_comment payloads on PRs have no head-repo fields; resolve cross-repo
+  # PRs via the API before allowing the privileged Claude job to run.
+  check-pr-fork:
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
+      pull-requests: read
+    outputs:
+      ok: ${{ steps.check.outputs.ok }}
+    steps:
+      - name: Check whether the PR is same-repo
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          json="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json isCrossRepository,headRepositoryOwner)"
+          is_cross="$(printf '%s' "$json" | jq -r '.isCrossRepository')"
+          if [ "$is_cross" = "true" ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  claude:
+    needs: [check-pr-fork]
+    # Always run when check-pr-fork was skipped (non-PR issue comments / other
+    # events). When it ran, require ok=true (same-repo PR).
+    if: |
+      always() &&
+      !cancelled() &&
+      (needs.check-pr-fork.result == 'skipped' || needs.check-pr-fork.outputs.ok == 'true') &&
+      (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
+          (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
+          (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR') &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') &&
+          (github.event.review.author_association == 'OWNER' || github.event.review.author_association == 'MEMBER' || github.event.review.author_association == 'COLLABORATOR') &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+          (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # claude-code-action v1 writes comments/branches/PRs via its GitHub App
+    # token from OIDC (id-token: write). GITHUB_TOKEN stays read-only.
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
       id-token: write
+      actions: read
 
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 0 # Full depth for better git operations
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
 
-      # Setup Rust for core project
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
+        uses: dtolnay/rust-toolchain@3f004e7c9fe9026f3384e581eb4a157ada8ef5b8 # 1.94.1
         with:
           components: rustfmt
 
@@ -52,19 +102,25 @@ jobs:
         uses: anthropics/claude-code-action@5fb899572b81d2bb648d4d187173a2f423a9677c # v1.0.96
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          additional_permissions: |
+            actions: read
 
+          # claude-code-action tokenizes claude_args with shell-quote. Quote values
+          # that contain spaces or (). Avoid lines whose first non-whitespace char
+          # is # inside --system-prompt: stripShellComments runs before parsing.
           claude_args: |
             --model claude-sonnet-4-5-20250929
             --max-turns 36
-            --allowed-tools Agent,Bash,Edit,Glob,Grep,LS,MultiEdit,NotebookEdit,NotebookRead,Read,TodoRead,TodoWrite,WebFetch,WebSearch,Write
+            --allowed-tools "Agent,Bash(npx --prefix front tsc --noEmit),Bash(npx --prefix cli/dust-cli tsc),Bash(cargo check --manifest-path core/Cargo.toml),Bash(cargo fmt --manifest-path core/Cargo.toml --all -- --check),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(npm run format:ci),Bash(npm --prefix connectors run build),Bash(npm --prefix extension run build),Bash(npm --prefix sparkle run build),Bash(npm --prefix viz run build),Bash(npm --prefix viz run check),Bash(npm --prefix sdks/js run build),Bash(npm --prefix front run build),Edit,Glob,Grep,LS,MultiEdit,NotebookEdit,NotebookRead,Read,TodoRead,TodoWrite,Write"
+            --disallowed-tools "WebFetch,WebSearch"
             --system-prompt "
-            ### 1. General Principles
+            **1. General Principles**
 
             - Never make changes to the codebase that the user did not ask for.
             - Unless explicitly requested to modify code, output must remain strictly conversational.
             - Always make the minimal changes required—never more.
             - Follow all **CONTRACTS** files in each project directory (core, front). Review them before altering code.
-            - Avoid "defensive" patterns (default values, removing tests, non-null assertions).
+            - Avoid \"defensive\" patterns (default values, removing tests, non-null assertions).
             - Add comments **only** for complex, non-obvious logic; wrap at ~100 characters.
             - Write code that fails fast and explicitly; assume valid inputs.
             - Write high quality, general purpose solutions. Implement solutions that works correctly for all valid inputs, not just the test cases.
@@ -72,13 +128,14 @@ jobs:
             - Follow the codebase's best practices and aim for consistency.
             - In TypeScript, never use `any`. Properly type your code.
 
-            ### 2. Code Modification & Compilation
+            **2. Code Modification and Compilation**
 
-            - **TypeScript**: run `npx tsc --noEmit` in the project directory before committing changes.
-            - **Rust**: run `cargo check` in the project directory before committing changes.
+            - **TypeScript**: run the allowlisted `npx --prefix <pkg> tsc ...` check before committing changes.
+            - **Rust**: run the allowlisted `cargo check --manifest-path core/Cargo.toml` before committing changes.
             - Never attempt to run servers, applications, or execute code—compile only.
+            - Do not install packages or fetch from the network (no npm ci/install, no curl/wget, no gh api). Dependencies are already installed in this runner.
 
-            ### 3. Error Handling
+            **3. Error Handling**
 
             - Let exceptions propagate; do **not** catch your own thrown errors.
             - Default for new functions: allow exceptions to bubble up.
@@ -88,54 +145,56 @@ jobs:
             - Only use catching / returning `Result` in functions that already return `Result`.
             - Replace `err as Error` with `normalizeError()`.
 
-            ### 4. Testing & Execution
+            **4. Testing and Execution**
 
             - Never add tests unless asked.
             - Never run tests unless asked.
 
-            ### 5. Naming & Refactoring
+            **5. Naming and Refactoring**
 
             - When renaming a function, **do not** keep the old name for backward compatibility.
 
-            ### 6. Planning Requests
+            **6. Planning Requests**
 
             - If asked to create a plan, propose actions only—**no code changes** until approval.
 
-            ### 7. Internet Access
+            **7. Internet Access**
 
-            - Use your WebSearch tools to search the internet.
-            - This is required to find documentation for libraries, latest package versions, etc.
+            - WebSearch and WebFetch are disabled. Do not attempt to browse the internet.
+            - Rely on in-repo docs, CONTRACTS, and already-installed packages.
 
-            ### 8. Import Rules
+            **8. Import Rules**
 
             - For TypeScript, place all imports at the top of the file; never use async imports.
 
-            ### Project-specific Build Commands:
+            **Project-specific Check Commands (no install)**
 
-            **front**: cd front && npm ci && npx tsc --noEmit && cd .. && npm run format:ci
-            **connectors**: cd connectors && npm install && npm run build && cd .. && npm run format:ci
-            **cli**: cd cli/dust-cli && npm ci && npx tsc && cd ../.. && npm run format:ci
-            **core**: cd core && cargo check && cargo fmt --all -- --check
-            **extension**: cd extension && npm ci && npm run build && cd .. && npm run format:ci
-            **sparkle**: cd sparkle && npm install && npm run build && cd .. && npm run format:ci
-            **viz**: cd viz && npm install && npm run build && npm run check
-            **sdks/js**: Already pre-built; if changes made: cd sdks/js && npm run build && cd ../.. && npm run format:ci
+            The Bash tool has no cwd parameter, and `cd` is not allowlisted. Run each
+            check as its own Bash tool call from the repo root using `--prefix` /
+            `--manifest-path`. Do not chain with `&&` or use `cd`.
 
-            ### Important Rules:
-            - Install dependencies once per project when first needed (npm ci or npm install)
-            - For TypeScript projects, run `npx tsc --noEmit` before committing
-            - For Rust projects, run `cargo check` before committing
+            **front**: `npx --prefix front tsc --noEmit` then `npm run format:ci`
+            **connectors**: `npm --prefix connectors run build` then `npm run format:ci`
+            **cli**: `npx --prefix cli/dust-cli tsc` then `npm run format:ci`
+            **core**: `cargo check --manifest-path core/Cargo.toml` then `cargo fmt --manifest-path core/Cargo.toml --all -- --check`
+            **extension**: `npm --prefix extension run build` then `npm run format:ci`
+            **sparkle**: `npm --prefix sparkle run build` then `npm run format:ci`
+            **viz**: `npm --prefix viz run build` then `npm --prefix viz run check`
+            **sdks/js**: Already pre-built; if changes made: `npm --prefix sdks/js run build` then `npm run format:ci`
+
+            **Important Rules**
+            - Do not run npm ci, npm install, pip, curl, wget, gh api, or cd
+            - For TypeScript projects, run the allowlisted `npx --prefix ... tsc ...` before committing
+            - For Rust projects, run the allowlisted `cargo check --manifest-path core/Cargo.toml` before committing
             - SDK is pre-built; rebuild only if you modify it
             - Never run servers or execute applications, only build/lint/typecheck
             - Follow all CONTRACTS files in each project directory
             - Let exceptions propagate, avoid defensive patterns
             - Make minimal changes required
-            - Use normalizeError() instead of `err as Error`"
+            - Use normalizeError() instead of `err as Error`
+            - Accepted risk: allowlisted `npm --prefix ... run build` / `cargo check --manifest-path ...` execute repo scripts Claude can edit; do not broaden the Bash allowlist further.
+            "
 
-          # Optional: Customize the trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
-
-          # Environment variables for Claude
           settings: |
             {
               "env": {

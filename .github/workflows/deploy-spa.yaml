@@ -81,6 +81,8 @@ jobs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
@@ -93,6 +95,8 @@ jobs:
       thread_ts: ${{ inputs.thread_ts || steps.build_message.outputs.thread_ts }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Notify SPA Deploy Start
         if: ${{ !inputs.thread_ts }}
@@ -118,6 +122,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
@@ -129,7 +135,7 @@ jobs:
         id: branch
         if: ${{ github.ref_name != 'main' }}
         run: |
-          SANITIZED=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+          SANITIZED=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
           # Preview aliases must start with a letter (DNS label rule).
           if [[ "$SANITIZED" =~ ^[0-9] ]]; then
             SANITIZED="pr-${SANITIZED}"
@@ -148,12 +154,17 @@ jobs:
           NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
           NEXT_PUBLIC_COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
+          INPUTS_ENV: ${{ inputs.env }}
+          STEPS_BRANCH_OUTPUTS_SANITIZED: ${{ steps.branch.outputs.sanitized }}
+          INPUTS_APP: ${{ inputs.app }}
+          CONFIG_REGION_DIR: ${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}
         run: |
           set -a
-          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
+          # shellcheck disable=SC1090  # path is built from trusted workflow inputs via env
+          source "../.github/configs/${CONFIG_REGION_DIR}/.env.${INPUTS_ENV}"
           # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches.
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            export NEXT_PUBLIC_DUST_APP_URL=https://${{ steps.branch.outputs.sanitized }}--app.preview.dust.tt
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            export NEXT_PUBLIC_DUST_APP_URL="https://${STEPS_BRANCH_OUTPUTS_SANITIZED}--app.preview.dust.tt"
           fi
           # shellcheck disable=SC2034  # exported via set -a, used by VITE_* mapping loop below
           NEXT_PUBLIC_BUILD_DATE=$(date +%s)
@@ -162,7 +173,7 @@ jobs:
             export "VITE_${var#NEXT_PUBLIC_}=${!var}"
           done
           set +a
-          npm run build:${{ inputs.app }}
+          npm run "build:${INPUTS_APP}"
 
       - name: Upload sourcemaps to Datadog
         if: ${{ github.ref_name == 'main' }}
@@ -170,17 +181,19 @@ jobs:
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
           DATADOG_SITE: datadoghq.eu
+          INPUTS_APP: ${{ inputs.app }}
+          NEEDS_PREPARE_OUTPUTS_SHORT_SHA: ${{ needs.prepare.outputs.short_sha }}
         run: |
           if [ -z "$DATADOG_API_KEY" ]; then
             echo "DD_API_KEY not set, skipping sourcemap upload"
             exit 0
           fi
-          npx --yes @datadog/datadog-ci sourcemaps upload dist/${{ inputs.app }}/assets \
+          npx --yes @datadog/datadog-ci sourcemaps upload "dist/${INPUTS_APP}/assets" \
             --minified-path-prefix=/assets/ \
             --repository-url=https://github.com/dust-tt/dust \
             --project-path=front-spa \
-            --release-version=${{ needs.prepare.outputs.short_sha }} \
-            --service=${{ inputs.app }}-spa-browser
+            --release-version="${NEEDS_PREPARE_OUTPUTS_SHORT_SHA}" \
+            --service="${INPUTS_APP}-spa-browser"
 
       - name: Remove sourcemaps
         working-directory: front-spa
@@ -205,7 +218,7 @@ jobs:
       - name: Extract version ID
         id: extract_version
         run: |
-          UPLOAD_OUTPUT="${{ steps.upload_version.outputs.command-output }}"
+          UPLOAD_OUTPUT="${STEPS_UPLOAD_VERSION_OUTPUTS_COMMAND_OUTPUT}"
           VERSION_ID=$(echo "$UPLOAD_OUTPUT" | sed -n 's/.*Worker Version ID: *\([0-9a-f-]*\).*/\1/p')
           if [ -z "$VERSION_ID" ]; then
             echo "Failed to extract version ID from upload output:"
@@ -216,32 +229,42 @@ jobs:
           VERSION_PREFIX=$(echo "$VERSION_ID" | cut -c1-8)
           echo "version_prefix=${VERSION_PREFIX}" >> "$GITHUB_OUTPUT"
           echo "Extracted version ID: ${VERSION_ID} (prefix: ${VERSION_PREFIX})"
+        env:
+          STEPS_UPLOAD_VERSION_OUTPUTS_COMMAND_OUTPUT: ${{ steps.upload_version.outputs.command-output }}
 
       - name: Derive preview URL
         id: preview_url
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "url=https://${STEPS_EXTRACT_VERSION_OUTPUTS_VERSION_PREFIX}--${INPUTS_APP}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           else
-            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
+            echo "url=https://${STEPS_BRANCH_OUTPUTS_SANITIZED}--${INPUTS_APP}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          STEPS_EXTRACT_VERSION_OUTPUTS_VERSION_PREFIX: ${{ steps.extract_version.outputs.version_prefix }}
+          INPUTS_APP: ${{ inputs.app }}
+          STEPS_BRANCH_OUTPUTS_SANITIZED: ${{ steps.branch.outputs.sanitized }}
 
       - name: Summary
         run: |
           {
             echo "### SPA Deployed :rocket:"
             echo ""
-            echo "- **App**: ${{ inputs.app }}"
-            echo "- **URL**: ${{ steps.preview_url.outputs.url }}"
-            echo "- **Region**: ${{ inputs.region }}"
+            echo "- **App**: ${INPUTS_APP}"
+            echo "- **URL**: ${STEPS_PREVIEW_URL_OUTPUTS_URL}"
+            echo "- **Region**: ${INPUTS_REGION}"
             echo "- **Commit**: ${{ github.sha }}"
           } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          INPUTS_APP: ${{ inputs.app }}
+          STEPS_PREVIEW_URL_OUTPUTS_URL: ${{ steps.preview_url.outputs.url }}
+          INPUTS_REGION: ${{ inputs.region }}
 
       - name: Notify Deploy Success
         if: ${{ !inputs.skip_slack }}
         uses: ./.github/actions/slack-notify
         with:
-          step: ${{ 'spa_preview_success' }}
+          step: spa_preview_success
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
           component: spa-${{ inputs.app }}

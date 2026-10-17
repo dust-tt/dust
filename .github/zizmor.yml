@@ -1,0 +1,78 @@
+# zizmor configuration for dust-tt/dust
+# Ignores are narrowly scoped (per rule + file). Each has a reason + TODO.
+# Do not add blanket/global disables.
+
+rules:
+  dangerous-triggers:
+    # existing review-bot/main-breakage design; fork content already gated elsewhere. TODO: rework triggers.
+    ignore:
+      - main-breakage-notify.yml
+      - review-bot.yml
+
+  excessive-permissions:
+    # workflow-level write perms predate this PR; Claude job already least-privilege. TODO: move writes to job-level perms.
+    ignore:
+      - build-and-test-connectors.yml
+      - build-and-test-core.yml
+      - build-and-test-front-api.yml
+      - build-and-test-front.yml
+      - build-dust-sandbox.yml
+      - build-egress-proxy.yml
+      - build-viz.yml
+      - deploy-spa-preview.yaml
+      - deploy-spa.yaml
+      - deploy.yml
+      - package-extension-preview.yaml
+      - revert.yml
+      - run-dangerjs.yml
+      - sandbox-img-registry.yml
+
+  github-app:
+    # create-github-app-token scopes are installation-wide for dust-infra dispatch. TODO: tighten app permissions.
+    ignore:
+      - deploy.yml
+      - revert.yml
+      - sandbox-bedrock-release.yml
+
+  secrets-inherit:
+    # reusable deploy workflows need many secrets today. TODO: pass explicit secret maps.
+    ignore:
+      - deploy-spa-preview.yaml
+      - deploy.yml
+      - package-extension-preview.yaml
+
+  self-repository:
+    # actionlint 1.7.12 rejects GitHub $/ self-repo syntax; keep ./ until actionlint supports it. TODO: migrate when actionlint catches up.
+    ignore:
+      - build-and-test-connectors.yml
+      - build-and-test-front-api.yml
+      - build-and-test-front.yml
+      - build-and-test-marketing.yml
+      - build-cli.yml
+      - build-extension.yml
+      - build-spa.yaml
+      - build-sparkle.yml
+      - build-viz.yml
+      - claude.yml
+      - deploy-spa-preview.yaml
+      - deploy-spa-production.yaml
+      - deploy-spa.yaml
+      - deploy.yml
+      - format-check.yml
+      - main-breakage-notify.yml
+      - package-extension-preview.yaml
+      - package-extension.yaml
+      - publish-cli.yml
+      - publish-sdk-client.yml
+      - revert.yml
+      - review-bot.yml
+      - run-dangerjs.yml
+      - sandbox-img-registry.yml
+      - sandbox-img-verify.yml
+
+  superfluous-actions:
+    # softprops/action-gh-release keeps release asset logic centralized. TODO: consider gh release rewrite.
+    ignore:
+      - release-dsbx-cli.yml
+      - release-sandbox-tool.yml
+
