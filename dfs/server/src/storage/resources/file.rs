@@ -75,6 +75,13 @@ impl From<storage::Error<object::Error>> for storage::Error<Error> {
     }
 }
 
+/**
+ * @cc [owner:spolu,label:backend] file-content-within-size
+ * Production file mutations MUST preserve the invariant that no stored content bytes lie at or
+ * beyond logical EOF. Block changes and the corresponding size MUST commit atomically; shrinking
+ * MUST trim the final block and clear later blocks. Mutations MAY rely on this invariant without
+ * reading untouched blocks. Reads MUST still clip to logical EOF when stored data violates it.
+ */
 pub struct FileResource {
     object: ObjectResource,
 }

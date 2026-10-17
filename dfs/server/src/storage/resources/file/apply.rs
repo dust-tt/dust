@@ -60,9 +60,10 @@ impl FileResource {
     /**
      * @cc [owner:spolu,label:backend] file-apply-write-content
      * Append MUST ignore the supplied offset and use the current transactional EOF, including
-     * earlier operations. An overflowing end offset MUST return InvalidRange. Writes MUST preserve
-     * bytes outside their range and zero-fill sparse gaps. Preserved boundary bytes MUST be clipped
-     * to the old logical EOF.
+     * earlier operations. An overflowing end offset MUST return InvalidRange. Given the stored-state
+     * invariant file-content-within-size, writes MUST preserve bytes outside their range and
+     * zero-fill sparse gaps. Boundary blocks read to preserve bytes MUST be clipped to the old
+     * logical EOF.
      * Reads needed to preserve boundary bytes MUST track conflicts and reject blocks over 64 KiB.
      * Fully overwritten blocks MUST NOT be read. Stored blocks MUST fit within 64 KiB.
      */

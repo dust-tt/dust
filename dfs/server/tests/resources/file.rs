@@ -191,6 +191,7 @@ pub(crate) async fn reads_clip_to_eof_and_zero_fill_sparse_and_short_blocks() ->
     // Seed sparse and short blocks directly to exercise the read representation.
     tx.set(&block_key(&tenant, object.object_id, 0), &first);
     tx.set(&block_key(&tenant, object.object_id, 1), b"abc");
+    // Deliberately store an invalid tail beyond EOF to test defensive read clipping.
     tx.set(
         &block_key(&tenant, object.object_id, 3),
         b"last bytes beyond EOF",
