@@ -24,6 +24,7 @@ msgstr "Bêta"
 #: front/components/assistant/conversation/interactive_content/frame/FrameCodeView.tsx
 msgid "Error loading the Frame source."
 msgstr "Erreur lors du chargement de la source du Frame."
+
 #: front/components/assistant/conversation/interactive_content/frame/FrameDraftControls.tsx
 msgid "Not live yet. The share link shows the version from {liveSince}."
 msgstr "Pas encore en ligne. Le lien de partage affiche la version du {liveSince}."
