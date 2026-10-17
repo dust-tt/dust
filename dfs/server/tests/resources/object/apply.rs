@@ -155,6 +155,67 @@ fn grouping_empty_operations_returns_no_batches() {
 }
 
 #[test]
+fn grouping_merges_move_batches_and_keeps_unrelated_operations_separate() {
+    let first = ObjectId::new_v7();
+    let second = ObjectId::new_v7();
+    let third = ObjectId::new_v7();
+    let unrelated = ObjectId::new_v7();
+    let operations = vec![
+        Operation::Write(WriteOperation {
+            object_id: first,
+            ..Default::default()
+        }),
+        Operation::Update(UpdateOperation {
+            object_id: unrelated,
+            ..Default::default()
+        }),
+        Operation::Move(MoveOperation {
+            object_id: second,
+            parent_id: ObjectId::new_v7(),
+            ..Default::default()
+        }),
+        Operation::Write(WriteOperation {
+            object_id: third,
+            ..Default::default()
+        }),
+        Operation::Move(MoveOperation {
+            object_id: first,
+            parent_id: ObjectId::new_v7(),
+            ..Default::default()
+        }),
+        Operation::Move(MoveOperation {
+            object_id: third,
+            parent_id: ObjectId::new_v7(),
+            ..Default::default()
+        }),
+    ];
+    let mut expected_targets: Vec<_> = operations
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| *index != 1)
+        .flat_map(|(_, operation)| ObjectResource::targets_for_operation(operation))
+        .collect();
+    expected_targets.sort_unstable();
+    expected_targets.dedup();
+    let expected_operations = [0, 2, 3, 4, 5]
+        .into_iter()
+        .map(|index| (index, operations[index].clone()))
+        .collect();
+    let expected_unrelated = vec![(1, operations[1].clone())];
+    let mut batches = ObjectResource::group_by_targets(operations);
+    for (_, targets) in &mut batches {
+        targets.sort_unstable();
+    }
+    assert_eq!(
+        batches,
+        vec![
+            (expected_operations, expected_targets),
+            (expected_unrelated, vec![unrelated]),
+        ]
+    );
+}
+
+#[test]
 fn grouping_moves_write_payloads_without_cloning() {
     let data = b"payload".to_vec();
     let data_ptr = data.as_ptr();

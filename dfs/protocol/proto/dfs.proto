@@ -389,8 +389,9 @@ message OperationResult {
 message Mutation {
   optional Attr object = 1;
   // @cc [owner:spolu,label:api;backend] dfs-mutation-parent-attributes
-  // Successful Create and Remove operations MUST include their parent's Attr immediately after
-  // the operation, even if that parent is changed or removed later in the Apply batch.
+  // Successful Create and Remove MUST include their parent's Attr; Move MUST include each distinct
+  // parent's Attr. Attributes MUST reflect state immediately after the operation, even if that
+  // parent is changed or removed later in the Apply batch.
   repeated Attr related = 2;
 }
 
