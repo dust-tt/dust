@@ -1,0 +1,12 @@
+{
+  "action": "frame.tool_authorization_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "frame_id": "string",
+    "authorized_tool_count": "string",
+    "authorized_tools": "string"
+  }
+}

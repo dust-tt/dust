@@ -43,6 +43,9 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
       isFrameAuthor: true,
       packageRoot: `conversation-${conversation.sId}/Admin`,
       hasFunctions: false,
+      requiredTools: [],
+      isLastPublisher: false,
+      hasAuthorizedRequiredTools: true,
     });
   });
 
@@ -69,6 +72,9 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
       isFrameAuthor: false,
       packageRoot: null,
       hasFunctions: false,
+      requiredTools: [],
+      isLastPublisher: false,
+      hasAuthorizedRequiredTools: true,
     });
   });
 
