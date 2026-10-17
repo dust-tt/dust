@@ -237,6 +237,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "LeandreLeBizec",
   },
+  figma_mcp: {
+    description:
+      "Offer the Figma MCP to a workspace that is not on a credit-based plan",
+    stage: "self_serve",
+    owner: "smb2268",
+  },
   dust_internal_dangerous_in_cluster_mcp_servers: {
     description:
       "EXPERIMENTAL FEATURE. DUST INTERNAL ONLY. Allow remote MCP servers pointing at hosts on the MCP_IN_CLUSTER_HOSTS allowlist, reached in-cluster instead of through the untrusted egress proxy.",

@@ -1,34 +1,17 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isCreditBasedPlan } from "@app/lib/plans/plan_codes";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { AnnouncementPill, FigmaLogo } from "@dust-tt/sparkle";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ComponentType, CSSProperties } from "react";
 
 interface HomepageAnnouncementEntry {
-  /** Restricts the entry to workspaces with the flag. */
-  featureFlag?: WhitelistableFeature;
-  /** Restricts the entry to workspaces on a credit-based plan. */
-  creditBasedPlansOnly?: boolean;
+  isVisible: boolean;
   icon: ComponentType<{ className?: string }>;
-  label: MessageDescriptor;
+  label: string;
   /** Destination of the pill; it is static text without one. */
   href?: string;
   target?: string;
 }
-
-// The first entry the workspace qualifies for is shown; add new announcements at the top.
-const HOMEPAGE_ANNOUNCEMENTS: HomepageAnnouncementEntry[] = [
-  {
-    creditBasedPlansOnly: true,
-    icon: FigmaLogo,
-    label: msg`Figma MCP is now available`,
-    href: "https://dust.tt/integrations/figma",
-    target: "_blank",
-  },
-];
 
 interface HomepageAnnouncementProps {
   style?: CSSProperties;
@@ -38,13 +21,21 @@ export function HomepageAnnouncement({ style }: HomepageAnnouncementProps) {
   const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const { subscription } = useAuth();
-  const isCreditBased = isCreditBasedPlan(subscription.plan);
 
-  const entry = HOMEPAGE_ANNOUNCEMENTS.find(
-    ({ featureFlag, creditBasedPlansOnly }) =>
-      (!featureFlag || hasFeature(featureFlag)) &&
-      (!creditBasedPlansOnly || isCreditBased)
-  );
+  // The first visible entry is shown; add new announcements at the top.
+  const announcements: HomepageAnnouncementEntry[] = [
+    {
+      // Mirrors the Figma preset's plan gate and its override flag.
+      isVisible:
+        isCreditBasedPlan(subscription.plan) || hasFeature("figma_mcp"),
+      icon: FigmaLogo,
+      label: t`Figma MCP is now available`,
+      href: "https://dust.tt/integrations/figma",
+      target: "_blank",
+    },
+  ];
+
+  const entry = announcements.find(({ isVisible }) => isVisible);
   if (!entry) {
     return null;
   }
@@ -53,7 +44,7 @@ export function HomepageAnnouncement({ style }: HomepageAnnouncementProps) {
     <div style={style}>
       <AnnouncementPill
         icon={entry.icon}
-        label={t(entry.label)}
+        label={entry.label}
         href={entry.href}
         target={entry.target}
       />

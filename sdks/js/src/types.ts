@@ -886,6 +886,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_internal_global_agents"
   | "dust_lean_agent"
   | "dust_pod_goal"
+  | "figma_mcp"
   | "fireworks_new_model_feature"
   | "frames_v2"
   | "frames_v2_functions"

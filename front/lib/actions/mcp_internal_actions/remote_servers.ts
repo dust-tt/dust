@@ -23,6 +23,8 @@ export type DefaultRemoteMCPServerConfig = {
   hostDerivedOAuth?: HostDerivedOAuthConfig;
   toolStakes?: Record<string, "high" | "low" | "medium" | "never_ask">;
   toolDisplayLabels?: Record<string, ToolDisplayLabels>;
+  // Required to see the preset; on a `creditBasedPlansOnly` preset it instead lets a
+  // workspace in regardless of its plan.
   featureFlag?: WhitelistableFeature;
   // Only offered to workspaces on a credit-based plan (`isCreditBasedPlan`).
   creditBasedPlansOnly?: boolean;
@@ -4972,6 +4974,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     documentationUrl: "https://developers.figma.com/docs/figma-mcp-server/",
     connectionInstructions:
       "Figma uses OAuth. You will be prompted to sign in with your Figma account. The MCP can only access the files and libraries you can already see in Figma.",
+    featureFlag: "figma_mcp",
     creditBasedPlansOnly: true,
     authMethod: "oauth-dynamic",
     supportedOAuthUseCases: ["platform_actions", "personal_actions"],
