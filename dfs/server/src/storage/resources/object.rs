@@ -342,15 +342,17 @@ impl ObjectResource {
      * @cc [owner:spolu,label:backend;error-handling] object-create-atomicity
      * Creation MUST write attributes, metadata, xattrs, and grants in the caller's transaction. An
      * occupied object ID in the same tenant MUST return AlreadyExists before staging any writes,
-     * even when attributes match, preserving the existing object, metadata, and grants. Missing
-     * metadata or invalid xattrs MUST fail before staging any writes. Initial grants MUST be
-     * validated and deduplicated, with at most 512 distinct values, before staging writes.
+     * even when attributes match, preserving the existing object, metadata, and grants. The
+     * occupied-ID check MUST precede metadata, xattr, and grant validation. Missing metadata or
+     * invalid xattrs MUST fail before staging any writes. Initial grants MUST be validated and
+     * deduplicated, with at most 512 distinct values, before staging writes.
      */
     /**
      * @cc [owner:spolu,label:backend] object-xattr-validation
-     * Xattr names MUST contain 1-255 UTF-8 bytes without NUL; invalid names MUST return
-     * InvalidXattrName. Combined name and value bytes MUST NOT exceed 32 KiB; exceeding this limit
-     * MUST return XattrsTooLarge.
+     * Xattr validation MUST run only after confirming the object ID is unoccupied. Names MUST
+     * contain 1-255 UTF-8 bytes without NUL; invalid names MUST return InvalidXattrName. Combined
+     * name and value bytes MUST NOT exceed 32 KiB; exceeding this limit MUST return XattrsTooLarge.
+     * When both xattr constraints fail, either error MAY be returned.
      */
     /**
      * @cc [owner:spolu,label:backend] object-xattr-storage
