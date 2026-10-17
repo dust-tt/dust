@@ -396,10 +396,11 @@ message Mutation {
 // @cc [owner:spolu,label:api] dfs-create-metadata-limits
 // Name MUST satisfy Attr's stored-basename limits. A supplied MIME type and xattrs MUST satisfy
 // ExtendedMetadata's limits, including the 32 KiB total xattr key/value budget.
+// The object ID's UUIDv7 timestamp MUST be at most five minutes old at creation.
 message CreateOperation {
   required ObjectId parent_id = 1;
   required string name = 2;
-  // The caller supplies a fresh UUIDv7.
+  // The caller supplies a UUIDv7 no more than five minutes old.
   required ObjectId object_id = 3;
   required ObjectKind kind = 4;
   optional string mime_type = 5;

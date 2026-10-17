@@ -665,6 +665,7 @@ stored changes were made. A successful mutation returning no attributes carries 
 
 Accepted work continues after disconnection, so a lost response does not prove a mutation failed.
 The request has no idempotency key; callers must not blindly replay operations with uncertain outcomes.
+Internal FDB retries reuse one receipt for the whole batch, returning its original results after commit.
 
 The following operations are variants within `Apply`, not separate RPCs. Each produces the
 `OperationResult` described above.
@@ -679,9 +680,9 @@ Creates an empty file or directory under an authorized real directory.
 CreateOperation {
   parent_id: ObjectId
   name: string
-  object_id: ObjectId            // Fresh UUIDv7 supplied by the caller.
+  object_id: ObjectId            // Caller-supplied UUIDv7, at most five minutes old.
   kind: ObjectKind               // FILE or DIRECTORY; SYMLINK fails with UNSUPPORTED.
-  mime_type?: string             // Defaults to inode/directory or application/octet-stream.
+  mime_type?: string             // Omitted or empty stores None.
   xattrs: map<string, bytes>
 }
 ```

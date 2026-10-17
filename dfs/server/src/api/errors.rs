@@ -72,6 +72,7 @@ impl From<object::Error> for ErrorCode {
     fn from(error: object::Error) -> Self {
         match error {
             object::Error::InvalidXattrName
+            | object::Error::InvalidMimeType
             | object::Error::XattrsTooLarge
             | object::Error::InvalidId
             | object::Error::InvalidGrant
@@ -126,11 +127,13 @@ impl From<directory::Error> for ErrorCode {
     fn from(error: directory::Error) -> Self {
         match error {
             directory::Error::InvalidName
+            | directory::Error::InvalidKind
             | directory::Error::InvalidPageLimit
             | directory::Error::InvalidCursor => ErrorCode::InvalidInput,
             directory::Error::NameTooLong => ErrorCode::NameTooLong,
             directory::Error::NotDirectory => ErrorCode::NotDirectory,
             directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            directory::Error::Forbidden => ErrorCode::Forbidden,
             directory::Error::UnsupportedKind
             | directory::Error::UnsupportedOperation
             | directory::Error::SharedUnsupported => ErrorCode::Unsupported,

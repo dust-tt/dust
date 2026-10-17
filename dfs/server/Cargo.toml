@@ -12,6 +12,7 @@ dfs-protocol = { path = "../protocol" }
 foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
 futures = "0.3"
 lru = "0.18"
+mime = "0.3"
 prost = "0.14"
 ring = "0.17"
 sha2 = "0.10"

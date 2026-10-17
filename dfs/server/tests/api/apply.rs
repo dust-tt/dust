@@ -3,6 +3,7 @@ use dfs_api::storage::{
     fdb,
     resources::{
         keys::{namespace_subspace, tenant_subspace},
+        object::ObjectResource,
         session::SessionResource,
         tenant::TenantResource,
     },
@@ -10,8 +11,9 @@ use dfs_api::storage::{
 use dfs_protocol::{
     ObjectId,
     rpc::{
-        self, ApplyRequest, CreateOperation, ErrorCode, MoveOperation, ObjectKind, RemoveOperation,
-        UpdateOperation, WriteOperation, dfs_client::DfsClient, operation::Operation,
+        self, AllowGrant, ApplyRequest, CreateOperation, ErrorCode, Grant, MoveOperation,
+        ObjectKind, RemoveOperation, UpdateOperation, WriteOperation, dfs_client::DfsClient, grant,
+        operation::Operation,
     },
 };
 
@@ -21,10 +23,21 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
 {
     let mut client = DfsClient::new(serve().await?);
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
-    let (session, session_key) = SessionResource::new(&tenant, vec![])?;
+    let (session, session_key) = SessionResource::new(&tenant, vec!["writer".to_owned()])?;
     let authorization = format!("Bearer {session_key}");
     let tx = fdb::database()?.create_trx()?;
     tenant.create(&tx).await?;
+    ObjectResource::new_root(&tenant)?
+        .create(
+            &tx,
+            &[Grant {
+                kind: Some(grant::Kind::Allow(AllowGrant {
+                    subject: "writer".to_owned(),
+                    mode: 0o2,
+                })),
+            }],
+        )
+        .await?;
     session.create(&tx).await?;
     tx.commit().await?;
 
@@ -80,12 +93,26 @@ pub(crate) async fn apply_returns_per_operation_errors_and_rejects_invalid_reque
         .await?
         .into_inner();
     assert_eq!(batch.results.len(), count);
-    for result in batch.results {
-        assert!(result.mutation.is_none());
-        assert_eq!(
-            result.error.context("missing operation error")?.code(),
-            ErrorCode::Unsupported
-        );
+    for (index, result) in batch.results.into_iter().enumerate() {
+        if index == 0 {
+            assert!(result.error.is_none());
+            let mutation = result.mutation.context("missing mutation")?;
+            let attr = mutation.object.context("missing created file")?;
+            assert_eq!(attr.id, file.into());
+            assert_eq!(attr.mode, 0o200);
+            let tx = fdb::database()?.create_trx()?;
+            tx.set_read_version(attr.store_version);
+            let object = ObjectResource::fetch(&tx, &tenant, &file)
+                .await?
+                .context("missing committed file")?;
+            assert_eq!(object.name, "file");
+        } else {
+            assert!(result.mutation.is_none());
+            assert_eq!(
+                result.error.context("missing operation error")?.code(),
+                ErrorCode::Unsupported
+            );
+        }
     }
 
     for (operations, expected) in [
