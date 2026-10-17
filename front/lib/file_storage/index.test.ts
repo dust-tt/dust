@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.unmock("@app/lib/file_storage");
 
-describe("getBucketInstance requestTimeoutMs", () => {
+describe("FileStorage.file requestTimeoutMs", () => {
   let server: Server;
 
   beforeAll(async () => {
@@ -25,36 +25,41 @@ describe("getBucketInstance requestTimeoutMs", () => {
   });
 
   it("fails a stuck simple upload once the request timeout elapses", async () => {
-    const bucket = getBucketInstance("request-timeout-test-bucket", {
+    const bucket = getBucketInstance("request-timeout-upload-bucket", {
       useServiceAccount: false,
-      requestTimeoutMs: 200,
     });
 
     const startMs = Date.now();
     await expect(
-      bucket.file("stuck.json").save(Buffer.from("{}"), {
-        contentType: "application/json",
-        resumable: false,
-      })
+      bucket
+        .file("stuck.json", { requestTimeoutMs: 200 })
+        .save(Buffer.from("{}"), {
+          contentType: "application/json",
+          resumable: false,
+        })
     ).rejects.toThrow(/timeout/);
     expect(Date.now() - startMs).toBeLessThan(5_000);
   });
 
-  it("does not share the client of an instance without a timeout", () => {
-    const withTimeout = getBucketInstance("request-timeout-shared-bucket", {
-      useServiceAccount: false,
-      requestTimeoutMs: 200,
-    });
-    const withoutTimeout = getBucketInstance("request-timeout-shared-bucket", {
+  it("fails a stuck delete once the request timeout elapses", async () => {
+    const bucket = getBucketInstance("request-timeout-delete-bucket", {
       useServiceAccount: false,
     });
 
-    expect(withTimeout).not.toBe(withoutTimeout);
-    expect(
-      getBucketInstance("request-timeout-shared-bucket", {
-        useServiceAccount: false,
-        requestTimeoutMs: 200,
-      })
-    ).toBe(withTimeout);
+    const startMs = Date.now();
+    await expect(
+      bucket.delete("stuck.json", { requestTimeoutMs: 200 })
+    ).rejects.toThrow(/timeout/);
+    expect(Date.now() - startMs).toBeLessThan(5_000);
+  });
+
+  it("does not apply the timeout to other files of the same bucket", () => {
+    const bucket = getBucketInstance("request-timeout-shared-bucket", {
+      useServiceAccount: false,
+    });
+
+    bucket.file("timed.json", { requestTimeoutMs: 200 });
+
+    expect(bucket.file("timed.json").interceptors).toHaveLength(0);
   });
 });

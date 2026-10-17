@@ -8,6 +8,7 @@ import { heartbeatWithoutCancelCheck } from "@app/lib/temporal";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, warmCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -17,6 +18,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 export const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
 const GCS_REQUEST_TIMEOUT_MS = 15_000;
+// The request timeout also covers sending the body, so writes get extra time for their payload at
+// this minimum throughput (~1 MB/s).
+const GCS_UPLOAD_MIN_BYTES_PER_MS = 1_000;
+const GCS_WRITE_MAX_REQUEST_TIMEOUT_MS =
+  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS * 0.75;
 
 export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -36,6 +42,14 @@ function getActionOutputGcsPrefix(
   return `w/${workspace.sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${actionIdString}/`;
 }
 
+export function getGcsWriteRequestTimeoutMs(byteLength: number): number {
+  return Math.min(
+    GCS_REQUEST_TIMEOUT_MS +
+      Math.ceil(byteLength / GCS_UPLOAD_MIN_BYTES_PER_MS),
+    GCS_WRITE_MAX_REQUEST_TIMEOUT_MS
+  );
+}
+
 function getGcsPath(
   auth: Authenticator,
   action: AgentMCPActionResource,
@@ -51,9 +65,10 @@ function getGcsPath(
  */
 /**
  * @cc [owner:tdraier,label:performance] bounded-gcs-write-attempt
- * Each object write attempt, and each cleanup delete after a failed write, MUST be bounded by
- * `GCS_REQUEST_TIMEOUT_MS`, so that a request stuck on a dead connection fails instead of stalling
- * past the activity heartbeat timeout.
+ * Each object write attempt MUST be bounded by `getGcsWriteRequestTimeoutMs` of its payload size,
+ * which stays below the tool activity heartbeat timeout, and each cleanup delete attempt after a
+ * failed write by `GCS_REQUEST_TIMEOUT_MS`, so that a request stuck on a dead connection fails
+ * instead of stalling past the activity heartbeat timeout.
  */
 async function batchWriteContentsToGcsAtPaths(
   action: AgentMCPActionResource,
@@ -65,16 +80,15 @@ async function batchWriteContentsToGcsAtPaths(
   await concurrentExecutor(
     itemsWithPaths,
     async ({ content, gcsPath }) => {
-      const bucket = getPrivateUploadBucket({
-        requestTimeoutMs: GCS_REQUEST_TIMEOUT_MS,
+      const data = Buffer.from(JSON.stringify(content), "utf-8");
+      const file = getPrivateUploadBucket().file(gcsPath, {
+        requestTimeoutMs: getGcsWriteRequestTimeoutMs(data.length),
       });
-      const file = bucket.file(gcsPath);
-      const json = JSON.stringify(content);
 
       const writeResult = await withRetry(async () => {
         try {
           // Resumable uploads (the SDK default) ignore `timeout`.
-          await file.save(Buffer.from(json, "utf-8"), {
+          await file.save(data, {
             contentType: "application/json",
             resumable: false,
           });
@@ -281,14 +295,23 @@ export async function deleteContentsFromGcs(
   }
 
   try {
-    const bucket = getPrivateUploadBucket({
-      requestTimeoutMs: GCS_REQUEST_TIMEOUT_MS,
-    });
+    const bucket = getPrivateUploadBucket();
     await concurrentExecutor(
       gcsPaths,
       async (gcsPath) => {
-        await bucket.delete(gcsPath, { ignoreNotFound: true });
-        heartbeatWithoutCancelCheck();
+        const deleteResult = await withRetry(async () => {
+          try {
+            await bucket.delete(gcsPath, {
+              ignoreNotFound: true,
+              requestTimeoutMs: GCS_REQUEST_TIMEOUT_MS,
+            });
+          } finally {
+            heartbeatWithoutCancelCheck();
+          }
+        });
+        if (deleteResult.isErr()) {
+          throw deleteResult.error;
+        }
       },
       { concurrency: GCS_CONCURRENCY }
     );

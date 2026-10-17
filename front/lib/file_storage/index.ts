@@ -16,6 +16,7 @@ import {
   RETRYABLE_ERR_FN_DEFAULT,
   Storage,
 } from "@google-cloud/storage";
+import assert from "assert";
 import isNumber from "lodash/isNumber";
 
 const GCS_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
@@ -39,9 +40,12 @@ export const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minute
 export const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 8 * 1024 * 1024;
 export const GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
 
+// The SDK's interceptors always receive the decorated options, but are typed with the looser
+// request options.
+type GCSRequestOptions = ReturnType<File["interceptors"][number]["request"]>;
+
 interface FileStorageOptions {
   useServiceAccount?: boolean;
-  requestTimeoutMs?: number;
 }
 
 type RawContentUpload = {
@@ -124,12 +128,10 @@ export class FileStorage {
 
   constructor(
     bucketKey: string,
-    { useServiceAccount = true, requestTimeoutMs }: FileStorageOptions = {}
+    { useServiceAccount }: FileStorageOptions = { useServiceAccount: true }
   ) {
     this.storage = new Storage({
       keyFilename: useServiceAccount ? config.getServiceAccount() : undefined,
-      // The SDK overwrites any per-call `timeout` option with this client-level one.
-      timeout: requestTimeoutMs,
       retryOptions: {
         maxRetries: GCS_MAX_RETRIES,
         retryableErrorFn: isRetryableGCSError,
@@ -307,8 +309,33 @@ export class FileStorage {
     return signedUrl;
   }
 
-  file(filename: string) {
-    return this.bucket.file(filename);
+  /**
+   * @cc [owner:tdraier,label:performance] file-request-timeout
+   * When `requestTimeoutMs` is set, every simple (non-resumable) request made through the returned
+   * `File` MUST fail once it exceeds `requestTimeoutMs`, counted from request start to response
+   * headers (so including the body upload), and MUST NOT be retried by the SDK once timed out, so
+   * that the caller owns the overall bound. It MUST NOT affect any other `File` of the bucket.
+   */
+  file(
+    filename: string,
+    { requestTimeoutMs }: { requestTimeoutMs?: number } = {}
+  ) {
+    const file = this.bucket.file(filename);
+    if (requestTimeoutMs !== undefined) {
+      assert(requestTimeoutMs > 0, "requestTimeoutMs must be positive.");
+      // `Service.request_` overwrites any per-call `timeout` option with the client-level one, but
+      // runs the `File` interceptors after that. Without `maxRetries: 0`, non-upload requests
+      // retry a timeout up to 3 more times with backoff, well past `requestTimeoutMs`.
+      file.interceptors.push({
+        request: (reqOpts: GCSRequestOptions) => ({
+          ...reqOpts,
+          timeout: requestTimeoutMs,
+          maxRetries: 0,
+        }),
+      });
+    }
+
+    return file;
   }
 
   async getFiles({
@@ -471,10 +498,13 @@ export class FileStorage {
 
   async delete(
     filePath: string,
-    { ignoreNotFound }: { ignoreNotFound?: boolean } = {}
+    {
+      ignoreNotFound,
+      requestTimeoutMs,
+    }: { ignoreNotFound?: boolean; requestTimeoutMs?: number } = {}
   ) {
     try {
-      return await this.file(filePath).delete();
+      return await this.file(filePath, { requestTimeoutMs }).delete();
     } catch (err) {
       if (ignoreNotFound && isGCSNotFoundError(err)) {
         return;
@@ -567,25 +597,14 @@ export const GCS_COMPOSE_MAX_SOURCES = 32;
 
 const bucketInstances = new Map();
 
-/**
- * @cc [owner:tdraier,label:performance] request-timeout-isolated-client
- * When `requestTimeoutMs` is set, every simple (non-resumable) request made through the returned
- * instance MUST fail once it exceeds `requestTimeoutMs`, and instances requested with a different
- * `requestTimeoutMs` (or none) for the same bucket MUST NOT share its client.
- */
 export const getBucketInstance: (
   bucketConfig: string,
   options?: FileStorageOptions
 ) => FileStorage = (bucketConfig, options) => {
-  const requestTimeoutMs = options?.requestTimeoutMs;
-  const instanceKey =
-    requestTimeoutMs === undefined
-      ? bucketConfig
-      : `${bucketConfig}:timeout=${requestTimeoutMs}`;
-  if (!bucketInstances.has(instanceKey)) {
-    bucketInstances.set(instanceKey, new FileStorage(bucketConfig, options));
+  if (!bucketInstances.has(bucketConfig)) {
+    bucketInstances.set(bucketConfig, new FileStorage(bucketConfig, options));
   }
-  return bucketInstances.get(instanceKey);
+  return bucketInstances.get(bucketConfig);
 };
 
 export const getPrivateUploadBucket = (options?: FileStorageOptions) =>
